@@ -89,13 +89,14 @@ begin
   ) then raise exception 'Invalid event information'; end if;
  if p_published and p_starts_at is null then
   raise exception 'Set an event date and time before publishing signups'; end if;
- if p_published and exists(
-  select 1 from public.order_event_signups s
-  join public.order_profile_preferences p on p.user_id=s.player_user_id
-  where s.encounter_id=p_encounter and s.status='approved'
-   and exists (select 1 from unnest(p_themes) as tag(theme)
-      where not coalesce((p.content_preferences->>tag.theme)::boolean,false))
- ) then raise exception 'Review existing approvals before changing the event themes'; end if;
+ -- Do not silently change the scope of a scene after people signed up.
+ if p_themes is distinct from (select themes from public.order_encounters where id=p_encounter)
+  and exists(select 1 from public.order_event_signups
+    where encounter_id=p_encounter and status in ('requested','approved')) then
+  raise exception 'Resolve current signups before changing declared event themes'; end if;
+ if p_capacity < (select count(*) from public.order_event_signups
+   where encounter_id=p_encounter and status='approved') then
+  raise exception 'Party capacity cannot be lower than already approved players'; end if;
  update public.order_encounters set name=trim(p_name),
   event_description=coalesce(p_description,''),event_location=coalesce(p_location,''),
   event_starts_at=p_starts_at,event_capacity=p_capacity,event_published=p_published,
@@ -178,6 +179,11 @@ begin
  update public.order_event_signups set
   status=case when p_approved then 'approved' else 'declined' end,updated_at=now()
  where id=p_signup;
+ if not p_approved then
+   delete from public.order_combatants where encounter_id=s.encounter_id
+     and character_id=s.character_id;
+   update public.order_encounters set turn_index=0 where id=s.encounter_id;
+ end if;
 end
 $decide$;
 revoke all on function public.order_decide_event_signup(uuid,boolean) from public;
