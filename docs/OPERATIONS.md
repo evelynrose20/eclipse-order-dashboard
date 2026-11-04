@@ -1,12 +1,15 @@
 # Eclipse Order — Operations and deployment guide
 
 ## Migration order
-Run these from the Supabase SQL Editor in order, after securely backing up the project:
+**Fastest for a fresh project:** open supabase/SETUP-ALL.sql, copy it into Supabase SQL Editor and run once after backing up the project. The combined script includes every migration below. If parts have already been applied, review the current schema and take a backup before applying further SQL.
+
+Alternatively, run these from Supabase SQL Editor in order:
 1. supabase/schema.sql
 2. supabase/roles-and-sheets.sql
 3. supabase/platform-foundations.sql
 4. supabase/advanced-dice.sql
 5. supabase/audit.sql
+6. supabase/settings.sql
 
 These files are not deployed to Supabase automatically by GitHub. The real Domina account must be provisioned via Supabase Authentication → Users, then assigned via the commented bootstrap SQL in roles-and-sheets.sql. Other member accounts must be approved too. Adult RP access must be reviewed and approved by the Domina; the approval flag is not documentary age verification.
 
