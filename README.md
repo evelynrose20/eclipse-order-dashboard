@@ -9,7 +9,7 @@ The new encounter/profile revision is on **draft PR #8** and is **not deployed**
 ## Player features
 
 - **My RP profile:** players privately select which content themes they generally allow. The default is opt-out. An account-level 18+ declaration is available; no IDs or identity documents are collected.
-- **Encounters & dice:** directors create named encounters and declare thematic categories, manage combatants and initiative, track rounds/turns, update HP and AC, mark conditions, and roll on the Supabase server.
+- **Encounters & dice:** directors create named encounters and declare thematic categories, manage combatants and initiative, track rounds/turns, update HP and AC, mark conditions, save reusable homebrew monster/NPC stat blocks, automatically roll initiative, and roll on the Supabase server.
 - **OOC pause:** every player can pause participation in an encounter regardless of IC rank, collar, or other story restrictions.
 - **Character sheets:** full D&D-style sheet for authorized characters; redacted bound-character sheet for the linked player. Free ↔ bound transitions require explicit linked-player approval and preserve the entire sheet.
 - **Account roles:** Domina, High Command, assigned Master/Mistress handlers and normal members.
