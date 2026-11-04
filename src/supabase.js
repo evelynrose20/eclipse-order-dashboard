@@ -142,3 +142,9 @@ export const listEventSignups=id=>rpc('order_list_event_signups',{p_encounter:id
 export const decideEventSignup=(id,approved)=>rpc('order_decide_event_signup',{p_signup:id,p_approved:approved});
 export const withdrawEventSignup=id=>rpc('order_withdraw_event_signup',{p_signup:id});
 export const addApprovedEventPlayer=id=>rpc('order_add_approved_player',{p_signup:id});
+
+export const getMyKinkProfile=()=>rpc('order_get_my_rp_profile');
+export const saveMyKinkProfile=(name,shareContent,shareKinks,entries)=>rpc('order_save_my_rp_profile',{
+ p_display_name:name,p_share_content:shareContent,p_share_kinks:shareKinks,p_entries:entries
+});
+export const listSharedRPProfiles=()=>rpc('order_list_shared_rp_profiles');
