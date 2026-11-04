@@ -103,3 +103,12 @@ export const encounterCheck=id=>rpc('order_my_encounter_check',{p_encounter:id})
 export const pauseEncounter=(id,paused)=>rpc('order_set_my_encounter_pause',{p_encounter:id,p_paused:paused});
 export const encounterRoll=(id,formula,visibility)=>rpc('order_roll_encounter',{p_encounter:id,p_formula:formula,p_visibility:visibility});
 export const encounterRolls=id=>rpc('order_list_encounter_rolls',{p_encounter:id});
+
+export const listMonsterTemplates=()=>rpc('order_list_monster_templates');
+export const createMonsterTemplate=(monster)=>rpc('order_create_monster_template',{
+ p_name:monster.name,p_challenge:monster.challenge,p_hp:Number(monster.hit_points),
+ p_ac:Number(monster.armor_class),p_init_bonus:Number(monster.initiative_bonus),
+ p_actions:monster.actions||'',p_notes:monster.notes||''
+});
+export const addMonsterToEncounter=(encounterId,monsterId)=>rpc('order_add_monster_to_encounter',{p_encounter:encounterId,p_monster:monsterId});
+export const rollAllInitiative=encounterId=>rpc('order_roll_all_initiative',{p_encounter:encounterId});
