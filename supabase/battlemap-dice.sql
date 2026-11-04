@@ -269,6 +269,11 @@ declare
 begin
  if p_kind not in ('custom','ability','saving_throw','skill','attack','contest','damage','healing','death_save','concentration') then
   raise exception 'Unknown dice action'; end if;
+ if not public.order_can_direct_encounter(p_encounter) and not exists(
+  select 1 from public.order_combatants co
+  join public.characters ch on ch.id=co.character_id
+  where co.encounter_id=p_encounter and ch.player_user_id=auth.uid()
+ ) then raise exception 'Only encounter combatants or the GM can roll dice' using errcode='42501'; end if;
  if p_dc is not null and p_dc not between 0 and 99 then raise exception 'Invalid target DC'; end if;
  if p_target is not null then
   select c.ac into target_ac from public.order_combatants c where c.id=p_target and c.encounter_id=p_encounter;
@@ -318,6 +323,11 @@ begin
   raise exception 'Save the 18+ declaration under My RP profile to see encounter rolls' using errcode='42501'; end if;
  if not exists(select 1 from public.order_encounters where id=p_encounter) then
   raise exception 'Encounter not found'; end if;
+ if not public.order_can_direct_encounter(p_encounter) and not exists(
+  select 1 from public.order_combatants co
+  join public.characters ch on ch.id=co.character_id
+  where co.encounter_id=p_encounter and ch.player_user_id=auth.uid()
+ ) then raise exception 'Only encounter combatants or the GM can see roll history' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
    'id',r.id,'rolled_by',r.rolled_by,'formula',r.formula,'rolls',r.rolls,
    'total',r.total,'visibility',r.visibility,'created_at',r.created_at,
@@ -762,3 +772,7 @@ end
 $apply$;
 revoke all on function public.order_apply_roll_hp(bigint,uuid) from public;
 grant execute on function public.order_apply_roll_hp(bigint,uuid) to authenticated;
+
+-- The old general dice RPC is now internal to the action/request functions.
+-- Revoke direct browser execution so account eligibility and participation checks cannot be bypassed.
+revoke execute on function public.order_roll_encounter(uuid,text,text) from authenticated;
