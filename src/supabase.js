@@ -66,3 +66,7 @@ export async function loadOrderMembers(){
 export async function updateOrderMemberRole(userId,role){
   return rpc('order_set_member_role',{target_user_id:userId,target_role:role});
 }
+
+export async function updateOrderMemberStanding(userId,standing){
+  return rpc('order_set_member_standing',{target_user_id:userId,new_standing:standing});
+}
