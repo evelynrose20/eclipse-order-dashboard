@@ -4,7 +4,7 @@ const url = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 export const configured = Boolean(url && key);
 const SESSION_KEY = 'eclipse-order-supabase-session';
-const headers = (token, extra={}) => ({apikey:key,Authorization:'Bearer '+(token||key),...extra});
+const headers = (token, extra={}) => ({apikey:key,...(token ? {Authorization:'Bearer '+token} : {}),...extra});
 async function parse(response) {
   const value=await response.json().catch(()=>null);
   if (!response.ok) throw new Error(value?.msg || value?.error_description || value?.message || 'Request failed ('+response.status+')');
