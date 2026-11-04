@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SLAVES, RANKS, SHOP_ITEMS } from './data/initialData.js';
 import './dashboard.css';
+import './shared-login.css';
 import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters} from './supabase.js';
 
 const KEY = 'eclipse-order-ledger-v3';
