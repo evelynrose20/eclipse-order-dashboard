@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP} from './supabase.js';
+import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP,applyRolledHP} from './supabase.js';
 import {parseDiceFormula} from './rpRules.js';
 import './encounter-dice.css';
 
@@ -18,14 +18,16 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  const [reqCharacter,setReqCharacter]=useState(''),[reqKind,setReqKind]=useState('saving_throw');
  const [reqLabel,setReqLabel]=useState('Constitution saving throw'),[reqFormula,setReqFormula]=useState('1d20+0'),[reqDC,setReqDC]=useState(12);
  const [last,setLast]=useState(null),[error,setError]=useState('');
+ const [hpTarget,setHpTarget]=useState(''),[appliedRollIds,setAppliedRollIds]=useState([]);
  const eligible=Boolean(check?.adult_declaration&&!check?.paused&&!check?.missing_themes?.length);
  async function refresh(){const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);setRequests(r);setRolls(l)}
  useEffect(()=>{let active=true;const load=async()=>{try{const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);if(active){setRequests(r);setRolls(l)}}catch(e){if(active)setError(e.message)}};load();const timer=setInterval(load,15000);return()=>{active=false;clearInterval(timer)}},[encounter.id]);
  async function run(fn){setError('');try{const result=await action(fn);await refresh();return result}catch(e){setError(e.message)}}
  async function generalRoll(){const p=parseDiceFormula(formula);if(!p.ok){setError(p.error);return}const kind=['advantage','disadvantage','percentile'].includes(preset)?'custom':preset;
- const out=await run(()=>rollEncounterAction(encounter.id,p.normalized,visibility,kind,target||null,(['ability','saving_throw','skill','contest','concentration'].includes(kind)?Number(targetDC):null)));if(out)setLast(out)}
+ const out=await run(()=>rollEncounterAction(encounter.id,p.normalized,visibility,kind,(kind==='attack'?target:null),(['ability','saving_throw','skill','contest','concentration'].includes(kind)?Number(targetDC):null)));if(out)setLast(out)}
  async function request(e){e.preventDefault();const p=parseDiceFormula(reqFormula);if(!p.ok){setError(p.error);return}
  await run(()=>requestGMRoll(encounter.id,reqCharacter,reqKind,reqLabel,p.normalized,Number(reqDC)))}
+ async function applyLastHP(){if(!last?.id||!hpTarget)return;const result=await run(()=>applyRolledHP(last.id,hpTarget));if(result!==undefined){setAppliedRollIds(old=>[...old,last.id]);setLast(old=>({...old,appliedHP:result}))}}
  async function resolve(id){const result=await run(()=>resolveGMRoll(id));if(result)setLast({...result.roll,success:result.success,dc:result.dc})}
  const linked=encounter.combatants.filter(c=>c.kind==='player'&&c.character_id).map(c=>({...c,record:characters.find(x=>x.id===c.character_id)})).filter(c=>c.record?.player_user_id);
  const canRoll=eligible&&encounter.status==='active';
@@ -40,6 +42,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
   </div>
   <p className="muted">Examples: 1d20+5 (check/attack), 2d6+3 (damage), 2d20kh1 (advantage), 2d20kl1 (disadvantage). For critical hits, roll damage dice twice and add the modifier once.</p>
   {last&&<div className="dice-result" role="status"><div>LAST VERIFIED ROLL</div><strong>{last.total}</strong><span>{last.rolls.join(' + ')} · {last.formula}{last.target_dc!=null?' · Target '+last.target_dc+' · '+String(last.outcome||'').replaceAll('_',' '):last.dc!=null?' · DC '+last.dc+' · '+(last.success?'SUCCESS':'FAILURE'):''}</span></div>}
+  {last&&canDirect&&['damage','healing'].includes(last.kind)&&<div className="apply-roll-hp"><label className="field"><span>APPLY {last.kind.toUpperCase()} TO</span><select value={hpTarget} onChange={e=>setHpTarget(e.target.value)}><option value="">Choose target</option>{encounter.combatants.map(c=><option key={c.id} value={c.id}>{c.name} · {c.hp}/{c.max_hp} HP</option>)}</select></label><button className="btn secondary" disabled={!hpTarget||working||appliedRollIds.includes(last.id)} onClick={applyLastHP}>{appliedRollIds.includes(last.id)?'Applied':'Apply '+last.total+' '+last.kind}</button>{last.appliedHP!==undefined&&<small>Target now has {last.appliedHP} HP.</small>}</div>}
   {canDirect&&<form className="gm-check-form" onSubmit={request}>
     <h3>Ask a character to roll</h3><p className="muted">Send a specific check, saving throw, attack or contest to a linked player.</p>
     <div className="gm-check-grid">
