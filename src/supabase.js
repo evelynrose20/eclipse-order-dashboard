@@ -128,3 +128,5 @@ export const rollEncounterAction=(encounterId,formula,visibility,kind,target,dc)
 });
 
 export const applyRolledHP=(rollId,targetId)=>rpc('order_apply_roll_hp',{p_roll_id:rollId,p_target:targetId});
+
+export const setEncounterMapImage=(id,imageUrl)=>rpc('order_set_encounter_map_image',{p_encounter:id,p_image_url:imageUrl});
