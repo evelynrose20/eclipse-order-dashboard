@@ -4,6 +4,51 @@
 -- All records are subject to member permissions enforced by SECURITY DEFINER RPC.
 -- Scene agreement is OOC permission to roleplay a fictional scenario; it can be revoked at any time.
 
+-- Adults-only RP session eligibility is a manual staff-review flag.
+-- It is NOT identity or documentary age verification.
+alter table public.order_members add column if not exists adult_approved boolean not null default false;
+
+create or replace function public.order_adult_approved()
+returns boolean language sql stable security definer set search_path = ''
+as $eligible$
+ select coalesce((select m.adult_approved from public.order_members m where m.user_id=auth.uid()),false)
+$eligible$;
+revoke all on function public.order_adult_approved() from public;
+grant execute on function public.order_adult_approved() to authenticated;
+
+create or replace function public.order_set_adult_approved(p_user_id uuid,p_approved boolean)
+returns void language plpgsql volatile security definer set search_path = ''
+as $setadult$
+begin
+ if public.order_my_role() <> 'domina' then
+   raise exception 'Only the Domina can approve adult RP access' using errcode='42501';
+ end if;
+ update public.order_members set adult_approved=p_approved where user_id=p_user_id;
+ if not found then raise exception 'Account is not an approved member'; end if;
+end
+$setadult$;
+revoke all on function public.order_set_adult_approved(uuid,boolean) from public;
+grant execute on function public.order_set_adult_approved(uuid,boolean) to authenticated;
+
+create or replace function public.order_list_members()
+returns jsonb language plpgsql stable security definer set search_path = ''
+as $members$
+declare output jsonb;
+begin
+ if public.order_my_role() not in ('domina','high_command','handler') then
+   raise exception 'Not allowed to browse member directory' using errcode='42501';
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'user_id',m.user_id,'role',m.role,'standing',m.standing,
+  'adult_approved',m.adult_approved,'email',u.email
+ ) order by u.email),'[]'::jsonb) into output
+ from public.order_members m join auth.users u on u.id=m.user_id;
+ return output;
+end
+$members$;
+revoke all on function public.order_list_members() from public;
+grant execute on function public.order_list_members() to authenticated;
+
 create table if not exists public.order_status_requests (
  id uuid primary key default gen_random_uuid(),
  character_id text not null references public.characters(id) on delete cascade,
@@ -194,6 +239,7 @@ begin
  if public.order_my_role() not in ('domina','high_command','handler') then
    raise exception 'Only approved scene hosts may create scenes' using errcode='42501';
  end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  insert into public.order_scenes(title,summary,themes,hosted_by)
  values(left(trim(p_title),140),left(trim(p_summary),1200),left(trim(p_themes),1000),auth.uid())
  returning id into new_id;
@@ -209,6 +255,7 @@ as $scenes$
 declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
    'id',s.id,'title',s.title,'summary',s.summary,'themes',s.themes,'hosted_by',s.hosted_by,
    'state',s.state,'created_at',s.created_at,'participants',(
@@ -232,6 +279,7 @@ returns void language plpgsql volatile security definer set search_path = ''
 as $consent$
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  if not exists(select 1 from public.order_scenes where id=p_scene_id and state<>'closed') then
    raise exception 'Scene is not accepting participation';
  end if;
@@ -249,6 +297,7 @@ returns void language plpgsql volatile security definer set search_path = ''
 as $state$
 begin
  if p_state not in ('planned','active','closed') then raise exception 'Invalid scene state'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  update public.order_scenes set state=p_state,updated_at=now()
  where id=p_scene_id and (hosted_by=auth.uid() or public.order_my_role() in ('domina','high_command'));
  if not found then raise exception 'Not authorized to manage this scene' using errcode='42501'; end if;
@@ -281,6 +330,7 @@ declare
   r integer; i integer; sum_rolls integer := 0; roll_id bigint;
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  if p_count is null or p_count not between 1 and 20 or
     p_sides is null or p_sides not between 2 and 100 or
     p_modifier is null or p_modifier not between -100 and 100 then
@@ -313,6 +363,7 @@ as $rolls$
 declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
  if not exists(select 1 from public.order_scenes where id=p_scene_id) then
    raise exception 'Scene not found';
  end if;
