@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseDiceFormula,statusLabel,canRequestTransition} from '../src/rpRules.js';
+import {parseDiceFormula,statusLabel,canRequestTransition,sheetCheckFormula} from '../src/rpRules.js';
 test('normal D&D expression',()=>{
  assert.deepEqual(parseDiceFormula(' 2D6 + 4 '),{ok:true,count:2,sides:6,mode:'normal',modifier:4,normalized:'2d6+4'});
 });
@@ -26,4 +26,14 @@ test('status requests require owning account or assigned handlers',()=>{
  assert.equal(canRequestTransition(char,'unrelated','member'),false);
  assert.equal(canRequestTransition(char,'unrelated','domina'),true);
  assert.equal(canRequestTransition({...char,player_user_id:null},'unrelated','domina'),false);
+});
+
+test('D&D sheet checks derive modifiers without granting extra proficiencies',()=>{
+ const char={str:16,dex:12,con:8,wis:14,level:5,proficiency_bonus:3,
+  saving_throws:{con:true},skills:{Perception:true,'Stealth':false}};
+ assert.equal(sheetCheckFormula(char,'ability','str'),'1d20+3');
+ assert.equal(sheetCheckFormula(char,'saving_throw','con'),'1d20+2');
+ assert.equal(sheetCheckFormula(char,'skill','Perception'),'1d20+5');
+ assert.equal(sheetCheckFormula(char,'skill','Stealth'),'1d20+1');
+ assert.equal(sheetCheckFormula(char,'skill','Nonexistent'),'1d20+0');
 });

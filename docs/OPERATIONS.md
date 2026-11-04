@@ -2,14 +2,14 @@
 
 ## Database migration
 
-For a fresh project, apply the baseline SQL under `supabase/SETUP-ALL.sql` and then the new **`supabase/profile-encounters.sql`** migration. For an existing Supabase project, first inspect the installed schema and back it up; apply only missing forward migrations. A GitHub build does not install SQL.
+For a fresh project, apply the baseline SQL under `supabase/SETUP-ALL.sql` and then **`supabase/profile-encounters.sql`** and finally **`supabase/battlemap-dice.sql`**. For an existing Supabase project, first inspect the installed schema and back it up; apply only missing forward migrations; battlemap-dice.sql is the latest. A GitHub build does not install SQL.
 
 The new migration creates private `order_profile_preferences`, encounter/turn/combatant/dice tables, and server-checked RPCs. It revokes the legacy scene-consent endpoints while preserving historical records. This revision does not require ID scans or document storage.
 
 ## Eligibility model
 
 - Each member must declare they are at least 18 and choose their private content categories.
-- The Domina controls the separate adult-access flag after the FC's appropriate off-platform member screening. This flag is not proof of age or identity.
+- The legacy staff adult-access flag is retired in battlemap-dice.sql. Encounter access now uses the saved 18+ profile declaration; it is not proof of age or identity. Community admission and moderation remain staff responsibilities.
 - No ID upload, birthdate, documentary age verification or identity document storage is built into the app.
 - Member profile choices are private and editable; encounters list their required themes.
 - Server RPCs deny encounter rolls when the member is not approved, has not declared 18+, lacks a required profile category, or has paused OOC participation.
@@ -33,3 +33,7 @@ The new migration creates private `order_profile_preferences`, encounter/turn/co
 Automated encrypted offsite backup and restoration are still **not configured**. Back up the database privately and test a restore before production. Do not upload private records into public GitHub Actions artifacts.
 
 Deploy only after database setup, integration tests and explicit review. Use a staged PR rather than directly pushing work to the live `main` branch. Update dependencies periodically and keep independent backups.
+
+## Battle map and dice revision
+
+Read [Battlemap and Dice](BATTLEMAP-DICE.md). The new module saves a token position once per placement and stores custom map images as remote HTTPS URLs. Only the encounter director can move tokens or adjust combatant HP; ordinary participants can roll only when the encounter is active and their profile permits it. Attack and DC outcomes are calculated by the database; damage/healing roll applications are one-time. Test the functions against a real Supabase project before production.

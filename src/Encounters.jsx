@@ -1,11 +1,13 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,encounterRoll,encounterRolls,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,encounterRoll,encounterRolls,setEncounterMap,moveEncounterToken,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {parseDiceFormula} from './rpRules.js';
 import './encounters.css';
+import BattleMap from './BattleMap.jsx';
+import {DicePanel,QuickHP} from './EncounterDice.jsx';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
-export default function Encounters({role,userId,characters}){
+export default function Encounters({role,userId,characters,onOpenProfile}){
  const directorRole=['domina','high_command','handler'].includes(role);
  const [data,setData]=useState([]),[chosenId,setChosenId]=useState(''),[newName,setNewName]=useState(''),[newNotes,setNewNotes]=useState(''),[themes,setThemes]=useState([]);
  const [combatName,setCombatName]=useState(''),[kind,setKind]=useState('npc'),[charId,setCharId]=useState(''),[initiative,setInitiative]=useState(10),[hp,setHp]=useState(20),[ac,setAc]=useState(10);
@@ -16,6 +18,7 @@ export default function Encounters({role,userId,characters}){
  const [showMonsterEditor,setShowMonsterEditor]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const canDirect=selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId));
+ const isParticipant=Boolean(canDirect||selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
  const activeCombatant=selected?.combatants?.[selected.turn_index%Math.max(1,selected.combatants.length)];
  async function refresh(){const x=await listEncounters();setData(x);setChosenId(old=>x.some(e=>e.id===old)?old:x[0]?.id||'')}
  useEffect(()=>{
@@ -23,11 +26,11 @@ export default function Encounters({role,userId,characters}){
   if(directorRole)listMonsterTemplates().then(setMonsters).catch(e=>setError(e.message));
   const timer=setInterval(()=>refresh().catch(()=>{}),30000);return()=>clearInterval(timer)
  },[]);
- useEffect(()=>{if(!chosenId){setCheck(null);setRolls([]);return}let active=true;
-  const reload=async()=>{try{const [a,b]=await Promise.all([encounterCheck(chosenId),encounterRolls(chosenId)]);if(active){setCheck(a);setRolls(b)}}catch(e){if(active)setError(e.message)}};
-  reload();const timer=setInterval(reload,15000);return()=>{active=false;clearInterval(timer)}
+ useEffect(()=>{if(!chosenId){setCheck(null);return}let active=true;
+  const reload=async()=>{try{const result=await encounterCheck(chosenId);if(active)setCheck(result)}catch(e){if(active)setError(e.message)}};
+  reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}
  },[chosenId]);
- async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId){setCheck(await encounterCheck(chosenId));setRolls(await encounterRolls(chosenId))}return result}catch(e){setError(e.message)}finally{setWorking(false)}}
+ async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function create(e){e.preventDefault();const id=await action(()=>createEncounter(newName,newNotes,themes));if(id){setChosenId(id);setNewName('');setNewNotes('');setThemes([])}}
  async function add(e){e.preventDefault();const source=characters.find(c=>c.id===charId);const name=kind==='player'&&source?source.name:combatName;
   const id=await action(()=>addCombatant(chosenId,name,kind,kind==='player'?charId:null,Number(initiative),Number(hp),Number(ac)));
@@ -51,7 +54,7 @@ export default function Encounters({role,userId,characters}){
     <strong>{e.name}</strong><small>{e.status} · {e.combatants.length} combatants</small></button>)}</div>
   </section>
   <section className="encounter-main">
-   {!selected?<div className="panel"><h2>No encounter selected</h2><p className="muted">A GM can create a new encounter from the left panel.</p></div>:<>
+   {!selected?<div className="panel"><h2>No encounter selected</h2><p className="muted">{directorRole?'Create your first encounter from the panel on the left.':'Your account is currently '+role+'. Domina, High Command, or an assigned Master/Mistress can create encounters.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>Profile needs to be saved</strong><p>Open My RP profile and confirm 18+. The declaration now saves automatically. If the error continues, apply the new battlemap-dice.sql migration to remove the old duplicate staff gate.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
     <div className="panel encounter-header"><div className="encounter-topline"><div><small>ENCOUNTER TRACKER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&<div className="encounter-actions">
      {selected.status!=='active'&&<>
       <button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button>
@@ -62,10 +65,11 @@ export default function Encounters({role,userId,characters}){
     <div className="encounter-tags">{selected.themes?.map(t=><span key={t}>{label(t)}</span>)}</div>
     {activeCombatant&&selected.status==='active'&&<div className="current-turn"><span>NOW ACTING</span><strong>{activeCombatant.name}</strong><small>Round {selected.round_number} · Initiative {activeCombatant.initiative}</small></div>}
     <div className="ooc-access"><div><h3>Player OOC control</h3><p>Your saved profile choices are checked against the declared encounter themes. Regardless of IC circumstances, you can pause participation here at any time.</p>
-    {check&&<p>Eligibility: {check.adult_declaration&&check.adult_approved?'18+ declaration and staff admission recorded':'Adult-only access not yet approved'} · {check.missing_themes?.length?'Not opted into: '+check.missing_themes.map(label).join(', '):'Declared themes allowed'}</p>}</div>
+    {check&&<p>Eligibility: {check.adult_declaration?'18+ profile declaration saved':'Save your 18+ declaration under My RP profile'} · {check.missing_themes?.length?'Not opted into: '+check.missing_themes.map(label).join(', '):'Declared themes allowed'}</p>}</div>
     <button className="btn secondary" disabled={working} onClick={()=>action(()=>pauseEncounter(chosenId,!check?.paused))}>{check?.paused?'Resume OOC':'Pause OOC'}</button></div></div>
+    <BattleMap encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>
     <section className="panel"><div className="panel-heading"><div><h2>Initiative tracker</h2><p>GM-controlled combatants, HP, armor class, conditions and turn order.</p></div></div>
-     <div className="encounter-combatants">{selected.combatants.length?selected.combatants.map((c,i)=><Combatant key={c.id} c={c} canDirect={canDirect} active={selected.status==='active'&&i===selected.turn_index%selected.combatants.length} working={working} save={next=>action(()=>editCombatant(c.id,next.hp,next.initiative,next.ac,next.conditions))} remove={()=>action(()=>deleteCombatant(c.id))}/>):<p className="muted">No combatants added.</p>}</div>
+     <div className="encounter-combatants">{selected.combatants.length?selected.combatants.map((c,i)=><Combatant key={c.id} c={c} canDirect={canDirect} active={selected.status==='active'&&i===selected.turn_index%selected.combatants.length} working={working} save={next=>action(()=>editCombatant(c.id,next.hp,next.initiative,next.ac,next.conditions))} hpAction={action} remove={()=>action(()=>deleteCombatant(c.id))}/>):<p className="muted">No combatants added.</p>}</div>
      {canDirect&&<div className="monster-library"><div className="panel-heading"><div><h3>Monster & NPC stat-block library</h3><p>Save reusable homebrew enemies, then add them to encounters without retyping HP and AC.</p></div><button className="mini-btn" onClick={()=>setShowMonsterEditor(!showMonsterEditor)}>{showMonsterEditor?'Close editor':'+ Create stat block'}</button></div>
       {showMonsterEditor&&<form className="monster-form" onSubmit={saveMonster}>
        {[
@@ -89,21 +93,17 @@ export default function Encounters({role,userId,characters}){
       <button className="btn primary" disabled={working} type="submit">Add</button>
      </div></form>}
     </section>
-    <section className="panel"><h2>Encounter dice</h2><p className="muted">Server-rolled results, shared with the encounter. Examples: 1d20+5, 2d6+3, 2d20kh1+4 (advantage).</p>
-     <div className="encounter-roll-controls"><label className="field"><span>FORMULA</span><input value={formula} onChange={e=>setFormula(e.target.value)} maxLength={24}/></label><label className="field"><span>VISIBILITY</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Public</option>{canDirect&&<option value="gm_private">GM only</option>}</select></label>
-      <button className="btn primary" disabled={working||!check?.adult_declaration||!check?.adult_approved||check?.paused||Boolean(check?.missing_themes?.length)||selected.status!=='active'||!parseDiceFormula(formula).ok} onClick={roll}>Roll</button></div>
-     {lastRoll&&<div className="last-roll">Rolled <strong>{lastRoll.total}</strong> ({lastRoll.rolls.join(', ')})</div>}
-     <div className="encounter-roll-log">{rolls.map(r=><div key={r.id}><span>{r.formula} · {r.rolls.join(', ')} {r.visibility==='gm_private'?'· GM only':''}</span><strong>{r.total}</strong></div>)}</div>
-    </section>
+    {isParticipant?<DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Encounter dice</h2><p className="muted">You are viewing this encounter as an observer. Ask the GM to add your character before rolling or viewing the combat roll history.</p></section>}
    </>}
    {error&&<div className="alert" role="alert">{error}</div>}
   </section>
  </div>;
 }
-function Combatant({c,canDirect,active,working,save,remove}){
+function Combatant({c,canDirect,active,working,save,hpAction,remove}){
  const [editing,setEditing]=useState(false),[draft,setDraft]=useState(c);
  useEffect(()=>{if(!editing)setDraft(c)},[c,editing]);
  return <div className={'combatant '+(active?'acting':'')}><span className="combatant-initiative">{c.initiative}</span><div className="combatant-identity"><strong>{c.name}</strong><small>{c.kind==='npc'?'NPC / enemy':'Player character'}</small><div className="combatant-health"><span style={{width:Math.max(0,Math.min(100,c.hp/c.max_hp*100))+'%'}}/></div><small>{c.hp}/{c.max_hp} HP · AC {c.ac}</small>{Boolean(c.conditions.length)&&<p>{c.conditions.join(' · ')}</p>}</div>
+  {canDirect&&<QuickHP combatant={c} action={hpAction} working={working}/>}
   {canDirect&&<div className="combatant-actions"><button className="mini-btn" onClick={()=>setEditing(!editing)}>Edit</button><button className="mini-btn danger" disabled={working} onClick={remove}>Remove</button></div>}
   {editing&&<div className="combatant-editor"><label>HP<input type="number" min={0} max={999999} value={draft.hp} onChange={e=>setDraft({...draft,hp:Number(e.target.value)})}/></label><label>Initiative<input type="number" min={-100} max={100} value={draft.initiative} onChange={e=>setDraft({...draft,initiative:Number(e.target.value)})}/></label><label>AC<input type="number" min={0} max={99} value={draft.ac} onChange={e=>setDraft({...draft,ac:Number(e.target.value)})}/></label><label>Conditions<select multiple value={draft.conditions||[]} onChange={e=>setDraft({...draft,conditions:Array.from(e.target.selectedOptions).map(x=>x.value)})}>{CONDITIONS.map(x=><option key={x} value={x}>{x}</option>)}</select></label><button className="mini-btn" disabled={working} onClick={async()=>{await save(draft);setEditing(false)}}>Save</button></div>}
  </div>;
