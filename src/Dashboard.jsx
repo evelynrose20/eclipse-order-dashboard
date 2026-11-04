@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SLAVES, RANKS, SHOP_ITEMS } from './data/initialData.js';
 import './dashboard.css';
 import './shared-login.css';
-import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters,loadMyRole,loadOrderMembers,updateOrderMemberRole,updateOrderMemberStanding,setAdultRPAccess} from './supabase.js';
+import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters,loadMyRole,loadOrderMembers,updateOrderMemberRole,updateOrderMemberStanding} from './supabase.js';
 import {FullDndSheet,LimitedSheet,MemberDirectory,ACCOUNT_ROLES} from './OrderSheets.jsx';
 import {CharacterTransitions} from './RPPlatform.jsx';
 import Encounters from './Encounters.jsx';
@@ -106,11 +106,6 @@ export default function Dashboard() {
     catch(error){setLoginError(error.message);}
   }
   function logout(){signOut();setSession(null);setCharacters([]);setMembers([]);setAccountRole(null);setRemoteError('');setSyncStatus('Signed out');}
-  async function changeAdultAccess(member,approved){
-    if(!window.confirm((approved?'Approve':'Revoke')+' adult RP access for '+member.email+'? Confirm eligibility outside this application before approving.'))return;
-    try{await setAdultRPAccess(member.user_id,approved);setMembers(await loadOrderMembers());warn('Adult RP access updated.');}
-    catch(error){warn('Adult access update failed: '+error.message);}
-  }
   async function changeMemberStanding(member,standing){
     try{await updateOrderMemberStanding(member.user_id,standing);setMembers(await loadOrderMembers());warn('Member standing updated.');}
     catch(error){warn('Standing change failed: '+error.message);}
@@ -226,7 +221,7 @@ export default function Dashboard() {
         {tab==='scenes'&&configured&&session&&<Encounters role={accountRole} userId={session.user?.id} characters={characters} onOpenProfile={()=>setTab('profile')}/>}
         {tab==='profile'&&configured&&session&&<ProfileConsent/>}
         {tab==='transitions'&&configured&&session&&<CharacterTransitions characters={characters} role={accountRole} userId={session.user?.id} onRefresh={refreshCharacters}/>}
-        {tab==='members'&&['domina','high_command'].includes(accountRole)&&<MemberDirectory members={members} currentRole={accountRole} onChangeRole={changeMemberRole} onChangeStanding={changeMemberStanding} onChangeAdult={changeAdultAccess}/>}
+        {tab==='members'&&['domina','high_command'].includes(accountRole)&&<MemberDirectory members={members} currentRole={accountRole} onChangeRole={changeMemberRole} onChangeStanding={changeMemberStanding}/>}
         {tab==='settings' && <div className="settings-grid"><section className="panel"><h2>Backup & restore</h2><p className="muted">Export your complete ledger as JSON before changing browsers or clearing site data.</p><div className="settings-actions">{canCommand&&<button className="btn primary" onClick={()=>downloadFile('eclipse-order-ledger.json',JSON.stringify({version:3,characters},null,2))}>Download JSON backup</button>}{canCommand&&<button className="btn secondary" onClick={()=>importRef.current?.click()}>Import JSON backup</button>}{configured&&canCommand&&<button className="btn secondary" onClick={migrateLocal}>Migrate saved browser records</button>}<input hidden ref={importRef} type="file" accept=".json,application/json" onChange={importBackup}/></div><p className="fine-print">{configured?'Import adds or updates shared records. Existing unrelated records are retained.':'Import replaces the current ledger after confirmation. Existing browser records are migrated from earlier app versions on first use.'}</p></section><section className="panel"><h2>Workspace information</h2><div className="settings-line"><span>Storage</span><strong>{configured?'Supabase PostgreSQL':'Browser localStorage'}</strong></div><div className="settings-line"><span>Character records</span><strong>{characters.length}</strong></div><div className="settings-line"><span>Accounts & permissions</span><strong>{configured?'Supabase Auth':'Not configured'}</strong></div><div className="settings-line"><span>Shared database</span><strong>{configured?'Connected':'Not connected'}</strong></div><div className="alert">{configured?'Approved members access this shared ledger through Supabase authentication and database row-level security. Role-based permissions protect the roster and collar-bound sheets at the database layer.':'This static site is not an authenticated application. Do not store passwords, private personal information or sensitive records here.'}</div></section></div>}
         {tab==='settings'&&configured&&accountRole&&<FCSettings role={accountRole}/>}
       </div>
