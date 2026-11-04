@@ -269,7 +269,7 @@ begin
  if p_kind='attack' and p_target is null then
   raise exception 'Select a target before rolling an attack'; end if;
  if p_kind in ('attack','ability','saving_throw','skill','contest','death_save','concentration') and
-  lower(regexp_replace(coalesce(p_formula,''),'\\s+','','g')) !~
+  lower(regexp_replace(coalesce(p_formula,''),'\s+','','g')) !~
     '^(1d20|2d20(kh1|kl1))([+-][0-9]{1,2})?
  roll_id:=(result->>'id')::bigint;
  total:=(result->>'total')::int;
