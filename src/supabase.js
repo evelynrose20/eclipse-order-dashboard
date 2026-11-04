@@ -16,7 +16,7 @@ async function authRequest(path, body) {
 }
 export async function signIn(email,password) {
   const result=await authRequest('token?grant_type=password',{email,password});
-  sessionStorage.setItem(SESSION_KEY,JSON.stringify(result));
+  sessionStorage.setItem(SESSION_KEY,JSON.stringify({...result,expires_at:Math.floor(Date.now()/1000)+(result.expires_in||3600)}));
   return result;
 }
 export function signOut() { sessionStorage.removeItem(SESSION_KEY); }
