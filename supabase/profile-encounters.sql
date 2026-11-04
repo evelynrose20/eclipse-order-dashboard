@@ -90,6 +90,8 @@ create table if not exists public.order_encounter_rolls(
 );
 alter table public.order_encounters enable row level security;
 alter table public.order_combatants enable row level security;
+create index if not exists order_encounter_rolls_actor_time
+ on public.order_encounter_rolls(rolled_by,created_at desc);
 alter table public.order_encounter_rolls enable row level security;
 revoke all on public.order_encounters,public.order_combatants,public.order_encounter_rolls from anon,authenticated,public;
 
@@ -304,6 +306,8 @@ begin
    raise exception 'Your profile does not opt in to every declared encounter theme' using errcode='42501'; end if;
  if not exists(select 1 from public.order_encounters where id=p_encounter and status='active') then
   raise exception 'Encounter not active'; end if;
+ if exists(select 1 from public.order_encounter_rolls r where r.rolled_by=auth.uid() and r.created_at>now()-interval '2 seconds') then
+  raise exception 'Roll rate limit: wait briefly before rolling again'; end if;
  if p_visibility not in ('public','gm_private') or
   (p_visibility='gm_private' and not public.order_can_direct_encounter(p_encounter)) then
   raise exception 'Roll visibility not allowed' using errcode='42501'; end if;
