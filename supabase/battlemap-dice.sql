@@ -326,7 +326,7 @@ begin
   select 1 from public.order_combatants co
   join public.characters ch on ch.id=co.character_id
   where co.encounter_id=p_encounter and ch.player_user_id=auth.uid()
- ) then raise exception 'Only encounter combatants or the GM can see roll history' using errcode='42501'; end if;
+ ) then return '[]'::jsonb; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
    'id',r.id,'rolled_by',r.rolled_by,'formula',r.formula,'rolls',r.rolls,
    'total',r.total,'visibility',r.visibility,'created_at',r.created_at,
