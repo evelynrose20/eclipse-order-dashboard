@@ -1,5 +1,5 @@
 import React from 'react';
-import { RANKS } from './data/initialData.js';
+import './order-sheets.css';
 
 export const ACCOUNT_ROLES = {
   domina:{label:'Domina',description:'Supreme Order command; all records, member roles and assignments'},
