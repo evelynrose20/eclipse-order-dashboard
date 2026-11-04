@@ -348,6 +348,110 @@ $rolls$;
 revoke all on function public.order_list_encounter_rolls(uuid) from public;
 grant execute on function public.order_list_encounter_rolls(uuid) to authenticated;
 
+
+-- Reusable homebrew NPC stat blocks and encounter initiative.
+-- Templates are created and maintained by authorized FC directors.
+create table if not exists public.order_monster_templates(
+ id uuid primary key default gen_random_uuid(),
+ name text not null check(length(name) between 2 and 120),
+ challenge text not null default 'Custom' check(length(challenge)<=25),
+ hit_points integer not null check(hit_points between 1 and 999999),
+ armor_class integer not null check(armor_class between 0 and 99),
+ initiative_bonus integer not null default 0 check(initiative_bonus between -30 and 30),
+ abilities jsonb not null default '{}'::jsonb check(jsonb_typeof(abilities)='object'),
+ actions text not null default '' check(length(actions)<=2500),
+ notes text not null default '' check(length(notes)<=2500),
+ created_by uuid not null references auth.users(id),
+ created_at timestamptz not null default now()
+);
+alter table public.order_monster_templates enable row level security;
+revoke all on public.order_monster_templates from anon,authenticated,public;
+alter table public.order_combatants add column if not exists template_id uuid references public.order_monster_templates(id) on delete set null;
+
+create or replace function public.order_list_monster_templates()
+returns jsonb language plpgsql stable security definer set search_path=''
+as $monsters$
+declare result jsonb;
+begin
+ if public.order_my_role() not in ('domina','high_command','handler') then
+  raise exception 'Only directors can browse stat blocks' using errcode='42501'; end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'id',m.id,'name',m.name,'challenge',m.challenge,'hit_points',m.hit_points,
+  'armor_class',m.armor_class,'initiative_bonus',m.initiative_bonus,
+  'abilities',m.abilities,'actions',m.actions,'notes',m.notes
+ ) order by m.name),'[]'::jsonb) into result from public.order_monster_templates m;
+ return result;
+end
+$monsters$;
+revoke all on function public.order_list_monster_templates() from public;
+grant execute on function public.order_list_monster_templates() to authenticated;
+
+create or replace function public.order_create_monster_template(
+ p_name text,p_challenge text,p_hp integer,p_ac integer,p_init_bonus integer,p_actions text,p_notes text)
+returns uuid language plpgsql volatile security definer set search_path=''
+as $create$
+declare result uuid;
+begin
+ if public.order_my_role() not in ('domina','high_command','handler') then
+  raise exception 'Not a director' using errcode='42501'; end if;
+ if length(trim(coalesce(p_name,'')))<2 or p_hp not between 1 and 999999 or
+    p_ac not between 0 and 99 or p_init_bonus not between -30 and 30 then
+  raise exception 'Invalid stat block'; end if;
+ insert into public.order_monster_templates(name,challenge,hit_points,armor_class,
+  initiative_bonus,actions,notes,created_by)
+ values(left(trim(p_name),120),left(coalesce(p_challenge,'Custom'),25),p_hp,p_ac,
+  p_init_bonus,left(coalesce(p_actions,''),2500),left(coalesce(p_notes,''),2500),auth.uid())
+ returning id into result;
+ return result;
+end
+$create$;
+revoke all on function public.order_create_monster_template(text,text,integer,integer,integer,text,text) from public;
+grant execute on function public.order_create_monster_template(text,text,integer,integer,integer,text,text) to authenticated;
+
+create or replace function public.order_add_monster_to_encounter(p_encounter uuid,p_monster uuid)
+returns uuid language plpgsql volatile security definer set search_path=''
+as $add$
+declare m public.order_monster_templates%rowtype; new_id uuid;
+begin
+ if not public.order_can_direct_encounter(p_encounter) then
+  raise exception 'Not an encounter director' using errcode='42501'; end if;
+ select * into m from public.order_monster_templates where id=p_monster;
+ if not found then raise exception 'Unknown stat block'; end if;
+ insert into public.order_combatants(encounter_id,name,kind,template_id,initiative,hp,max_hp,ac)
+ values(p_encounter,m.name,'npc',m.id,0,m.hit_points,m.hit_points,m.armor_class)
+ returning id into new_id;
+ return new_id;
+end
+$add$;
+revoke all on function public.order_add_monster_to_encounter(uuid,uuid) from public;
+grant execute on function public.order_add_monster_to_encounter(uuid,uuid) to authenticated;
+
+create or replace function public.order_roll_all_initiative(p_encounter uuid)
+returns void language plpgsql volatile security definer set search_path=''
+as $initiative$
+declare e public.order_encounters%rowtype; c record; bonus int;
+begin
+ if not public.order_can_direct_encounter(p_encounter) then
+  raise exception 'Not authorized' using errcode='42501'; end if;
+ select * into e from public.order_encounters where id=p_encounter for update;
+ if e.status='active' then raise exception 'Finish or reset the encounter first'; end if;
+ for c in select co.id,co.character_id,co.template_id,co.kind from public.order_combatants co
+   where co.encounter_id=p_encounter loop
+  if c.kind='player' and c.character_id is not null then
+   select greatest(-10,least(10,floor((coalesce((ch.data->>'dex')::numeric,10)-10)/2)::integer))
+   into bonus from public.characters ch where ch.id=c.character_id;
+  elsif c.template_id is not null then
+   select initiative_bonus into bonus from public.order_monster_templates where id=c.template_id;
+  else bonus:=0; end if;
+  update public.order_combatants set initiative=1+floor(random()*20)::integer+coalesce(bonus,0)
+   where id=c.id;
+ end loop;
+ update public.order_encounters set round_number=1,turn_index=0,status='draft' where id=p_encounter;
+end
+$initiative$;
+revoke all on function public.order_roll_all_initiative(uuid) from public;
+grant execute on function public.order_roll_all_initiative(uuid) to authenticated;
+
 -- Retire old scene-specific consent and dice endpoints. Historical scene
 -- records are retained for later authorized export, but new UI uses profiles
 -- and encounters only. Do not leave the previous API workflow writable.
