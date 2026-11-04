@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,encounterRoll,encounterRolls,adjustCombatantHP} from './supabase.js';
+import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP} from './supabase.js';
 import {parseDiceFormula} from './rpRules.js';
 import './encounter-dice.css';
 
@@ -8,12 +8,13 @@ const PRESETS=[
  ['attack','Attack roll','1d20+5'],['damage','Damage roll','2d6+3'],
  ['healing','Healing roll','1d8+3'],['contest','Contested check','1d20+0'],
  ['advantage','Advantage','2d20kh1+0'],['disadvantage','Disadvantage','2d20kl1+0'],
- ['percentile','Percentile','1d100+0'],['custom','Custom dice','1d20+0']
+ ['percentile','Percentile','1d100+0'],['death_save','Death save','1d20+0'],['concentration','Concentration save','1d20+0'],['custom','Custom dice','1d20+0']
 ];
 const CHECK_KINDS=['ability','saving_throw','attack','contest','skill'];
 export function DicePanel({encounter,characters,canDirect,userId,check,working,action}){
  const [requests,setRequests]=useState([]),[rolls,setRolls]=useState([]),[formula,setFormula]=useState('1d20+0');
  const [preset,setPreset]=useState('ability'),[visibility,setVisibility]=useState('public');
+ const [target,setTarget]=useState(''),[targetDC,setTargetDC]=useState(12);
  const [reqCharacter,setReqCharacter]=useState(''),[reqKind,setReqKind]=useState('saving_throw');
  const [reqLabel,setReqLabel]=useState('Constitution saving throw'),[reqFormula,setReqFormula]=useState('1d20+0'),[reqDC,setReqDC]=useState(12);
  const [last,setLast]=useState(null),[error,setError]=useState('');
@@ -21,7 +22,8 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  async function refresh(){const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);setRequests(r);setRolls(l)}
  useEffect(()=>{let active=true;const load=async()=>{try{const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);if(active){setRequests(r);setRolls(l)}}catch(e){if(active)setError(e.message)}};load();const timer=setInterval(load,15000);return()=>{active=false;clearInterval(timer)}},[encounter.id]);
  async function run(fn){setError('');try{const result=await action(fn);await refresh();return result}catch(e){setError(e.message)}}
- async function generalRoll(){const p=parseDiceFormula(formula);if(!p.ok){setError(p.error);return}const out=await run(()=>encounterRoll(encounter.id,p.normalized,visibility));if(out)setLast(out)}
+ async function generalRoll(){const p=parseDiceFormula(formula);if(!p.ok){setError(p.error);return}const kind=['advantage','disadvantage','percentile'].includes(preset)?'custom':preset;
+ const out=await run(()=>rollEncounterAction(encounter.id,p.normalized,visibility,kind,target||null,(['ability','saving_throw','skill','contest','concentration'].includes(kind)?Number(targetDC):null)));if(out)setLast(out)}
  async function request(e){e.preventDefault();const p=parseDiceFormula(reqFormula);if(!p.ok){setError(p.error);return}
  await run(()=>requestGMRoll(encounter.id,reqCharacter,reqKind,reqLabel,p.normalized,Number(reqDC)))}
  async function resolve(id){const result=await run(()=>resolveGMRoll(id));if(result)setLast({...result.roll,success:result.success,dc:result.dc})}
@@ -32,10 +34,12 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
   <div className="dice-preset-row">{PRESETS.map(([id,title,template])=><button key={id} type="button" className={'mini-btn '+(preset===id?'dice-active':'')} onClick={()=>{setPreset(id);setFormula(template)}}>{title}</button>)}</div>
   <div className="encounter-roll-controls"><label className="field"><span>DICE FORMULA</span><input maxLength={24} value={formula} onChange={e=>setFormula(e.target.value)} placeholder="2d20kh1+4"/></label>
    <label className="field"><span>ROLL VISIBILITY</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Everyone in encounter</option>{canDirect&&<option value="gm_private">GM/private</option>}</select></label>
-   <button className="btn primary" disabled={working||!canRoll||!parseDiceFormula(formula).ok} onClick={generalRoll}>⚄ Roll</button>
+   {preset==='attack'&&<label className="field"><span>ATTACK TARGET / ARMOR CLASS</span><select required value={target} onChange={e=>setTarget(e.target.value)}><option value="">Select combatant</option>{encounter.combatants.map(c=><option key={c.id} value={c.id}>{c.name} · AC {c.ac}</option>)}</select></label>}
+   {['ability','saving_throw','skill','contest','concentration'].includes(preset)&&<label className="field"><span>TARGET DC</span><input type="number" min="0" max="99" value={targetDC} onChange={e=>setTargetDC(e.target.value)}/></label>}
+   <button className="btn primary" disabled={working||!canRoll||!parseDiceFormula(formula).ok||(preset==='attack'&&!target)} onClick={generalRoll}>⚄ Roll</button>
   </div>
   <p className="muted">Examples: 1d20+5 (check/attack), 2d6+3 (damage), 2d20kh1 (advantage), 2d20kl1 (disadvantage). For critical hits, roll damage dice twice and add the modifier once.</p>
-  {last&&<div className="dice-result" role="status"><div>LAST VERIFIED ROLL</div><strong>{last.total}</strong><span>{last.rolls.join(' + ')} · {last.formula}{last.dc!=null?' · DC '+last.dc+' · '+(last.success?'SUCCESS':'FAILURE'):''}</span></div>}
+  {last&&<div className="dice-result" role="status"><div>LAST VERIFIED ROLL</div><strong>{last.total}</strong><span>{last.rolls.join(' + ')} · {last.formula}{last.target_dc!=null?' · Target '+last.target_dc+' · '+String(last.outcome||'').replaceAll('_',' '):last.dc!=null?' · DC '+last.dc+' · '+(last.success?'SUCCESS':'FAILURE'):''}</span></div>}
   {canDirect&&<form className="gm-check-form" onSubmit={request}>
     <h3>Ask a character to roll</h3><p className="muted">Send a specific check, saving throw, attack or contest to a linked player.</p>
     <div className="gm-check-grid">
@@ -52,7 +56,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
    <div className="gm-request-actions">{r.state==='pending'&&r.player_user_id===userId&&<button className="mini-btn" disabled={!canRoll||working} onClick={()=>resolve(r.id)}>Roll requested check</button>}
    {r.state==='pending'&&(canDirect||r.player_user_id===userId)&&<button className="mini-btn danger" disabled={working} onClick={()=>run(()=>cancelGMRoll(r.id))}>Cancel</button>}</div>
   </div>):<p className="muted">No requests for this encounter.</p>}</div>
-  <div className="encounter-roll-log"><h3>Roll history</h3>{rolls.map(r=><div key={r.id}><span>{r.formula} · {r.rolls.join(', ')} {r.visibility==='gm_private'?'· GM only':''}</span><strong>{r.total}</strong></div>)}</div>
+  <div className="encounter-roll-log"><h3>Roll history</h3>{rolls.map(r=><div key={r.id}><span>{r.kind&&r.kind!=='custom'?r.kind.replaceAll('_',' ')+' · ':''}{r.formula} · {r.rolls.join(', ')} {r.target_dc!=null?' · DC/AC '+r.target_dc+' · '+String(r.outcome||'').replaceAll('_',' '):''} {r.visibility==='gm_private'?'· GM only':''}</span><strong>{r.total}</strong></div>)}</div>
   {error&&<div className="alert" role="alert">{error}</div>}
  </section>;
 }
