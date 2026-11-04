@@ -1,7 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {
  listStatusRequests,requestCharacterStatus,decideCharacterStatus,cancelCharacterStatus,applyCharacterStatus,
- listScenes,createScene,setSceneConsent,setSceneState,rollSceneDice,listSceneRolls
+ listScenes,createScene,setSceneConsent,setSceneState,rollSceneDice,rollDiceExpression,listSceneRolls
 } from './supabase.js';
 import './rp-platform.css';
 
@@ -37,7 +37,7 @@ export function CharacterTransitions({characters,role,userId,onRefresh}){
 export function RPScenes({role,userId}){
  const [scenes,setScenes]=useState([]),[selectedId,setSelectedId]=useState(''),[rolls,setRolls]=useState([]);
  const [title,setTitle]=useState(''),[summary,setSummary]=useState(''),[themes,setThemes]=useState('');
- const [count,setCount]=useState(1),[sides,setSides]=useState(20),[modifier,setModifier]=useState(0);
+ const [expression,setExpression]=useState('1d20+0'),[visibility,setVisibility]=useState('public');
  const [working,setWorking]=useState(false),[error,setError]=useState(''),[lastRoll,setLastRoll]=useState(null);
  const host=['domina','high_command','handler'].includes(role);
  const chosen=scenes.find(s=>s.id===selectedId);
@@ -49,7 +49,7 @@ export function RPScenes({role,userId}){
  },[selectedId]);
  async function act(work){setWorking(true);setError('');try{const value=await work();await refresh();if(selectedId)setRolls(await listSceneRolls(selectedId));return value}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function startScene(e){e.preventDefault();const id=await act(()=>createScene(title,summary,themes));if(id){setSelectedId(id);setTitle('');setSummary('');setThemes('')}}
- async function roll(){const result=await act(()=>rollSceneDice(selectedId,Number(count),Number(sides),Number(modifier)));if(result)setLastRoll(result)}
+ async function roll(){const result=await act(()=>rollDiceExpression(selectedId,expression,visibility));if(result)setLastRoll(result)}
  return <div className="rp-page">
   <div className="rp-layout">
    <section className="panel rp-panel">
@@ -85,13 +85,13 @@ export function RPScenes({role,userId}){
       <h3>Shared dice chamber</h3>
       <p className="muted">Rolls are generated and recorded by the server, not by the browser. Dice require an active scene and your unpaused OOC opt-in.</p>
       <div className="rp-roll-form">
-       <label className="field"><span>COUNT</span><input type="number" min={1} max={20} value={count} onChange={e=>setCount(e.target.value)}/></label>
-       <label className="field"><span>DIE</span><select value={sides} onChange={e=>setSides(Number(e.target.value))}>{[4,6,8,10,12,20,100].map(n=><option value={n} key={n}>d{n}</option>)}</select></label>
-       <label className="field"><span>MODIFIER</span><input type="number" min={-100} max={100} value={modifier} onChange={e=>setModifier(e.target.value)}/></label>
+       <label className="field"><span>DICE FORMULA</span><input maxLength={24} value={expression} onChange={e=>setExpression(e.target.value)} placeholder="2d20kh1+5"/></label>
+       <label className="field"><span>VISIBILITY</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Public</option>{(host||['domina','high_command'].includes(role))&&<option value="gm_private">GM-private</option>}</select></label>
        <button className="btn primary" disabled={working||chosen.state!=='active'||!chosen.my_consent||chosen.my_paused} onClick={roll}>Roll in scene</button>
       </div>
+      <p className="muted">Examples: 1d20+5, 2d6-1, 2d20kh1+3 (advantage), 2d20kl1+3 (disadvantage). Max 20 dice. GM-private rolls are only visible to the roller, scene host and command.</p>
       {lastRoll&&<div className="rp-last-roll" role="status"><small>NEW VERIFIED ROLL</small><strong>{lastRoll.total}</strong><span>{lastRoll.rolls.join(' + ')} {lastRoll.modifier<0?'−':'+'} {Math.abs(lastRoll.modifier)}</span></div>}
-      <div className="rp-roll-log"><h3>Recorded rolls</h3>{rolls.length?rolls.map(r=><div className="rp-roll-row" key={r.id}><span>{r.count}d{r.sides} {r.modifier>=0?'+':''}{r.modifier} · {r.rolls.join(', ')}</span><b>{r.total}</b><small>{date(r.created_at)}</small></div>):<p className="muted">No dice rolls yet.</p>}</div>
+      <div className="rp-roll-log"><h3>Recorded rolls</h3>{rolls.length?rolls.map(r=><div className="rp-roll-row" key={r.id}><span>{r.formula||`${r.count}d${r.sides}${r.modifier>=0?"+":""}${r.modifier}`} · {r.rolls.join(", ")} {r.visibility==="gm_private"?"· GM-private":""}</span><b>{r.total}</b><small>{date(r.created_at)}</small></div>):<p className="muted">No dice rolls yet.</p>}</div>
     </>}
    </section>
   </div>
