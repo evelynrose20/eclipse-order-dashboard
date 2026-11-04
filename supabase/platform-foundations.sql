@@ -167,7 +167,8 @@ grant execute on function public.order_apply_status(uuid) to authenticated;
 create table if not exists public.order_scenes (
  id uuid primary key default gen_random_uuid(),
  title text not null check(length(title) between 3 and 140),
- summary text not null default '' check(length(summary)<=1200),
+ summary text not null check(length(summary) between 20 and 1200),
+ themes text not null check(length(themes) between 10 and 1000),
  hosted_by uuid not null references auth.users(id),
  state text not null default 'planned' check(state in ('planned','active','closed')),
  created_at timestamptz not null default now(),
@@ -185,7 +186,7 @@ alter table public.order_scenes enable row level security;
 alter table public.order_scene_participation enable row level security;
 revoke all on public.order_scenes,public.order_scene_participation from anon,authenticated,public;
 
-create or replace function public.order_create_scene(p_title text,p_summary text)
+create or replace function public.order_create_scene(p_title text,p_summary text,p_themes text)
 returns uuid language plpgsql volatile security definer set search_path = ''
 as $scene$
 declare new_id uuid;
@@ -193,14 +194,14 @@ begin
  if public.order_my_role() not in ('domina','high_command','handler') then
    raise exception 'Only approved scene hosts may create scenes' using errcode='42501';
  end if;
- insert into public.order_scenes(title,summary,hosted_by)
- values(left(trim(p_title),140),left(coalesce(p_summary,''),1200),auth.uid())
+ insert into public.order_scenes(title,summary,themes,hosted_by)
+ values(left(trim(p_title),140),left(trim(p_summary),1200),left(trim(p_themes),1000),auth.uid())
  returning id into new_id;
  return new_id;
 end
 $scene$;
-revoke all on function public.order_create_scene(text,text) from public;
-grant execute on function public.order_create_scene(text,text) to authenticated;
+revoke all on function public.order_create_scene(text,text,text) from public;
+grant execute on function public.order_create_scene(text,text,text) to authenticated;
 
 create or replace function public.order_list_scenes()
 returns jsonb language plpgsql stable security definer set search_path = ''
@@ -209,7 +210,7 @@ declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
-   'id',s.id,'title',s.title,'summary',s.summary,'hosted_by',s.hosted_by,
+   'id',s.id,'title',s.title,'summary',s.summary,'themes',s.themes,'hosted_by',s.hosted_by,
    'state',s.state,'created_at',s.created_at,'participants',(
      select count(*) from public.order_scene_participation p
      where p.scene_id=s.id and p.ooc_consent=true and p.paused=false
