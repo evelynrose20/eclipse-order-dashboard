@@ -56,6 +56,7 @@ create table if not exists public.order_encounters(
  id uuid primary key default gen_random_uuid(),
  name text not null check(length(name) between 2 and 140),
  notes text not null default '' check(length(notes)<=2000),
+ themes text[] not null default '{}'::text[],
  created_by uuid not null references auth.users(id),
  status text not null default 'draft' check(status in ('draft','active','finished')),
  round_number integer not null default 1 check(round_number between 1 and 9999),
@@ -110,7 +111,7 @@ declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
-  'id',e.id,'name',e.name,'notes',e.notes,'status',e.status,
+  'id',e.id,'name',e.name,'notes',e.notes,'themes',e.themes,'status',e.status,
   'round_number',e.round_number,'turn_index',e.turn_index,
   'created_by',e.created_by,'created_at',e.created_at,
   'combatants',coalesce((
@@ -127,7 +128,7 @@ $list$;
 revoke all on function public.order_list_encounters() from public;
 grant execute on function public.order_list_encounters() to authenticated;
 
-create or replace function public.order_create_encounter(p_name text,p_notes text)
+create or replace function public.order_create_encounter(p_name text,p_notes text,p_themes text[])
 returns uuid language plpgsql volatile security definer set search_path=''
 as $create$
 declare result uuid;
@@ -135,14 +136,18 @@ begin
  if public.order_my_role() not in ('domina','high_command','handler') then
   raise exception 'Only scene directors may create encounters' using errcode='42501'; end if;
  if length(trim(coalesce(p_name,'')))<2 then raise exception 'Enter an encounter name'; end if;
- insert into public.order_encounters(name,notes,created_by)
- values(left(trim(p_name),140),left(coalesce(p_notes,''),2000),auth.uid())
+ if cardinality(coalesce(p_themes,'{}'::text[]))>9 or exists(
+  select 1 from unnest(p_themes) key where key not in
+  ('violence','horror','captivity','mind_control','humiliation','body_horror','romance','sexual_themes','character_death')
+ ) then raise exception 'Invalid encounter themes'; end if;
+ insert into public.order_encounters(name,notes,themes,created_by)
+ values(left(trim(p_name),140),left(coalesce(p_notes,''),2000),coalesce(p_themes,'{}'::text[]),auth.uid())
  returning id into result;
  return result;
 end
 $create$;
-revoke all on function public.order_create_encounter(text,text) from public;
-grant execute on function public.order_create_encounter(text,text) to authenticated;
+revoke all on function public.order_create_encounter(text,text,text[]) from public;
+grant execute on function public.order_create_encounter(text,text,text[]) to authenticated;
 
 create or replace function public.order_add_combatant(p_encounter uuid,p_name text,p_kind text,
  p_character text,p_initiative integer,p_hp integer,p_ac integer)
@@ -221,12 +226,64 @@ $turn$;
 revoke all on function public.order_encounter_turn(uuid,text) from public;
 grant execute on function public.order_encounter_turn(uuid,text) to authenticated;
 
+-- OOC pause/withdrawal is independent of role and character status.
+create table if not exists public.order_encounter_pauses(
+ encounter_id uuid not null references public.order_encounters(id) on delete cascade,
+ user_id uuid not null references auth.users(id) on delete cascade,
+ paused boolean not null default false,
+ updated_at timestamptz not null default now(),
+ primary key(encounter_id,user_id)
+);
+alter table public.order_encounter_pauses enable row level security;
+revoke all on public.order_encounter_pauses from anon,authenticated,public;
+
+create or replace function public.order_set_my_encounter_pause(p_encounter uuid,p_paused boolean)
+returns void language plpgsql volatile security definer set search_path=''
+as $pause$
+begin
+ if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ if not exists(select 1 from public.order_encounters where id=p_encounter) then raise exception 'Encounter not found'; end if;
+ insert into public.order_encounter_pauses(encounter_id,user_id,paused)
+ values(p_encounter,auth.uid(),coalesce(p_paused,true))
+ on conflict(encounter_id,user_id) do update set paused=excluded.paused,updated_at=now();
+end
+$pause$;
+revoke all on function public.order_set_my_encounter_pause(uuid,boolean) from public;
+grant execute on function public.order_set_my_encounter_pause(uuid,boolean) to authenticated;
+
+create or replace function public.order_my_encounter_check(p_encounter uuid)
+returns jsonb language plpgsql stable security definer set search_path=''
+as $check$
+declare missing text[]; adult boolean; paused boolean;
+begin
+ if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ select p.adult_declaration into adult from public.order_profile_preferences p where p.user_id=auth.uid();
+ select coalesce(q.paused,false) into paused from public.order_encounter_pauses q where q.encounter_id=p_encounter and q.user_id=auth.uid();
+ select coalesce(array_agg(t), '{}'::text[]) into missing
+ from unnest((select themes from public.order_encounters where id=p_encounter)) t
+ where not coalesce((select (p.content_preferences->>t)::boolean
+   from public.order_profile_preferences p where p.user_id=auth.uid()),false);
+ return jsonb_build_object('adult_declaration',coalesce(adult,false),
+    'adult_approved',public.order_adult_approved(),
+    'paused',coalesce(paused,false),'missing_themes',missing);
+end
+$check$;
+revoke all on function public.order_my_encounter_check(uuid) from public;
+grant execute on function public.order_my_encounter_check(uuid) to authenticated;
+
 create or replace function public.order_roll_encounter(p_encounter uuid,p_formula text,p_visibility text default 'public')
 returns jsonb language plpgsql volatile security definer set search_path=''
 as $roll$
 declare m text[]; dice_count int; faces int; mode text; bonus int; i int; v int; results int[]:='{}'; score int:=0; result_id bigint;
 begin
  if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ if not coalesce((public.order_my_encounter_check(p_encounter)->>'adult_declaration')::boolean,false)
+    or not public.order_adult_approved() then
+   raise exception 'Adult-only eligibility must be confirmed before participation' using errcode='42501'; end if;
+ if coalesce((public.order_my_encounter_check(p_encounter)->>'paused')::boolean,false) then
+   raise exception 'You have paused this encounter OOC' using errcode='42501'; end if;
+ if jsonb_array_length(public.order_my_encounter_check(p_encounter)->'missing_themes')>0 then
+   raise exception 'Your profile does not opt in to every declared encounter theme' using errcode='42501'; end if;
  if not exists(select 1 from public.order_encounters where id=p_encounter and status='active') then
   raise exception 'Encounter not active'; end if;
  if p_visibility not in ('public','gm_private') or
