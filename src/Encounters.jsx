@@ -1,7 +1,6 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,encounterRoll,encounterRolls,setEncounterMap,moveEncounterToken,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
-import {parseDiceFormula} from './rpRules.js';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
@@ -51,7 +50,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
   const id=await action(()=>createMonsterTemplate(monsterForm));
   if(id){setMonsters(await listMonsterTemplates());setChosenMonster(id);setShowMonsterEditor(false);setMonsterForm({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''})}
  }
- async function roll(){const parsed=parseDiceFormula(formula);if(!parsed.ok){setError(parsed.error);return;}const result=await action(()=>encounterRoll(chosenId,parsed.normalized,visibility));if(result)setLastRoll(result)}
+
  return <div className="encounter-layout">
   <section className="panel encounter-sidebar"><div className="event-library-top"><div><h2>FC events</h2><p className="muted">Plan stories and sign up for upcoming events.</p></div>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New event</button>}</div>
    <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('overview');setError('')}}>
