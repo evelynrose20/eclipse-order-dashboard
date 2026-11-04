@@ -121,3 +121,8 @@ export const requestGMRoll=(encounterId,characterId,kind,label,formula,dc)=>rpc(
 export const resolveGMRoll=id=>rpc('order_resolve_dice_request',{p_request:id});
 export const cancelGMRoll=id=>rpc('order_cancel_dice_request',{p_request:id});
 export const adjustCombatantHP=(id,delta)=>rpc('order_adjust_combatant_hp',{p_combatant:id,p_delta:delta});
+
+export const rollEncounterAction=(encounterId,formula,visibility,kind,target,dc)=>rpc('order_roll_action',{
+ p_encounter:encounterId,p_formula:formula,p_visibility:visibility,p_kind:kind,
+ p_target:target||null,p_dc:dc===null||dc===undefined||dc===''?null:Number(dc)
+});
