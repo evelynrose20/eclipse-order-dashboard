@@ -138,6 +138,7 @@ declare result uuid;
 begin
  if public.order_my_role() not in ('domina','high_command','handler') then
   raise exception 'Only scene directors may create encounters' using errcode='42501'; end if;
+ if not public.order_adult_approved() then raise exception 'Adult RP access not enabled' using errcode='42501'; end if;
  if length(trim(coalesce(p_name,'')))<2 then raise exception 'Enter an encounter name'; end if;
  if cardinality(coalesce(p_themes,'{}'::text[]))>9 or exists(
   select 1 from unnest(p_themes) key where key not in
@@ -168,6 +169,10 @@ begin
     join public.order_members m on m.user_id=c.player_user_id
     join public.order_profile_preferences p on p.user_id=c.player_user_id
     where c.id=p_character and m.adult_approved and p.adult_declaration
+      and not exists(
+        select 1 from public.order_encounter_pauses z
+        where z.encounter_id=p_encounter and z.user_id=c.player_user_id and z.paused
+      )
       and not exists (
         select 1 from unnest((select themes from public.order_encounters where id=p_encounter)) t
         where not coalesce((p.content_preferences->>t)::boolean,false)
@@ -328,6 +333,9 @@ as $rolls$
 declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ if not public.order_adult_approved() or not coalesce((
+   select p.adult_declaration from public.order_profile_preferences p where p.user_id=auth.uid()
+ ),false) then raise exception 'Adult-only encounter access denied' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
    'id',r.id,'rolled_by',r.rolled_by,'formula',r.formula,'rolls',r.rolls,
    'total',r.total,'visibility',r.visibility,'created_at',r.created_at) order by r.id desc),'[]'::jsonb)
