@@ -70,3 +70,23 @@ export async function updateOrderMemberRole(userId,role){
 export async function updateOrderMemberStanding(userId,standing){
   return rpc('order_set_member_standing',{target_user_id:userId,new_standing:standing});
 }
+
+// Roleplay platform RPCs. Status transitions require explicit player approval.
+export const listStatusRequests = () => rpc('order_list_status_requests');
+export const requestCharacterStatus = (characterId,bound) => rpc('order_request_status',{p_character_id:String(characterId),p_bound:bound});
+export const decideCharacterStatus = (id,approve) => rpc('order_decide_status',{p_request_id:id,p_approve:approve});
+export const cancelCharacterStatus = id => rpc('order_cancel_status',{p_request_id:id});
+export const applyCharacterStatus = id => rpc('order_apply_status',{p_request_id:id});
+export const listScenes = () => rpc('order_list_scenes');
+export const createScene = (title,summary,themes) => rpc('order_create_scene',{p_title:title,p_summary:summary,p_themes:themes});
+export const setSceneConsent = (id,consent,paused) => rpc('order_scene_consent',{p_scene_id:id,p_consent:consent,p_paused:paused});
+export const setSceneState = (id,state) => rpc('order_scene_state',{p_scene_id:id,p_state:state});
+export const rollSceneDice = (id,count,sides,modifier) => rpc('order_roll_dice',{p_scene_id:id,p_count:count,p_sides:sides,p_modifier:modifier});
+export const listSceneRolls = id => rpc('order_list_dice',{p_scene_id:id});
+
+export const setAdultRPAccess = (id,approved) => rpc('order_set_adult_approved',{p_user_id:id,p_approved:approved});
+
+export const rollDiceExpression = (sceneId,expression,visibility='public') => rpc('order_roll_expression',{p_scene_id:sceneId,p_expression:expression,p_visibility:visibility});
+
+export const readFCSettings = () => rpc('order_read_settings');
+export const writeFCSetting = (key,content) => rpc('order_write_setting',{p_key:key,p_content:content});
