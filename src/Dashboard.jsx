@@ -92,20 +92,25 @@ export default function Dashboard() {
   const totalGil = characters.reduce((a,c)=>a+c.gil,0);
   const topRank = characters.filter(c=>rankIndex(c.rank)>=2).length;
   const warn = message => {setNotice(message);window.setTimeout(()=>setNotice(''),4200);};
-  function saveCharacter(e) {
+  async function saveCharacter(e) {
     e.preventDefault();
     if (!editor?.name.trim()) return;
     const isNew=!editor.id;
     const id=editor.id || (globalThis.crypto?.randomUUID?.() || String(Date.now()));
     const record=normalize({...editor,id,name:editor.name.trim()},0);
+    if(configured){try{await saveSharedCharacter(record);}catch(error){warn('Save failed: '+error.message);return;}}
     setCharacters(old => isNew ? [record,...old] : old.map(c=>c.id===id?record:c));
     setSelectedId(id);setEditor(null);setTab('sheet');warn(isNew?'Character added to this browser.':'Character changes saved.');
   }
-  function removeCharacter(c) {
+  async function removeCharacter(c) {
     if (!window.confirm('Remove '+c.name+' from this browser ledger? Export a backup first if needed.')) return;
+    if(configured){try{await removeSharedCharacter(c.id);}catch(error){warn('Delete failed: '+error.message);return;}}
     setCharacters(old=>old.filter(x=>x.id!==c.id));setEditor(null);warn('Character removed.');
   }
-  function changeRank(c,newRank) {setCharacters(old=>old.map(x=>x.id===c.id?{...x,rank:newRank}:x));warn('Rank updated locally.');}
+  async function changeRank(c,newRank){
+    if(configured){try{await saveSharedCharacter({...c,rank:newRank});}catch(error){warn('Rank update failed: '+error.message);return;}}
+    setCharacters(old=>old.map(x=>x.id===c.id?{...x,rank:newRank}:x));warn(configured?'Rank saved to shared ledger.':'Rank updated locally.');
+  }
   function doRoll() {
     if (!selected) return;
     const raw=Math.floor(Math.random()*diceSides)+1;
@@ -123,8 +128,14 @@ export default function Dashboard() {
       const cleaned=records.filter(c=>c && typeof c==='object' && !Array.isArray(c)).map(normalize);
       const ids=new Set();
       cleaned.forEach((c,i)=>{if(ids.has(c.id))c.id=c.id+'-'+i;ids.add(c.id);});
-      if (!window.confirm('Replace the current local ledger with '+cleaned.length+' imported characters? Export your existing ledger first.')) return;
-      setCharacters(cleaned);setRoll(null);warn('Backup imported successfully.');
+      if(configured){
+        if(!window.confirm('Add or update '+cleaned.length+' shared characters? Existing matching IDs will be overwritten.'))return;
+        await importSharedCharacters(cleaned);
+        setCharacters((await loadSharedCharacters()).map(normalize));setRoll(null);warn('Shared backup imported.');
+      }else{
+        if(!window.confirm('Replace the current local ledger with '+cleaned.length+' imported characters? Export your existing ledger first.'))return;
+        setCharacters(cleaned);setRoll(null);warn('Backup imported successfully.');
+      }
     } catch(err) {warn('Import failed: '+err.message);}
     finally {e.target.value='';}
   }
