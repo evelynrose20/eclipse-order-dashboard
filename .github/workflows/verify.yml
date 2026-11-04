@@ -1,7 +1,8 @@
 name: Verify dashboard
 on:
   pull_request:
-    branches: [main]
+  push:
+    branches: [feature/supabase-shared-ledger]
   workflow_dispatch:
 permissions:
   contents: read
