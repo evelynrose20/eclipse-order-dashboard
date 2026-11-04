@@ -110,6 +110,9 @@ as $list$
 declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ if not public.order_adult_approved() or not coalesce((
+   select p.adult_declaration from public.order_profile_preferences p where p.user_id=auth.uid()
+ ),false) then raise exception 'Adult-only access not enabled for this account' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
   'id',e.id,'name',e.name,'notes',case when public.order_can_direct_encounter(e.id) then e.notes else '' end,'themes',e.themes,'status',e.status,
   'round_number',e.round_number,'turn_index',e.turn_index,
@@ -159,8 +162,18 @@ begin
  if p_kind not in ('npc','player') or length(trim(coalesce(p_name,'')))<1 or
  p_initiative not between -100 and 100 or p_hp not between 1 and 999999 or p_ac not between 0 and 99 then
   raise exception 'Invalid combatant data'; end if;
- if p_character is not null and not exists(select 1 from public.characters where id=p_character) then
-  raise exception 'Unknown character'; end if;
+ if p_kind='player' then
+   if p_character is null or not exists(
+    select 1 from public.characters c
+    join public.order_members m on m.user_id=c.player_user_id
+    join public.order_profile_preferences p on p.user_id=c.player_user_id
+    where c.id=p_character and m.adult_approved and p.adult_declaration
+      and not exists (
+        select 1 from unnest((select themes from public.order_encounters where id=p_encounter)) t
+        where not coalesce((p.content_preferences->>t)::boolean,false)
+      )
+   ) then raise exception 'Player is not eligible or has not opted into this encounter content'; end if;
+ elsif p_character is not null then raise exception 'Only player combatants may link a character record'; end if;
  insert into public.order_combatants(encounter_id,name,kind,character_id,initiative,hp,max_hp,ac)
  values(p_encounter,left(trim(p_name),120),p_kind,p_character,p_initiative,p_hp,p_hp,p_ac) returning id into result;
  return result;
