@@ -774,7 +774,8 @@ grant execute on function public.order_apply_roll_hp(bigint,uuid) to authenticat
 
 -- The old general dice RPC is now internal to the action/request functions.
 -- Revoke direct browser execution so account eligibility and participation checks cannot be bypassed.
-revoke execute on function public.order_roll_encounter(uuid,text,text) from authenticated;
+-- The legacy roll RPC stays available to clients using the previous build.
+-- The final definition below applies the same combatant/GM authorization.
 
 -- The legacy staff "adult approved" checkbox has been retired. It no longer
 -- controls encounter access and must not remain a callable API workflow.
@@ -1975,3 +1976,47 @@ revoke execute on function public.order_roll_encounter(uuid,text,text) from auth
 -- The legacy staff "adult approved" checkbox has been retired. It no longer
 -- controls encounter access and must not remain a callable API workflow.
 revoke execute on function public.order_set_adult_approved(uuid,boolean) from authenticated;
+
+-- Backward-compatible secure implementation of the original dice endpoint.
+create or replace function public.order_roll_encounter(p_encounter uuid,p_formula text,p_visibility text default 'public')
+returns jsonb language plpgsql volatile security definer set search_path=''
+as $roll$
+declare m text[]; dice_count int; faces int; mode text; bonus int; i int; v int; results int[]:='{}'; score int:=0; result_id bigint;
+begin
+ if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
+ if not public.order_can_direct_encounter(p_encounter) and not exists(
+  select 1 from public.order_combatants co
+  join public.characters ch on ch.id=co.character_id
+  where co.encounter_id=p_encounter and ch.player_user_id=auth.uid()
+ ) then raise exception 'Only combatants or the GM can roll' using errcode='42501'; end if;
+ if not coalesce((public.order_my_encounter_check(p_encounter)->>'adult_declaration')::boolean,false)
+    or not public.order_adult_approved() then
+   raise exception 'Adult-only eligibility must be confirmed before participation' using errcode='42501'; end if;
+ if coalesce((public.order_my_encounter_check(p_encounter)->>'paused')::boolean,false) then
+   raise exception 'You have paused this encounter OOC' using errcode='42501'; end if;
+ if jsonb_array_length(public.order_my_encounter_check(p_encounter)->'missing_themes')>0 then
+   raise exception 'Your profile does not opt in to every declared encounter theme' using errcode='42501'; end if;
+ if not exists(select 1 from public.order_encounters where id=p_encounter and status='active') then
+  raise exception 'Encounter not active'; end if;
+ if exists(select 1 from public.order_encounter_rolls r where r.rolled_by=auth.uid() and r.created_at>now()-interval '2 seconds') then
+  raise exception 'Roll rate limit: wait briefly before rolling again'; end if;
+ if p_visibility not in ('public','gm_private') or
+  (p_visibility='gm_private' and not public.order_can_direct_encounter(p_encounter)) then
+  raise exception 'Roll visibility not allowed' using errcode='42501'; end if;
+ m:=regexp_match(lower(regexp_replace(coalesce(p_formula,''),'\s+','','g')),
+ '^([1-9][0-9]?)d(4|6|8|10|12|20|100)(kh1|kl1)?([+-][0-9]{1,2})?$');
+ if m is null then raise exception 'Invalid dice formula'; end if;
+ dice_count:=m[1]::int;faces:=m[2]::int;mode:=coalesce(m[3],'');bonus:=coalesce(m[4],'0')::int;
+ if dice_count>20 or (mode<>'' and (dice_count<>2 or faces<>20)) then raise exception 'Invalid dice count or advantage mode'; end if;
+ for i in 1..dice_count loop
+  v:=1+floor(random()*faces)::int;results:=array_append(results,v);score:=score+v;
+ end loop;
+ if mode='kh1' then score:=greatest(results[1],results[2]); end if;
+ if mode='kl1' then score:=least(results[1],results[2]); end if;
+ score:=score+bonus;
+ insert into public.order_encounter_rolls(encounter_id,rolled_by,formula,rolls,total,visibility)
+ values(p_encounter,auth.uid(),lower(regexp_replace(p_formula,'\s+','','g')),results,score,p_visibility)
+ returning id into result_id;
+ return jsonb_build_object('id',result_id,'rolls',results,'total',score,'formula',p_formula,'visibility',p_visibility);
+end
+$roll$;
