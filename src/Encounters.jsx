@@ -104,7 +104,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
       <label className="field"><span>AC</span><input type="number" min={0} max={99} value={ac} onChange={e=>setAc(e.target.value)}/></label>
       <button className="btn primary" disabled={working} type="submit">Add</button>
      </div></form>}
-    </section>
+    </section>}
     {section==='dice'&&(isParticipant?<DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Dice & checks</h2><p className="muted">Only approved party participants and the GM can roll. Sign up first, then have the GM add your character to the party.</p></section>)}
    </>}
    {error&&<div className="alert" role="alert">{error}</div>}
