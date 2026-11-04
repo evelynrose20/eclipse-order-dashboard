@@ -71,17 +71,17 @@ grant execute on function public.order_set_encounter_map(uuid,int,int,text) to a
 create or replace function public.order_move_token(p_combatant uuid,p_x int,p_y int)
 returns void language plpgsql volatile security definer set search_path=''
 as $move$
-declare encounter_id uuid; cols int; rows int;
+declare target_encounter uuid; cols int; rows int;
 begin
- select c.encounter_id,e.map_columns,e.map_rows into encounter_id,cols,rows
+ select c.encounter_id,e.map_columns,e.map_rows into target_encounter,cols,rows
  from public.order_combatants c join public.order_encounters e on e.id=c.encounter_id
  where c.id=p_combatant;
- if encounter_id is null or not public.order_can_direct_encounter(encounter_id) then
+ if target_encounter is null or not public.order_can_direct_encounter(target_encounter) then
   raise exception 'Only the encounter director can move tokens' using errcode='42501'; end if;
  if p_x is not null and (p_x<0 or p_x>=cols) then raise exception 'X out of range'; end if;
  if p_y is not null and (p_y<0 or p_y>=rows) then raise exception 'Y out of range'; end if;
  if (p_x is null)<>(p_y is null) then raise exception 'Both coordinates must be set'; end if;
- if p_x is not null and exists(select 1 from public.order_combatants where order_combatants.encounter_id=encounter_id
+ if p_x is not null and exists(select 1 from public.order_combatants where order_combatants.encounter_id=target_encounter
    and tile_x=p_x and tile_y=p_y and id<>p_combatant) then
   raise exception 'That square is occupied'; end if;
  update public.order_combatants set tile_x=p_x,tile_y=p_y where id=p_combatant;
