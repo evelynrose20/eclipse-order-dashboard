@@ -339,3 +339,14 @@ end
 $rolls$;
 revoke all on function public.order_list_encounter_rolls(uuid) from public;
 grant execute on function public.order_list_encounter_rolls(uuid) to authenticated;
+
+-- Retire old scene-specific consent and dice endpoints. Historical scene
+-- records are retained for later authorized export, but new UI uses profiles
+-- and encounters only. Do not leave the previous API workflow writable.
+revoke execute on function public.order_create_scene(text,text,text) from authenticated;
+revoke execute on function public.order_list_scenes() from authenticated;
+revoke execute on function public.order_scene_consent(uuid,boolean,boolean) from authenticated;
+revoke execute on function public.order_scene_state(uuid,text) from authenticated;
+revoke execute on function public.order_roll_dice(uuid,integer,integer,integer) from authenticated;
+revoke execute on function public.order_roll_expression(uuid,text,text) from authenticated;
+revoke execute on function public.order_list_dice(uuid) from authenticated;
