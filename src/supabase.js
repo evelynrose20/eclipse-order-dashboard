@@ -115,3 +115,9 @@ export const rollAllInitiative=encounterId=>rpc('order_roll_all_initiative',{p_e
 
 export const setEncounterMap=(id,columns,rows,style)=>rpc('order_set_encounter_map',{p_encounter:id,p_columns:columns,p_rows:rows,p_style:style});
 export const moveEncounterToken=(id,x,y)=>rpc('order_move_token',{p_combatant:id,p_x:x,p_y:y});
+
+export const listGMRequests=encounterId=>rpc('order_list_roll_requests',{p_encounter:encounterId});
+export const requestGMRoll=(encounterId,characterId,kind,label,formula,dc)=>rpc('order_request_dice',{p_encounter:encounterId,p_character:characterId,p_kind:kind,p_label:label,p_formula:formula,p_dc:dc});
+export const resolveGMRoll=id=>rpc('order_resolve_dice_request',{p_request:id});
+export const cancelGMRoll=id=>rpc('order_cancel_dice_request',{p_request:id});
+export const adjustCombatantHP=(id,delta)=>rpc('order_adjust_combatant_hp',{p_combatant:id,p_delta:delta});
