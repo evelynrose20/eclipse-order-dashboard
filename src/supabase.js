@@ -40,18 +40,33 @@ export async function sharedRequest(path, options={}) {
   const response=await fetch(url+'/rest/v1/'+path,{...options,headers:headers(token,{'Content-Type':'application/json',...options.headers})});
   return parse(response);
 }
-export async function loadSharedCharacters() {
-  const records=await sharedRequest('characters?select=id,data&order=updated_at.desc');
-  return records.map(row=>({...row.data,id:row.id}));
+// Only RPC functions are available to browser clients. The raw characters
+// table is deliberately inaccessible to authenticated users.
+async function rpc(name,args={}) {
+  return sharedRequest('rpc/'+name,{method:'POST',body:JSON.stringify(args)});
 }
-export async function saveSharedCharacter(character) {
-  await sharedRequest('characters?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify([{id:character.id,data:character}])});
+export async function loadMyRole(){
+  return rpc('order_my_role');
 }
-export async function removeSharedCharacter(id) {
-  await sharedRequest('characters?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});
+export async function loadSharedCharacters(){
+  return rpc('order_list_characters');
 }
-export async function importSharedCharacters(characters) {
-  for(let offset=0;offset<characters.length;offset+=100) {
-    await sharedRequest('characters?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(characters.slice(offset,offset+100).map(c=>({id:c.id,data:c})))});
-  }
+export async function saveSharedCharacter(character){
+  return rpc('order_save_character',{payload:character});
+}
+export async function removeSharedCharacter(id){
+  return rpc('order_delete_character',{record_id:String(id)});
+}
+export async function importSharedCharacters(characters){
+  for (const character of characters) await saveSharedCharacter(character);
+}
+export async function loadOrderMembers(){
+  return rpc('order_list_members');
+}
+export async function updateOrderMemberRole(userId,role){
+  return rpc('order_set_member_role',{target_user_id:userId,target_role:role});
+}
+
+export async function updateOrderMemberStanding(userId,standing){
+  return rpc('order_set_member_standing',{target_user_id:userId,new_standing:standing});
 }

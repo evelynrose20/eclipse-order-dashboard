@@ -1,4 +1,5 @@
 export const RANKS = {
+  "Unbound: Free": { cut: 100, food: "Free choice", mod: 0, color: "#a9b4c7" },
   "Rank I: Unbroken": { cut: 0, food: "Gruel & Broth (Basic)", mod: -2, color: "#d9534f" },
   "Rank II: Indentured": { cut: 10, food: "Coerthian Stew & Meats", mod: 0, color: "#f0ad4e" },
   "Rank III: Specialized": { cut: 25, food: "Doman Rice & Grilled Steaks", mod: 2, color: "#5bc0de" },
