@@ -4,8 +4,8 @@ import { RANKS } from '../data/initialData';
 export default function MasterDashboard({ slaves, onUpdateRank, onDeleteSlave }) {
   return (
     <div>
-      <h2>Master Control Dashboard ({slaves.length} Registered Slaves)</h2>
-      <p style={{ color: '#aaa', fontSize: '13px' }}>Manage active ranks, review food rations, and audit automated payout splits.</p>
+      <h2>Master Control Dashboard ({slaves.length} Registered Character Sheets)</h2>
+      <p style={{ color: '#aaa', fontSize: '13px' }}>Global master view: manage all player ranks, review food rations, and audit automated payout splits.</p>
 
       <div style={{ overflowX: 'auto', marginTop: '15px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: '#1e1e1e' }}>
@@ -20,7 +20,11 @@ export default function MasterDashboard({ slaves, onUpdateRank, onDeleteSlave })
             </tr>
           </thead>
           <tbody>
-            {slaves.map(slave => {
+            {slaves.length === 0 ? (
+              <tr>
+                <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#777' }}>No character sheets registered in the ledger yet.</td>
+              </tr>
+            ) : slaves.map(slave => {
               const rankInfo = RANKS[slave.rank] || RANKS["Rank I: Unbroken"];
               return (
                 <tr key={slave.id} style={{ borderBottom: '1px solid #333' }}>
