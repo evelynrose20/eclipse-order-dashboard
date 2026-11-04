@@ -233,7 +233,7 @@ grant execute on function public.order_set_member_role(uuid,text) to authenticat
 
 create or replace function public.order_set_member_standing(target_user_id uuid, new_standing text)
 returns void language plpgsql volatile security definer set search_path = ''
-as $
+as $standing$
 begin
   if public.order_my_role() not in ('domina','high_command') then
     raise exception 'Only high command may adjust member standing' using errcode='42501';
@@ -244,7 +244,7 @@ begin
   update public.order_members set standing=new_standing where user_id=target_user_id;
   if not found then raise exception 'Approved member not found'; end if;
 end;
-$;
+$standing$;
 revoke all on function public.order_set_member_standing(uuid,text) from public;
 grant execute on function public.order_set_member_standing(uuid,text) to authenticated;
 
