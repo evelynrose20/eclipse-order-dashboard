@@ -30,7 +30,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
   const reload=async()=>{try{const result=await encounterCheck(chosenId);if(active)setCheck(result)}catch(e){if(active)setError(e.message)}};
   reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}
  },[chosenId]);
- async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId))return result}catch(e){setError(e.message)}finally{setWorking(false)}}
+ async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function create(e){e.preventDefault();const id=await action(()=>createEncounter(newName,newNotes,themes));if(id){setChosenId(id);setNewName('');setNewNotes('');setThemes([])}}
  async function add(e){e.preventDefault();const source=characters.find(c=>c.id===charId);const name=kind==='player'&&source?source.name:combatName;
   const id=await action(()=>addCombatant(chosenId,name,kind,kind==='player'?charId:null,Number(initiative),Number(hp),Number(ac)));
