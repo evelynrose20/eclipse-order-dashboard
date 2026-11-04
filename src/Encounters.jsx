@@ -7,7 +7,7 @@ import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
-export default function Encounters({role,userId,characters}){
+export default function Encounters({role,userId,characters,onOpenProfile}){
  const directorRole=['domina','high_command','handler'].includes(role);
  const [data,setData]=useState([]),[chosenId,setChosenId]=useState(''),[newName,setNewName]=useState(''),[newNotes,setNewNotes]=useState(''),[themes,setThemes]=useState([]);
  const [combatName,setCombatName]=useState(''),[kind,setKind]=useState('npc'),[charId,setCharId]=useState(''),[initiative,setInitiative]=useState(10),[hp,setHp]=useState(20),[ac,setAc]=useState(10);
@@ -53,7 +53,7 @@ export default function Encounters({role,userId,characters}){
     <strong>{e.name}</strong><small>{e.status} · {e.combatants.length} combatants</small></button>)}</div>
   </section>
   <section className="encounter-main">
-   {!selected?<div className="panel"><h2>No encounter selected</h2><p className="muted">A GM can create a new encounter from the left panel.</p></div>:<>
+   {!selected?<div className="panel"><h2>No encounter selected</h2><p className="muted">{directorRole?'Create your first encounter from the panel on the left.':'Your account is currently '+role+'. Domina, High Command, or an assigned Master/Mistress can create encounters.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>Profile needs to be saved</strong><p>Open My RP profile, confirm 18+, and press Save. If the error continues, the new battlemap-dice.sql migration is required to remove the old duplicate staff-approval gate.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
     <div className="panel encounter-header"><div className="encounter-topline"><div><small>ENCOUNTER TRACKER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&<div className="encounter-actions">
      {selected.status!=='active'&&<>
       <button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button>
