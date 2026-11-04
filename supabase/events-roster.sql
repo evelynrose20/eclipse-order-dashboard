@@ -83,8 +83,8 @@ begin
   length(coalesce(p_description,''))>2400 or length(coalesce(p_location,''))>160 or
   p_capacity not between 1 and 60 or
   cardinality(coalesce(p_themes,'{}'::text[]))>9 or exists(
-    select 1 from unnest(coalesce(p_themes,'{}'::text[])) t
-    where t not in ('violence','horror','captivity','mind_control','humiliation',
+    select 1 from unnest(coalesce(p_themes,'{}'::text[])) as tag(theme)
+    where tag.theme not in ('violence','horror','captivity','mind_control','humiliation',
        'body_horror','romance','sexual_themes','character_death')
   ) then raise exception 'Invalid event information'; end if;
  if p_published and p_starts_at is null then
@@ -93,8 +93,8 @@ begin
   select 1 from public.order_event_signups s
   join public.order_profile_preferences p on p.user_id=s.player_user_id
   where s.encounter_id=p_encounter and s.status='approved'
-   and exists (select 1 from unnest(p_themes) t
-      where not coalesce((p.content_preferences->>t)::boolean,false))
+   and exists (select 1 from unnest(p_themes) as tag(theme)
+      where not coalesce((p.content_preferences->>tag.theme)::boolean,false))
  ) then raise exception 'Review existing approvals before changing the event themes'; end if;
  update public.order_encounters set name=trim(p_name),
   event_description=coalesce(p_description,''),event_location=coalesce(p_location,''),
@@ -120,8 +120,8 @@ begin
  select player_user_id into owner_user from public.characters where id=p_character;
  if owner_user is distinct from auth.uid() then
   raise exception 'You can only sign up your own character' using errcode='42501'; end if;
- if exists(select 1 from unnest(evt.themes) t where not coalesce(
-  (select (p.content_preferences->>t)::boolean from public.order_profile_preferences p
+ if exists(select 1 from unnest(evt.themes) as tag(theme) where not coalesce(
+  (select (p.content_preferences->>tag.theme)::boolean from public.order_profile_preferences p
     where p.user_id=auth.uid()),false)) then
   raise exception 'Your RP profile has not opted into every declared event category' using errcode='42501'; end if;
  if exists(select 1 from public.order_event_signups where encounter_id=p_encounter
@@ -291,8 +291,8 @@ begin
         where z.encounter_id=p_encounter and z.user_id=c.player_user_id and z.paused
       )
       and not exists (
-        select 1 from unnest((select themes from public.order_encounters where id=p_encounter)) t
-        where not coalesce((p.content_preferences->>t)::boolean,false)
+        select 1 from unnest((select themes from public.order_encounters where id=p_encounter)) as tag(theme)
+        where not coalesce((p.content_preferences->>tag.theme)::boolean,false)
       )
    ) then raise exception 'Player is not eligible or has not opted into this encounter content'; end if;
  elsif p_character is not null then raise exception 'Only player combatants may link a character record'; end if;
