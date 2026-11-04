@@ -383,3 +383,38 @@ begin
  return result;
 end
 $rolls$;
+
+
+-- Applying rolled damage/healing is idempotent: one roll can alter HP only once.
+create table if not exists public.order_roll_hp_applications(
+ roll_id bigint primary key references public.order_encounter_rolls(id) on delete cascade,
+ combatant_id uuid not null references public.order_combatants(id) on delete cascade,
+ delta integer not null,
+ applied_by uuid not null references auth.users(id),
+ applied_at timestamptz not null default now()
+);
+alter table public.order_roll_hp_applications enable row level security;
+revoke all on public.order_roll_hp_applications from anon,authenticated,public;
+
+create or replace function public.order_apply_roll_hp(p_roll_id bigint,p_target uuid)
+returns integer language plpgsql volatile security definer set search_path=''
+as $apply$
+declare r public.order_encounter_rolls%rowtype; target_encounter uuid; delta_hp integer; updated_hp integer;
+begin
+ select * into r from public.order_encounter_rolls where id=p_roll_id for update;
+ if not found or r.roll_kind not in ('damage','healing') then
+  raise exception 'The selected roll is not a damage or healing roll'; end if;
+ if not public.order_can_direct_encounter(r.encounter_id) then
+  raise exception 'Only the encounter director can apply HP rolls' using errcode='42501'; end if;
+ select encounter_id into target_encounter from public.order_combatants where id=p_target for update;
+ if target_encounter is distinct from r.encounter_id then
+  raise exception 'Combatant must belong to the same encounter'; end if;
+ delta_hp:=case when r.roll_kind='healing' then greatest(0,r.total) else -greatest(0,r.total) end;
+ insert into public.order_roll_hp_applications(roll_id,combatant_id,delta,applied_by)
+ values(r.id,p_target,delta_hp,auth.uid());
+ updated_hp:=public.order_adjust_combatant_hp(p_target,delta_hp);
+ return updated_hp;
+end
+$apply$;
+revoke all on function public.order_apply_roll_hp(bigint,uuid) from public;
+grant execute on function public.order_apply_roll_hp(bigint,uuid) to authenticated;
