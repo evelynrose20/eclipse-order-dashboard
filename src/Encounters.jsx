@@ -18,6 +18,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
  const [showMonsterEditor,setShowMonsterEditor]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const canDirect=selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId));
+ const isParticipant=Boolean(canDirect||selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
  const activeCombatant=selected?.combatants?.[selected.turn_index%Math.max(1,selected.combatants.length)];
  async function refresh(){const x=await listEncounters();setData(x);setChosenId(old=>x.some(e=>e.id===old)?old:x[0]?.id||'')}
  useEffect(()=>{
@@ -25,11 +26,11 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
   if(directorRole)listMonsterTemplates().then(setMonsters).catch(e=>setError(e.message));
   const timer=setInterval(()=>refresh().catch(()=>{}),30000);return()=>clearInterval(timer)
  },[]);
- useEffect(()=>{if(!chosenId){setCheck(null);setRolls([]);return}let active=true;
-  const reload=async()=>{try{const [a,b]=await Promise.all([encounterCheck(chosenId),encounterRolls(chosenId)]);if(active){setCheck(a);setRolls(b)}}catch(e){if(active)setError(e.message)}};
-  reload();const timer=setInterval(reload,15000);return()=>{active=false;clearInterval(timer)}
+ useEffect(()=>{if(!chosenId){setCheck(null);return}let active=true;
+  const reload=async()=>{try{const result=await encounterCheck(chosenId);if(active)setCheck(result)}catch(e){if(active)setError(e.message)}};
+  reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}
  },[chosenId]);
- async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId){setCheck(await encounterCheck(chosenId));setRolls(await encounterRolls(chosenId))}return result}catch(e){setError(e.message)}finally{setWorking(false)}}
+ async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId))return result}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function create(e){e.preventDefault();const id=await action(()=>createEncounter(newName,newNotes,themes));if(id){setChosenId(id);setNewName('');setNewNotes('');setThemes([])}}
  async function add(e){e.preventDefault();const source=characters.find(c=>c.id===charId);const name=kind==='player'&&source?source.name:combatName;
   const id=await action(()=>addCombatant(chosenId,name,kind,kind==='player'?charId:null,Number(initiative),Number(hp),Number(ac)));
@@ -92,7 +93,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
       <button className="btn primary" disabled={working} type="submit">Add</button>
      </div></form>}
     </section>
-    <DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>
+    {isParticipant?<DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Encounter dice</h2><p className="muted">You are viewing this encounter as an observer. Ask the GM to add your character before rolling or viewing the combat roll history.</p></section>}
    </>}
    {error&&<div className="alert" role="alert">{error}</div>}
   </section>
