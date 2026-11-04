@@ -1,3 +1,11 @@
+## Supabase SQL Editor warning and previous syntax failure
+
+The SQL Editor can warn that a migration creates tables without RLS even when the script later enables RLS. **Choose "Run and enable RLS" (green)** for the corrected migration. The two new tables are also explicitly configured with `ENABLE ROW LEVEL SECURITY`, and browser table privileges are revoked.
+
+If you previously got `ERROR 42601: syntax error at or near "then" LINE 681`, you had the corrupted older copy of `supabase/battlemap-dice.sql`. **Discard that copied SQL**, open the updated file on branch `feature/encounter-battlemap-dice`, and copy the entire updated script. It was rebuilt into a single transaction, with duplicate RPC bodies removed. Do not try to delete just line 681; there were more malformed duplicates.
+
+The GitHub unit tests and frontend build pass, and the SQL now passes structural duplication/delimiter checks. **It has not yet been executed against your live Supabase project or a test database**, so report any new SQL error verbatim rather than applying individual fragments.
+
 # Eclipse Order — Encounter map and dice release checklist
 
 This is development code in PR #9; it has **not** been applied to the live Supabase database by GitHub.
