@@ -38,6 +38,15 @@ To activate this revision, apply the forward SQL migration [battlemap-dice.sql](
 
 **For an existing project**, back up Supabase and apply only the new forward migration [events-roster.sql](supabase/events-roster.sql) **after** the existing battlemap-dice.sql migration. Do not rerun your old SETUP-ALL.sql. Details: [Event Planning guide](docs/EVENT-PLANNING.md).
 
+## Character sheets and member RP profiles (draft PR #11)
+
+- Existing character sheets now open a full-width inline editor with sections for identity, combat, abilities, proficiencies, gear and roleplay fields; the cramped modal remains only for **new** character creation.
+- Each member can maintain a custom **Favorite / Yes / Maybe / No** kink list (up to 60 entries).
+- Two **separate, off-by-default sharing controls** publish (a) saved RP content categories and/or (b) the kink list to authenticated adult FC members.
+- The **Member RP profiles** directory displays only the information that each member chose to share. Private account email, age declaration and unshared preferences are excluded. All private record reads/writes require server-side authorization.
+- For existing Supabase projects, apply the **new forward migration** [member-rp-profiles.sql](supabase/member-rp-profiles.sql) after the previous profile and event migrations. Back up first and test with two accounts.
+- **Windows PC hosting is possible, but not active.** Read [Windows self-hosting plan](docs/WINDOWS-SELF-HOSTING.md) before moving off Supabase. A local MySQL or PostgreSQL server needs a separate secure authenticated API and data migration; it cannot replace Supabase just by changing its address.
+
 ## Database setup
 
 **Existing project:** after a database backup and verifying the previous schema, run the new forward migration **supabase/profile-encounters.sql** in Supabase SQL Editor. The existing `supabase/SETUP-ALL.sql` is a baseline script and does **not** include this migration. Do not rerun earlier migration scripts blindly.
