@@ -776,3 +776,7 @@ grant execute on function public.order_apply_roll_hp(bigint,uuid) to authenticat
 -- The old general dice RPC is now internal to the action/request functions.
 -- Revoke direct browser execution so account eligibility and participation checks cannot be bypassed.
 revoke execute on function public.order_roll_encounter(uuid,text,text) from authenticated;
+
+-- The legacy staff "adult approved" checkbox has been retired. It no longer
+-- controls encounter access and must not remain a callable API workflow.
+revoke execute on function public.order_set_adult_approved(uuid,boolean) from authenticated;
