@@ -36,6 +36,16 @@ begin
      raise exception 'Binding changes require confirmed player approval' using errcode='42501';
    end if;
  end if;
+ if new.collar_bound and new.player_user_id is distinct from old.player_user_id then
+   raise exception 'A bound character cannot be transferred to a different player' using errcode='42501';
+ end if;
+ -- Do not allow the mirrored JSON attributes to claim a false binding status.
+ -- A free character may not be given a bound rank through the legacy editing RPC.
+ if (new.data ? 'collar_bound' and (new.data->>'collar_bound')::boolean is distinct from new.collar_bound)
+    or (not new.collar_bound and new.data->>'rank' is distinct from 'Unbound: Free')
+    or (new.collar_bound and new.data->>'rank' = 'Unbound: Free') then
+   raise exception 'Character rank and collar state must agree' using errcode='42501';
+ end if;
  return new;
 end
 $guard$;
