@@ -777,9 +777,10 @@ grant execute on function public.order_apply_roll_hp(bigint,uuid) to authenticat
 -- The legacy roll RPC stays available to clients using the previous build.
 -- The final definition below applies the same combatant/GM authorization.
 
--- The legacy staff "adult approved" checkbox has been retired. It no longer
--- controls encounter access and must not remain a callable API workflow.
-revoke execute on function public.order_set_adult_approved(uuid,boolean) from authenticated;
+-- The legacy staff "adult approved" checkbox no longer controls encounter
+-- access. The old client may still display it until the new frontend is
+-- deployed; we preserve the Domina-only RPC temporarily for compatibility.
+-- The new client removes the button. It should be deleted in a future cleanup migration.
  then
   raise exception 'Invalid roll formula'; end if;
  parsed:=regexp_match(normalized,'^([1-9][0-9]?)d(4|6|8|10|12|20|100)(kh1|kl1)?');
