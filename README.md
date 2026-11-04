@@ -16,6 +16,16 @@ The new encounter/profile revision is on **draft PR #8** and is **not deployed**
 
 Player selections remain private to their own account. The encounter API checks eligible accounts and required themes; staff don't receive a list of private unchecked categories. General profile opt-ins are **not** unlimited or irrevocable consent. Players can change preferences and pause/leave scenes at any time.
 
+## D&D encounter battle maps and dice (new branch)
+
+- Battle map with player/monster tokens, current HP labels, dungeon/forest/parchment terrain, optional HTTPS map artwork, and touch/drag placement.
+- Each token placement is a single Supabase update; no map image is stored in the database.
+- GM roll requests and player responses, server-recorded attack vs AC, saves/skills vs DC, natural critical outcomes, damage, healing, death/concentration saves, and advantage/disadvantage.
+- A verified damage or healing roll can change combatant HP exactly once. D&D encounter mechanics not yet automated are tracked in the roadmap.
+- The old double adult-access blocker has been replaced with the saved profile 18+ declaration. Profile now has a top Save button. No identity document is requested.
+
+To activate this revision, apply the forward SQL migration [battlemap-dice.sql](supabase/battlemap-dice.sql) **after** profile-encounters.sql, then save your My RP profile and reload. See [Battlemap & Dice Setup](docs/BATTLEMAP-DICE.md) for a short troubleshooting and security checklist.
+
 ## Database setup
 
 **Existing project:** after a database backup and verifying the previous schema, run the new forward migration **supabase/profile-encounters.sql** in Supabase SQL Editor. The existing `supabase/SETUP-ALL.sql` is a baseline script and does **not** include this migration. Do not rerun earlier migration scripts blindly.
