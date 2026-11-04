@@ -77,10 +77,10 @@ export function FullDndSheet({character}){
     </div></section>
   </div>;
 }
-export function MemberDirectory({members,currentRole,onChangeRole}){
+export function MemberDirectory({members,currentRole,onChangeRole,onChangeStanding}){
   return <section className="panel"><div className="panel-heading"><div><h2>Order membership & command hierarchy</h2><p>Roles control what each authenticated account can access.</p></div></div>
     <div className="hierarchy-grid">{Object.entries(ACCOUNT_ROLES).map(([key,item])=><div className={'hierarchy-card hierarchy-'+key} key={key}><strong>{item.label}</strong><p>{item.description}</p><span>{members.filter(m=>m.role===key).length} account(s)</span></div>)}</div>
-    <div className="table-scroll"><table><thead><tr><th>MEMBER ACCOUNT</th><th>ROLE</th><th>CHANGE PERMISSIONS</th></tr></thead><tbody>{members.map(m=><tr key={m.user_id}><td>{m.email}</td><td>{ACCOUNT_ROLES[m.role]?.label||m.role}</td><td><select aria-label={'Assign role for '+m.email} value={m.role} disabled={!['domina','high_command'].includes(currentRole) || (currentRole==='high_command'&&['domina','high_command'].includes(m.role))}
+    <div className="table-scroll"><table><thead><tr><th>MEMBER ACCOUNT</th><th>ROLE</th><th>MEMBER STANDING</th><th>CHANGE PERMISSIONS</th></tr></thead><tbody>{members.map(m=><tr key={m.user_id}><td>{m.email}</td><td>{ACCOUNT_ROLES[m.role]?.label||m.role}</td><td><select aria-label={'Member standing for '+m.email} value={m.standing||'Initiate'} disabled={!['domina','high_command'].includes(currentRole)} onChange={e=>onChangeStanding(m,e.target.value)}>{['Initiate','Associate','Established','Veteran'].map(rank=><option key={rank} value={rank}>{rank}</option>)}</select></td><td><select aria-label={'Assign role for '+m.email} value={m.role} disabled={!['domina','high_command'].includes(currentRole) || (currentRole==='high_command'&&['domina','high_command'].includes(m.role))}
       onChange={e=>onChangeRole(m,e.target.value)}>
       {Object.entries(ACCOUNT_ROLES).filter(([key])=>currentRole==='domina'||(!['domina','high_command'].includes(key))).map(([key,value])=><option value={key} key={key}>{value.label}</option>)}
       </select></td></tr>)}</tbody></table></div>
