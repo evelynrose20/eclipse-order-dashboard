@@ -190,6 +190,13 @@ begin
  update public.order_event_signups set status='withdrawn',updated_at=now()
  where id=p_signup and player_user_id=auth.uid() and status in ('requested','approved');
  if not found then raise exception 'You cannot withdraw this signup' using errcode='42501'; end if;
+ -- A player withdrawing OOC must not remain in the active party.
+ delete from public.order_combatants c using public.order_event_signups s
+ where s.id=p_signup and c.encounter_id=s.encounter_id
+   and c.character_id=s.character_id;
+ update public.order_encounters set turn_index=0 where id=(
+   select encounter_id from public.order_event_signups where id=p_signup
+ );
 end
 $withdraw$;
 revoke all on function public.order_withdraw_event_signup(uuid) from public;
@@ -256,5 +263,45 @@ end
 $events$;
 revoke all on function public.order_list_encounters() from public;
 grant execute on function public.order_list_encounters() to authenticated;
+
+-- Every player combatant must be an approved applicant. NPCs/bosses remain GM-controlled.
+create or replace function public.order_add_combatant(p_encounter uuid,p_name text,p_kind text,
+ p_character text,p_initiative integer,p_hp integer,p_ac integer)
+returns uuid language plpgsql volatile security definer set search_path=''
+as $add$
+declare result uuid;
+begin
+ if not public.order_can_direct_encounter(p_encounter) then raise exception 'Not an encounter director' using errcode='42501'; end if;
+ if p_kind not in ('npc','player') or length(trim(coalesce(p_name,'')))<1 or
+ p_initiative not between -100 and 100 or p_hp not between 1 and 999999 or p_ac not between 0 and 99 then
+  raise exception 'Invalid combatant data'; end if;
+ if p_kind='player' and not exists(
+    select 1 from public.order_event_signups s
+    where s.encounter_id=p_encounter and s.character_id=p_character
+      and s.status='approved'
+  ) then raise exception 'Only approved event applicants can be added to the party'; end if;
+ if p_kind='player' then
+   if p_character is null or not exists(
+    select 1 from public.characters c
+    join public.order_members m on m.user_id=c.player_user_id
+    join public.order_profile_preferences p on p.user_id=c.player_user_id
+    where c.id=p_character and p.adult_declaration
+      and not exists(
+        select 1 from public.order_encounter_pauses z
+        where z.encounter_id=p_encounter and z.user_id=c.player_user_id and z.paused
+      )
+      and not exists (
+        select 1 from unnest((select themes from public.order_encounters where id=p_encounter)) t
+        where not coalesce((p.content_preferences->>t)::boolean,false)
+      )
+   ) then raise exception 'Player is not eligible or has not opted into this encounter content'; end if;
+ elsif p_character is not null then raise exception 'Only player combatants may link a character record'; end if;
+ insert into public.order_combatants(encounter_id,name,kind,character_id,initiative,hp,max_hp,ac)
+ values(p_encounter,left(trim(p_name),120),p_kind,p_character,p_initiative,p_hp,p_hp,p_ac) returning id into result;
+ return result;
+end
+$add$;
+revoke all on function public.order_add_combatant(uuid,text,text,text,integer,integer,integer) from public;
+grant execute on function public.order_add_combatant(uuid,text,text,text,integer,integer,integer) to authenticated;
 
 commit;
