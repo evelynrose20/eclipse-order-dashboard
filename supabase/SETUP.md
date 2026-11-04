@@ -1,6 +1,6 @@
 # Supabase shared ledger setup
 
-**Status:** Database preparation only. The dashboard UI has NOT yet been wired to this client. Keep this branch unmerged until that integration is completed and tested.
+**Status:** The dashboard is wired to Supabase, but this project must have the SQL schema and approved users configured before login and shared records will work. Do not merge into the live site until setup and testing are complete.
 
 ## Why Supabase?
 
@@ -13,9 +13,9 @@ The static GitHub Pages site cannot securely connect straight to a remote MySQL 
 3. Open **Authentication → Providers → Email** and disable public sign-ups if the Order is invitation-only.
 4. Invite a user using **Authentication → Users** (or provision the account manually).
 5. Add approved user IDs to `public.order_members` by running the commented example at the end of the SQL schema.
-6. Copy `.env.example` to `.env.local` for local development.
-7. Enter the project URL and publishable key as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
-8. For GitHub Pages deployment, add both variables to the repository's Actions variables and pass them into the build job; this deployment wiring is still to be completed after the UI integration.
+6. The public project URL and publishable key are already configured in `.env.production` for the Vite build. For local development, copy `.env.example` to `.env.local` and enter the same public values.
+7. Run `npm ci && npm run build` and check the GitHub Actions verification job.
+8. Sign in with a Supabase Auth user who appears in `public.order_members`.
 
 **Never put the Supabase database password, secret key, service_role key or any member password into GitHub or Vite environment variables.** The public publishable key may be used in the frontend because SQL row-level security protects the database.
 
@@ -25,8 +25,18 @@ Only approved members can access character records. The initial schema grants al
 
 ## Existing data
 
-Legacy localStorage records are not automatically uploaded. The visual overhaul's JSON export and import can be used as a migration mechanism after the UI connection is completed. Always export a backup before switching the site to shared storage.
+Legacy localStorage records are not automatically uploaded. Before merging, export the old ledger using the visual overhaul's local version. After merging, sign in and import the JSON file under Workspace & backup. Always export a backup before switching the site to shared storage.
 
 ## Deployment
 
-Keep the branch separate until UI integration and browser testing are done. The GitHub Pages site will continue serving the existing version until an explicit merge into main.
+Keep this branch separate until Supabase project provisioning, SQL setup, sign-in and browser testing are done. The GitHub Pages site will continue serving the existing version until an explicit merge into main.
+
+## Connection
+
+Project URL: `https://bcvqeqjvzkkrfpnughsb.supabase.co`
+
+Do not use the `/rest/v1/` suffix for the project URL; the client adds that path itself. The publishable key is public and bundled with the frontend. The Supabase database password and secret/service-role keys must never appear in the site.
+
+## Data behavior
+
+Authenticated approved members share the same roster, edits, and deletions. The frontend polls for changes every 30 seconds; this is not realtime subscription-based synchronization. The initial policies allow all approved members to edit every record; staff-only rank edits and deletes would need stronger RLS policies.
