@@ -13,6 +13,12 @@ update public.order_members set role = 'high_command' where role = 'admin';
 alter table public.order_members add constraint order_members_role_check
   check (role in ('domina','high_command','handler','member'));
 
+alter table public.order_members
+  add column if not exists standing text not null default 'Initiate';
+alter table public.order_members drop constraint if exists order_members_standing_check;
+alter table public.order_members add constraint order_members_standing_check
+  check (standing in ('Initiate','Associate','Established','Veteran'));
+
 alter table public.characters
   add column if not exists player_user_id uuid references auth.users(id) on delete set null,
   add column if not exists handler_user_id uuid references auth.users(id) on delete set null,
@@ -188,7 +194,7 @@ begin
     raise exception 'Not allowed to browse member directory' using errcode='42501';
   end if;
   select coalesce(jsonb_agg(jsonb_build_object(
-    'user_id',m.user_id,'role',m.role,'email',u.email
+    'user_id',m.user_id,'role',m.role,'standing',m.standing,'email',u.email
   ) order by u.email),'[]'::jsonb)
   into output from public.order_members m join auth.users u on u.id=m.user_id;
   return output;
@@ -224,6 +230,23 @@ end;
 $$;
 revoke all on function public.order_set_member_role(uuid,text) from public;
 grant execute on function public.order_set_member_role(uuid,text) to authenticated;
+
+create or replace function public.order_set_member_standing(target_user_id uuid, new_standing text)
+returns void language plpgsql volatile security definer set search_path = ''
+as $
+begin
+  if public.order_my_role() not in ('domina','high_command') then
+    raise exception 'Only high command may adjust member standing' using errcode='42501';
+  end if;
+  if new_standing not in ('Initiate','Associate','Established','Veteran') then
+    raise exception 'Invalid standing';
+  end if;
+  update public.order_members set standing=new_standing where user_id=target_user_id;
+  if not found then raise exception 'Approved member not found'; end if;
+end;
+$;
+revoke all on function public.order_set_member_standing(uuid,text) from public;
+grant execute on function public.order_set_member_standing(uuid,text) to authenticated;
 
 -- Give the real owner's Supabase Auth account the unique highest role.
 -- Change the email below to the email used to sign up in Authentication > Users.
