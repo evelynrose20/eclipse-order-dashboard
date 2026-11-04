@@ -171,7 +171,7 @@ export default function Dashboard() {
         <div className="page-intro"><div><div className="eyebrow">ORDER OPERATIONS <span className="eyebrow-line"/></div><h1>{tab==='overview'?'Command overview':NAV.find(x=>x[0]===tab)?.[1]}</h1><p>{({overview:'The ledger at a glance. Manage your roster, ranks and records.',roster:'Search and administer every character in the ledger.',sheet:'Character details, attributes and tabletop dice checks.',market:'Browse the Black Market catalogue and rank allowances.',settings:'Manage browser storage, backups and workspace safety.'})[tab]}</p></div><div className="intro-actions">{actions}</div></div>
         {saveError && <div className="alert" role="alert">{saveError}</div>}
         {remoteError && <div className="alert" role="alert">{remoteError} — Verify your Supabase membership and schema.</div>}
-        {loading && <div className="alert" role="status">Loading shared character records…</div> 
+        {loading && <div className="alert" role="status">Loading shared character records…</div>}
         {notice && <div className="toast" role="status">{notice}</div>}
         {tab==='overview' && <><div className="stat-grid">
           <div className="stat-card"><small>REGISTERED CHARACTERS</small><b>{characters.length}</b><span>In this ledger</span><div className="card-mark">◇</div></div>
