@@ -78,7 +78,7 @@ export const decideCharacterStatus = (id,approve) => rpc('order_decide_status',{
 export const cancelCharacterStatus = id => rpc('order_cancel_status',{p_request_id:id});
 export const applyCharacterStatus = id => rpc('order_apply_status',{p_request_id:id});
 export const listScenes = () => rpc('order_list_scenes');
-export const createScene = (title,summary) => rpc('order_create_scene',{p_title:title,p_summary:summary});
+export const createScene = (title,summary,themes) => rpc('order_create_scene',{p_title:title,p_summary:summary,p_themes:themes});
 export const setSceneConsent = (id,consent,paused) => rpc('order_scene_consent',{p_scene_id:id,p_consent:consent,p_paused:paused});
 export const setSceneState = (id,state) => rpc('order_scene_state',{p_scene_id:id,p_state:state});
 export const rollSceneDice = (id,count,sides,modifier) => rpc('order_roll_dice',{p_scene_id:id,p_count:count,p_sides:sides,p_modifier:modifier});
