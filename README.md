@@ -1,51 +1,38 @@
-# Eclipse Order — FC RP & D&D Dashboard
+# Eclipse Order — D&D FC and RP platform
 
-An adult-roleplay FC management system with D&D-style character records, magical collar mechanics, Order account hierarchy, OOC-first scene participation, and shared server-recorded dice.
+Eclipse Order combines character sheets, in-world magical binding mechanics, role-based FC administration, private player OOC content preferences and shared tabletop encounters.
 
-## Development status
+## Current development status
 
-**Not yet production-ready.** This branch is part of a stacked draft PR (#6). The production GitHub Pages site is not upgraded by editing this feature branch. Supabase SQL has not been applied or verified by the GitHub build check.
+The new encounter/profile revision is on **draft PR #8** and is **not deployed**. Database functions still require migration and manual permission testing in Supabase. A successful GitHub build is not proof that the SQL is installed or safe.
 
-## Features implemented in this branch
+## Player features
 
-- Responsive dark command dashboard, character roster and full D&D-style character sheets.
-- Supabase Auth and PostgreSQL RPCs with Domina, High Command, assigned Handler (Master/Mistress), and Member permissions.
-- Separate normal member standings and reversible free/bound character status.
-- Server-restricted bound character views that keep the full sheet intact.
-- Explicit linked-player OOC approval before either free→bound or bound→free status transition.
-- Persistent RP scenes with scope/themes stated before opting in, plus pause and revoke controls.
-- Shared server-generated dice with formulas, advantage/disadvantage, recorded history and GM-private visibility.
-- Command-only account eligibility flags, audit events, and plain-text house rules/settings editing.
-- JSON export and migration support; automated database offsite backups are **not yet configured**.
+- **My RP profile:** players privately select which content themes they generally allow. The default is opt-out. An account-level 18+ declaration is available; no IDs or identity documents are collected.
+- **Encounters & dice:** directors create named encounters and declare thematic categories, manage combatants and initiative, track rounds/turns, update HP and AC, mark conditions, save reusable homebrew monster/NPC stat blocks, automatically roll initiative, and roll on the Supabase server.
+- **OOC pause:** every player can pause participation in an encounter regardless of IC rank, collar, or other story restrictions.
+- **Character sheets:** full D&D-style sheet for authorized characters; redacted bound-character sheet for the linked player. Free ↔ bound transitions require explicit linked-player approval and preserve the entire sheet.
+- **Account roles:** Domina, High Command, assigned Master/Mistress handlers and normal members.
 
-## Set up and verify
+Player selections remain private to their own account. The encounter API checks eligible accounts and required themes; staff don't receive a list of private unchecked categories. General profile opt-ins are **not** unlimited or irrevocable consent. Players can change preferences and pause/leave scenes at any time.
 
-Read [Operations](docs/OPERATIONS.md) and [Roadmap](docs/ROADMAP.md). For a fresh Supabase project, run the combined [setup SQL](supabase/SETUP-ALL.sql) in the trusted Supabase SQL Editor. **Back up before migrations.** Create a real Supabase Auth account and bootstrap its role as Domina, then independently review each member's adult-RP eligibility. The flag is not proof of age.
+## Database setup
 
-The public Supabase URL and publishable key are configured in Vite production settings. Never use a secret/service-role key in frontend environment variables.
+**Existing project:** after a database backup and verifying the previous schema, run the new forward migration **supabase/profile-encounters.sql** in Supabase SQL Editor. The existing `supabase/SETUP-ALL.sql` is a baseline script and does **not** include this migration. Do not rerun earlier migration scripts blindly.
 
-Local commands:
+**New project:** apply baseline migration scripts as documented in [Operations](docs/OPERATIONS.md), then apply `profile-encounters.sql`.
+
+Accounts are provisioned in Supabase Auth; adult access is moderated with the existing Domina permission flag. This is an administrative eligibility review, not a formal ID-based age-verification system. No identity documents are collected by Eclipse Order.
+
+## Development
 
 ```sh
 npm ci
 npm test
-npm run dev
 npm run build
+npm run dev
 ```
 
-## Security and consent
+See [AGENTS.md](AGENTS.md), [Operations](docs/OPERATIONS.md), and [Roadmap](docs/ROADMAP.md). Do not merge into `main` or deploy until the migration, privacy tests, authorization, backups, and browser QA are complete.
 
-- Backend authorization is mandatory: never infer permission solely from React.
-- The fictional character can lack IC consent, but real OOC participants must consent to the described scene. That consent can be declined, paused or revoked.
-- The status-request approval and OOC scene agreement are separate controls.
-- Adult-RP participation is blocked until Domina review, but you still need an appropriate real-world age-verification and moderation process before opening to members.
-- The scene system currently lacks private invites, granular lines/veils and safety-incident workflows; see the roadmap.
-- The old repository's hard-coded password remains exposed in Git history: rotate it anywhere it was reused.
-
-## Safe AI assistance
-
-See [AGENTS.md](AGENTS.md) for architecture, invariants, testing, permission rules and the proper feature-branch workflow. Small UI and rules-editor changes should use a reviewed pull request, not direct production edits.
-
-## Deployment
-
-GitHub Pages deployment remains limited to `main`. Dependencies and SQL migrations must be reviewed and applied before merging the stacked branches into production. Use a staging Supabase project for real permission checks and database restore tests.
+The old hard-coded frontend admin password remains in Git history; rotate it anywhere reused. Never commit database secrets, member passwords, private character histories or backups.
