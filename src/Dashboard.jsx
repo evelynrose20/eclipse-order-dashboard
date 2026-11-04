@@ -136,10 +136,10 @@ export default function Dashboard() {
   const warn = message => {setNotice(message);window.setTimeout(()=>setNotice(''),4200);};
   async function saveCharacter(e, candidate=editor) {
     e.preventDefault();
-    if (!candidate?.name.trim() || (!canCreate&&!canEdit(editor))) return;
+    if (!candidate?.name.trim() || (!canCreate&&!canEdit(candidate))) return;
     const isNew=!candidate.id;
     const id=candidate.id || (globalThis.crypto?.randomUUID?.() || String(Date.now()));
-    const record=normalize({...editor,id,name:candidate.name.trim()},0);
+    const record=normalize({...candidate,id,name:candidate.name.trim()},0);
     if (canCommand && record.collar_bound && record.rank==='Unbound: Free') record.rank='Rank I: Fresh Intake / Unbroken';
     if (configured && isNew && record.collar_bound && record.player_user_id) {warn('Create the linked character unbound, then request their OOC-approved binding.');return;}
     if (canCommand && !record.collar_bound) record.rank='Unbound: Free';
