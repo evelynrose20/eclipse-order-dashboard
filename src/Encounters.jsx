@@ -1,8 +1,9 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,encounterRoll,encounterRolls,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,encounterRoll,encounterRolls,setEncounterMap,moveEncounterToken,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {parseDiceFormula} from './rpRules.js';
 import './encounters.css';
+import BattleMap from './BattleMap.jsx';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
 export default function Encounters({role,userId,characters}){
@@ -64,6 +65,7 @@ export default function Encounters({role,userId,characters}){
     <div className="ooc-access"><div><h3>Player OOC control</h3><p>Your saved profile choices are checked against the declared encounter themes. Regardless of IC circumstances, you can pause participation here at any time.</p>
     {check&&<p>Eligibility: {check.adult_declaration&&check.adult_approved?'18+ declaration and staff admission recorded':'Adult-only access not yet approved'} · {check.missing_themes?.length?'Not opted into: '+check.missing_themes.map(label).join(', '):'Declared themes allowed'}</p>}</div>
     <button className="btn secondary" disabled={working} onClick={()=>action(()=>pauseEncounter(chosenId,!check?.paused))}>{check?.paused?'Resume OOC':'Pause OOC'}</button></div></div>
+    <BattleMap encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>
     <section className="panel"><div className="panel-heading"><div><h2>Initiative tracker</h2><p>GM-controlled combatants, HP, armor class, conditions and turn order.</p></div></div>
      <div className="encounter-combatants">{selected.combatants.length?selected.combatants.map((c,i)=><Combatant key={c.id} c={c} canDirect={canDirect} active={selected.status==='active'&&i===selected.turn_index%selected.combatants.length} working={working} save={next=>action(()=>editCombatant(c.id,next.hp,next.initiative,next.ac,next.conditions))} remove={()=>action(()=>deleteCombatant(c.id))}/>):<p className="muted">No combatants added.</p>}</div>
      {canDirect&&<div className="monster-library"><div className="panel-heading"><div><h3>Monster & NPC stat-block library</h3><p>Save reusable homebrew enemies, then add them to encounters without retyping HP and AC.</p></div><button className="mini-btn" onClick={()=>setShowMonsterEditor(!showMonsterEditor)}>{showMonsterEditor?'Close editor':'+ Create stat block'}</button></div>
