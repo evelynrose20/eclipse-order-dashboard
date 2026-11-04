@@ -4,6 +4,7 @@ import {
  listScenes,createScene,setSceneConsent,setSceneState,rollSceneDice,rollDiceExpression,listSceneRolls
 } from './supabase.js';
 import './rp-platform.css';
+import {parseDiceFormula} from './rpRules.js';
 
 function Status({children}){return <span className="rp-status">{children}</span>}
 const date=x=>x?new Date(x).toLocaleString():'—';
@@ -49,7 +50,7 @@ export function RPScenes({role,userId}){
  },[selectedId]);
  async function act(work){setWorking(true);setError('');try{const value=await work();await refresh();if(selectedId)setRolls(await listSceneRolls(selectedId));return value}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function startScene(e){e.preventDefault();const id=await act(()=>createScene(title,summary,themes));if(id){setSelectedId(id);setTitle('');setSummary('');setThemes('')}}
- async function roll(){const result=await act(()=>rollDiceExpression(selectedId,expression,visibility));if(result)setLastRoll(result)}
+ async function roll(){const parsed=parseDiceFormula(expression);if(!parsed.ok){setError(parsed.error);return;}const result=await act(()=>rollDiceExpression(selectedId,parsed.normalized,visibility));if(result)setLastRoll(result)}
  return <div className="rp-page">
   <div className="rp-layout">
    <section className="panel rp-panel">
@@ -87,7 +88,7 @@ export function RPScenes({role,userId}){
       <div className="rp-roll-form">
        <label className="field"><span>DICE FORMULA</span><input maxLength={24} value={expression} onChange={e=>setExpression(e.target.value)} placeholder="2d20kh1+5"/></label>
        <label className="field"><span>VISIBILITY</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Public</option>{(host||['domina','high_command'].includes(role))&&<option value="gm_private">GM-private</option>}</select></label>
-       <button className="btn primary" disabled={working||chosen.state!=='active'||!chosen.my_consent||chosen.my_paused} onClick={roll}>Roll in scene</button>
+       <button className="btn primary" disabled={working||chosen.state!=='active'||!chosen.my_consent||chosen.my_paused||!parseDiceFormula(expression).ok} onClick={roll}>Roll in scene</button>
       </div>
       <p className="muted">Examples: 1d20+5, 2d6-1, 2d20kh1+3 (advantage), 2d20kl1+3 (disadvantage). Max 20 dice. GM-private rolls are only visible to the roller, scene host and command.</p>
       {lastRoll&&<div className="rp-last-roll" role="status"><small>NEW VERIFIED ROLL</small><strong>{lastRoll.total}</strong><span>{lastRoll.rolls.join(' + ')} {lastRoll.modifier<0?'−':'+'} {Math.abs(lastRoll.modifier)}</span></div>}
