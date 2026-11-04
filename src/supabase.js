@@ -112,3 +112,6 @@ export const createMonsterTemplate=(monster)=>rpc('order_create_monster_template
 });
 export const addMonsterToEncounter=(encounterId,monsterId)=>rpc('order_add_monster_to_encounter',{p_encounter:encounterId,p_monster:monsterId});
 export const rollAllInitiative=encounterId=>rpc('order_roll_all_initiative',{p_encounter:encounterId});
+
+export const setEncounterMap=(id,columns,rows,style)=>rpc('order_set_encounter_map',{p_encounter:id,p_columns:columns,p_rows:rows,p_style:style});
+export const moveEncounterToken=(id,x,y)=>rpc('order_move_token',{p_combatant:id,p_x:x,p_y:y});
