@@ -5,6 +5,9 @@ import {parseDiceFormula} from './rpRules.js';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
+import {EventEditor,EventSignups,EventSummary} from './EventPlanning.jsx';
+import {editPlannedEvent} from './supabase.js';
+import './event-planning.css';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
 export default function Encounters({role,userId,characters,onOpenProfile}){
@@ -16,6 +19,8 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
  const [monsters,setMonsters]=useState([]),[chosenMonster,setChosenMonster]=useState('');
  const [monsterForm,setMonsterForm]=useState({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});
  const [showMonsterEditor,setShowMonsterEditor]=useState(false);
+ const [section,setSection]=useState('overview');
+ const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const canDirect=selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId));
  const isParticipant=Boolean(canDirect||selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
@@ -31,7 +36,14 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
   reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}
  },[chosenId]);
  async function action(fn){setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
- async function create(e){e.preventDefault();const id=await action(()=>createEncounter(newName,newNotes,themes));if(id){setChosenId(id);setNewName('');setNewNotes('');setThemes([])}}
+ async function createEvent(details){
+  const id=await action(()=>createEncounter(details.name,details.description||'',details.themes));
+  if(!id)return;
+  const next={...details,published:false};
+  await action(()=>editPlannedEvent(id,next));
+  setChosenId(id);setCreating(false);setSection('planning');
+ }
+ async function savePlan(details){await action(()=>editPlannedEvent(chosenId,details));}
  async function add(e){e.preventDefault();const source=characters.find(c=>c.id===charId);const name=kind==='player'&&source?source.name:combatName;
   const id=await action(()=>addCombatant(chosenId,name,kind,kind==='player'?charId:null,Number(initiative),Number(hp),Number(ac)));
   if(id){setCombatName('');setCharId('')}}
@@ -42,33 +54,33 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
  }
  async function roll(){const parsed=parseDiceFormula(formula);if(!parsed.ok){setError(parsed.error);return;}const result=await action(()=>encounterRoll(chosenId,parsed.normalized,visibility));if(result)setLastRoll(result)}
  return <div className="encounter-layout">
-  <section className="panel encounter-sidebar"><h2>Encounter library</h2><p className="muted">Shared initiative, combatants, HP, effects and dice.</p>
-   {directorRole&&<form className="encounter-create" onSubmit={create}>
-    <label className="field"><span>ENCOUNTER NAME</span><input required maxLength={140} minLength={2} value={newName} onChange={e=>setNewName(e.target.value)}/></label>
-    <label className="field"><span>GM NOTES</span><textarea maxLength={2000} rows={2} value={newNotes} onChange={e=>setNewNotes(e.target.value)}/></label>
-    <p className="muted">Content categories used by this encounter (players control their general opt-ins in My Profile).</p>
-    <div className="encounter-themes">{CONTENT_THEMES.map(([key,text])=><label key={key}><input type="checkbox" checked={themes.includes(key)} onChange={e=>setThemes(old=>e.target.checked?[...old,key]:old.filter(x=>x!==key))}/>{text}</label>)}</div>
-    <button className="btn secondary" disabled={working} type="submit">Create encounter</button>
-   </form>}
-   <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(chosenId===e.id?'active':'')} onClick={()=>{setChosenId(e.id);setLastRoll(null)}}>
-    <strong>{e.name}</strong><small>{e.status} · {e.combatants.length} combatants</small></button>)}</div>
+  <section className="panel encounter-sidebar"><div className="event-library-top"><div><h2>FC events</h2><p className="muted">Plan stories and sign up for upcoming events.</p></div>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New event</button>}</div>
+   <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('overview');setLastRoll(null)}}>
+    <strong>{e.name}</strong><small>{e.starts_at?new Date(e.starts_at).toLocaleDateString():'Date TBD'} · {e.status==='draft'?(e.published?'Sign-ups open':'Preparing'):e.status}</small><small>{e.signup_count||0}/{e.capacity||8} approved · {e.combatants.length} combatants</small></button>)}</div>
   </section>
   <section className="encounter-main">
-   {!selected?<div className="panel"><h2>No encounter selected</h2><p className="muted">{directorRole?'Create your first encounter from the panel on the left.':'Your account is currently '+role+'. Domina, High Command, or an assigned Master/Mistress can create encounters.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>Profile needs to be saved</strong><p>Open My RP profile and confirm 18+. The declaration now saves automatically. If the error continues, apply the new battlemap-dice.sql migration to remove the old duplicate staff gate.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
-    <div className="panel encounter-header"><div className="encounter-topline"><div><small>ENCOUNTER TRACKER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&<div className="encounter-actions">
-     {selected.status!=='active'&&<>
-      <button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button>
-      <button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>encounterTurn(chosenId,'start'))}>Start / restart</button>
-     </>}
-     {selected.status==='active'&&<><button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>End turn →</button><button className="btn secondary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'finish'))}>Finish</button></>}
-    </div>}</div>
-    <div className="encounter-tags">{selected.themes?.map(t=><span key={t}>{label(t)}</span>)}</div>
+   {creating&&directorRole?<section className="panel"><div className="panel-heading"><div><h2>Plan a new FC event</h2><p>Build the event privately, schedule it, open sign-ups, then prepare monsters and party members.</p></div><button className="mini-btn" onClick={()=>setCreating(false)}>Cancel</button></div><EventEditor key="new-event" event={null} save={createEvent} working={working}/></section>:
+   !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
+    <header className="event-workspace-header"><div><small>EVENT MANAGEMENT</small><h2>{selected.name}</h2><p>{selected.starts_at?new Date(selected.starts_at).toLocaleString():'Unscheduled'} · {selected.location||'Location TBD'} · {selected.status}</p></div></header>
+    <nav className="event-tabs" aria-label="Event workspace">
+    {[
+      ['overview','Overview'],['planning','Event details'],['signups','Sign-ups'],
+      ['setup','Combat setup'],['map','Battle map'],['combat','Live encounter'],['dice','Dice & checks']
+    ].filter(([id])=>id!=='planning'||canDirect).map(([id,label])=><button key={id} className={'event-tab '+(section===id?'active':'')} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{label}{id==='signups'&&canDirect&&selected.pending_count>0?<span className="event-tab-count">{selected.pending_count}</span>:null}</button>)}
+    </nav>
+    {section==='overview'&&<EventSummary event={selected} canDirect={canDirect}
+      onPlan={()=>setSection('planning')} onSignups={()=>setSection('signups')} onPrepare={()=>setSection('setup')} onCombat={()=>setSection('combat')}/>}
+    {section==='planning'&&canDirect&&<section className="panel"><div className="panel-heading"><div><h2>Schedule & publish</h2><p>Only published events appear for member sign-ups. You can prepare enemies beforehand.</p></div></div><EventEditor key={selected.id} event={selected} save={savePlan} working={working}/></section>}
+    {section==='signups'&&<EventSignups key={selected.id} event={selected} characters={characters}
+      userId={userId} canDirect={canDirect} working={working} action={action} refresh={refresh}/>}
+    {section==='setup'&&<section className="panel event-setup-intro"><h2>Combat preparation</h2><p>Prepare bosses, enemies, NPCs and the approved party before event night. Keep this encounter in Draft while setting it up.</p>
+    {canDirect&&<div className="encounter-actions">{selected.status!=='active'&&<><button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button><button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start combat now? Event preparation will be locked.'))action(()=>encounterTurn(chosenId,'start'))}}>Start combat</button></>}</div>}
+    <div className="event-setup-stats"><span>{selected.combatants.filter(c=>c.kind==='player').length} players assigned</span><span>{selected.combatants.filter(c=>c.kind==='npc').length} enemies / NPCs</span></div></section>}
+    {section==='map'&&<BattleMap encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>}
+    {section==='combat'&&<section className="panel encounter-header"><div className="encounter-topline"><div><small>LIVE ENCOUNTER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&selected.status==='active'&&<div className="encounter-actions"><button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button><button className="btn secondary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'finish'))}>Finish combat</button></div>}</div>
     {activeCombatant&&selected.status==='active'&&<div className="current-turn"><span>NOW ACTING</span><strong>{activeCombatant.name}</strong><small>Round {selected.round_number} · Initiative {activeCombatant.initiative}</small></div>}
-    <div className="ooc-access"><div><h3>Player OOC control</h3><p>Your saved profile choices are checked against the declared encounter themes. Regardless of IC circumstances, you can pause participation here at any time.</p>
-    {check&&<p>Eligibility: {check.adult_declaration?'18+ profile declaration saved':'Save your 18+ declaration under My RP profile'} · {check.missing_themes?.length?'Not opted into: '+check.missing_themes.map(label).join(', '):'Declared themes allowed'}</p>}</div>
-    <button className="btn secondary" disabled={working} onClick={()=>action(()=>pauseEncounter(chosenId,!check?.paused))}>{check?.paused?'Resume OOC':'Pause OOC'}</button></div></div>
-    <BattleMap encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>
-    <section className="panel"><div className="panel-heading"><div><h2>Initiative tracker</h2><p>GM-controlled combatants, HP, armor class, conditions and turn order.</p></div></div>
+    <div className="ooc-access"><div><h3>Player OOC control</h3><p>Profile preferences and your OOC pause control remain available during all encounters.</p>{check&&<p>{check.paused?'Your participation is paused.':check.missing_themes?.length?'Some event themes are not enabled in your profile.':'Your profile themes allow this event.'}</p>}</div><button className="btn secondary" disabled={working} onClick={()=>action(()=>pauseEncounter(chosenId,!check?.paused))}>{check?.paused?'Resume OOC':'Pause OOC'}</button></div></section>}
+    {(section==='setup'||section==='combat')&&<section className="panel"><div className="panel-heading"><div><h2>{section==='setup'?'Prepared combatants':'Initiative tracker'}</h2><p>GM-controlled combatants, HP, armor class, conditions and turn order.</p></div></div>
      <div className="encounter-combatants">{selected.combatants.length?selected.combatants.map((c,i)=><Combatant key={c.id} c={c} canDirect={canDirect} active={selected.status==='active'&&i===selected.turn_index%selected.combatants.length} working={working} save={next=>action(()=>editCombatant(c.id,next.hp,next.initiative,next.ac,next.conditions))} hpAction={action} remove={()=>action(()=>deleteCombatant(c.id))}/>):<p className="muted">No combatants added.</p>}</div>
      {canDirect&&<div className="monster-library"><div className="panel-heading"><div><h3>Monster & NPC stat-block library</h3><p>Save reusable homebrew enemies, then add them to encounters without retyping HP and AC.</p></div><button className="mini-btn" onClick={()=>setShowMonsterEditor(!showMonsterEditor)}>{showMonsterEditor?'Close editor':'+ Create stat block'}</button></div>
       {showMonsterEditor&&<form className="monster-form" onSubmit={saveMonster}>
@@ -93,7 +105,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
       <button className="btn primary" disabled={working} type="submit">Add</button>
      </div></form>}
     </section>
-    {isParticipant?<DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Encounter dice</h2><p className="muted">You are viewing this encounter as an observer. Ask the GM to add your character before rolling or viewing the combat roll history.</p></section>}
+    {section==='dice'&&(isParticipant?<DicePanel key={selected.id} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Dice & checks</h2><p className="muted">Only approved party participants and the GM can roll. Sign up first, then have the GM add your character to the party.</p></section>)}
    </>}
    {error&&<div className="alert" role="alert">{error}</div>}
   </section>
