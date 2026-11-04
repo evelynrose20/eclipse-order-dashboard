@@ -26,6 +26,18 @@ Player selections remain private to their own account. The encounter API checks 
 
 To activate this revision, apply the forward SQL migration [battlemap-dice.sql](supabase/battlemap-dice.sql) **after** profile-encounters.sql, then save your My RP profile and reload. See [Battlemap & Dice Setup](docs/BATTLEMAP-DICE.md) for a short troubleshooting and security checklist.
 
+## FC event planning and roster (new draft feature)
+
+- Free characters and magically bound characters have separate roster lists.
+- Bound ranks: **Rank I: Fresh Intake / Unbroken**, **Rank II: Initiate / Indentured**, **Rank III: Trusted / Specialized**, **Rank IV: Elite / Favor of the Domina**.
+- Events are created as **private planned drafts** with date/time, venue, description, capacity, and publicly declared themes.
+- A GM can prepare monster stat blocks, NPCs, bosses, map tokens and encounters before publishing.
+- Members can request a place using their own linked character after registration opens. A GM approves the signup and chooses when to add the character to the party. Players can withdraw OOC.
+- The event workspace is divided into Overview, Event details, Sign-ups, Combat setup, Battle map, Live encounter, and Dice & checks.
+- Published event details are visible to members. Unpublished drafts and the full signup list remain GM-controlled.
+
+**For an existing project**, back up Supabase and apply only the new forward migration [events-roster.sql](supabase/events-roster.sql) **after** the existing battlemap-dice.sql migration. Do not rerun your old SETUP-ALL.sql. Details: [Event Planning guide](docs/EVENT-PLANNING.md).
+
 ## Database setup
 
 **Existing project:** after a database backup and verifying the previous schema, run the new forward migration **supabase/profile-encounters.sql** in Supabase SQL Editor. The existing `supabase/SETUP-ALL.sql` is a baseline script and does **not** include this migration. Do not rerun earlier migration scripts blindly.
