@@ -130,3 +130,15 @@ export const rollEncounterAction=(encounterId,formula,visibility,kind,target,dc)
 export const applyRolledHP=(rollId,targetId)=>rpc('order_apply_roll_hp',{p_roll_id:rollId,p_target:targetId});
 
 export const setEncounterMapImage=(id,imageUrl)=>rpc('order_set_encounter_map_image',{p_encounter:id,p_image_url:imageUrl});
+
+export const editPlannedEvent=(id,details)=>rpc('order_edit_event',{
+ p_encounter:id,p_name:details.name,p_description:details.description||'',
+ p_location:details.location||'',p_starts_at:details.starts_at||null,
+ p_capacity:Number(details.capacity||8),p_published:Boolean(details.published),
+ p_themes:details.themes||[]
+});
+export const signupForEvent=(id,characterId)=>rpc('order_signup_event',{p_encounter:id,p_character:characterId});
+export const listEventSignups=id=>rpc('order_list_event_signups',{p_encounter:id});
+export const decideEventSignup=(id,approved)=>rpc('order_decide_event_signup',{p_signup:id,p_approved:approved});
+export const withdrawEventSignup=id=>rpc('order_withdraw_event_signup',{p_signup:id});
+export const addApprovedEventPlayer=id=>rpc('order_add_approved_player',{p_signup:id});
