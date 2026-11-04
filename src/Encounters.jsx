@@ -12,9 +12,9 @@ const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapa
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
 export default function Encounters({role,userId,characters,onOpenProfile}){
  const directorRole=['domina','high_command','handler'].includes(role);
- const [data,setData]=useState([]),[chosenId,setChosenId]=useState(''),[newName,setNewName]=useState(''),[newNotes,setNewNotes]=useState(''),[themes,setThemes]=useState([]);
+ const [data,setData]=useState([]),[chosenId,setChosenId]=useState('');
  const [combatName,setCombatName]=useState(''),[kind,setKind]=useState('npc'),[charId,setCharId]=useState(''),[initiative,setInitiative]=useState(10),[hp,setHp]=useState(20),[ac,setAc]=useState(10);
- const [formula,setFormula]=useState('1d20+0'),[visibility,setVisibility]=useState('public'),[rolls,setRolls]=useState([]),[lastRoll,setLastRoll]=useState(null);
+
  const [check,setCheck]=useState(null),[working,setWorking]=useState(false),[error,setError]=useState('');
  const [monsters,setMonsters]=useState([]),[chosenMonster,setChosenMonster]=useState('');
  const [monsterForm,setMonsterForm]=useState({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});
@@ -39,8 +39,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
  async function createEvent(details){
   const id=await action(()=>createEncounter(details.name,details.description||'',details.themes));
   if(!id)return;
-  const next={...details,published:false};
-  await action(()=>editPlannedEvent(id,next));
+  await action(()=>editPlannedEvent(id,details));
   setChosenId(id);setCreating(false);setSection('planning');
  }
  async function savePlan(details){await action(()=>editPlannedEvent(chosenId,details));}
@@ -55,7 +54,7 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
  async function roll(){const parsed=parseDiceFormula(formula);if(!parsed.ok){setError(parsed.error);return;}const result=await action(()=>encounterRoll(chosenId,parsed.normalized,visibility));if(result)setLastRoll(result)}
  return <div className="encounter-layout">
   <section className="panel encounter-sidebar"><div className="event-library-top"><div><h2>FC events</h2><p className="muted">Plan stories and sign up for upcoming events.</p></div>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New event</button>}</div>
-   <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('overview');setLastRoll(null)}}>
+   <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('overview');setError('')}}>
     <strong>{e.name}</strong><small>{e.starts_at?new Date(e.starts_at).toLocaleDateString():'Date TBD'} · {e.status==='draft'?(e.published?'Sign-ups open':'Preparing'):e.status}</small><small>{e.signup_count||0}/{e.capacity||8} approved · {e.combatants.length} combatants</small></button>)}</div>
   </section>
   <section className="encounter-main">
