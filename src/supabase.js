@@ -85,3 +85,5 @@ export const rollSceneDice = (id,count,sides,modifier) => rpc('order_roll_dice',
 export const listSceneRolls = id => rpc('order_list_dice',{p_scene_id:id});
 
 export const setAdultRPAccess = (id,approved) => rpc('order_set_adult_approved',{p_user_id:id,p_approved:approved});
+
+export const rollDiceExpression = (sceneId,expression,visibility='public') => rpc('order_roll_expression',{p_scene_id:sceneId,p_expression:expression,p_visibility:visibility});
