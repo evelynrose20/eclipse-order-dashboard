@@ -126,3 +126,5 @@ export const rollEncounterAction=(encounterId,formula,visibility,kind,target,dc)
  p_encounter:encounterId,p_formula:formula,p_visibility:visibility,p_kind:kind,
  p_target:target||null,p_dc:dc===null||dc===undefined||dc===''?null:Number(dc)
 });
+
+export const applyRolledHP=(rollId,targetId)=>rpc('order_apply_roll_hp',{p_roll_id:rollId,p_target:targetId});
