@@ -268,6 +268,66 @@ begin
  end if;
  if p_kind='attack' and p_target is null then
   raise exception 'Select a target before rolling an attack'; end if;
+ if p_kind in ('attack','ability','saving_throw','skill','contest','death_save','concentration') and
+  lower(regexp_replace(coalesce(p_formula,''),'\\s+','','g')) !~
+    '^(1d20|2d20(kh1|kl1))([+-][0-9]{1,2})?
+ roll_id:=(result->>'id')::bigint;
+ total:=(result->>'total')::int;
+ rolled:=array(select jsonb_array_elements_text(result->'rolls')::int);
+ bonus_mode:=(regexp_match(lower(p_formula),'(kh1|kl1)'))[1];
+ roll_sides:=coalesce((regexp_match(lower(p_formula),'d(4|6|8|10|12|20|100)'))[1]::int,0);
+ chosen:=case when bonus_mode='kh1' then greatest(rolled[1],rolled[2])
+  when bonus_mode='kl1' then least(rolled[1],rolled[2]) else rolled[1] end;
+ resolved_dc:=case when p_kind='attack' then target_ac
+  when p_kind='death_save' then 10 else p_dc end;
+ if p_kind in ('attack','ability','saving_throw','skill','contest','death_save','concentration') and resolved_dc is not null then
+  outcome_text:=case when total>=resolved_dc then 'success' else 'failure' end;
+  -- In D&D 5e, natural 20/1 automatically affect attack rolls.
+  -- Ordinary ability checks and saving throws use the total vs DC.
+  if roll_sides=20 and p_kind in ('attack','death_save') then
+   if chosen=20 then outcome_text:='critical_success';
+   elsif chosen=1 then outcome_text:='critical_failure';
+   end if;
+  end if;
+ end if;
+ update public.order_encounter_rolls set roll_kind=p_kind,
+  target_combatant_id=p_target,target_dc=resolved_dc,outcome=outcome_text
+ where id=roll_id and rolled_by=auth.uid();
+ return result||jsonb_build_object('kind',p_kind,'outcome',outcome_text,
+  'target_dc',resolved_dc,'target_combatant_id',p_target);
+end
+$action$;
+revoke all on function public.order_roll_action(uuid,text,text,text,uuid,int) from public;
+grant execute on function public.order_roll_action(uuid,text,text,text,uuid,int) to authenticated;
+
+-- Expose the added, non-private roll metadata. GM-private filtering stays at API level.
+create or replace function public.order_list_encounter_rolls(p_encounter uuid)
+returns jsonb language plpgsql stable security definer set search_path=''
+as $rolls$
+declare result jsonb;
+begin
+ if public.order_my_role() is null or not public.order_adult_approved() then
+  raise exception 'Save the 18+ declaration under My RP profile to see encounter rolls' using errcode='42501'; end if;
+ if not exists(select 1 from public.order_encounters where id=p_encounter) then
+  raise exception 'Encounter not found'; end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+   'id',r.id,'rolled_by',r.rolled_by,'formula',r.formula,'rolls',r.rolls,
+   'total',r.total,'visibility',r.visibility,'created_at',r.created_at,
+   'kind',r.roll_kind,'outcome',r.outcome,'target_dc',r.target_dc,
+   'target_combatant_id',r.target_combatant_id
+ ) order by r.id desc),'[]'::jsonb)
+ into result from (
+  select * from public.order_encounter_rolls
+  where encounter_id=p_encounter and
+   (visibility='public' or rolled_by=auth.uid() or public.order_can_direct_encounter(p_encounter))
+  order by id desc limit 100
+ ) r;
+ return result;
+end
+$rolls$;
+ then
+  raise exception 'D20 checks require 1d20, or 2d20kh1/kl1 for advantage or disadvantage';
+ end if;
  result:=public.order_roll_encounter(p_encounter,p_formula,p_visibility);
  roll_id:=(result->>'id')::bigint;
  total:=(result->>'total')::int;
