@@ -79,7 +79,7 @@ export function RPScenes({role,userId}){
         {!chosen.my_consent&&<button className="btn primary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,false))}>Agree to these themes OOC</button>}
         {chosen.my_consent&&!chosen.my_paused&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,true))}>Pause my participation</button>}
         {chosen.my_consent&&chosen.my_paused&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,false))}>Resume my participation</button>}
-        {chosen.my_consent&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,false,true))}>Revoke OOC consent</button>}
+        {chosen.my_consent&&<button className="btn secondary" disabled={working} onClick={()=>act(()=>setSceneConsent(chosen.id,false,true))}>Revoke OOC consent</button>}
        </div>
        <p className="rp-consent-label">Your status: <strong>{chosen.my_consent?(chosen.my_paused?'Paused':'Opted in'):'Not participating'}</strong></p>
       </div>
