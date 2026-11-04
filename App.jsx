@@ -25,12 +25,16 @@ const SHOP_ITEMS = [
 ];
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [userRole, setUserRole] = useState(null); // 'master' or 'player'
+
   const [slaves, setSlaves] = useState(() => {
     const saved = localStorage.getItem('fc_slaves');
     return saved ? JSON.parse(saved) : INITIAL_SLAVES;
   });
   
-  const [view, setView] = useState('master'); // 'master' or 'player'
   const [selectedSlave, setSelectedSlave] = useState(slaves[0]);
   const [diceResult, setDiceResult] = useState(null);
 
@@ -38,11 +42,21 @@ export default function App() {
     localStorage.setItem('fc_slaves', JSON.stringify(slaves));
   }, [slaves]);
 
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (usernameInput === 'Elira' && passwordInput === 'EmpSolas') {
+      setUserRole('master');
+      setIsLoggedIn(true);
+    } else if (usernameInput.trim() !== '') {
+      setUserRole('player');
+      setIsLoggedIn(true);
+    } else {
+      alert('Access Denied. Enter valid credentials.');
+    }
+  };
+
   const updateRank = (id, newRank) => {
     setSlaves(slaves.map(s => s.id === id ? { ...s, rank: newRank } : s));
-    if (selectedSlave.id === id) {
-      setSelectedSlave({ ...selectedSlave, rank: newRank });
-    }
   };
 
   const rollDice = (statVal, rankMod) => {
@@ -52,21 +66,68 @@ export default function App() {
     setDiceResult({ roll, statMod, rankMod, total });
   };
 
+  // CONSOLE LOGIN SCREEN
+  if (!isLoggedIn) {
+    return (
+      <div style={{ background: '#0a0a0a', color: '#00ff66', minHeight: '100vh', fontFamily: 'Courier New, monospace', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+        <div style={{ background: '#111', border: '2px solid #00ff66', padding: '30px', borderRadius: '8px', width: '100%', maxWidth: '400px', boxShadow: '0 0 20px rgba(0, 255, 102, 0.2)' }}>
+          <h2 style={{ marginTop: 0, color: '#00ff66', textAlign: 'center', borderBottom: '1px dashed #00ff66', paddingBottom: '10px' }}>SYS_ACCESS // SYNDICATE v2.6</h2>
+          <p style={{ fontSize: '12px', color: '#888', textAlign: 'center' }}>[SECURE TERMINAL CONNECTION ESTABLISHED]</p>
+          
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+            <div>
+              <label style={{ fontSize: '13px', display: 'block', marginBottom: '5px' }}>USERNAME:</label>
+              <input 
+                type="text" 
+                value={usernameInput} 
+                onChange={(e) => setUsernameInput(e.target.value)} 
+                placeholder="Enter username..."
+                style={{ width: '100%', background: '#000', border: '1px solid #00ff66', color: '#00ff66', padding: '8px', fontFamily: 'Courier New, monospace', borderRadius: '4px' }}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', display: 'block', marginBottom: '5px' }}>PASSWORD:</label>
+              <input 
+                type="password" 
+                value={passwordInput} 
+                onChange={(e) => setPasswordInput(e.target.value)} 
+                placeholder="Enter passcode..."
+                style={{ width: '100%', background: '#000', border: '1px solid #00ff66', color: '#00ff66', padding: '8px', fontFamily: 'Courier New, monospace', borderRadius: '4px' }}
+                required
+              />
+            </div>
+            <button 
+              type="submit" 
+              style={{ background: '#00ff66', color: '#000', border: 'none', padding: '10px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'Courier New, monospace', borderRadius: '4px', marginTop: '10px' }}
+            >
+              INITIALIZE CONNECTION
+            </button>
+          </form>
+          <div style={{ marginTop: '20px', fontSize: '11px', color: '#555', textAlign: 'center' }}>
+            Hint: Master access requires Elira / EmpSolas.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MAIN DASHBOARD AFTER LOGIN
   return (
     <div style={{ background: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'Segoe UI, sans-serif', padding: '20px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #8b0000', paddingBottom: '10px', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, color: '#ff4d4d', fontSize: '24px' }}>⛓️ FFXIV Crime FC — Underworld Ledger</h1>
+        <h1 style={{ margin: 0, color: '#ff4d4d', fontSize: '24px' }}>⛓️ FFXIV Crime FC — Terminal Dashboard</h1>
         <div>
-          <button onClick={() => setView('master')} style={{ background: view === 'master' ? '#8b0000' : '#333', color: '#fff', border: 'none', padding: '8px 16px', marginRight: '10px', cursor: 'pointer', borderRadius: '4px' }}>Master Control Dashboard</button>
-          <button onClick={() => setView('player')} style={{ background: view === 'player' ? '#8b0000' : '#333', color: '#fff', border: 'none', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px' }}>Slave Character Sheet & Shop</button>
+          <span style={{ marginRight: '15px', fontSize: '14px', color: '#aaa' }}>Logged in as: <strong style={{ color: '#fff' }}>{usernameInput}</strong> ({userRole.toUpperCase()})</span>
+          <button onClick={() => setIsLoggedIn(false)} style={{ background: '#333', color: '#ff4d4d', border: '1px solid #ff4d4d', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px' }}>Disconnect</button>
         </div>
       </div>
 
       {/* MASTER DASHBOARD VIEW */}
-      {view === 'master' && (
+      {userRole === 'master' ? (
         <div>
-          <h2>Master Roster & Payment Manager ({slaves.length} Slaves Active)</h2>
+          <h2>Master Control Dashboard ({slaves.length} Slaves Active)</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', background: '#1e1e1e', marginTop: '10px' }}>
               <thead>
@@ -76,7 +137,6 @@ export default function App() {
                   <th style={{ padding: '10px', border: '1px solid #444' }}>Rank & Privileges</th>
                   <th style={{ padding: '10px', border: '1px solid #444' }}>Food Rations</th>
                   <th style={{ padding: '10px', border: '1px solid #444' }}>Pocket Gil Cut</th>
-                  <th style={{ padding: '10px', border: '1px solid #444' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,9 +160,6 @@ export default function App() {
                       </td>
                       <td style={{ padding: '10px', border: '1px solid #444', fontSize: '13px' }}>{rankInfo.food}</td>
                       <td style={{ padding: '10px', border: '1px solid #444', color: '#4caf50' }}>{slave.gil.toLocaleString()} Gil ({rankInfo.cut}%)</td>
-                      <td style={{ padding: '10px', border: '1px solid #444' }}>
-                        <button onClick={() => { setSelectedSlave(slave); setView('player'); }} style={{ background: '#444', color: '#fff', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '3px' }}>View Sheet</button>
-                      </td>
                     </tr>
                   );
                 })}
@@ -110,24 +167,11 @@ export default function App() {
             </table>
           </div>
         </div>
-      )}
-
-      {/* PLAYER / SLAVE SHEET & SHOP VIEW */}
-      {view === 'player' && (
+      ) : (
+        // PLAYER CHARACTER SHEET VIEW
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h2 style={{ margin: 0 }}>Character Sheet: {selectedSlave.name} ({selectedSlave.rank})</h2>
-            <select 
-              value={selectedSlave.id} 
-              onChange={(e) => setSelectedSlave(slaves.find(s => s.id === Number(e.target.value)))}
-              style={{ background: '#2a2a2a', color: '#fff', padding: '6px', borderRadius: '4px' }}
-            >
-              {slaves.map(s => <option key={s.id} value={s.id}>{s.name} - {s.specialty}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {/* Stats & Dice Roller */}
+          <h2>Character Sheet: {selectedSlave.name} ({selectedSlave.rank})</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
             <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
               <h3>Attributes & D&D Dice Roller</h3>
               <p><strong>Assigned Master:</strong> {selectedSlave.owner} | <strong>Assigned Rations:</strong> {RANKS[selectedSlave.rank].food}</p>
@@ -154,7 +198,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Black Market Shop & Rations Catalog */}
             <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
               <h3>🛒 Black Market & Gear Shop</h3>
               <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
