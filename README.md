@@ -1,41 +1,51 @@
-# Eclipse Order Dashboard
+# Eclipse Order — FC RP & D&D Dashboard
 
-A responsive, single-page roleplay ledger for character records, rank privileges, tabletop dice checks, and an in-world Black Market reference catalogue.
+An adult-roleplay FC management system with D&D-style character records, magical collar mechanics, Order account hierarchy, OOC-first scene participation, and shared server-recorded dice.
 
-## Features
+## Development status
 
-- Full-width desktop command center and mobile-friendly navigation.
-- Searchable character roster with rank filtering, rank changes, editing and confirmed deletion.
-- Character sheets with six D&D-style attributes, gil, HP, assignments, notes and rank allowances.
-- Configurable d4/d6/d8/d10/d12/d20/d100 rolls with visible attribute and rank modifiers.
-- Read-only market catalogue with rank filters and pricing.
-- JSON export/import with confirmation, size limits and duplicate-ID handling.
-- Automatic migration of existing `fc_slaves` and `fc_slaves_modular` browser ledgers.
+**Not yet production-ready.** This branch is part of a stacked draft PR (#6). The production GitHub Pages site is not upgraded by editing this feature branch. Supabase SQL has not been applied or verified by the GitHub build check.
 
-## Start locally
+## Features implemented in this branch
 
-```bash
+- Responsive dark command dashboard, character roster and full D&D-style character sheets.
+- Supabase Auth and PostgreSQL RPCs with Domina, High Command, assigned Handler (Master/Mistress), and Member permissions.
+- Separate normal member standings and reversible free/bound character status.
+- Server-restricted bound character views that keep the full sheet intact.
+- Explicit linked-player OOC approval before either free→bound or bound→free status transition.
+- Persistent RP scenes with scope/themes stated before opting in, plus pause and revoke controls.
+- Shared server-generated dice with formulas, advantage/disadvantage, recorded history and GM-private visibility.
+- Command-only account eligibility flags, audit events, and plain-text house rules/settings editing.
+- JSON export and migration support; automated database offsite backups are **not yet configured**.
+
+## Set up and verify
+
+Read [Operations](docs/OPERATIONS.md) and [Roadmap](docs/ROADMAP.md). For a fresh Supabase project, run the combined [setup SQL](supabase/SETUP-ALL.sql) in the trusted Supabase SQL Editor. **Back up before migrations.** Create a real Supabase Auth account and bootstrap its role as Domina, then independently review each member's adult-RP eligibility. The flag is not proof of age.
+
+The public Supabase URL and publishable key are configured in Vite production settings. Never use a secret/service-role key in frontend environment variables.
+
+Local commands:
+
+```sh
 npm ci
+npm test
 npm run dev
-```
-
-To verify a production build:
-
-```bash
 npm run build
-npm run preview
 ```
 
-## Data and security limitations
+## Security and consent
 
-**This is a browser-local demo/workspace, not a secure multiplayer website.** It deliberately has no login or fake administrator gate. All edits are stored only in the current browser's `localStorage` under `eclipse-order-ledger-v3`; there is no shared database, user verification, server access control, commerce processing, or synchronized permissions. Do not store passwords or sensitive personal data in this app.
+- Backend authorization is mandatory: never infer permission solely from React.
+- The fictional character can lack IC consent, but real OOC participants must consent to the described scene. That consent can be declined, paused or revoked.
+- The status-request approval and OOC scene agreement are separate controls.
+- Adult-RP participation is blocked until Domina review, but you still need an appropriate real-world age-verification and moderation process before opening to members.
+- The scene system currently lacks private invites, granular lines/veils and safety-incident workflows; see the roadmap.
+- The old repository's hard-coded password remains exposed in Git history: rotate it anywhere it was reused.
 
-Before clearing browser data or changing devices, export the ledger under **Workspace & backup**. Importing a JSON backup **replaces** the current browser ledger after confirmation.
+## Safe AI assistance
 
-The previous frontend included a hard-coded administrator credential. It must be regarded as disclosed and changed anywhere it might have been reused; removing the reference from current source cannot erase Git history.
-
-A real multi-user release requires a backend with server-side identity, roles, authorization and persistent database storage. Never implement staff-only permissions solely through React state or browser storage.
+See [AGENTS.md](AGENTS.md) for architecture, invariants, testing, permission rules and the proper feature-branch workflow. Small UI and rules-editor changes should use a reviewed pull request, not direct production edits.
 
 ## Deployment
 
-The existing GitHub Pages workflow deploys only pushes to `main`; this overhaul can be reviewed in a pull request without deploying it. After merging, configure **Settings → Pages → GitHub Actions** if necessary. Vite's base path is configured in `vite.config.js` for the repository Pages URL.
+GitHub Pages deployment remains limited to `main`. Dependencies and SQL migrations must be reviewed and applied before merging the stacked branches into production. Use a staging Supabase project for real permission checks and database restore tests.

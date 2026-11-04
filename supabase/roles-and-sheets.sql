@@ -68,7 +68,7 @@ begin
         'id',c.id,'name',c.data->>'name','player',c.data->>'player',
         'owner',c.data->>'owner','specialty',c.data->>'specialty',
         'rank',c.data->>'rank','hp',c.data->'hp',
-        'collar_bound',true,'view_mode','bound')
+        'collar_bound',true,'player_user_id',c.player_user_id,'view_mode','bound')
       else c.data || jsonb_build_object(
         'id',c.id,'player_user_id',c.player_user_id,
         'handler_user_id',c.handler_user_id,
