@@ -35,8 +35,8 @@ returns jsonb language plpgsql stable security definer set search_path = ''
 as $members$
 declare output jsonb;
 begin
- if public.order_my_role() not in ('domina','high_command','handler') then
-   raise exception 'Not allowed to browse member directory' using errcode='42501';
+ if public.order_my_role() not in ('domina','high_command') then
+   raise exception 'Only command may browse the member directory' using errcode='42501';
  end if;
  select coalesce(jsonb_agg(jsonb_build_object(
   'user_id',m.user_id,'role',m.role,'standing',m.standing,
