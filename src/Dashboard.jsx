@@ -13,7 +13,12 @@ const KEY = 'eclipse-order-ledger-v3';
 const NAV = [['overview','Overview','◈'],['roster','Character roster','▦'],['sheet','Character sheets','◇'],['market','Black Market','◆'],['settings','Workspace & backup','⚙'],['members','Order accounts','♛'],['scenes','Encounters & dice','⚄'],['profile','My RP profile','♡'],['transitions','Binding requests','◇']];
 const STATS = ['str','dex','con','int','wis','cha'];
 const RANK_KEYS = Object.keys(RANKS);
-const OLD_RANKS = {"Rank I: Fresh Intake / Unbroken":"Rank I: Fresh Intake / Unbroken","Rank II: Initiate / Indentured":"Rank II: Initiate / Indentured","Rank III: Trusted / Specialized":"Rank III: Trusted / Specialized","Rank IV: Elite / Favor of the Domina":"Rank IV: Elite / Favor of the Domina / Favor of the Domina"};
+const OLD_RANKS = {
+  'Rank I: Unbroken':'Rank I: Fresh Intake / Unbroken',
+  'Rank II: Indentured':'Rank II: Initiate / Indentured',
+  'Rank III: Specialized':'Rank III: Trusted / Specialized',
+  'Rank IV: Elite':'Rank IV: Elite / Favor of the Domina'
+};
 const canonicalRank = rank => OLD_RANKS[rank] || rank;
 const BOUND_RANKS = Object.keys(RANKS).filter(k=>k!=='Unbound: Free');
 
