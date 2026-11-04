@@ -90,3 +90,16 @@ export const rollDiceExpression = (sceneId,expression,visibility='public') => rp
 
 export const readFCSettings = () => rpc('order_read_settings');
 export const writeFCSetting = (key,content) => rpc('order_write_setting',{p_key:key,p_content:content});
+
+export const getMyPreferences=()=>rpc('order_get_my_preferences');
+export const saveMyPreferences=(adult,preferences)=>rpc('order_save_my_preferences',{p_adult:adult,p_preferences:preferences});
+export const listEncounters=()=>rpc('order_list_encounters');
+export const createEncounter=(name,notes,themes)=>rpc('order_create_encounter',{p_name:name,p_notes:notes,p_themes:themes});
+export const addCombatant=(encounterId,name,kind,characterId,initiative,hp,ac)=>rpc('order_add_combatant',{p_encounter:encounterId,p_name:name,p_kind:kind,p_character:characterId||null,p_initiative:initiative,p_hp:hp,p_ac:ac});
+export const editCombatant=(id,hp,initiative,ac,conditions)=>rpc('order_edit_combatant',{p_id:id,p_hp:hp,p_initiative:initiative,p_ac:ac,p_conditions:conditions});
+export const deleteCombatant=id=>rpc('order_delete_combatant',{p_id:id});
+export const encounterTurn=(id,action)=>rpc('order_encounter_turn',{p_encounter:id,p_action:action});
+export const encounterCheck=id=>rpc('order_my_encounter_check',{p_encounter:id});
+export const pauseEncounter=(id,paused)=>rpc('order_set_my_encounter_pause',{p_encounter:id,p_paused:paused});
+export const encounterRoll=(id,formula,visibility)=>rpc('order_roll_encounter',{p_encounter:id,p_formula:formula,p_visibility:visibility});
+export const encounterRolls=id=>rpc('order_list_encounter_rolls',{p_encounter:id});
