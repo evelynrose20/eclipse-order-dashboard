@@ -111,7 +111,7 @@ declare result jsonb;
 begin
  if public.order_my_role() is null then raise exception 'Membership required' using errcode='42501'; end if;
  select coalesce(jsonb_agg(jsonb_build_object(
-  'id',e.id,'name',e.name,'notes',e.notes,'themes',e.themes,'status',e.status,
+  'id',e.id,'name',e.name,'notes',case when public.order_can_direct_encounter(e.id) then e.notes else '' end,'themes',e.themes,'status',e.status,
   'round_number',e.round_number,'turn_index',e.turn_index,
   'created_by',e.created_by,'created_at',e.created_at,
   'combatants',coalesce((
