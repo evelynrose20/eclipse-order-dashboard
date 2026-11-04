@@ -7,11 +7,11 @@ This is development code in PR #9; it has **not** been applied to the live Supab
 1. Back up the existing Supabase PostgreSQL data.
 2. Confirm that `supabase/profile-encounters.sql` was already applied; the encounter and profile tables must exist.
 3. Run **`supabase/battlemap-dice.sql`** from this branch, once, in the trusted Supabase SQL Editor.
-4. Open **My RP profile**, confirm you are 18 or older, and **click Save profile preferences**. The checkbox alone was not persisted in the old UI.
+4. Open **My RP profile** and confirm you are 18 or older; the new checkbox saves the declaration automatically. Click **Save profile preferences** after changing content categories.
 5. Reload **Encounters & dice**. If no encounters exist, that is a valid empty state; create one with a Domina, High Command, or Handler account.
 6. If you cannot create encounters, check that your Supabase Auth email was assigned the correct Order role via `order_members`. The user's main login email is NOT automatically an admin solely because they own the website.
 
-The previous "Adult-only access not enabled" error came from a second, independent `order_members.adult_approved` check. The migration changes the encounter access helper to use the player's **saved 18+ profile declaration** instead. It does not request or store identity documents. An 18+ self-declaration is not conclusive verification of actual age.
+The previous "Adult-only access not enabled" error came from a second, independent `order_members.adult_approved` check. The migration retires that staff approval control and changes encounter access to use the player's **saved 18+ profile declaration** instead. It does not request or store identity documents. An 18+ self-declaration is not conclusive verification of actual age.
 
 ## Battle map
 
@@ -45,12 +45,24 @@ In a separate Supabase staging project, test:
 - GM creates an encounter and adds a linked consenting member; no profile preference details leak.
 - GM can move tokens but a member cannot call `order_move_token`.
 - Drag/touch placement causes one save per move and persists after reload.
-- Two combatants cannot occupy the same tile.
+- Two combatants cannot occupy the same tile; moving a token makes one write, and an external battlemap image only stores a URL.
 - Attack vs AC applies natural-20/1 behavior; saves and ability checks use DC totals.
 - GM-private rolls are invisible to unrelated members.
-- GM roll requests cannot be answered by the wrong account.
+- GM roll requests cannot be answered by the wrong account; ability/save/skill proficiency modifiers can be filled from the authorized character sheet.
 - Reapplying the same damage/healing roll is rejected without changing HP twice.
 - Member OOC pause or category opt-out blocks rolls, including on bound characters.
 - Export and restore a database backup before production.
 
 No files with member OOC preference data or private character information belong in the public GitHub repository.
+
+## If there is still no Create Encounter control
+
+The signed-in account may not have a GM-capable Order role. Verify in the trusted Supabase SQL Editor (replace the placeholder with the actual account email):
+
+```sql
+select u.email, coalesce(m.role,'NOT APPROVED') as order_role
+from auth.users u left join public.order_members m on m.user_id=u.id
+where lower(u.email)=lower('YOUR_EMAIL_HERE');
+```
+
+Only `domina`, `high_command`, and `handler` can create an encounter. Existing encounter records are empty until a GM creates one; “No encounter selected” is not a database error by itself.
