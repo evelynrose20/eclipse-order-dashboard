@@ -280,7 +280,9 @@ begin
   when p_kind='death_save' then 10 else p_dc end;
  if p_kind in ('attack','ability','saving_throw','skill','contest','death_save','concentration') and resolved_dc is not null then
   outcome_text:=case when total>=resolved_dc then 'success' else 'failure' end;
-  if roll_sides=20 then
+  -- In D&D 5e, natural 20/1 automatically affect attack rolls.
+  -- Ordinary ability checks and saving throws use the total vs DC.
+  if roll_sides=20 and p_kind='attack' then
    if chosen=20 then outcome_text:='critical_success';
    elsif chosen=1 then outcome_text:='critical_failure';
    end if;
