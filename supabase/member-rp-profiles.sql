@@ -51,7 +51,7 @@ begin
  for item in select value from jsonb_array_elements(p_entries) loop
   if jsonb_typeof(item)<>'object' then raise exception 'Invalid preference entry'; end if;
   title:=trim(coalesce(item->>'label',''));choice:=item->>'rating';
-  if length(title) not between 1 and 80 or choice not in ('favorite','yes','maybe','no')
+  if length(title) not between 1 and 80 or coalesce(choice,'') not in ('favorite','yes','maybe','no')
     or (select count(*) from jsonb_object_keys(item))<>2 then
     raise exception 'Each entry needs a short label and Favorite, Yes, Maybe or No'; end if;
  end loop;
