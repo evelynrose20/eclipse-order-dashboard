@@ -83,3 +83,5 @@ export const setSceneConsent = (id,consent,paused) => rpc('order_scene_consent',
 export const setSceneState = (id,state) => rpc('order_scene_state',{p_scene_id:id,p_state:state});
 export const rollSceneDice = (id,count,sides,modifier) => rpc('order_roll_dice',{p_scene_id:id,p_count:count,p_sides:sides,p_modifier:modifier});
 export const listSceneRolls = id => rpc('order_list_dice',{p_scene_id:id});
+
+export const setAdultRPAccess = (id,approved) => rpc('order_set_adult_approved',{p_user_id:id,p_approved:approved});
