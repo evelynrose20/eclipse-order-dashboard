@@ -280,8 +280,9 @@ as $consent$
 begin
  if public.order_my_role() is null then raise exception 'Not approved' using errcode='42501'; end if;
  if not public.order_adult_approved() then raise exception 'Adult RP access must be reviewed and approved first' using errcode='42501'; end if;
- if not exists(select 1 from public.order_scenes where id=p_scene_id and state<>'closed') then
-   raise exception 'Scene is not accepting participation';
+ if not exists(select 1 from public.order_scenes
+   where id=p_scene_id and (state<>'closed' or p_consent=false)) then
+   raise exception 'Closed scenes cannot accept new consent, but withdrawal remains available';
  end if;
  insert into public.order_scene_participation(scene_id,user_id,ooc_consent,paused)
  values(p_scene_id,auth.uid(),p_consent,case when p_consent then p_paused else true end)
