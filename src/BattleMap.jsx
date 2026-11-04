@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-import {setEncounterMap,moveEncounterToken} from './supabase.js';
+import {setEncounterMap,moveEncounterToken,setEncounterMapImage} from './supabase.js';
 import './battlemap.css';
 
 function Token({combatant,canDirect,onSelect,selected}) {
@@ -18,6 +18,7 @@ function Token({combatant,canDirect,onSelect,selected}) {
 }
 export default function BattleMap({encounter,canDirect,onRefresh,onError}){
  const [selected,setSelected]=useState(null),[saving,setSaving]=useState(false),[mapStyle,setMapStyle]=useState(null);
+ const [imageUrl,setImageUrl]=useState(encounter.map_image_url||'');
  const cols=encounter.map_columns||16,rows=encounter.map_rows||10,style=encounter.map_style||'dungeon';
  const combatants=encounter.combatants||[];
  const onBoard=combatants.filter(c=>c.tile_x!=null&&c.tile_y!=null);
@@ -37,12 +38,14 @@ export default function BattleMap({encounter,canDirect,onRefresh,onError}){
   setSaving(true);try{await setEncounterMap(encounter.id,cols,rows,nextStyle);setMapStyle(null);await onRefresh()}
   catch(err){onError(err.message)}finally{setSaving(false)}
  }
+ async function updateImage(e){e.preventDefault();setSaving(true);try{await setEncounterMapImage(encounter.id,imageUrl);await onRefresh()}catch(err){onError(err.message)}finally{setSaving(false)}}
  const tiles=Array.from({length:cols*rows},(_,i)=>({x:i%cols,y:Math.floor(i/cols)}));
  return <section className="panel battlemap-panel">
   <div className="panel-heading wrap"><div><h2>Encounter battle map</h2><p>Move tokens around the tactical grid. Locations save only when a token is dropped or placed.</p></div>
    {canDirect&&<label className="field map-style-picker"><span>MAP TERRAIN</span><select disabled={saving} value={mapStyle||style} onChange={e=>updateMap(e.target.value)}><option value="dungeon">Dungeon stone</option><option value="forest">Woodland</option><option value="parchment">Parchment</option></select></label>}
   </div>
-  <div className={'tactical-board terrain-'+style} style={{gridTemplateColumns:'repeat('+cols+',minmax(0,1fr))','--map-cols':cols}}>
+  {canDirect&&<form className="map-image-form" onSubmit={updateImage}><label className="field"><span>OPTIONAL BATTLEMAP IMAGE URL</span><input type="url" value={imageUrl} placeholder="https://example.com/my-battlemap.webp" onChange={e=>setImageUrl(e.target.value)}/></label><button className="mini-btn" type="submit" disabled={saving}>Apply image</button><span className="muted">Use a trusted HTTPS image host. Only its URL is stored in Supabase, not the image itself.</span></form>}
+  <div className={'tactical-board terrain-'+style} style={{gridTemplateColumns:'repeat('+cols+',minmax(0,1fr))','--map-cols':cols,...(encounter.map_image_url?{backgroundImage:'url('+JSON.stringify(encounter.map_image_url)+')',backgroundSize:'cover',backgroundPosition:'center'}:{})}}>
    {tiles.map(({x,y})=>{
     const c=occupied.get(x+':'+y);
     return <div className={'battle-tile '+(selected&&!c?'target-tile':'')} key={x+':'+y}
