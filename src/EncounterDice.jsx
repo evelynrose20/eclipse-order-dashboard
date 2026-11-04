@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP,applyRolledHP} from './supabase.js';
-import {parseDiceFormula} from './rpRules.js';
+import {parseDiceFormula,sheetCheckFormula,DND_SKILL_ABILITIES} from './rpRules.js';
 import './encounter-dice.css';
 
 const PRESETS=[
@@ -17,6 +17,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  const [target,setTarget]=useState(''),[targetDC,setTargetDC]=useState(12);
  const [reqCharacter,setReqCharacter]=useState(''),[reqKind,setReqKind]=useState('saving_throw');
  const [reqLabel,setReqLabel]=useState('Constitution saving throw'),[reqFormula,setReqFormula]=useState('1d20+0'),[reqDC,setReqDC]=useState(12);
+ const [reqSelection,setReqSelection]=useState('con');
  const [last,setLast]=useState(null),[error,setError]=useState('');
  const [hpTarget,setHpTarget]=useState(''),[appliedRollIds,setAppliedRollIds]=useState([]);
  const eligible=Boolean(check?.adult_declaration&&!check?.paused&&!check?.missing_themes?.length);
@@ -47,7 +48,9 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
     <h3>Ask a character to roll</h3><p className="muted">Send a specific check, saving throw, attack or contest to a linked player.</p>
     <div className="gm-check-grid">
       <label className="field"><span>PLAYER CHARACTER</span><select required value={reqCharacter} onChange={e=>setReqCharacter(e.target.value)}><option value="">Choose character</option>{linked.map(c=><option key={c.id} value={c.character_id}>{c.name}</option>)}</select></label>
-      <label className="field"><span>CHECK TYPE</span><select value={reqKind} onChange={e=>setReqKind(e.target.value)}>{CHECK_KINDS.map(k=><option key={k} value={k}>{k.replace('_',' ')}</option>)}</select></label>
+      <label className="field"><span>CHECK TYPE</span><select value={reqKind} onChange={e=>{setReqKind(e.target.value);setReqSelection(e.target.value==='skill'?'Perception':'con')}}>{CHECK_KINDS.map(k=><option key={k} value={k}>{k.replace('_',' ')}</option>)}</select></label>
+      <label className="field"><span>ABILITY / SKILL</span><select value={reqSelection} onChange={e=>setReqSelection(e.target.value)}>{(reqKind==='skill'?Object.keys(DND_SKILL_ABILITIES):['str','dex','con','int','wis','cha']).map(v=><option key={v} value={v}>{v.toUpperCase()}</option>)}</select></label>
+      <button className="mini-btn" type="button" disabled={!reqCharacter} onClick={()=>{const record=linked.find(x=>x.character_id===reqCharacter)?.record;if(record)setReqFormula(sheetCheckFormula(record,reqKind,reqSelection))}}>Use sheet modifier</button>
       <label className="field"><span>CHECK NAME</span><input required minLength={2} maxLength={100} value={reqLabel} onChange={e=>setReqLabel(e.target.value)}/></label>
       <label className="field"><span>FORMULA</span><input required value={reqFormula} onChange={e=>setReqFormula(e.target.value)} maxLength={24}/></label>
       <label className="field"><span>DC / TARGET</span><input type="number" min="0" max="99" value={reqDC} onChange={e=>setReqDC(e.target.value)}/></label>
