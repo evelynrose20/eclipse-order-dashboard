@@ -1,37 +1,35 @@
-# Eclipse Order — Operations and deployment guide
+# Eclipse Order — Operations
 
-## Migration order
-**Fastest for a fresh project:** open supabase/SETUP-ALL.sql, copy it into Supabase SQL Editor and run once after backing up the project. The combined script includes every migration below. If parts have already been applied, review the current schema and take a backup before applying further SQL.
+## Database migration
 
-Alternatively, run these from Supabase SQL Editor in order:
-1. supabase/schema.sql
-2. supabase/roles-and-sheets.sql
-3. supabase/platform-foundations.sql
-4. supabase/advanced-dice.sql
-5. supabase/audit.sql
-6. supabase/settings.sql
+For a fresh project, apply the baseline SQL under `supabase/SETUP-ALL.sql` and then the new **`supabase/profile-encounters.sql`** migration. For an existing Supabase project, first inspect the installed schema and back it up; apply only missing forward migrations. A GitHub build does not install SQL.
 
-These files are not deployed to Supabase automatically by GitHub. The real Domina account must be provisioned via Supabase Authentication → Users, then assigned via the commented bootstrap SQL in roles-and-sheets.sql. Other member accounts must be approved too. Adult RP access must be reviewed and approved by the Domina; the approval flag is not documentary age verification.
+The new migration creates private `order_profile_preferences`, encounter/turn/combatant/dice tables, and server-checked RPCs. It revokes the legacy scene-consent endpoints while preserving historical records. This revision does not require ID scans or document storage.
 
-## Critical acceptance tests before production
-- Confirm Domina can administer accounts; High Command cannot grant itself Domina.
-- A member can see their own free sheet, not someone else's.
-- Bound character APIs return only redacted information; direct REST calls must not expose hidden fields.
-- Free → bound and bound → free transitions both require player OOC approval and preserve the full record.
-- Linked characters cannot be transferred while bound or rebound through the ordinary character editor.
-- A handler sees only assigned characters and cannot read full member email records.
-- Adult-unapproved accounts cannot enter RP scene operations.
-- Scene agreement lists the complete scope and themes before opting in; pause and revoke always work OOC.
-- Opted-in players can roll and see shared server-recorded results. A paused or revoked player cannot roll.
-- Advantage and disadvantage use 2d20kh1 and 2d20kl1. GM-private rolls must stay hidden in API responses.
-- Audit records are written for command review.
-- Test browser reload, mobile layout, network failure, session expiry, and database restore.
+## Eligibility model
 
-## Backups and retention
-Automated offsite Postgres backups are NOT configured. Supabase Free is unsuitable as the sole long-term copy of irreplaceable RP data. Keep encrypted, access-controlled backups outside the public repository, use multiple historical copies, and test restoring one to a separate database before production. Administrative audit history has no automated pruning yet. Define and implement a retention/deletion policy.
+- Each member must declare they are at least 18 and choose their private content categories.
+- The Domina controls the separate adult-access flag after the FC's appropriate off-platform member screening. This flag is not proof of age or identity.
+- No ID upload, birthdate, documentary age verification or identity document storage is built into the app.
+- Member profile choices are private and editable; encounters list their required themes.
+- Server RPCs deny encounter rolls when the member is not approved, has not declared 18+, lacks a required profile category, or has paused OOC participation.
+- Encounter GMs should honor stop/withdrawal requests outside the app as well. Profile opt-ins never authorize coercing an OOC participant to continue.
 
-## Deployment
-The branches are stacked: dashboard overhaul → Supabase → character roles → RP platform. A parent PR merged into a feature branch does not necessarily mean the site is deployed from main. Never merge or publish the new version before SQL, access controls and browser workflows have been tested.
+## Acceptance tests before release
 
-## Low-maintenance routine
-Monthly: verify backups and error logs. Quarterly: restore a backup in staging, review dependencies and rerun permission tests. For small AI edits, use AGENTS.md and require a PR with green tests.
+1. Test the Domina, unrelated member, bound member and assigned handler roles in separate authenticated browser sessions.
+2. Verify private profile preferences cannot be read or modified by another account's API calls.
+3. Check that new characters can become bound/unbound with separate player approval and full sheet preservation.
+4. Create an encounter; add a GM NPC and an eligible player character; verify initiative ordering and turn/round progression.
+5. Change combatant HP, AC, initiative and conditions; verify values persist across reloads and are not editable by ordinary members.
+6. Test public dice, GM-only dice, advantage/disadvantage and shared history.
+7. Reject dice rolls when a user is not eligible, has not opted into required themes, or has paused OOC.
+8. Verify a player can pause participation even when bound. Confirm profile changes take effect without a code deployment.
+9. Ensure unauthorized accounts cannot see GM notes or private player preferences.
+10. Check browser/mobile layout, expired sessions, offline behavior, safe migration to staging and backup restore.
+
+## Backups and release controls
+
+Automated encrypted offsite backup and restoration are still **not configured**. Back up the database privately and test a restore before production. Do not upload private records into public GitHub Actions artifacts.
+
+Deploy only after database setup, integration tests and explicit review. Use a staged PR rather than directly pushing work to the live `main` branch. Update dependencies periodically and keep independent backups.
