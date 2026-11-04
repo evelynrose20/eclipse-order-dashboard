@@ -36,7 +36,7 @@ export function CharacterTransitions({characters,role,userId,onRefresh}){
 
 export function RPScenes({role,userId}){
  const [scenes,setScenes]=useState([]),[selectedId,setSelectedId]=useState(''),[rolls,setRolls]=useState([]);
- const [title,setTitle]=useState(''),[summary,setSummary]=useState('');
+ const [title,setTitle]=useState(''),[summary,setSummary]=useState(''),[themes,setThemes]=useState('');
  const [count,setCount]=useState(1),[sides,setSides]=useState(20),[modifier,setModifier]=useState(0);
  const [working,setWorking]=useState(false),[error,setError]=useState(''),[lastRoll,setLastRoll]=useState(null);
  const host=['domina','high_command','handler'].includes(role);
@@ -48,7 +48,7 @@ export function RPScenes({role,userId}){
   update();const timer=setInterval(update,15000);return()=>{active=false;clearInterval(timer)};
  },[selectedId]);
  async function act(work){setWorking(true);setError('');try{const value=await work();await refresh();if(selectedId)setRolls(await listSceneRolls(selectedId));return value}catch(e){setError(e.message)}finally{setWorking(false)}}
- async function startScene(e){e.preventDefault();const id=await act(()=>createScene(title,summary));if(id){setSelectedId(id);setTitle('');setSummary('')}}
+ async function startScene(e){e.preventDefault();const id=await act(()=>createScene(title,summary,themes));if(id){setSelectedId(id);setTitle('');setSummary('');setThemes('')}}
  async function roll(){const result=await act(()=>rollSceneDice(selectedId,Number(count),Number(sides),Number(modifier)));if(result)setLastRoll(result)}
  return <div className="rp-page">
   <div className="rp-layout">
@@ -56,7 +56,8 @@ export function RPScenes({role,userId}){
     <div className="panel-heading"><div><h2>RP sessions</h2><p>Create and run scenes with an OOC participation gate.</p></div></div>
     {host&&<form className="rp-create" onSubmit={startScene}>
      <label className="field"><span>NEW SCENE TITLE</span><input required minLength={3} maxLength={140} value={title} onChange={e=>setTitle(e.target.value)} placeholder="The Moonlit Accord"/></label>
-     <label className="field"><span>BRIEF OOC PREMISE (NO SENSITIVE DETAILS)</span><textarea maxLength={1200} rows={2} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
+     <label className="field"><span>BRIEF OOC PREMISE (NO SENSITIVE DETAILS)</span><textarea required minLength={20} maxLength={1200} rows={2} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
+     <label className="field"><span>OOC THEMES & SCOPE (SHOWN BEFORE OPT-IN)</span><textarea required minLength={10} maxLength={1000} rows={3} value={themes} onChange={e=>setThemes(e.target.value)} placeholder="List the themes participating players are agreeing to; do not include explicit scene dialogue."/></label>
      <button className="btn secondary" disabled={working}>Create scene</button>
     </form>}
     <div className="rp-scene-list">{scenes.length?scenes.map(scene=><button className={'rp-scene '+(selectedId===scene.id?'chosen':'')} key={scene.id} onClick={()=>{setSelectedId(scene.id);setLastRoll(null)}}>
@@ -65,16 +66,16 @@ export function RPScenes({role,userId}){
    </section>
    <section className="panel rp-panel">
     {!chosen?<div className="empty"><h3>Select a scene</h3><p>Sessions, consent and rolls appear here.</p></div>:<>
-      <div className="panel-heading"><div><h2>{chosen.title}</h2><p>{chosen.summary||'No public premise recorded.'}</p></div><Status>{chosen.state}</Status></div>
+      <div className="panel-heading"><div><h2>{chosen.title}</h2><p>{chosen.summary}</p></div><Status>{chosen.state}</Status></div>
       {(host&&(['domina','high_command'].includes(role)||chosen.hosted_by===userId))&&<div className="rp-toolbar">
        <button className="mini-btn" disabled={working||chosen.state==='active'} onClick={()=>act(()=>setSceneState(chosen.id,'active'))}>Start scene</button>
        <button className="mini-btn danger" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneState(chosen.id,'closed'))}>Close scene</button>
       </div>}
-      <div className="rp-consent">
+      <div className="rp-consent"><div className="rp-theme-scope"><strong>Declared OOC scene themes</strong><p>{chosen.themes}</p></div>
        <h3>Out-of-character scene agreement</h3>
        <p>Fictional characters may refuse IC, but participating players must opt in OOC. No agreement overrides a real player's ability to pause, revoke consent, or leave the scene.</p>
        <div className="rp-toolbar">
-        {!chosen.my_consent&&<button className="btn primary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,false))}>Opt in OOC</button>}
+        {!chosen.my_consent&&<button className="btn primary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,false))}>Agree to these themes OOC</button>}
         {chosen.my_consent&&!chosen.my_paused&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,true))}>Pause my participation</button>}
         {chosen.my_consent&&chosen.my_paused&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,true,false))}>Resume my participation</button>}
         {chosen.my_consent&&<button className="btn secondary" disabled={working||chosen.state==='closed'} onClick={()=>act(()=>setSceneConsent(chosen.id,false,true))}>Revoke OOC consent</button>}
