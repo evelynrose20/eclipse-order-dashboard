@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SLAVES, RANKS, SHOP_ITEMS } from './data/initialData.js';
 import './dashboard.css';
+import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters} from './supabase.js';
 
 const KEY = 'eclipse-order-ledger-v3';
 const NAV = [['overview','Overview','◈'],['roster','Character roster','▦'],['sheet','Character sheets','◇'],['market','Black Market','◆'],['settings','Workspace & backup','⚙']];
@@ -41,7 +42,14 @@ function RankTag({rank}) { return <span className={'rank-tag rank-' + rankIndex(
 function Empty({title,detail}) { return <div className="empty"><div className="empty-icon">◇</div><h3>{title}</h3><p>{detail}</p></div>; }
 
 export default function Dashboard() {
-  const [characters,setCharacters] = useState(readLedger);
+  const [characters,setCharacters] = useState(()=>configured?[]:readLedger());
+  const [session,setSession] = useState(()=>configured?currentSession():null);
+  const [email,setEmail] = useState('');
+  const [password,setPassword] = useState('');
+  const [loginError,setLoginError] = useState('');
+  const [loading,setLoading] = useState(configured);
+  const [remoteError,setRemoteError] = useState('');
+  const [syncStatus,setSyncStatus] = useState(configured?'Sign in required':'Browser-saved');
   const [tab,setTab] = useState('overview');
   const [search,setSearch] = useState('');
   const [rankFilter,setRankFilter] = useState('all');
@@ -54,7 +62,30 @@ export default function Dashboard() {
   const [notice,setNotice] = useState('');
   const [saveError,setSaveError] = useState('');
   const importRef = useRef(null);
-  useEffect(() => { try { localStorage.setItem(KEY,JSON.stringify({version:3,characters}));setSaveError(''); } catch {setSaveError('Browser storage is unavailable or full. Export a backup to avoid data loss.');} },[characters]);
+  useEffect(() => {
+    if(configured) return;
+    try { localStorage.setItem(KEY,JSON.stringify({version:3,characters}));setSaveError(''); }
+    catch {setSaveError('Browser storage is unavailable or full. Export a backup to avoid data loss.');}
+  },[characters]);
+  useEffect(()=>{
+    if(!configured||!session){setLoading(false);return;}
+    let active=true;
+    async function refresh(){
+      try{
+        const rows=await loadSharedCharacters();
+        if(active){setCharacters(rows.map(normalize));setRemoteError('');setSyncStatus('Shared ledger connected');setLoading(false);}
+      }catch(error){if(active){setRemoteError(error.message);setSyncStatus('Connection error');setLoading(false);}}
+    }
+    refresh();
+    const timer=setInterval(refresh,30000);
+    return ()=>{active=false;clearInterval(timer);};
+  },[session]);
+  async function login(e){
+    e.preventDefault();setLoginError('');
+    try{const next=await signIn(email.trim(),password);setSession(next);setPassword('');setLoading(true);}
+    catch(error){setLoginError(error.message);}
+  }
+  function logout(){signOut();setSession(null);setCharacters([]);setRemoteError('');setSyncStatus('Signed out');}
   useEffect(() => {if (!selectedId || !characters.some(c=>c.id===selectedId)) setSelectedId(characters[0]?.id ?? null);},[characters,selectedId]);
   const selected = characters.find(c=>c.id===selectedId) || null;
   const filtered = useMemo(() => characters.filter(c => (rankFilter==='all' || c.rank===rankFilter) && [c.name,c.player,c.owner,c.specialty].join(' ').toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)),[characters,rankFilter,search]);
