@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SLAVES, RANKS, SHOP_ITEMS } from './data/initialData.js';
 import './dashboard.css';
 import './shared-login.css';
-import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters,loadMyRole,loadOrderMembers,updateOrderMemberRole,updateOrderMemberStanding} from './supabase.js';
+import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters,loadMyRole,loadOrderMembers,updateOrderMemberRole,updateOrderMemberStanding,setAdultRPAccess} from './supabase.js';
 import {FullDndSheet,LimitedSheet,MemberDirectory,ACCOUNT_ROLES} from './OrderSheets.jsx';
 import {CharacterTransitions,RPScenes} from './RPPlatform.jsx';
 
@@ -103,6 +103,11 @@ export default function Dashboard() {
     catch(error){setLoginError(error.message);}
   }
   function logout(){signOut();setSession(null);setCharacters([]);setMembers([]);setAccountRole(null);setRemoteError('');setSyncStatus('Signed out');}
+  async function changeAdultAccess(member,approved){
+    if(!window.confirm((approved?'Approve':'Revoke')+' adult RP access for '+member.email+'? Confirm eligibility outside this application before approving.'))return;
+    try{await setAdultRPAccess(member.user_id,approved);setMembers(await loadOrderMembers());warn('Adult RP access updated.');}
+    catch(error){warn('Adult access update failed: '+error.message);}
+  }
   async function changeMemberStanding(member,standing){
     try{await updateOrderMemberStanding(member.user_id,standing);setMembers(await loadOrderMembers());warn('Member standing updated.');}
     catch(error){warn('Standing change failed: '+error.message);}
@@ -217,7 +222,7 @@ export default function Dashboard() {
         {tab==='market' && <div className="market-layout"><section className="panel"><div className="panel-heading wrap"><div><h2>Contraband catalogue</h2><p>Reference prices and rank requirements</p></div><select aria-label="Filter market by rank" value={marketFilter} onChange={e=>setMarketFilter(e.target.value)}><option value="all">All requirements</option>{['Rank I','Rank II','Rank III','Rank IV'].map(x=><option key={x}>{x}</option>)}</select></div><div className="market-list">{SHOP_ITEMS.filter(item=>marketFilter==='all'||item.rank===marketFilter).map(item=><div className="market-item" key={item.name}><span className="item-glyph">◆</span><div><strong>{item.name}</strong><p>{item.effect}</p><span className="item-rank">{item.rank} required</span></div><b>{gil(item.cost)} <small>GIL</small></b></div>)}</div></section><section className="panel"><div className="panel-heading"><div><h2>Ration & privileges</h2><p>Benefits by rank</p></div></div>{RANK_KEYS.map((key,i)=><div className="ration" key={key}><RankTag rank={key}/><strong>{RANKS[key].food}</strong><p>{RANKS[key].cut}% gil cut · {RANKS[key].mod>=0?'+':''}{RANKS[key].mod} dice modifier</p></div>)}<div className="hint-box"><strong>Catalogue only</strong><p>Prices are reference information. This static workspace does not process purchases or transfer gil.</p></div></section></div>}
         {tab==='scenes'&&configured&&session&&<RPScenes role={accountRole} userId={session.user?.id}/>}
         {tab==='transitions'&&configured&&session&&<CharacterTransitions characters={characters} role={accountRole} userId={session.user?.id} onRefresh={refreshCharacters}/>}
-        {tab==='members'&&['domina','high_command','handler'].includes(accountRole)&&<MemberDirectory members={members} currentRole={accountRole} onChangeRole={changeMemberRole} onChangeStanding={changeMemberStanding}/>}
+        {tab==='members'&&['domina','high_command','handler'].includes(accountRole)&&<MemberDirectory members={members} currentRole={accountRole} onChangeRole={changeMemberRole} onChangeStanding={changeMemberStanding} onChangeAdult={changeAdultAccess}/>}
         {tab==='settings' && <div className="settings-grid"><section className="panel"><h2>Backup & restore</h2><p className="muted">Export your complete ledger as JSON before changing browsers or clearing site data.</p><div className="settings-actions">{canCommand&&<button className="btn primary" onClick={()=>downloadFile('eclipse-order-ledger.json',JSON.stringify({version:3,characters},null,2))}>Download JSON backup</button>}{canCommand&&<button className="btn secondary" onClick={()=>importRef.current?.click()}>Import JSON backup</button>}{configured&&canCommand&&<button className="btn secondary" onClick={migrateLocal}>Migrate saved browser records</button>}<input hidden ref={importRef} type="file" accept=".json,application/json" onChange={importBackup}/></div><p className="fine-print">{configured?'Import adds or updates shared records. Existing unrelated records are retained.':'Import replaces the current ledger after confirmation. Existing browser records are migrated from earlier app versions on first use.'}</p></section><section className="panel"><h2>Workspace information</h2><div className="settings-line"><span>Storage</span><strong>{configured?'Supabase PostgreSQL':'Browser localStorage'}</strong></div><div className="settings-line"><span>Character records</span><strong>{characters.length}</strong></div><div className="settings-line"><span>Accounts & permissions</span><strong>{configured?'Supabase Auth':'Not configured'}</strong></div><div className="settings-line"><span>Shared database</span><strong>{configured?'Connected':'Not connected'}</strong></div><div className="alert">{configured?'Approved members access this shared ledger through Supabase authentication and database row-level security. Role-based permissions protect the roster and collar-bound sheets at the database layer.':'This static site is not an authenticated application. Do not store passwords, private personal information or sensitive records here.'}</div></section></div>}
       </div>
     </main>
