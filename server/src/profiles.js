@@ -39,13 +39,17 @@ export async function profileRoute(pool,req,path){
    if(name.length>60||typeof b?.share_content!=='boolean'||typeof b?.share_kinks!=='boolean'||!Array.isArray(b?.kink_entries)||b.kink_entries.length>60)return fail(400,'invalid_rp_profile');
    const valid=['favorite','yes','maybe','no'];
    if(b.kink_entries.some(e=>typeof e?.label!=='string'||e.label.trim().length<1||e.label.length>80||!valid.includes(e.rating))||JSON.stringify(b.kink_entries).length>10000)return fail(400,'invalid_profile_entries');
+   if(b.share_content||b.share_kinks){
+    const [adult]=await pool.execute('SELECT adult_declaration FROM order_profile_preferences WHERE user_id=?',[user.id]);
+    if(!adult[0]?.adult_declaration)return fail(403,'adult_declaration_required_before_sharing');
+   }
    await pool.execute('INSERT INTO order_member_rp_profiles(user_id,display_name,share_content,share_kinks,kink_entries) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name),share_content=VALUES(share_content),share_kinks=VALUES(share_kinks),kink_entries=VALUES(kink_entries)',[user.id,name,b.share_content?1:0,b.share_kinks?1:0,JSON.stringify(b.kink_entries)]);
    return result(200,{status:'saved'});
   }
  }
  if(path==='/profile/directory'&&req.method==='GET'){
   const [rows]=await pool.query(
-   'SELECT p.display_name,p.share_content,p.share_kinks,p.kink_entries,f.content_preferences FROM order_member_rp_profiles p JOIN accounts a ON a.id=p.user_id LEFT JOIN order_profile_preferences f ON f.user_id=p.user_id WHERE a.is_active=1 AND a.approval_status="approved" AND (p.share_content=1 OR p.share_kinks=1) ORDER BY p.display_name'
+   'SELECT p.display_name,p.share_content,p.share_kinks,p.kink_entries,f.content_preferences FROM order_member_rp_profiles p JOIN accounts a ON a.id=p.user_id JOIN order_profile_preferences f ON f.user_id=p.user_id WHERE a.is_active=1 AND a.approval_status="approved" AND f.adult_declaration=1 AND (p.share_content=1 OR p.share_kinks=1) ORDER BY p.display_name'
   );
   return result(200,rows.map(r=>({
    display_name:r.display_name,shares_content:Boolean(r.share_content),shares_kinks:Boolean(r.share_kinks),
