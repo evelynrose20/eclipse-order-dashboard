@@ -1,6 +1,7 @@
 import {normalizeEmail,hashPassword,verifyPassword,generateToken,hashToken} from './credentials.js';
 
 const failures=new Map();
+const ipFailures=new Map();
 const WINDOW_MS=15*60*1000;
 const MAX_ATTEMPTS=6;
 const SESSION_HOURS=12;
@@ -35,6 +36,23 @@ async function readJSON(request){
  catch{throw Object.assign(new Error('Invalid JSON'),{status:400})}
 }
 const forbidden=()=>({status:401,body:{error:'invalid_credentials'}});
+function clientKey(request){
+ const fromTunnel=process.env.API_PUBLIC_ENABLED==='true'&&request.headers.host===process.env.API_PUBLIC_HOST;
+ const forwarded=String(request.headers['cf-connecting-ip']||'');
+ const ip=fromTunnel&&/^[0-9a-fA-F:.]{3,45}$/.test(forwarded)?forwarded:(request.socket?.remoteAddress||'loopback');
+ return 'login:'+ip;
+}
+function ipBlocked(key){
+ const now=Date.now(),row=ipFailures.get(key);
+ if(!row)return false;
+ if(now-row.since>WINDOW_MS){ipFailures.delete(key);return false}
+ return row.count>=30;
+}
+function failedIP(key){
+ const now=Date.now(),row=ipFailures.get(key);
+ ipFailures.set(key,!row||now-row.since>WINDOW_MS?{since:now,count:1}:{...row,count:row.count+1});
+ if(ipFailures.size>4000)for(const [k,v] of ipFailures){if(now-v.since>WINDOW_MS||ipFailures.size>4000)ipFailures.delete(k)}
+}
 export async function resolveSession(pool,request){
  const token=authHeader(request);
  if(!token)return null;
@@ -51,14 +69,15 @@ export async function authRoute(pool,request,path){
   const email=normalizeEmail(body?.email);
   const password=body?.password;
   if(!email||typeof password!=='string'||password.length>1024)return forbidden();
-  if(loginThrottle(email))return {status:429,body:{error:'too_many_attempts'}};
+  const ipKey=clientKey(request);
+  if(ipBlocked(ipKey)||loginThrottle(email))return {status:429,body:{error:'too_many_attempts'}};
   const [rows]=await pool.execute(
    'SELECT id,password_hash,approval_status FROM accounts WHERE email=? LIMIT 1',[email]
   );
   // For absent users, still perform one expensive hash verification to reduce account enumeration timing.
   const storedHash=rows[0]?.password_hash || await dummyPasswordHash;
   const valid=await verifyPassword(password,storedHash);
-  if(!valid){noteFailure(email);return forbidden();}
+  if(!valid){noteFailure(email);failedIP(ipKey);return forbidden();}
   if(rows[0].approval_status==='pending')return {status:403,body:{error:'account_pending_approval'}};
   if(rows[0].approval_status!=='approved')return {status:403,body:{error:'account_not_approved'}};
   failures.delete(email);
