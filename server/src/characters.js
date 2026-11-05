@@ -159,7 +159,7 @@ export async function characterRoute(pool,req,path){
   // Never accept ownership, handler assignment, collar or bound-rank changes through normal sheet save.
   const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode']);
   if(old.progression_version===1){
-   for(const key of ['progression_version','ability_points','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws'])blocked.add(key);
+   for(const key of ['progression_version','class_features','ability_points','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws'])blocked.add(key);
    // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
    for(const key of ['str','dex','con','int','wis','cha'])blocked.add(key);
   }
