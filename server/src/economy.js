@@ -44,7 +44,10 @@ export async function economyRoute(pool,req,path){
  if(!c)return error(404,'character_not_found');
  // The bound player's limited sheet does not expose a wallet or inventory.
  const full=isCommand(actor)||(actor.account_role==='handler'&&c.handler_account_id===actor.id)||(!c.collar_bound&&c.player_account_id===actor.id);
- if(!full)return error(403,'restricted_character_economy');
+ if(!full&&(!c.collar_bound||c.player_account_id!==actor.id||!['ration',undefined].includes(action)))return error(403,'restricted_character_economy');
+ if(!action&&req.method==='GET'&&!full){
+  return ok({character_id:id,restricted:true,rank:rankIndex(c),ration_available:true});
+ }
  if(!action&&req.method==='GET'){
   const [balance]=await pool.execute('SELECT balance FROM eo_wallets WHERE character_id=?',[id]);
   const [items]=await pool.execute('SELECT i.item_id,i.quantity,c.name,c.category,c.description FROM eo_inventory i JOIN eo_item_catalog c ON c.id=i.item_id WHERE i.character_id=? AND i.quantity>0 ORDER BY c.name',[id]);
