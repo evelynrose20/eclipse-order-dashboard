@@ -30,7 +30,7 @@ export async function accountRoute(pool,req,path){
   const password=body?.password;
   if(!email||name.length<2||name.length>80||!validPassword(password))
    return error(400,'Enter a valid email, display name (2–80 characters), and password (16+ characters).');
-  if(!body?.adult_declaration) return error(400,'An adult-only membership declaration is required.');
+  if(body?.adult_declaration!==true) return error(400,'An adult-only membership declaration is required.');
   const [existing]=await pool.execute('SELECT id FROM accounts WHERE email=? LIMIT 1',[email]);
   if(existing.length)return error(409,'This email is already registered. Contact an administrator if you need help.');
   const id=randomUUID();
