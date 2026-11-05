@@ -58,3 +58,68 @@ The migration should show `001_core`; there should be **five tables** (`accounts
 - Password hashes will be stored using an appropriate password-hashing scheme in a future auth implementation; **do not manually insert plaintext passwords**.
 - Member profiles, kink lists, event registration, dice, and backups are **not** migrated or implemented by this schema yet.
 - Do not expose database port 3306 to the Internet.
+
+## Step 22 — Initialize secure local account sessions
+
+The five tables from `001_core.sql` are now created and `/ready` reports `{"status":"ready","database":"connected"}`.
+
+Before creating any accounts:
+
+1. **Back up** your new `eclipse_order` database with HeidiSQL (there may still be no member data, but keep a recovery point).
+2. On GitHub, open [server/sql/002_sessions.sql](sql/002_sessions.sql) and copy its entire contents into a new HeidiSQL query tab.
+3. Execute it with your **database administrator** session. The restricted `eclipse_api` user must not receive schema-changing privileges.
+4. Check:
+
+```sql
+USE eclipse_order;
+SELECT version,applied_at FROM schema_migrations;
+SHOW TABLES;
+```
+
+Expected migration markers: `001_core`, `002_sessions`. Expected tables: **six**, including `account_sessions`. This does not import Supabase accounts or create logins.
+
+## Step 23 — Update your Windows API source code
+
+If you originally used **Download ZIP**, download the updated `feature/windows-local-api-bootstrap` branch. Extract it to a fresh location, and **copy your existing local `server/.env` file only onto your own PC** into the new `server` folder. Never upload `.env` to GitHub or put its contents in a chat.
+
+If you cloned the branch with Git, update it from PowerShell in your repository directory:
+
+```powershell
+git checkout feature/windows-local-api-bootstrap
+git pull origin feature/windows-local-api-bootstrap
+```
+
+Open a terminal in the **updated** `server` folder, install dependencies (if needed), and start the service:
+
+```powershell
+npm install
+npm start
+```
+
+Leave the API terminal open. It should still respond at `http://127.0.0.1:3182/health` and `/ready`.
+
+## Step 24 — Create your FIRST Domina account locally
+
+Open a **second** terminal in that same `server` folder. Run:
+
+```powershell
+npm run setup:domina
+```
+
+The command prompts for your email, display name and a new password (twice). Password entry is **hidden**. Use a unique password of at least **16 characters**. Do not paste your password in GitHub, SQL Editor, screenshots or this chat.
+
+For safety, this command only works **when the accounts table is empty**. It creates one Domina account using a randomly salted scrypt password hash. It does not create a web-accessible "create admin" endpoint.
+
+## Step 25 — Verify local login
+
+With the local API running, open the second PowerShell window inside the updated `server` directory and run:
+
+```powershell
+npm run check:login
+```
+
+Enter the new email and password in the terminal (password stays hidden). A success message should report `Role: domina` followed by a successful session logout. The test does **not** print the authentication token.
+
+This initial API has three local-only authentication endpoints: `POST /auth/login`, `GET /auth/me`, and `POST /auth/logout`. Sessions expire after 12 hours and can be revoked by logout. There is a basic failed-login throttle; advanced rate limits, MFA, password reset and member-registration flows are not yet implemented. Do not expose these routes through Cloudflare.
+
+**Do not enable the public Cloudflare route or move any Supabase records yet.** A local Domina sign-in does not mean the frontend is switched off Supabase. The account and character APIs, permission model, player migration and HTTPS/Cloudflare security still require implementation and testing.
