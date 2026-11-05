@@ -45,5 +45,5 @@ export const withdrawEventSignup=(...args)=>(useLocal?local:original).withdrawEv
 export const addApprovedEventPlayer=(...args)=>(useLocal?local:original).addApprovedEventPlayer(...args);
 export const setAdultRPAccess=(...args)=>(useLocal?local:original).setAdultRPAccess(...args);
 
-export const listEventXpAwards=(...args)=>(useLocal?local:original).listEventXpAwards(...args);
-export const awardEventXp=(...args)=>(useLocal?local:original).awardEventXp(...args);
+export const listEventXpAwards=(...args)=>useLocal?local.listEventXpAwards(...args):Promise.reject(new Error('Event experience rewards require the Order member portal.'));
+export const awardEventXp=(...args)=>useLocal?local.awardEventXp(...args):Promise.reject(new Error('Event experience rewards require the Order member portal.'));
