@@ -21,6 +21,7 @@ export default function LocalAccounts(){
  const [token,setToken]=useState(()=>sessionStorage.getItem(storageKey)||'');
  const [profile,setProfile]=useState(null);
  const [mode,setMode]=useState('sign-in');
+ const [checkingSetup,setCheckingSetup]=useState(true);
  const [email,setEmail]=useState('');
  const [name,setName]=useState('');
  const [password,setPassword]=useState('');
@@ -29,6 +30,7 @@ export default function LocalAccounts(){
  const [rows,setRows]=useState([]);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
+ useEffect(()=>{let live=true;request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(()=>{}).finally(()=>{if(live)setCheckingSetup(false)});return()=>{live=false}},[]);
  const reload=async(access=token)=>{
   const r=await request('/auth/me',{token:access});
   setProfile(r.user);
@@ -41,7 +43,11 @@ export default function LocalAccounts(){
  async function submit(event){
   event.preventDefault();setMessage('');setBusy(true);
   try{
-   if(mode==='register'){
+   if(mode==='setup'){
+    if(password!==confirm)throw new Error('Passwords must match.');
+    const result=await request('/auth/setup-domina',{method:'POST',body:{email,display_name:name,password}});
+    setMessage(result.message);setMode('sign-in');setPassword('');setConfirm('');
+   }else if(mode==='register'){
     if(password!==confirm)throw new Error('Passwords must match.');
     const result=await request('/auth/register',{method:'POST',body:{email,display_name:name,password,adult_declaration:adult}});
     setMessage(result.message);setMode('sign-in');setPassword('');setConfirm('');
@@ -70,20 +76,20 @@ export default function LocalAccounts(){
   <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div>{profile&&<button onClick={logout}>Sign out</button>}</header>
   {!profile?<main className="eo-auth-card">
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
-   <h1>{mode==='register'?'Request membership':'Enter the Order'}</h1>
-   <p>{mode==='register'?'Create your account. Access begins after the Domina approves your request.':'Sign in using your Eclipse Order account.'}</p>
+   <h1>{mode==='setup'?'Create your Domina account':mode==='register'?'Request membership':'Enter the Order'}</h1>
+   <p>{mode==='setup'?'This one-time setup creates your administrator account. Choose a password you can enter and confirm normally.':mode==='register'?'Create your account. Access begins after the Domina approves your request.':'Sign in using your Eclipse Order account.'}</p>
    <form onSubmit={submit}>
-    {mode==='register'&&<label>Display name<input required minLength={2} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label>}
+    {(mode==='register'||mode==='setup')&&<label>Display name<input required minLength={2} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label>}
     <label>Email<input required type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></label>
-    <label>Password<input required type="password" minLength={mode==='register'?16:1} autoComplete={mode==='register'?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>
-    {mode==='register'&&<>
+    <label>Password<input required type="password" minLength={mode==='register'||mode==='setup'?16:1} autoComplete={mode==='register'||mode==='setup'?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label>
+    {(mode==='register'||mode==='setup')&&<>
      <label>Confirm password<input required type="password" minLength={16} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label>
-     <label className="eo-check"><input required type="checkbox" checked={adult} onChange={e=>setAdult(e.target.checked)}/><span>I confirm I am 18 or older and understand this is an adult RP community.</span></label>
+     {mode==='register'&&<label className="eo-check"><input required type="checkbox" checked={adult} onChange={e=>setAdult(e.target.checked)}/><span>I confirm I am 18 or older and understand this is an adult RP community.</span></label>}
     </>}
     {message&&<p className="eo-message" role="status">{message}</p>}
-    <button className="eo-primary" type="submit" disabled={busy}>{busy?'Working…':mode==='register'?'Submit membership request':'Sign in'}</button>
+    <button className="eo-primary" type="submit" disabled={busy||checkingSetup}>{busy?'Working…':mode==='setup'?'Create Domina account':mode==='register'?'Submit membership request':'Sign in'}</button>
    </form>
-   <button className="eo-link" onClick={()=>{setMessage('');setMode(mode==='register'?'sign-in':'register')}}>{mode==='register'?'Already have an account? Sign in':'Need an account? Request membership'}</button>
+   {mode!=='setup'&&<button className="eo-link" onClick={()=>{setMessage('');setMode(mode==='register'?'sign-in':'register')}}>{mode==='register'?'Already have an account? Sign in':'Need an account? Request membership'}</button>}
   </main>:<main className="eo-members">
    <span className="eo-eyebrow">ORDER DASHBOARD</span>
    <h1>Welcome, {profile.display_name}</h1><p>Signed in as <strong>{profile.role.replace('_',' ')}</strong>.</p>
