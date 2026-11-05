@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listSharedRPProfiles} from './supabase.js';
+import {listSharedRPProfiles} from './apiBridge.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {KINK_RATINGS} from './ProfileKinkList.jsx';
 import './rp-profile.css';
