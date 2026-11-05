@@ -2,6 +2,7 @@
 // All sensitive account passwords must be reset locally; Auth password hashes are NOT copied.
 // Source database is opened READ ONLY. Raw feature records remain private in MySQL.
 import fs from 'node:fs/promises';
+import readline from 'node:readline/promises';
 import {randomBytes,randomUUID,createHash} from 'node:crypto';
 import pg from 'pg';
 import {createPool} from 'mysql2/promise';
@@ -9,9 +10,8 @@ import {askSecret} from './terminal-secret.js';
 import {hashPassword} from './credentials.js';
 
 const {Client}=pg;
-const sourceUrl=process.env.SUPABASE_DATABASE_URL;
-if(!sourceUrl||!process.env.DB_USER||!process.env.DB_PASSWORD)
- throw new Error('Configure SUPABASE_DATABASE_URL, DB_USER and DB_PASSWORD in your private server/.env.');
+if(!process.env.DB_USER||!process.env.DB_PASSWORD)
+ throw new Error('Configure DB_USER and DB_PASSWORD in your private server/.env.');
 const dbName=process.env.DB_NAME||'eclipse_order';
 if(dbName!=='eclipse_order')throw new Error('Migration only supports eclipse_order target.');
 const adminName=process.env.MIGRATION_DB_USER||'root';
@@ -27,6 +27,11 @@ const sourceStanding=s=>['initiate','associate','established','veteran'].include
 const rank=s=>String(s).toLowerCase().includes('rank iv')?'rank_iv':String(s).toLowerCase().includes('rank iii')?'rank_iii':String(s).toLowerCase().includes('rank ii')?'rank_ii':'rank_i';
 const unpack=value=>typeof value==='string'?JSON.parse(value):value;
 async function main(){
+ const sourceUrl=process.env.SUPABASE_DATABASE_URL || await askSecret('Supabase PostgreSQL connection URI (hidden, not saved): ');
+ let url;
+ try{url=new URL(sourceUrl);}catch{throw new Error('Invalid PostgreSQL connection URI.');}
+ if(!['postgres:','postgresql:'].includes(url.protocol)||! /(^|\.)(supabase\.co|supabase\.com)$/.test(url.hostname))
+  throw new Error('Source must be a Supabase PostgreSQL host.');
  const adminPassword=await askSecret('Local MySQL administrator password (hidden): ');
  const source=new Client({connectionString:sourceUrl,application_name:'eclipse_order_migration'});
  const options={host:'127.0.0.1',port:Number(process.env.DB_PORT||3306),database:dbName};
@@ -54,8 +59,13 @@ async function main(){
    counts.push({name,n});total+=n;
   }
   console.log('Supabase: '+tables.length+' Eclipse Order tables; '+total+' rows.');
-  if(process.env.MIGRATION_CONFIRM!=='YES')
-   throw new Error('Preview complete. Set MIGRATION_CONFIRM=YES in local server/.env to copy and rerun. No rows copied.');
+  if(process.env.MIGRATION_CONFIRM!=='YES'){
+   const rl=readline.createInterface({input:process.stdin,output:process.stdout});
+   let answer;
+   try{answer=await rl.question('Type MIGRATE to copy this snapshot to local MySQL (anything else cancels): ');}
+   finally{rl.close();}
+   if(answer.trim()!=='MIGRATE')throw new Error('Cancelled before copying; Supabase data was not changed.');
+  }
   runId=randomUUID();
   await local.execute('INSERT INTO migration_runs(id,source_tables,source_rows) VALUES(?,?,?)',[runId,tables.length,total]);
   for(const {name,n} of counts){
