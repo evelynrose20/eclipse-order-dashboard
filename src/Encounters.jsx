@@ -5,11 +5,12 @@ import './encounters.css';
 import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
 import {EventEditor,EventSignups,EventSummary} from './EventPlanning.jsx';
+import EventXPRewards from './EventXPRewards.jsx';
 import {editPlannedEvent} from './apiBridge.js';
 import './event-planning.css';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
-export default function Encounters({role,userId,characters,onOpenProfile}){
+export default function Encounters({role,userId,characters,onOpenProfile,onRefreshCharacters}){
  const directorRole=['domina','high_command','handler'].includes(role);
  const [data,setData]=useState([]),[chosenId,setChosenId]=useState('');
  const [combatName,setCombatName]=useState(''),[kind,setKind]=useState('npc'),[charId,setCharId]=useState(''),[initiative,setInitiative]=useState(10),[hp,setHp]=useState(20),[ac,setAc]=useState(10);
@@ -66,8 +67,9 @@ export default function Encounters({role,userId,characters,onOpenProfile}){
       ['setup','Combat setup'],['map','Battle map'],['combat','Live encounter'],['dice','Dice & checks']
     ].filter(([id])=>id!=='planning'||canDirect).map(([id,label])=><button key={id} className={'event-tab '+(section===id?'active':'')} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{label}{id==='signups'&&canDirect&&selected.pending_count>0?<span className="event-tab-count">{selected.pending_count}</span>:null}</button>)}
     </nav>
-    {section==='overview'&&<EventSummary event={selected} canDirect={canDirect}
-      onPlan={()=>setSection('planning')} onSignups={()=>setSection('signups')} onPrepare={()=>setSection('setup')} onCombat={()=>setSection('combat')}/>}
+    {section==='overview'&&<><EventSummary event={selected} canDirect={canDirect}
+      onPlan={()=>setSection('planning')} onSignups={()=>setSection('signups')} onPrepare={()=>setSection('setup')} onCombat={()=>setSection('combat')}/>
+      <EventXPRewards event={selected} characters={characters} canDirect={canDirect} onRefresh={onRefreshCharacters}/></>}
     {section==='planning'&&canDirect&&<section className="panel"><div className="panel-heading"><div><h2>Schedule & publish</h2><p>Only published events appear for member sign-ups. You can prepare enemies beforehand.</p></div></div><EventEditor key={selected.id} event={selected} save={savePlan} working={working}/></section>}
     {section==='signups'&&<EventSignups key={selected.id} event={selected} characters={characters}
       userId={userId} canDirect={canDirect} working={working} action={action} refresh={refresh}/>}
