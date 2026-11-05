@@ -1,0 +1,34 @@
+.eo-local{min-height:100vh;background:radial-gradient(ellipse at 50% -20%,#342335,#120e19 65%);color:#eee1ed;font-family:Inter,system-ui,sans-serif}
+.eo-local *{box-sizing:border-box}
+.eo-local-head{max-width:1120px;margin:auto;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff1d}
+.eo-local-head>div{display:flex;align-items:center;gap:12px;letter-spacing:2px}
+.eo-local-head small{font-size:10px;color:#c0a8c1}.eo-mark{font-size:30px;color:#e9a8c7}
+.eo-local button,.eo-local input,.eo-local select{font:inherit}
+.eo-local button{cursor:pointer;border:1px solid #7e5b70;border-radius:9px;background:#251c2b;color:#f3d7e9;padding:10px 16px}
+.eo-local button:hover{border-color:#e9a8c7}
+.eo-local .eo-primary{border:1px solid #dfa0c1;background:#a34d7b;color:#fff;font-weight:700}
+.eo-local button:disabled{opacity:.55;cursor:not-allowed}
+.eo-auth-card{max-width:490px;margin:clamp(25px,8vh,100px) auto;padding:42px;border:1px solid #5e3e5c;border-radius:16px;background:#201625ee;box-shadow:0 16px 70px #0007}
+.eo-auth-card h1,.eo-members h1{font-family:Georgia,serif;font-size:36px;margin:12px 0}
+.eo-auth-card p,.eo-members>p{color:#c9b6ca;line-height:1.6}
+.eo-eyebrow{color:#e4a2c7;letter-spacing:2px;font-size:11px}
+.eo-auth-card form{display:grid;gap:18px;margin-top:28px}
+.eo-auth-card label{display:grid;gap:7px;color:#e6d0e1;font-size:13px}
+.eo-auth-card input{padding:13px;background:#120e18;border:1px solid #5c455d;border-radius:8px;color:#fff;min-width:0}
+.eo-auth-card input:focus{outline:2px solid #ce7ea8}
+.eo-auth-card .eo-check{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.eo-check input{width:18px;flex:none}
+.eo-link{margin-top:20px;width:100%;border:0!important;background:transparent!important;text-decoration:underline}
+.eo-message{padding:14px;border-radius:9px;background:#412938;color:#fff!important}
+.eo-members{max-width:1120px;margin:38px auto;padding:24px}
+.eo-summary{display:flex;gap:18px;margin:32px 0}
+.eo-summary>div{flex:1;background:#261b2b;border:1px solid #594256;padding:22px;border-radius:12px;display:grid;gap:6px}
+.eo-summary strong{font-size:32px;color:#e3a3c6}.eo-summary span{color:#c5b2c7}
+.eo-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.eo-member{padding:18px;margin:12px 0;background:#261b2b;border:1px solid #594256;border-radius:12px;display:flex;gap:20px;align-items:center;justify-content:space-between}
+.eo-member>div:first-child{display:grid;gap:4px}.eo-member small{font-size:13px;color:#c9aebf}.eo-member span{color:#a99aaa;font-size:12px}
+.eo-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.eo-actions label{display:grid;gap:6px;font-size:12px;color:#c9b6ca}
+.eo-actions select{padding:9px;background:#19111e;border:1px solid #745773;color:#fff;border-radius:8px}
+.eo-empty{padding:24px;background:#261b2b;border-radius:12px}
+@media(max-width:650px){.eo-auth-card{margin:18px;padding:24px}.eo-local-head{padding:18px}.eo-member{align-items:stretch;flex-direction:column}.eo-summary{flex-direction:column}.eo-members{margin:10px auto}.eo-local-head small{display:none}}
