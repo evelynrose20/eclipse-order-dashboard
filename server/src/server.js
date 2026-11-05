@@ -4,6 +4,11 @@ import {authRoute} from './auth.js';
 import {accountRoute} from './accounts.js';
 import {firstDominaRoute} from './first-domina.js';
 import {characterRoute} from './characters.js';
+import {transitionRoute} from './transitions.js';
+import {profileRoute} from './profiles.js';
+import {encounterRoute} from './encounters.js';
+import {eventRoute} from './events.js';
+import {diceRoute} from './dice.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
@@ -71,6 +76,12 @@ const server=http.createServer(async(req,res)=>{
  try{
   if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
+  else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
+  else if(pathname.startsWith('/profile/')||pathname==='/settings')result=await profileRoute(pool,req,pathname);
+  else if(pathname.startsWith('/events/')||pathname.startsWith('/signups/'))result=await eventRoute(pool,req,pathname);
+  else if(pathname==='/monsters'||pathname.startsWith('/combatants/')||pathname==='/combatants')result=await encounterRoute(pool,req,pathname);
+  else if(pathname.startsWith('/roll-requests/')||pathname.startsWith('/rolls/')||/\/encounters\/[a-f0-9-]{36}\/(rolls|roll-requests)$/.test(pathname))result=await diceRoute(pool,req,pathname);
+  else if(pathname==='/encounters'||pathname.startsWith('/encounters/'))result=await encounterRoute(pool,req,pathname);
   else if(pathname==='/auth/register'||pathname.startsWith('/admin/'))result=await accountRoute(pool,req,pathname);
   else if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
   else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
