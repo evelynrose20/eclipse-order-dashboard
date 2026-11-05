@@ -12,7 +12,7 @@ This development branch replaces Supabase **for account creation and approval on
 - Database-backed login sessions expire and logout revokes them
 - Passwords are hashed with scrypt and never stored as plaintext
 
-**Still in development:** Character sheets now have a guarded first local roster/edit API with the existing full/limited D&D views; the complete existing sheet editor, assignment flows, events, encounters, member RP profiles and binding request APIs are not yet ported from Supabase. The existing production dashboard remains unchanged on `main`. Do not switch the main website to local-only mode until these APIs are implemented. The integrated local dashboard (Overview, roster, sheets, account approvals) is independently testable now.
+**Ported in this branch:** the full inline D&D sheet editor, player/handler assignment, protected MySQL character sheets, member approvals, battle map, monsters, encounter initiative, event publishing and approvals, server-verified dice, OOC status transitions, RP preference controls, explicitly shared RP directory, FC rules and static Black Market. These features require the new `005_features.sql` migration and real Windows end-to-end validation before production. The existing production dashboard remains unchanged on `main`. Do not switch the main website to local-only mode until these APIs are implemented. The integrated local dashboard (Overview, roster, sheets, account approvals) is independently testable now.
 
 ## Windows setup (no manual SQL)
 
@@ -82,4 +82,20 @@ If your previous `npm run setup:local` ended with `Password invalid or confirmat
 
 The local account portal now transitions into `src/LocalWorkspace.jsx` after login, with the original dashboard sidebar and member approvals embedded in **Order accounts**. The first MySQL `/characters` API supports guarded listing, command-created characters and editing permitted sheet fields. A member only receives their own records; a bound player receives a limited sheet with private D&D details omitted server-side; a handler receives the full sheet only for assigned characters; command sees full records. A linked character cannot be directly switched to bound status through sheet editing.
 
-**Current limits:** Character assignment, full D&D editor parity, reversible binding approval workflow, events, dice, group scenes, privacy preference controls and administrative settings are still in progress. Their original Supabase implementations are not reused by the local frontend. Do not publish the Cloudflare route or merge to production until full access-control and end-to-end testing is complete.
+**Current limits:** Production deployment, secure account recovery/email verification, persistent rate limiting, automated backups, live Windows MySQL integration verification and Cloudflare cutover still require testing. Do not publish the Cloudflare route or merge to production until full access-control and end-to-end testing is complete.
+
+## Finish local MySQL feature installation without changing existing accounts
+
+On your PC, update/pull the latest `feature/windows-local-api-bootstrap` development branch, keeping your existing private `server/.env`. Because you already created and signed in with a Domina account, **do not create it again**. Stop only the backend in its PowerShell window, then in the updated `server` folder run:
+
+```powershell
+npm install
+npm run setup:local
+npm run dev
+```
+
+The setup command prompts once for your **local MySQL administrator password**, automatically creates the extra feature tables in `server/sql/005_features.sql`, and detects your existing account. It does not delete or replace your Domina login or other records. No Supabase credentials, export or manual SQL entry are needed. Password characters are hidden at the administrator-password prompt; the previous **Domina password confirmation bug** is eliminated.
+
+The frontend remains in a separate PowerShell window in the repository root. Keep root `.env.local` set to `VITE_ECLIPSE_API_URL=http://127.0.0.1:3182` and run `npm run dev`; then open `http://localhost:5173`. You should see the original Eclipse Order navigation after signing in: Overview, Character roster, Character sheets, Black Market, Order accounts (Domina), Encounters & dice, Events & signups, My RP profile, Member RP profiles, Binding requests, and Workspace & backup / FC rules.
+
+**Important functional expectations:** The database starts empty except for your account. Create/assign characters before inviting players to events. Members must explicitly save their 18+ declaration and opt in to event themes before signing up or rolling in encounters. RP profile sharing is always off by default and revocable; bound/free changes require the character player's OOC approval and command application. Member passwords and session data remain local. The API is intentionally not publicly exposed through Cloudflare until tested. The existing Supabase production site on `main` is unchanged.
