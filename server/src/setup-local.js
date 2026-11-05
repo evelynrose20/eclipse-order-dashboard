@@ -1,8 +1,5 @@
 import {createPool} from 'mysql2/promise';
-import {randomUUID} from 'node:crypto';
-import readline from 'node:readline/promises';
 import {askSecret} from './terminal-secret.js';
-import {hashPassword,normalizeEmail,validPassword} from './credentials.js';
 async function main(){
  if(!process.env.DB_USER||!process.env.DB_PASSWORD)throw new Error('Set DB_USER and DB_PASSWORD in your private server/.env.');
  const adminName=process.env.MIGRATION_DB_USER||'root';
@@ -26,17 +23,7 @@ async function main(){
   await pool.query("INSERT INTO schema_migrations(version) VALUES('002_sessions'),('004_registration') ON DUPLICATE KEY UPDATE version=VALUES(version)");
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
-  const rl=readline.createInterface({input:process.stdin,output:process.stdout});
-  let email,name;
-  try{email=normalizeEmail(await rl.question('First Domina email: '));name=(await rl.question('Domina display name: ')).trim();}
-  finally{rl.close();}
-  if(!email||name.length<2||name.length>80)throw new Error('Invalid email or display name.');
-  const password=await askSecret('New Domina password (16+ characters, hidden): ');
-  const repeat=await askSecret('Confirm password (hidden): ');
-  if(!validPassword(password)||password!==repeat)throw new Error('Password invalid or confirmation mismatch.');
-  await pool.execute("INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,is_active,approval_status) VALUES(?,?,?,?,'domina','veteran',1,'approved')",
-   [randomUUID(),email,await hashPassword(password),name]);
-  console.log('Eclipse Order schema and first Domina login created.');
+  console.log('Database schema ready. Open the local account portal in your browser to create the first Domina account.');
  }finally{await pool.end();}
 }
 main().catch(e=>{console.error('Setup failed:',e.message);process.exitCode=1;});
