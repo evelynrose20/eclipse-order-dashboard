@@ -116,7 +116,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
-    {(tab==='encounters'||tab==='events')&&<Encounters key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
+    {(tab==='encounters'||tab==='events')&&<Encounters classCatalog={classCatalog} key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}
