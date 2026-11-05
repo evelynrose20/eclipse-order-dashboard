@@ -4,6 +4,7 @@ const failures=new Map();
 const WINDOW_MS=15*60*1000;
 const MAX_ATTEMPTS=6;
 const SESSION_HOURS=12;
+const dummyPasswordHash=hashPassword('unused-dummy-password-for-timing-protection');
 
 export function loginThrottle(email,now=Date.now()){
  const row=failures.get(email);
@@ -55,8 +56,8 @@ export async function authRoute(pool,request,path){
    'SELECT id,password_hash FROM accounts WHERE email=? AND is_active=1 LIMIT 1',[email]
   );
   // For absent users, still perform one expensive hash verification to reduce account enumeration timing.
-  const dummy='$scrypt$1$16384$8$1$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-  const valid=await verifyPassword(password,rows[0]?.password_hash||dummy);
+  const storedHash=rows[0]?.password_hash || await dummyPasswordHash;
+  const valid=await verifyPassword(password,storedHash);
   if(!valid){noteFailure(email);return forbidden();}
   failures.delete(email);
   const token=generateToken();
