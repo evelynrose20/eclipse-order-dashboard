@@ -29,10 +29,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
-      - run: npm run build
       - name: Install API dependencies
         run: npm install --prefix server --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
       - name: Test API authorization and MySQL migrations
         env:
           ECLIPSE_CI_MYSQL: '1'
