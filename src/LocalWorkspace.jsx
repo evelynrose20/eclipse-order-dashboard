@@ -105,7 +105,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id)?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.view_mode==='bound'?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} request={request} onRefresh={load}/></>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
-    {(tab==='encounters'||tab==='events')&&<Encounters role={profile.role} userId={profile.id} characters={characters} onOpenProfile={()=>setTab('profile')}/>}
+    {(tab==='encounters'||tab==='events')&&<Encounters role={profile.role} userId={profile.id} characters={characters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent/>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions characters={characters} role={profile.role} userId={profile.id} onRefresh={load}/>}
