@@ -16,7 +16,7 @@ export function CharacterTransitions({characters,role,userId,onRefresh}){
  const eligible=characters.filter(c=>c.player_user_id && (isCommand || c.player_user_id===userId || (role==='handler'&&c.handler_user_id===userId)));
  return <section className="panel rp-panel">
   <div className="panel-heading"><div><h2>Free ↔ Bound transitions</h2><p>Character status can change in either direction while preserving the entire sheet.</p></div></div>
-  <div className="hint-box"><strong>OOC approval is mandatory</strong><p>Regardless of IC events or magical bindings, the linked player must explicitly approve each change. Approval can be withdrawn before high command applies it. Only the database can finalize a transition.</p></div>
+  <div className="hint-box"><strong>OOC approval is mandatory</strong><p>Regardless of IC events or magical bindings, the linked player must explicitly approve each change. Approval can be withdrawn before high command applies it. Only authorized command may enact a transition after approval.</p></div>
   <div className="rp-controls">
    <label className="field"><span>CHARACTER</span><select value={characterId} onChange={e=>setCharacterId(e.target.value)}><option value="">Select a linked character</option>{eligible.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Currently bound':'Currently free'}</option>)}</select></label>
    <label className="field"><span>REQUEST STATUS</span><select value={newBound} onChange={e=>setNewBound(e.target.value)}><option value="bound">Bound</option><option value="free">Free</option></select></label>
