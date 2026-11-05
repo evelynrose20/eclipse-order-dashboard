@@ -29,11 +29,12 @@ export async function canParticipate(pool,u,event){
 async function shape(pool,u,e){
  const [combatants]=await pool.execute('SELECT * FROM order_combatants WHERE encounter_id=? ORDER BY initiative DESC,created_at ASC',[e.id]);
  const [approved]=await pool.execute('SELECT COUNT(*) AS n FROM order_event_signups WHERE encounter_id=? AND status="approved"',[e.id]);
+ const [pending]=gm(u,e)?await pool.execute('SELECT COUNT(*) AS n FROM order_event_signups WHERE encounter_id=? AND status="requested"',[e.id]):[[{n:0}]];
  return {id:e.id,name:e.name,notes:gm(u,e)?e.notes:'',themes:unpack(e.themes),created_by:e.created_by,
   status:e.status,turn_index:e.turn_index,round_number:e.round_number,
   map_columns:e.map_columns,map_rows:e.map_rows,map_style:e.map_style,map_image_url:e.map_image_url,
   starts_at:e.starts_at,location:e.location,description:e.description,capacity:e.capacity,published:Boolean(e.published),
-  signup_count:Number(approved[0].n),combatants:combatants.map(c=>({...c,conditions:unpack(c.conditions)}))};
+  signup_count:Number(approved[0].n),pending_count:Number(pending[0].n),combatants:combatants.map(c=>({...c,conditions:unpack(c.conditions)}))};
 }
 export async function encounterRoute(pool,req,path){
  if(!pool)return err(503,'database_unavailable');
@@ -63,7 +64,10 @@ export async function encounterRoute(pool,req,path){
   if(!action&&req.method==='GET')return ok(await shape(pool,u,e));
   if(action==='check'&&req.method==='GET'){
    const [paused]=await pool.execute('SELECT paused FROM order_encounter_pauses WHERE encounter_id=? AND user_id=?',[id,u.id]);
-   return ok({adult_approved:true,paused:!!paused[0]?.paused,can_direct:director,eligible:await canParticipate(pool,u,e)});
+   const [prefs]=await pool.execute('SELECT adult_declaration,content_preferences FROM order_profile_preferences WHERE user_id=?',[u.id]);
+   const adult=Boolean(prefs[0]?.adult_declaration),content=prefs[0]?unpack(prefs[0].content_preferences):{};
+   const missing=(unpack(e.themes)||[]).filter(theme=>content?.[theme]!==true);
+   return ok({adult_declaration:adult,paused:!!paused[0]?.paused,missing_themes:missing,can_direct:director,eligible:await canParticipate(pool,u,e)});
   }
   if(action==='pause'&&req.method==='POST'){
    if(!await canParticipate(pool,u,e))return err(403,'participant_required');
@@ -91,7 +95,15 @@ export async function encounterRoute(pool,req,path){
    return ok({status:'saved'});
   }
   if(action==='turn'){
-   if(!['next','previous','reset'].includes(b?.action))return err(400,'invalid_turn_action');
+   if(!['next','previous','reset','start','finish'].includes(b?.action))return err(400,'invalid_turn_action');
+   if(b.action==='finish'){await pool.execute('UPDATE order_encounters SET status="completed" WHERE id=?',[id]);return ok({status:'completed'});}
+   if(b.action==='start'){
+    if(e.status!=='draft')return err(409,'already_started');
+    const [existing]=await pool.execute('SELECT id FROM order_combatants WHERE encounter_id=? LIMIT 1',[id]);
+    if(!existing.length)return err(409,'no_combatants');
+    await pool.execute('UPDATE order_encounters SET status="active",turn_index=0,round_number=1 WHERE id=?',[id]);
+    return ok({status:'active'});
+   }
    const [combatants]=await pool.execute('SELECT id FROM order_combatants WHERE encounter_id=? ORDER BY initiative DESC,created_at ASC',[id]);
    const n=combatants.length;
    if(!n)return err(409,'no_combatants');
