@@ -4,10 +4,13 @@ import './local-accounts.css';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 async function request(path,{method='GET',token,body}={}){
- const response=await fetch(API+path,{method,headers:{
+ let response;
+ try{response=await fetch(API+path,{method,headers:{
   ...(body?{'Content-Type':'application/json'}:{}),
   ...(token?{Authorization:'Bearer '+token}:{})
- },body:body?JSON.stringify(body):undefined,cache:'no-store'});
+ },body:body?JSON.stringify(body):undefined,cache:'no-store'});}catch{
+  throw new Error('Cannot reach the Windows API. Make sure it is running on port 3182 and allows this website origin.');
+ }
  const data=response.status===204?{}:await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(({
   account_pending_approval:'Your request is awaiting Domina approval.',
@@ -30,7 +33,7 @@ export default function LocalAccounts(){
  const [rows,setRows]=useState([]);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
- useEffect(()=>{let live=true;request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(()=>{}).finally(()=>{if(live)setCheckingSetup(false)});return()=>{live=false}},[]);
+ useEffect(()=>{let live=true;request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(error=>{if(live)setMessage('Could not check first-account setup: '+error.message)}).finally(()=>{if(live)setCheckingSetup(false)});return()=>{live=false}},[]);
  const reload=async(access=token)=>{
   const r=await request('/auth/me',{token:access});
   setProfile(r.user);
