@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {getMyKinkProfile,saveMyKinkProfile} from './supabase.js';
+import {getMyKinkProfile,saveMyKinkProfile} from './apiBridge.js';
 import './rp-profile.css';
 
 export const KINK_RATINGS=[

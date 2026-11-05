@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {getMyPreferences,saveMyPreferences} from './supabase.js';
+import {getMyPreferences,saveMyPreferences} from './apiBridge.js';
 import {ProfileKinkList} from './ProfileKinkList.jsx';
 export const CONTENT_THEMES=[
  ['violence','Violence & combat'],['horror','Horror & fear'],['captivity','Captivity & restraint'],

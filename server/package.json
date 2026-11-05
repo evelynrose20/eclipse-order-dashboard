@@ -1,0 +1,22 @@
+{
+  "name": "eclipse-order-local-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Windows-only loopback bootstrap for the Eclipse Order self-hosted API",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --watch --env-file=.env src/server.js",
+    "test": "node --test",
+    "setup:domina": "node --env-file=.env src/bootstrap-admin.js",
+    "check:login": "node --env-file=.env src/check-login.js",
+    "account:set-password": "node --env-file=.env src/set-local-password.js",
+    "setup:local": "node --env-file=.env src/setup-local.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "mysql2": "^3.15.0"
+  }
+}

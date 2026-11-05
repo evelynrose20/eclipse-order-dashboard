@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {readFCSettings,writeFCSetting} from './supabase.js';
+import {readFCSettings,writeFCSetting} from './apiBridge.js';
 const FIELDS=[['welcome','Welcome announcement'],['house_rules','D&D and FC house rules'],['scene_guidelines','OOC safety and scene guidelines']];
 export default function FCSettings({role}){
  const [data,setData]=useState(null),[edited,setEdited]=useState({}),[working,setWorking]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState('');
