@@ -3,7 +3,7 @@ import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {
  editPlannedEvent,signupForEvent,listEventSignups,decideEventSignup,
  withdrawEventSignup,addApprovedEventPlayer
-} from './supabase.js';
+} from './apiBridge.js';
 
 const displayDate=value=>value?new Date(value).toLocaleString():'Not scheduled';
 const localDate=value=>{
