@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createPool} from 'mysql2/promise';
+import {generateToken,hashToken} from '../src/credentials.js';
+import {characterRoute} from '../src/characters.js';
+import {economyRoute} from '../src/economy.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
  const admin=createPool({
@@ -29,5 +32,24 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
     'order_encounter_pauses','order_settings','eo_wallets','eo_inventory','eo_item_catalog','eo_economy_ledger','eo_paychecks','eo_ration_claims'])assert.ok(names.has(name),'missing '+name);
   const [[row]]=await admin.execute('SELECT account_role FROM accounts WHERE id=?',[id]);
   assert.equal(row.account_role,'domina');
+  // Exercise the real character, wallet, payroll and shop code against disposable MySQL.
+  const token=generateToken();
+  await admin.execute('INSERT INTO account_sessions(account_id,token_hash,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 HOUR))',[id,hashToken(token)]);
+  const request=(method,body)=>({method,headers:{authorization:'Bearer '+token},[Symbol.asyncIterator]:async function*(){if(body!==undefined)yield Buffer.from(JSON.stringify(body))}});
+  const char=await characterRoute(admin,request('POST',{name:'CI Hero',class_id:'warrior',str:15,dex:14,con:13,int:12,wis:10,cha:8}),'/characters');
+  assert.equal(char.status,201,JSON.stringify(char.body));
+  const cid=char.body.id;
+  const paycheck=await economyRoute(admin,request('POST',{base_amount:10000}),'/economy/characters/'+cid+'/paycheck');
+  assert.equal(paycheck.status,200,JSON.stringify(paycheck.body));
+  assert.equal(paycheck.body.balance,10000);
+  const duplicate=await economyRoute(admin,request('POST',{base_amount:10000}),'/economy/characters/'+cid+'/paycheck');
+  assert.equal(duplicate.status,409);
+  const bought=await economyRoute(admin,request('POST',{item_id:'iron_collar',quantity:1}),'/economy/characters/'+cid+'/buy');
+  assert.equal(bought.status,200,JSON.stringify(bought.body));
+  assert.equal(bought.body.balance,8000);
+  const state=await economyRoute(admin,request('GET'),'/economy/characters/'+cid);
+  assert.equal(state.status,200);
+  assert.equal(state.body.balance,8000);
+  assert.equal(state.body.inventory.find(x=>x.item_id==='iron_collar').quantity,1);
  }finally{await admin.end();}
 });
