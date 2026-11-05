@@ -1,11 +1,11 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './supabase.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './apiBridge.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
 import {EventEditor,EventSignups,EventSummary} from './EventPlanning.jsx';
-import {editPlannedEvent} from './supabase.js';
+import {editPlannedEvent} from './apiBridge.js';
 import './event-planning.css';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
