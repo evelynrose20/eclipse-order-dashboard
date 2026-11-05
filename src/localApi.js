@@ -45,10 +45,13 @@ export const encounterRoll=(id,formula,visibility)=>post('/encounters/'+id+'/rol
 export const encounterRolls=id=>get('/encounters/'+id+'/rolls');
 export const listMonsterTemplates=()=>get('/monsters');
 export const createMonsterTemplate=monster=>post('/monsters',monster);
+export const updateMonsterTemplate=(id,monster)=>put('/monsters/'+id,monster);
+export const deleteMonsterTemplate=id=>del('/monsters/'+id);
 export const addMonsterToEncounter=(id,monsterId)=>post('/encounters/'+id+'/monsters/'+monsterId);
 export const rollAllInitiative=id=>post('/encounters/'+id+'/initiative');
 export const setEncounterMap=(id,columns,rows,style)=>post('/encounters/'+id+'/map',{columns,rows,style});
 export const moveEncounterToken=(id,x,y)=>post('/combatants/'+id+'/move',{x,y});
+export const saveEncounterWaymarks=(id,waymarks)=>post('/encounters/'+id+'/waymarks',{waymarks});
 export const setEncounterMapImage=(id,imageUrl)=>post('/encounters/'+id+'/image',{image_url:imageUrl});
 export const listGMRequests=id=>get('/encounters/'+id+'/roll-requests');
 export const requestGMRoll=(id,characterId,kind,label,formula,dc)=>post('/encounters/'+id+'/roll-requests',{

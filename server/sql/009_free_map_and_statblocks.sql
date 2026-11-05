@@ -1,0 +1,34 @@
+-- Continuous map positions, eight waymarks, and reusable monster-template provenance.
+-- Re-runnable MySQL 8 migration, existing integer tile positions are preserved as fallbacks.
+USE eclipse_order;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_combatants' AND COLUMN_NAME='pos_x');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_combatants ADD COLUMN pos_x DECIMAL(7,5) NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_combatants' AND COLUMN_NAME='pos_y');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_combatants ADD COLUMN pos_y DECIMAL(7,5) NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_combatants' AND COLUMN_NAME='monster_template_id');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_combatants ADD COLUMN monster_template_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_combatants' AND COLUMN_NAME='actions');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_combatants ADD COLUMN actions TEXT NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_combatants' AND COLUMN_NAME='notes');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_combatants ADD COLUMN notes TEXT NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @has_col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_encounters' AND COLUMN_NAME='waymarks');
+SET @stmt_sql := IF(@has_col=0,'ALTER TABLE order_encounters ADD COLUMN waymarks JSON NULL',"SELECT 'column exists' AS status");
+PREPARE migration_stmt FROM @stmt_sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+INSERT INTO schema_migrations(version) VALUES('009_free_map_and_statblocks') ON DUPLICATE KEY UPDATE version=VALUES(version);

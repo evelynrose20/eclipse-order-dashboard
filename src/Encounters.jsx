@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './apiBridge.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,updateMonsterTemplate,deleteMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './apiBridge.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
@@ -19,6 +19,8 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const [monsters,setMonsters]=useState([]),[chosenMonster,setChosenMonster]=useState('');
  const [monsterForm,setMonsterForm]=useState({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});
  const [showMonsterEditor,setShowMonsterEditor]=useState(false);
+ const [editingMonsterId,setEditingMonsterId]=useState(null);
+ const [libraryOpen,setLibraryOpen]=useState(false);
  const [section,setSection]=useState('overview');
  const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
@@ -47,9 +49,27 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   const id=await action(()=>addCombatant(chosenId,name,kind,kind==='player'?charId:null,Number(initiative),Number(hp),Number(ac)));
   if(id){setCombatName('');setCharId('')}}
  async function saveMonster(e){
-  e.preventDefault();
-  const id=await action(()=>createMonsterTemplate(monsterForm));
-  if(id){setMonsters(await listMonsterTemplates());setChosenMonster(id);setShowMonsterEditor(false);setMonsterForm({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''})}
+  e.preventDefault();setWorking(true);setError('');
+  try{
+   const id=editingMonsterId;
+   if(id)await updateMonsterTemplate(id,monsterForm);
+   else await createMonsterTemplate(monsterForm);
+   const list=await listMonsterTemplates();setMonsters(list);
+   setChosenMonster(id||list.find(m=>m.name===monsterForm.name)?.id||'');
+   setShowMonsterEditor(false);setEditingMonsterId(null);
+   setMonsterForm({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});
+   await refresh();
+  }catch(e){setError(e.message)}finally{setWorking(false)}
+ }
+ function editMonster(m){
+  setMonsterForm({name:m.name,challenge:m.challenge,hit_points:m.hit_points,armor_class:m.armor_class,initiative_bonus:m.initiative_bonus,actions:m.actions||'',notes:m.notes||''});
+  setEditingMonsterId(m.id);setChosenMonster(m.id);setShowMonsterEditor(true);
+ }
+ async function removeMonster(id){
+  if(!window.confirm('Delete this saved stat block? Existing encounter combatants will remain.'))return;
+  setWorking(true);setError('');
+  try{await deleteMonsterTemplate(id);setMonsters(await listMonsterTemplates());setChosenMonster('');setShowMonsterEditor(false);setEditingMonsterId(null)}
+  catch(e){setError(e.message)}finally{setWorking(false)}
  }
 
  return <div className="encounter-layout">
@@ -82,7 +102,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     <div className="ooc-access"><div><h3>Player OOC control</h3><p>Profile preferences and your OOC pause control remain available during all encounters.</p>{check&&<p>{check.paused?'Your participation is paused.':check.missing_themes?.length?'Some event themes are not enabled in your profile.':'Your profile themes allow this event.'}</p>}</div><button className="btn secondary" disabled={working} onClick={()=>action(()=>pauseEncounter(chosenId,!check?.paused))}>{check?.paused?'Resume OOC':'Pause OOC'}</button></div></section>}
     {(section==='setup'||section==='combat')&&<section className="panel"><div className="panel-heading"><div><h2>{section==='setup'?'Prepared combatants':'Initiative tracker'}</h2><p>GM-controlled combatants, HP, armor class, conditions and turn order.</p></div></div>
      <div className="encounter-combatants">{selected.combatants.length?selected.combatants.map((c,i)=><Combatant key={c.id} c={c} canDirect={canDirect} active={selected.status==='active'&&i===selected.turn_index%selected.combatants.length} working={working} save={next=>action(()=>editCombatant(c.id,next.hp,next.initiative,next.ac,next.conditions))} hpAction={action} remove={()=>action(()=>deleteCombatant(c.id))}/>):<p className="muted">No combatants added.</p>}</div>
-     {canDirect&&section==='setup'&&<div className="monster-library"><div className="panel-heading"><div><h3>Monster & NPC stat-block library</h3><p>Save reusable homebrew enemies, then add them to encounters without retyping HP and AC.</p></div><button className="mini-btn" onClick={()=>setShowMonsterEditor(!showMonsterEditor)}>{showMonsterEditor?'Close editor':'+ Create stat block'}</button></div>
+     {canDirect&&section==='setup'&&<div className="monster-library"><div className="panel-heading"><div><h3>Monster & NPC stat-block library</h3><p>Create, inspect, edit and reuse saved stat blocks. Added enemies keep their own HP, AC, attacks and GM notes.</p></div><button className="mini-btn" onClick={()=>{setEditingMonsterId(null);setMonsterForm({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});setShowMonsterEditor(!showMonsterEditor)}}>{showMonsterEditor?'Close editor':'+ Create stat block'}</button></div>
       {showMonsterEditor&&<form className="monster-form" onSubmit={saveMonster}>
        {[
         ['name','NAME','text'],['challenge','CHALLENGE','text'],['hit_points','HIT POINTS','number'],
@@ -90,10 +110,10 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
        ].map(([key,label,type])=><label className="field" key={key}><span>{label}</span><input required type={type} value={monsterForm[key]} onChange={e=>setMonsterForm(old=>({...old,[key]:e.target.value}))}/></label>)}
        <label className="field"><span>ABILITIES / ATTACKS</span><textarea rows={3} maxLength={2500} value={monsterForm.actions} onChange={e=>setMonsterForm(old=>({...old,actions:e.target.value}))}/></label>
        <label className="field"><span>GM NOTES</span><textarea rows={3} maxLength={2500} value={monsterForm.notes} onChange={e=>setMonsterForm(old=>({...old,notes:e.target.value}))}/></label>
-       <button className="btn primary" type="submit" disabled={working}>Save stat block</button>
+       <button className="btn primary" type="submit" disabled={working}>{editingMonsterId?'Update stat block':'Save stat block'}</button><button className="mini-btn" type="button" onClick={()=>{setShowMonsterEditor(false);setEditingMonsterId(null)}}>Cancel</button>
       </form>}
-      <div className="monster-quick-add"><select aria-label="Choose saved stat block" value={chosenMonster} onChange={e=>setChosenMonster(e.target.value)}><option value="">Select saved monster/NPC</option>{monsters.map(m=><option key={m.id} value={m.id}>{m.name} · CR {m.challenge} · {m.hit_points} HP · AC {m.armor_class}</option>)}</select><button className="btn secondary" disabled={!chosenMonster||working} onClick={()=>action(()=>addMonsterToEncounter(chosenId,chosenMonster))}>Add saved NPC</button></div>
-      {chosenMonster&&monsters.filter(m=>m.id===chosenMonster).map(m=><div key={m.id} className="monster-preview"><strong>{m.name}</strong><p>CR {m.challenge} · HP {m.hit_points} · AC {m.armor_class} · Initiative {m.initiative_bonus>=0?'+':''}{m.initiative_bonus}</p><p>{m.actions||'No attacks described.'}</p></div>)}
+      <div className="monster-quick-add"><select aria-label="Choose saved stat block" value={chosenMonster} onChange={e=>setChosenMonster(e.target.value)}><option value="">Select saved monster/NPC</option>{monsters.map(m=><option key={m.id} value={m.id}>{m.name} · CR {m.challenge} · {m.hit_points} HP · AC {m.armor_class}</option>)}</select><button className="btn secondary" disabled={!chosenMonster||working} onClick={()=>action(()=>addMonsterToEncounter(chosenId,chosenMonster))}>Add to encounter</button><button className="mini-btn" disabled={!chosenMonster||working} onClick={()=>{const m=monsters.find(m=>m.id===chosenMonster);if(m)editMonster(m)}}>Edit</button><button className="mini-btn danger" disabled={!chosenMonster||working} onClick={()=>removeMonster(chosenMonster)}>Delete</button></div>
+      {chosenMonster&&monsters.filter(m=>m.id===chosenMonster).map(m=><div key={m.id} className="monster-preview"><strong>{m.name}</strong><p>CR {m.challenge} · HP {m.hit_points} · AC {m.armor_class} · Initiative {m.initiative_bonus>=0?'+':''}{m.initiative_bonus}</p><p><strong>Abilities & attacks</strong></p><p>{m.actions||'No attacks described.'}</p><p><strong>GM notes</strong></p><p>{m.notes||'No notes recorded.'}</p></div>)}
      </div>}
      {canDirect&&section==='setup'&&<form onSubmit={add} className="encounter-add"><h3>Add a combatant</h3><div className="encounter-fields">
       <label className="field"><span>TYPE</span><select value={kind} onChange={e=>setKind(e.target.value)}><option value="npc">NPC / enemy</option></select></label>
@@ -114,7 +134,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
 function Combatant({c,canDirect,active,working,save,hpAction,remove}){
  const [editing,setEditing]=useState(false),[draft,setDraft]=useState(c);
  useEffect(()=>{if(!editing)setDraft(c)},[c,editing]);
- return <div className={'combatant '+(active?'acting':'')}><span className="combatant-initiative">{c.initiative}</span><div className="combatant-identity"><strong>{c.name}</strong><small>{c.kind==='npc'?'NPC / enemy':'Player character'}</small><div className="combatant-health"><span style={{width:Math.max(0,Math.min(100,c.hp/c.max_hp*100))+'%'}}/></div><small>{c.hp}/{c.max_hp} HP · AC {c.ac}</small>{Boolean(c.conditions.length)&&<p>{c.conditions.join(' · ')}</p>}</div>
+ return <div className={'combatant '+(active?'acting':'')}><span className="combatant-initiative">{c.initiative}</span><div className="combatant-identity"><strong>{c.name}</strong><small>{c.kind==='npc'?'NPC / enemy':'Player character'}</small>{c.actions&&<details className="combatant-statblock"><summary>Attacks & abilities</summary><p>{c.actions}</p>{c.notes&&canDirect&&<p><strong>GM notes:</strong> {c.notes}</p>}</details>}<div className="combatant-health"><span style={{width:Math.max(0,Math.min(100,c.hp/c.max_hp*100))+'%'}}/></div><small>{c.hp}/{c.max_hp} HP · AC {c.ac}</small>{Boolean(c.conditions.length)&&<p>{c.conditions.join(' · ')}</p>}</div>
   {canDirect&&<QuickHP combatant={c} action={hpAction} working={working}/>}
   {canDirect&&<div className="combatant-actions"><button className="mini-btn" onClick={()=>setEditing(!editing)}>Edit</button><button className="mini-btn danger" disabled={working} onClick={remove}>Remove</button></div>}
   {editing&&<div className="combatant-editor"><label>HP<input type="number" min={0} max={999999} value={draft.hp} onChange={e=>setDraft({...draft,hp:Number(e.target.value)})}/></label><label>Initiative<input type="number" min={-100} max={100} value={draft.initiative} onChange={e=>setDraft({...draft,initiative:Number(e.target.value)})}/></label><label>AC<input type="number" min={0} max={99} value={draft.ac} onChange={e=>setDraft({...draft,ac:Number(e.target.value)})}/></label><label>Conditions<select multiple value={draft.conditions||[]} onChange={e=>setDraft({...draft,conditions:Array.from(e.target.selectedOptions).map(x=>x.value)})}>{CONDITIONS.map(x=><option key={x} value={x}>{x}</option>)}</select></label><button className="mini-btn" disabled={working} onClick={async()=>{await save(draft);setEditing(false)}}>Save</button></div>}
