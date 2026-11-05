@@ -1,26 +1,32 @@
-# Eclipse Order roadmap
+# Eclipse Order — release readiness
 
-Implemented in development (not necessarily live):
-- [x] Redesigned dashboard, command hierarchy and full D&D character dossiers
-- [x] Free ↔ bound character status changes requiring player OOC approval
-- [x] Private player-profile category preferences; no ID collection
-- [x] GM encounter creation with theme declarations and saved combatants
-- [x] Initiative, turns and rounds, HP, AC, conditions, NPC and player records
-- [x] Server-recorded dice formulas, advantage and GM-only visibility
-- [x] Encounter OOC pause and profile-category checks
-- [x] FC policy editor, role management and character-change audits
-- [x] Basic rules unit tests and CI production-build verification
+This checklist distinguishes **implemented in the repository** from **verified in the running Windows deployment**. A successful GitHub build does not demonstrate database, authorization, or public API correctness.
 
-Required to reach full D&D Beyond-like usability and years of reliability:
-- [ ] Apply and integration-test the new SQL migrations with real Supabase accounts
-- [ ] Character spell-slot/rest trackers, automatic damage/healing, resistances and concentration
-- [ ] Stat-block/monster compendium, encounter templates and dynamic difficulty calculations
-- [ ] Roll requests, contested checks, saving throws, real-time party display and campaign linkage
-- [ ] Full profile privacy and OOC withdrawal tests plus incident handling/moderation policies
-- [ ] Granular theme subcategories and dedicated private safety boundaries if members request them
-- [ ] Admin-controlled house-rule and rank editors rather than hardcoded mechanics
-- [ ] Automated encrypted offsite database backups with tested restores
-- [ ] End-to-end browser tests, staging release checks, error monitoring and rate limiting
-- [ ] Accessible mobile layouts and data-retention/deletion workflow
+## Built in the Windows/MySQL codebase
 
-A green frontend build is not the same as verified SQL migrations, permission security or a production-ready app.
+- [x] Membership requests, Domina approvals, account roles and five syndicate ranks
+- [x] Character roster, full/limited dossiers, server-controlled permissions and reversible binding requests
+- [x] Character classes, level progression, earned ability points and dossier controls
+- [x] Private RP preferences, opt-in profile sharing and OOC participation controls
+- [x] FC event preparation, signup approval, encounters, battle maps, dice and saved monsters
+- [x] Completed-event XP award ledger with per-event/character duplicate protection
+- [x] Removed active shop, paycheck, wallet, purchase and ration-claiming features
+- [x] Frontend build and automated repository test workflows
+
+## Required before general member launch
+
+- [ ] Back up the Windows MySQL database, run `npm run setup:local` (including migration `008_event_xp`), and confirm the API returns ready
+- [ ] Test a full event: draft, publish, signup, approval, participation, completion, XP award, duplicate rejection, level progression
+- [ ] Verify access control using Domina, officer/GM, ordinary member, bound player and unrelated account/handler; test private OOC information and GM-only dice
+- [ ] Test binding approval/withdrawal and OOC pause independently of in-character restrictions
+- [ ] Configure and verify public Cloudflare Tunnel, allowed HTTPS origin, login/registration rate limits, and browser sign-in
+- [ ] Provide a tested, encrypted offsite MySQL backup and restoration process
+- [ ] Review account recovery/email verification, persistent abuse throttling, monitoring and incident response before wide public registration
+- [ ] Perform mobile/accessibility and end-to-end browser checks, including offline/reconnect, expired sessions and empty states
+
+## Optional later improvements (not launch blockers)
+
+- Spell-slot/rest tracking, automatic resistances and concentration, advanced contested checks, encounter balancing and a larger compendium
+- Configurable house-rule tools and additional accessibility refinements
+
+The historical Supabase migration files support the retired compatibility path and must **not** be used as Windows/MySQL setup instructions. Release details: [Operations](OPERATIONS.md) and [Windows API](../server/README.md).

@@ -192,7 +192,7 @@ export default function Dashboard() {
     const records=readLedger();
     if(!window.confirm('Upload '+records.length+' browser-saved records into the SHARED ledger? Matching character IDs will be updated.'))return;
     try{await importSharedCharacters(records);setCharacters((await loadSharedCharacters()).map(normalize));warn('Browser records migrated to shared storage.');}
-    catch(error){warn('Migration failed: '+error.message);}
+    catch(error){warn('Could not import character records: '+error.message);}
   }
   const actions=<>{canCreate&&<button className="btn secondary" onClick={()=>setEditor(fresh())}>+ New character</button>}{canCommand&&<button className="btn primary" onClick={()=>{downloadFile('eclipse-order-ledger-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({version:4,exportedAt:new Date().toISOString(),characters},null,2));warn('Backup downloaded.');}}>↓ Export backup</button>}</>;
   if(configured&&!session)return <div className="login-screen"><form className="login-card" onSubmit={login}>

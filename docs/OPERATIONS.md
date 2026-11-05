@@ -1,39 +1,41 @@
-# Eclipse Order — Operations
+# Eclipse Order — operations and release checks
 
-## Database migration
+## Supported deployment
 
-For a fresh project, apply the baseline SQL under `supabase/SETUP-ALL.sql` and then **`supabase/profile-encounters.sql`** and finally **`supabase/battlemap-dice.sql`**. For an existing Supabase project, first inspect the installed schema and back it up; apply only missing forward migrations; battlemap-dice.sql is the latest. A GitHub build does not install SQL.
+The supported member portal is the React/Vite frontend configured with `VITE_ECLIPSE_API_URL`, served from GitHub Pages, backed by the Windows Node/MySQL service. The API binds to `127.0.0.1:3182`; Cloudflare Tunnel publishes the API only when explicitly enabled and verified. The older `supabase/` SQL and legacy frontend route are retained for compatibility, **not** for the Windows launch.
 
-The new migration creates private `order_profile_preferences`, encounter/turn/combatant/dice tables, and server-checked RPCs. It revokes the legacy scene-consent endpoints while preserving historical records. This revision does not require ID scans or document storage.
+## Database changes
 
-## Eligibility model
+1. Make a private backup of the `eclipse_order` MySQL database and confirm it can be restored.
+2. Pull the intended server revision. Keep `server/.env` private.
+3. From `server/`, run `npm ci`, then `npm run setup:local`. The setup executes additive migrations `005_features`, `007_syndicate_ranks` and `008_event_xp` and retains existing accounts/character sheets.
+4. Restart the backend with `npm start`. Check `http://127.0.0.1:3182/health` and `/ready` locally. Healthy HTTP alone does not prove migrations or permissions are correct.
+5. Verify migration records and test an actual completed-event XP award using test accounts.
 
-- Each member must declare they are at least 18 and choose their private content categories.
-- The legacy staff adult-access flag is retired in battlemap-dice.sql. Encounter access now uses the saved 18+ profile declaration; it is not proof of age or identity. Community admission and moderation remain staff responsibilities.
-- No ID upload, birthdate, documentary age verification or identity document storage is built into the app.
-- Member profile choices are private and editable; encounters list their required themes.
-- Server RPCs deny encounter rolls when the member is not approved, has not declared 18+, lacks a required profile category, or has paused OOC participation.
-- Encounter GMs should honor stop/withdrawal requests outside the app as well. Profile opt-ins never authorize coercing an OOC participant to continue.
+Never apply `supabase/*.sql` to MySQL or publish the administrator DB password. No MySQL migration is run by the frontend GitHub Pages workflow.
 
-## Acceptance tests before release
+## Permissions, OOC safety and member acceptance
 
-1. Test the Domina, unrelated member, bound member and assigned handler roles in separate authenticated browser sessions.
-2. Verify private profile preferences cannot be read or modified by another account's API calls.
-3. Check that new characters can become bound/unbound with separate player approval and full sheet preservation.
-4. Create an encounter; add a GM NPC and an eligible player character; verify initiative ordering and turn/round progression.
-5. Change combatant HP, AC, initiative and conditions; verify values persist across reloads and are not editable by ordinary members.
-6. Test public dice, GM-only dice, advantage/disadvantage and shared history.
-7. Reject dice rolls when a user is not eligible, has not opted into required themes, or has paused OOC.
-8. Verify a player can pause participation even when bound. Confirm profile changes take effect without a code deployment.
-9. Ensure unauthorized accounts cannot see GM notes or private player preferences.
-10. Check browser/mobile layout, expired sessions, offline behavior, safe migration to staging and backup restore.
+Test each action in separate sessions for Domina, a GM/officer, an unrelated member, a bound player and their assigned handler:
 
-## Backups and release controls
+1. Pending account cannot sign in; approved account can; expired/revoked sessions stop working.
+2. Only authorized roles can change account roles/ranks, create/manage events, view GM-only notes and award event XP.
+3. Private RP/kink preferences are off by default; sharing and withdrawal take effect promptly. Unrelated users cannot query private fields.
+4. Bound players receive the limited dossier response, not hidden private sheet data. Binding/unbinding requires the player's explicit OOC approval and preserves the sheet.
+5. OOC stop, withdrawal, and consent changes work regardless of IC status.
+6. Events: draft privacy, publishing, signups, approval, roster assignment, initiative, combat/dice history and refresh persistence.
+7. XP: only completed events, only eligible participants, one award per character/event; level progression remains consistent after reload.
 
-Automated encrypted offsite backup and restoration are still **not configured**. Back up the database privately and test a restore before production. Do not upload private records into public GitHub Actions artifacts.
+An account's 18+ declaration is not conclusive age verification. Community admission and moderation policies remain staff responsibilities.
 
-Deploy only after database setup, integration tests and explicit review. Use a staged PR rather than directly pushing work to the live `main` branch. Update dependencies periodically and keep independent backups.
+## Public routing and launch
 
-## Battle map and dice revision
+Follow [Cloudflare launch](../server/CLOUDFLARE-LAUNCH.md). Confirm the site's **exact** HTTPS origin in `API_ALLOWED_ORIGIN`, the expected `API_PUBLIC_HOST`, the tunnel route, preflight CORS and sign-in from the published site. Ensure `/auth/setup-domina` and `/ready` are unavailable over the public API. Configure Cloudflare rate limits on login and registration; avoid HTML challenges on JSON API requests without client support.
 
-Read [Battlemap and Dice](BATTLEMAP-DICE.md). The new module saves a token position once per placement and stores custom map images as remote HTTPS URLs. Only the encounter director can move tokens or adjust combatant HP; ordinary participants can roll only when the encounter is active and their profile permits it. Attack and DC outcomes are calculated by the database; damage/healing roll applications are one-time. Test the functions against a real Supabase project before production.
+## Recovery and ongoing operations
+
+Automated encrypted offsite backups, verified restores, email recovery/verification, persistent rate limiting and monitoring are **not confirmed production-ready**. Arrange those before unrestricted signup. Protect the Windows host from sleep and unexpected shutdown; a healthy Cloudflare tunnel does not keep Node or MySQL running. Keep credentials, private OOC data, database exports and diagnostic logs out of public artifacts.
+
+## Release procedure
+
+Create a branch and PR; review CI, migration impact and the complete permission matrix. Verify the running server and browser separately; merge only after explicit release approval. Record the deployed frontend commit and installed migration versions. Preserve a rollback plan and a usable pre-release backup. 

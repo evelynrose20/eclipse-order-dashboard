@@ -1,24 +1,24 @@
-# Eclipse Order — Instructions for future AI code edits
+# Eclipse Order — contributor and AI editing guide
 
 ## Architecture
-React + Vite frontend; Supabase Auth and Postgres RPCs. Dashboard.jsx handles character UI; OrderSheets.jsx displays full and collar-bound sheets; RPPlatform.jsx implements free/bound status requests; Encounters.jsx implements D&D encounter mechanics and dice; ProfileConsent.jsx holds private player content preferences; supabase.js contains the RPC client; supabase/*.sql contains server-side permissions.
+
+The supported member portal uses React/Vite plus the Windows Node/MySQL API. `App.jsx` selects `LocalAccounts`/`LocalWorkspace` when `VITE_ECLIPSE_API_URL` is configured. The `src/apiBridge.js` adapter selects the matching Windows API actions. The legacy `Dashboard.jsx` + Supabase/browser storage path remains when the URL is absent and must not be confused with the primary Windows deployment.
+
+Server routes and authorization live in `server/src/`; additive SQL migrations live in `server/sql/`. `server/src/setup-local.js` applies features, syndicate ranks and event XP. Historical `supabase/` scripts are **PostgreSQL-only** and must not be run against MySQL.
 
 ## Non-negotiable rules
-1. All private data access must be authorized by server-side RPC and Postgres permissions. Do not rely on disabled buttons, CSS hiding or client-side roles.
-2. Bound players must never receive their sealed ability scores, spells, inventory, features or private notes in API responses.
-3. Free and bound character status must change both directions, preserve the complete sheet, and require explicit player OOC approval.
-4. In-character fiction cannot remove out-of-character pause, decline, revoke or leave controls. RP content preferences must live on the private player profile, not public sheets or repeated scene consent forms.
-5. Encounter access uses the player's saved 18+ declaration, not the retired staff checkbox. Do not implement ID collection or document storage. Self-declaration is not proof of age; staff remain responsible for community moderation and applicable platform rules.
-6. GM-private encounter dice results and GM notes must not be disclosed to unauthorized accounts. Only encounter combatants and authorized GMs may roll. Token moves write only on drop, never continuously. Content categories should be checked by server RPC without revealing an individual's private preference record to staff or other players.
-7. Never commit service-role keys, database passwords, login passwords or sensitive OOC disclosures.
-8. Database schema changes require a forward SQL migration, backup and permission tests. GitHub build success does not run migrations.
-9. Do not enable production deployment from feature branches or merge without the user's release approval.
-10. Keep private RP and backup data out of GitHub, public artifacts and error logs.
 
-## Safe AI edit workflow
-- Create a branch; identify affected schema, permissions and user interface.
-- Prefer configurable admin settings over hardcoded new constants.
-- Add tests and run npm ci, npm test and npm run build.
-- Verify permissions with a Domina, a bound member, an unbound member and an unrelated handler.
-- Open a pull request for review and document the migration and rollback requirements.
-- Never claim database authorization is tested unless a real test Supabase instance was exercised.
+1. Verify private-record access on the server, not by hiding UI elements. Bound players cannot receive sealed sheet details through API responses.
+2. Binding and unbinding preserve the complete sheet and require explicit linked-player OOC approval. OOC pause, decline, revocation and withdrawal are available regardless of IC roleplay status.
+3. RP content and kink preferences remain private by default; separate sharing must be opt-in and revocable. Do not expose private preference details to GMs or other members.
+4. GM-only dice, private notes, event approvals, rank/role changes and completed-event XP awards require server-side permissions.
+5. Event XP must be granted only for completed events to participating characters, once per character/event, through the server-owned progression system. Do not reintroduce a shop, payroll, wallet, purchases or ration system.
+6. Account 18+ declarations are self-attestations, not proof of identity or age. Do not collect identity documents in this application.
+7. Never commit login/database secrets, private OOC disclosures, live member exports or backups. Keep database access bound to the local interface.
+8. Add forward-only MySQL migrations, preserve existing records and require a backup and explicit live database verification. GitHub CI does not install SQL.
+9. Use a branch/PR for code changes, verify frontend and server tests, and do not merge/deploy without the user's approval.
+10. Treat public API CORS, authentication, rate limiting, recovery, monitored uptime and encrypted backup/restore as release requirements.
+
+## Review process
+
+Inspect changed UI, server permissions, migration impacts and active vs. legacy paths. Run `npm ci && npm test && npm run build` from the repository root and `npm ci && npm test` from `server/`. Test MySQL integration with a real configured test database before claiming it passed; a skipped suite is not proof. Verify different account permissions in separate sessions, document migration/rollback implications and review the PR before merging.

@@ -1,69 +1,59 @@
-# Eclipse Order — D&D FC and RP platform
+# Eclipse Order — FC roleplay and encounter ledger
 
-Eclipse Order combines character sheets, in-world magical binding mechanics, role-based FC administration, private player OOC content preferences and shared tabletop encounters.
+The Eclipse Order dashboard supports FC membership management, character dossiers, private out-of-character (OOC) preferences, binding requests, planned events, and tabletop-style encounters.
 
-## Current development status
+## Current architecture
 
-The new encounter/profile revision is on **draft PR #8** and is **not deployed**. Database functions still require migration and manual permission testing in Supabase. A successful GitHub build is not proof that the SQL is installed or safe.
+The main supported deployment is a **React/Vite frontend on GitHub Pages** using the **Windows Node.js/MySQL API** through `VITE_ECLIPSE_API_URL`. The backend listens on `127.0.0.1:3182`; the existing Cloudflare Tunnel may publish it at `https://api.rosefires.com` after configuration and security verification.
 
-## Player features
+The codebase also retains the older Supabase/browser-ledger route when `VITE_ECLIPSE_API_URL` is unset. That is a **legacy compatibility mode**, not the recommended member portal. Do not mix its setup/migration instructions with the Windows/MySQL deployment. Historical `supabase/` SQL is retained for reference; **do not run it against MySQL**.
 
-- **My RP profile:** players privately select which content themes they generally allow. The default is opt-out. An account-level 18+ declaration is available; no IDs or identity documents are collected.
-- **Encounters & dice:** directors create named encounters and declare thematic categories, manage combatants and initiative, track rounds/turns, update HP and AC, mark conditions, save reusable homebrew monster/NPC stat blocks, automatically roll initiative, and roll on the Supabase server.
-- **OOC pause:** every player can pause participation in an encounter regardless of IC rank, collar, or other story restrictions.
-- **Character sheets:** full D&D-style sheet for authorized characters; redacted bound-character sheet for the linked player. Free ↔ bound transitions require explicit linked-player approval and preserve the entire sheet.
-- **Account roles:** Domina, High Command, assigned Master/Mistress handlers and normal members.
+A successful frontend deployment only verifies static assets. It does not run MySQL migrations or prove the Windows API, Cloudflare Tunnel, or member permissions are working.
 
-Player selections remain private to their own account. The encounter API checks eligible accounts and required themes; staff don't receive a list of private unchecked categories. General profile opt-ins are **not** unlimited or irrevocable consent. Players can change preferences and pause/leave scenes at any time.
+## Member experience
 
-## D&D encounter battle maps and dice (new branch)
+- Request membership; a Domina approves or rejects the application before access is granted.
+- Keep a private RP profile, including an 18+ self-declaration and content preferences. Optional sharing of RP/kink information is separately controlled and off by default.
+- View and maintain permitted character dossiers. Bound-character restrictions are applied on the server; the linked player keeps OOC control of participation and status-change consent.
+- Join published events with an eligible linked character, withdraw OOC, and participate in GM-managed encounters, dice, and battle maps.
+- Receive **XP only through completed FC events**: authorized GMs select an eligible participant and record a one-time award per character/event.
+- Spend earned progression points through the character dossier. New characters do not start with a full allotment of earned points.
 
-- Battle map with player/monster tokens, current HP labels, dungeon/forest/parchment terrain, optional HTTPS map artwork, and touch/drag placement.
-- Each token placement is a single Supabase update; no map image is stored in the database.
-- GM roll requests and player responses, server-recorded attack vs AC, saves/skills vs DC, natural critical outcomes, damage, healing, death/concentration saves, and advantage/disadvantage.
-- A verified damage or healing roll can change combatant HP exactly once. D&D encounter mechanics not yet automated are tracked in the roadmap.
-- The old double adult-access blocker has been replaced with the saved profile 18+ declaration. Profile now has a top Save button. No identity document is requested.
+The Order's normal syndicate ranks are **Domina, Oyabun, Kusushi, Operative, and Kumi-in / Initiate**. Account permissions and bound-character ranks are separate.
 
-To activate this revision, apply the forward SQL migration [battlemap-dice.sql](supabase/battlemap-dice.sql) **after** profile-encounters.sql, then save your My RP profile and reload. See [Battlemap & Dice Setup](docs/BATTLEMAP-DICE.md) for a short troubleshooting and security checklist.
+**No shop, wallet, paychecks, purchases, or ration-claiming economy is part of the current dashboard.** Old database tables and historical migration files may remain to preserve records, but they are not active player features.
 
-## FC event planning and roster (new draft feature)
+## Safety and privacy
 
-- Free characters and magically bound characters have separate roster lists.
-- Bound ranks: **Rank I: Fresh Intake / Unbroken**, **Rank II: Initiate / Indentured**, **Rank III: Trusted / Specialized**, **Rank IV: Elite / Favor of the Domina**.
-- Events are created as **private planned drafts** with date/time, venue, description, capacity, and publicly declared themes.
-- A GM can prepare monster stat blocks, NPCs, bosses, map tokens and encounters before publishing.
-- Members can request a place using their own linked character after registration opens. A GM approves the signup and chooses when to add the character to the party. Players can withdraw OOC.
-- The event workspace is divided into Overview, Event details, Sign-ups, Combat setup, Battle map, Live encounter, and Dice & checks.
-- Published event details are visible to members. Unpublished drafts and the full signup list remain GM-controlled.
+Roleplay content preferences are private by default. A profile selection is not blanket consent. Players must always be able to pause, decline, withdraw, or revoke OOC participation regardless of in-character status. An 18+ checkbox records a self-declaration; it does not verify identity or age. Do not put OOC preferences, user passwords, private records, or DB backups in GitHub.
 
-**For an existing project**, back up Supabase and apply only the new forward migration [events-roster.sql](supabase/events-roster.sql) **after** the existing battlemap-dice.sql migration. Do not rerun your old SETUP-ALL.sql. Details: [Event Planning guide](docs/EVENT-PLANNING.md).
+## Windows development and setup
 
-## Character sheets and member RP profiles (draft PR #11)
+Requires Node.js 22+, a local MySQL `eclipse_order` database, a private `server/.env`, and the existing local MySQL permissions. See [Windows setup](server/README.md) for prerequisites and account bootstrap.
 
-- Existing character sheets now open a full-width inline editor with sections for identity, combat, abilities, proficiencies, gear and roleplay fields; the cramped modal remains only for **new** character creation.
-- Each member can maintain a custom **Favorite / Yes / Maybe / No** kink list (up to 60 entries).
-- Two **separate, off-by-default sharing controls** publish (a) saved RP content categories and/or (b) the kink list to authenticated adult FC members.
-- The **Member RP profiles** directory displays only the information that each member chose to share. Private account email, age declaration and unshared preferences are excluded. All private record reads/writes require server-side authorization.
-- For existing Supabase projects, apply the **new forward migration** [member-rp-profiles.sql](supabase/member-rp-profiles.sql) after the previous profile and event migrations. Back up first and test with two accounts.
-- **Windows PC hosting is possible, but not active.** Read [Windows self-hosting plan](docs/WINDOWS-SELF-HOSTING.md) before moving off Supabase. A local MySQL or PostgreSQL server needs a separate secure authenticated API and data migration; it cannot replace Supabase just by changing its address.
+From the `server` folder, after backing up MySQL and pulling updates:
 
-## Database setup
+```powershell
+npm ci
+npm run setup:local
+npm start
+```
 
-**Existing project:** after a database backup and verifying the previous schema, run the new forward migration **supabase/profile-encounters.sql** in Supabase SQL Editor. The existing `supabase/SETUP-ALL.sql` is a baseline script and does **not** include this migration. Do not rerun earlier migration scripts blindly.
+`setup:local` applies the additive feature, syndicate-rank and **008_event_xp** migrations; it does not delete existing accounts. Keep its administrator password private. Use the health and readiness checks described in the server guide.
 
-**New project:** apply baseline migration scripts as documented in [Operations](docs/OPERATIONS.md), then apply `profile-encounters.sql`.
+For local frontend development, set `VITE_ECLIPSE_API_URL=http://127.0.0.1:3182` in the root `.env.local`, then run from the repository root:
 
-Accounts are provisioned in Supabase Auth; adult access is moderated with the existing Domina permission flag. This is an administrative eligibility review, not a formal ID-based age-verification system. No identity documents are collected by Eclipse Order.
-
-## Development
-
-```sh
+```powershell
 npm ci
 npm test
 npm run build
 npm run dev
 ```
 
-See [AGENTS.md](AGENTS.md), [Operations](docs/OPERATIONS.md), and [Roadmap](docs/ROADMAP.md). Do not merge into `main` or deploy until the migration, privacy tests, authorization, backups, and browser QA are complete.
+Use `http://localhost:5173`. Run backend tests separately with `cd server; npm test`. The MySQL integration suite requires a configured test database; a skipped integration suite is not a passing live-db verification.
 
-The old hard-coded frontend admin password remains in Git history; rotate it anywhere reused. Never commit database secrets, member passwords, private character histories or backups.
+## Release readiness
+
+Before inviting members, verify migrations against the actual Windows MySQL instance, account roles and private-record permissions with distinct users, the full event/XP workflow, Cloudflare HTTPS/CORS and auth throttling, session expiry, and encrypted backups with a tested restore. Email verification/recovery and production operations remain open work. See [release roadmap](docs/ROADMAP.md), [operations checklist](docs/OPERATIONS.md), and [Cloudflare launch guide](server/CLOUDFLARE-LAUNCH.md).
+
+The GitHub Pages workflow may deploy on updates to `main`; a PR does **not** automatically apply database migrations. Never commit credentials or expose MySQL port 3306.
