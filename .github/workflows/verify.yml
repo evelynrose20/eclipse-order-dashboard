@@ -9,6 +9,19 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-only-password
+          MYSQL_DATABASE: eclipse_order
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,7 +33,10 @@ jobs:
       - run: npm run build
       - name: Install API dependencies
         run: npm install --prefix server --no-audit --no-fund
-      - name: Test API authorization and migration schema
+      - name: Test API authorization and MySQL migrations
+        env:
+          ECLIPSE_CI_MYSQL: '1'
+          ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
         run: npm test --prefix server
       - name: Check password-management script syntax
         run: node --check server/src/set-local-password.js
