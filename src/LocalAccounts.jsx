@@ -10,7 +10,7 @@ async function request(path,{method='GET',token,body}={}){
   ...(body?{'Content-Type':'application/json'}:{}),
   ...(token?{Authorization:'Bearer '+token}:{})
  },body:body?JSON.stringify(body):undefined,cache:'no-store'});}catch{
-  throw new Error('Cannot reach the Eclipse Order API. Check the API connection and the website origin settings.');
+  throw new Error('The Order's records are temporarily unavailable. Please try again shortly.');
  }
  const data=response.status===204?{}:await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(({
@@ -41,7 +41,7 @@ export default function LocalAccounts(){
    setCheckingSetup(false);return;
   }
   let live=true;
-  request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(error=>{if(live)setMessage('Could not check first-account setup: '+error.message)}).finally(()=>{if(live)setCheckingSetup(false)});
+  request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Establish the first Domina account to lead the Order.')}}).catch(error=>{if(live)setMessage('Unable to open first-account registration: '+error.message)}).finally(()=>{if(live)setCheckingSetup(false)});
   return()=>{live=false};
  },[]);
  const reload=async(access=token)=>{
@@ -91,7 +91,7 @@ export default function LocalAccounts(){
   {!profile?<main className="eo-auth-card">
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
    <h1>{mode==='setup'?'Create your Domina account':mode==='register'?'Request membership':'Enter the Order'}</h1>
-   <p>{mode==='setup'?'This one-time setup creates your administrator account. Choose a password you can enter and confirm normally.':mode==='register'?'Create your account. Access begins after the Domina approves your request.':'Sign in using your Eclipse Order account.'}</p>
+   <p>{mode==='setup'?'Establish the first Domina account and choose a secure password.':mode==='register'?'Create your account. Access begins after the Domina approves your request.':'Sign in using your Eclipse Order account.'}</p>
    <form onSubmit={submit}>
     {(mode==='register'||mode==='setup')&&<label>Display name<input required minLength={2} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label>}
     <label>Email<input required type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></label>
@@ -113,7 +113,7 @@ export default function LocalAccounts(){
     {pending.length===0?<p className="eo-empty">No pending membership requests.</p>:pending.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{m.email}</small><span>Requested {new Date(m.created_at).toLocaleDateString()}</span></div><div className="eo-actions"><button className="eo-primary" onClick={()=>change(m.user_id,'approve')}>Approve</button><button onClick={()=>{if(window.confirm('Reject this account request?'))change(m.user_id,'reject')}}>Reject</button></div></article>)}
     <h2>Approved members</h2>
     {approved.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{m.email}</small></div><div className="eo-actions"><label>Role<select value={m.role} disabled={m.user_id===profile.id} onChange={e=>change(m.user_id,'role',{role:e.target.value})}>{['member','handler','high_command','domina'].map(role=><option value={role} key={role}>{role.replace('_',' ')}</option>)}</select></label><label>Standing<select value={m.standing} onChange={e=>change(m.user_id,'standing',{standing:e.target.value})}>{['initiate','associate','established','veteran'].map(s=><option key={s} value={s}>{s}</option>)}</select></label></div></article>)}
-   </>:<p className="eo-empty">Your membership is approved. Character sheets, events and encounter tools will be connected to this account system as the remaining local API is implemented.</p>}
+   </>:<p className="eo-empty">Your membership is approved. Enter the Order to view your character records and events.</p>}
    {message&&<p className="eo-message" role="status">{message}</p>}
   </main>}
  </div>;
