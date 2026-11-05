@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
+import {authRoute} from './auth.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
@@ -36,24 +37,47 @@ export async function readiness(){
 }
 
 const server=http.createServer(async(req,res)=>{
-  const pathname=(req.url||'').split('?')[0];
-  const origin=req.headers.origin;
-  // This API is for local bootstrap only; do not enable CORS for browsers yet.
-  if(origin){res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:'forbidden'}));return;}
-  const result=pathname==='/ready'&&req.method==='GET'?await readiness():buildResponse(pathname,req.method,()=>({status:503,body:{status:'not_ready'}}));
-  res.writeHead(result.status,{
-    'Content-Type':'application/json; charset=utf-8',
-    'Cache-Control':'no-store',
-    'X-Content-Type-Options':'nosniff'
-  });
-  res.end(JSON.stringify(result.body));
+ const pathname=(req.url||'').split('?')[0];
+ const origin=req.headers.origin;
+ const hostHeader=(req.headers.host||'').toLowerCase();
+ // IMPORTANT: Even when a tunnel is Healthy, reject traffic routed under an external Host header.
+ // Login is for local PowerShell testing ONLY until the public API is completed and reviewed.
+ const permittedHosts=new Set(['localhost:'+port,'127.0.0.1:'+port]);
+ if(!permittedHosts.has(hostHeader)){
+  res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
+  res.end(JSON.stringify({error:'local_only'}));return;
+ }
+ if(origin){
+  res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
+  res.end(JSON.stringify({error:'browser_origin_not_enabled'}));return;
+ }
+ let result;
+ try{
+  if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
+  else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
+  else result=buildResponse(pathname,req.method,()=>({status:503,body:{status:'not_ready'}}));
+ }catch(error){
+  if(error?.status===400||error?.status===413)result={status:error.status,body:{error:error.message}};
+  else{
+   console.error('[Eclipse Order API] Request failed:',error?.code||'internal_error');
+   result={status:500,body:{error:'internal_error'}};
+  }
+ }
+ res.writeHead(result.status,{
+  'Content-Type':'application/json; charset=utf-8',
+  'Cache-Control':'no-store',
+  'X-Content-Type-Options':'nosniff',
+  'Referrer-Policy':'no-referrer',
+  'X-Frame-Options':'DENY'
+ });
+ res.end(result.body===null?'':JSON.stringify(result.body));
 });
 server.requestTimeout=5000;
 server.headersTimeout=5000;
 server.listen(port,host,()=>{
   console.log('[Eclipse Order API] Local bootstrap listening at http://127.0.0.1:'+port);
   console.log('[Eclipse Order API] /health checks the HTTP server. /ready checks the database.');
-  console.log('[Eclipse Order API] Cloudflare/public routing must remain OFF until auth is implemented.');
+  console.log('[Eclipse Order API] Local auth test enabled; Cloudflare/public routing must remain OFF.');
 });
 const close=async()=>{
   server.close();
