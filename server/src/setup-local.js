@@ -27,6 +27,8 @@ async function main(){
   await pool.query(features);
   const economy=await readFile(new URL('../sql/006_economy.sql',import.meta.url),'utf8');
   await pool.query(economy);
+  const syndicateRanks=await readFile(new URL('../sql/007_syndicate_ranks.sql',import.meta.url),'utf8');
+  await pool.query(syndicateRanks);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. Open the local account portal in your browser to create the first Domina account.');
