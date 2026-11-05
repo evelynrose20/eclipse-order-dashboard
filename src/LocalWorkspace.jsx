@@ -5,6 +5,7 @@ import {CharacterTransitions} from './RPPlatform.jsx';
 import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
+import InlineSheetEditor from './InlineSheetEditor.jsx';
 import './dashboard.css';
 import './local-accounts.css';
 
@@ -52,12 +53,16 @@ export default function LocalWorkspace({profile,request,onLogout}){
   catch(err){setMessage(err.message)}
   finally{setBusy(false)}
  };
- const save=async()=>{
-  if(!draft?.name?.trim())return setMessage('Enter a character name.');
+ const save=async(form=draft)=>{
+  if(!form?.name?.trim())return setMessage('Enter a character name.');
   setBusy(true);setMessage('');
   try{
-   const created=await request(draft.id?'/characters/'+draft.id:'/characters',
-    {method:draft.id?'PUT':'POST',body:draft});
+   const created=await request(form.id?'/characters/'+form.id:'/characters',
+    {method:form.id?'PUT':'POST',body:form});
+   const id=form.id||created.id;
+   if(admin&&id&&(form.player_user_id||form.handler_user_id))await request('/characters/'+id+'/assign',{
+    method:'POST',body:{player_user_id:form.player_user_id||null,handler_user_id:form.handler_user_id||null}
+   });
    setDraft(null);await load();
    if(created.id)setSelected(created.id);
    setMessage('Character saved in MySQL.');
@@ -97,18 +102,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='sheet'&&<>
      <div className="eo-toolbar"><h2>Character sheets</h2>{admin&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>+ New sheet</button>}</div>
      {characters.length>0&&<select className="eo-sheet-picker" value={selected} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{characters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
-     {draft?<section className="panel eo-editor"><h2>{draft.id?'Edit character':'New character'}</h2><div className="form-grid">
-      {field('Character name',draft.name,v=>mut('name',v))}
-      {field('Player display name',draft.player,v=>mut('player',v))}
-      {field('Class / job',draft.class_name,v=>mut('class_name',v))}
-      {field('Species',draft.species,v=>mut('species',v))}
-      {field('Specialty',draft.specialty,v=>mut('specialty',v))}
-      {field('HP',draft.hp,v=>mut('hp',Number(v)))}
-      {field('Maximum HP',draft.max_hp,v=>mut('max_hp',Number(v)))}
-      {field('Armor class',draft.armor_class,v=>mut('armor_class',Number(v)))}
-      {field('Level',draft.level,v=>mut('level',Number(v)))}
-      {['str','dex','con','int','wis','cha'].map(x=><React.Fragment key={x}>{field(x.toUpperCase(),draft[x],v=>mut(x,Number(v)))}</React.Fragment>)}
-     </div><label className="field"><span>Notes</span><textarea value={draft.notes||''} onChange={e=>mut('notes',e.target.value)} rows={5}/></label><div className="eo-actions"><button className="btn primary" disabled={busy} onClick={save}>Save character</button><button className="btn secondary" onClick={()=>setDraft(null)}>Cancel</button></div><p className="fine-print">Binding status and character ownership require separate player-approval and assignment flows. They cannot be altered through this editor.</p></section>:
+     {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} canCommand={admin} members={members} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id)?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.view_mode==='bound'?<LimitedSheet character={character}/>:<FullDndSheet character={character}/>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
