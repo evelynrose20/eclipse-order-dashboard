@@ -1,8 +1,9 @@
 import React,{useEffect,useState} from 'react';
-import {listEventXpAwards,awardEventXp} from './apiBridge.js';
+import {listEventXpAwards,awardEventXp,listEventSignups} from './apiBridge.js';
 
 export default function EventXPRewards({event,characters,canDirect,onRefresh}){
  const [awards,setAwards]=useState([]);
+ const [signups,setSignups]=useState([]);
  const [recipient,setRecipient]=useState('');
  const [amount,setAmount]=useState(200);
  const [busy,setBusy]=useState(false);
@@ -10,14 +11,16 @@ export default function EventXPRewards({event,characters,canDirect,onRefresh}){
  useEffect(()=>{
   if(!canDirect)return;
   let active=true;
-  listEventXpAwards(event.id).then(result=>{if(active)setAwards(result.awards||[])}).catch(error=>{if(active)setMessage(error.message)});
+  Promise.all([listEventXpAwards(event.id),listEventSignups(event.id)])
+   .then(([result,registrations])=>{if(active){setAwards(result.awards||[]);setSignups(registrations||[])}})
+   .catch(error=>{if(active)setMessage(error.message)});
   return()=>{active=false};
  },[event.id,canDirect]);
  if(!canDirect)return null;
  const awarded=new Set(awards.map(a=>a.character_id));
- const eligible=Array.from(new Map((event.combatants||[])
-  .filter(c=>c.character_id&&c.kind==='player')
-  .map(c=>[c.character_id,{id:c.character_id,name:c.name}])).values());
+ const participants=[...(event.combatants||[]).filter(c=>c.character_id&&c.kind==='player').map(c=>({id:c.character_id,name:c.name})),
+  ...signups.filter(s=>s.status==='approved').map(s=>({id:s.character_id,name:s.character_name}))];
+ const eligible=Array.from(new Map(participants.map(c=>[c.id,c])).values());
  const available=eligible.filter(c=>!awarded.has(c.id));
  const chosen=available.some(c=>c.id===recipient)?recipient:available[0]?.id||'';
  async function grant(){
