@@ -1,5 +1,10 @@
 import React,{useEffect,useState} from 'react';
 import {FullDndSheet,LimitedSheet,ACCOUNT_ROLES} from './OrderSheets.jsx';
+import Encounters from './Encounters.jsx';
+import {CharacterTransitions} from './RPPlatform.jsx';
+import {ProfileConsent} from './ProfileConsent.jsx';
+import {MemberRPDirectory} from './MemberRPDirectory.jsx';
+import FCSettings from './FCSettings.jsx';
 import './dashboard.css';
 import './local-accounts.css';
 
@@ -37,6 +42,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['profile','My RP profile','♡'],
+  ['directory','Member RP profiles','♧'],
   ['transitions','Binding requests','◇'],
   ['settings','Workspace & backup','⚙']
  ];
@@ -59,13 +65,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   finally{setBusy(false)}
  };
  const mut=(key,value)=>setDraft(d=>({...d,[key]:value}));
- const disabledInfo={
-  encounters:['Encounters & dice','The encounter system is being connected to MySQL. The existing Supabase encounters are not available in this local workspace yet.'],
-  events:['Events & signups','Event planning and player signups will use MySQL when the corresponding API permissions are finished.'],
-  profile:['My RP profile','Private content preferences and kink lists remain unavailable in this local build until server-side privacy controls are implemented.'],
-  transitions:['Binding requests','Player-approved binding transitions must be implemented before anyone can change a linked character’s collar status.'],
-  settings:['Workspace & backup','Your account and new characters live in the local eclipse_order MySQL database. Backups and additional account tools are next.']
- };
+ const disabledInfo={settings:['Workspace & backup','All records are stored locally in MySQL. Automatic backup and restore are not yet configured.']};
  return <div className="app-shell eo-local">
   <aside className="sidebar">
    <div className="brand"><span className="brand-sigil">✦</span><div><strong>ECLIPSE ORDER</strong><small>THE UNDERWORLD LEDGER</small></div></div>
@@ -112,6 +112,11 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id)?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.view_mode==='bound'?<LimitedSheet character={character}/>:<FullDndSheet character={character}/>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
+    {(tab==='encounters'||tab==='events')&&<Encounters role={profile.role} userId={profile.id} characters={characters} onOpenProfile={()=>setTab('profile')}/>}
+    {tab==='profile'&&<ProfileConsent/>}
+    {tab==='directory'&&<MemberRPDirectory/>}
+    {tab==='transitions'&&<CharacterTransitions characters={characters} role={profile.role} userId={profile.id} onRefresh={load}/>}
+    {tab==='settings'&&<FCSettings role={profile.role}/>}
     {disabledInfo[tab]&&<section className="panel"><h2>{disabledInfo[tab][0]}</h2><p>{disabledInfo[tab][1]}</p></section>}
    </div>
   </main>
