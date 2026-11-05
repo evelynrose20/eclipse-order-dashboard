@@ -8,7 +8,7 @@ export default function CharacterProgression({character,canCommand,request,onRef
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState('');
  const managed=character.progression_version===1;
- if(!managed&&!canCommand)return null;
+ if(!managed && !(canCommand && character.collar_bound)) return null;
  async function perform(path,payload,success){
   setBusy(true);setNotice('');
   try{
