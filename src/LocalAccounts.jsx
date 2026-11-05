@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import './local-accounts.css';
+import LocalWorkspace from './LocalWorkspace.jsx';
 
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
@@ -75,6 +76,7 @@ export default function LocalAccounts(){
  }
  const pending=rows.filter(r=>r.approval_status==='pending');
  const approved=rows.filter(r=>r.approval_status==='approved');
+ if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div>{profile&&<button onClick={logout}>Sign out</button>}</header>
   {!profile?<main className="eo-auth-card">
