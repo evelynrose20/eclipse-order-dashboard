@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --watch --env-file=.env src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "setup:domina": "node --env-file=.env src/bootstrap-admin.js",
+    "check:login": "node --env-file=.env src/check-login.js"
   },
   "engines": {
     "node": ">=22"
