@@ -37,7 +37,7 @@ npm install
 npm run setup:local
 ```
 
-This setup command privately asks for your **MySQL administrator password**, checks and adds the account-session and account-approval schema as needed, then asks you to create your first Domina email/display name/password (at least 16 characters). The passwords are hidden in the terminal. It will not overwrite existing accounts.
+This setup command privately asks for your **MySQL administrator password**, checks and adds the account-session and account-approval schema as needed, then finishes database preparation. It no longer asks for the Domina password in PowerShell. Your first Domina account is created in the **local browser form** instead. It will not overwrite existing accounts.
 
 4. Start the local API:
 
@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The new account portal has sign-in and `Request membership`. Create a test member (with a different email), then sign in with the Domina account, open **Pending account requests**, and click **Approve**. The approved member can then sign in. Browser requests are allowed only from the exact `API_ALLOWED_ORIGIN` in your local `.env`.
+Open `http://localhost:5173`. If the database contains no accounts, it first displays **Create your Domina account** with regular password and confirmation fields. Set a password at least 16 characters long and submit; then sign in. The account portal also has `Request membership`. Create a test member (with a different email), then sign in with the Domina account, open **Pending account requests**, and click **Approve**. The approved member can then sign in. Browser requests are allowed only from the exact `API_ALLOWED_ORIGIN` in your local `.env`.
 
 When working on other dashboard features, remove `VITE_ECLIPSE_API_URL` from root `.env.local` to view the existing legacy UI.
 
@@ -73,3 +73,7 @@ When working on other dashboard features, remove `VITE_ECLIPSE_API_URL` from roo
 - The registration declaration records a user's self-assertion only; it is not proof of age.
 - Registration throttling is only a starter control. Before inviting public signups, add Cloudflare rate limiting, bot protection, recovery/email verification, backups, and persistent rate-limit storage.
 - The existing Supabase site remains live on `main`; do not delete the Supabase project until the full feature migration and final cutover are verified.
+
+## Fix for the old console password confirmation error
+
+If your previous `npm run setup:local` ended with `Password invalid or confirmation mismatch`, the SQL setup had already completed but the first Domina account was NOT inserted. The old terminal raw-input code was fragile on Windows. Update to the latest development branch and run `npm run setup:local` again; it will only verify/complete schema changes and should not ask for the Domina password. Then start `npm start` and use the browser form at `http://localhost:5173` as described above. Do not share passwords or database admin credentials. Keep `API_PUBLIC_ENABLED=false` during bootstrap.
