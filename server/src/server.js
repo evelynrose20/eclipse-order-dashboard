@@ -6,8 +6,12 @@ import {firstDominaRoute} from './first-domina.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
-const allowedOrigin=process.env.API_ALLOWED_ORIGIN||'';
-const publicHost=process.env.API_PUBLIC_ENABLED==='true'?(process.env.API_PUBLIC_HOST||'').toLowerCase():'';
+const isPublic=process.env.API_PUBLIC_ENABLED==='true';
+// Use the exact Vite origin for localhost development when no value was configured.
+// Public operation must always specify an explicit HTTPS origin.
+const allowedOrigin=process.env.API_ALLOWED_ORIGIN||(!isPublic?'http://localhost:5173':'');
+if(isPublic&&!/^https:\/\/[a-z0-9.-]+$/.test(allowedOrigin))throw new Error('Public API requires an explicit HTTPS API_ALLOWED_ORIGIN.');
+const publicHost=isPublic?(process.env.API_PUBLIC_HOST||'').toLowerCase():'';
 if(publicHost&&!/^api[.][a-z0-9.-]+$/.test(publicHost))throw new Error('Invalid API_PUBLIC_HOST.');
 if (!Number.isInteger(port) || port<1024 || port>65535) throw new Error('Invalid API_PORT.');
 const dbReady=Boolean(process.env.DB_USER&&process.env.DB_PASSWORD);
@@ -64,7 +68,7 @@ const server=http.createServer(async(req,res)=>{
  }
  let result;
  try{
-  if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:process.env.API_PUBLIC_ENABLED==='true',allowedOrigin});
+  if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
   else if(pathname==='/auth/register'||pathname.startsWith('/admin/'))result=await accountRoute(pool,req,pathname);
   else if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
   else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
@@ -91,7 +95,8 @@ server.headersTimeout=5000;
 server.listen(port,host,()=>{
   console.log('[Eclipse Order API] Local bootstrap listening at http://127.0.0.1:'+port);
   console.log('[Eclipse Order API] /health checks the HTTP server. /ready checks the database.');
-  console.log('[Eclipse Order API] Local auth test enabled; Cloudflare/public routing must remain OFF.');
+  console.log('[Eclipse Order API] Allowed website origin: '+allowedOrigin);
+ console.log('[Eclipse Order API] Local auth test enabled; Cloudflare/public routing must remain OFF.');
 });
 const close=async()=>{
   server.close();
