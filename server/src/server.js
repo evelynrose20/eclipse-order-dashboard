@@ -18,6 +18,8 @@ const isPublic=process.env.API_PUBLIC_ENABLED==='true';
 const allowedOrigin=process.env.API_ALLOWED_ORIGIN||(!isPublic?'http://localhost:5173':'');
 if(isPublic&&!/^https:\/\/[a-z0-9.-]+$/.test(allowedOrigin))throw new Error('Public API requires an explicit HTTPS API_ALLOWED_ORIGIN.');
 const publicHost=isPublic?(process.env.API_PUBLIC_HOST||'').toLowerCase():'';
+const localOrigin=process.env.API_LOCAL_ORIGIN||'http://localhost:5173';
+if(!/^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(localOrigin))throw new Error('API_LOCAL_ORIGIN must be a local HTTP origin.');
 if(isPublic&&(!publicHost||!/^api[.][a-z0-9.-]+$/.test(publicHost)))throw new Error('Public API requires explicit API_PUBLIC_HOST.');
 if (!Number.isInteger(port) || port<1024 || port>65535) throw new Error('Invalid API_PORT.');
 const dbReady=Boolean(process.env.DB_USER&&process.env.DB_PASSWORD);
@@ -57,6 +59,7 @@ const server=http.createServer(async(req,res)=>{
  const hostHeader=(req.headers.host||'').trim().toLowerCase();
  // HTTPS proxies can preserve the default :443 authority in the Host header.
  const publicRequestHost=isPublic&&(hostHeader===publicHost||hostHeader===publicHost+':443');
+ const expectedOrigin=publicRequestHost?allowedOrigin:localOrigin;
  // IMPORTANT: Even when a tunnel is Healthy, reject traffic routed under an external Host header.
  // A published Cloudflare route is accepted only after explicit public mode configuration.
  const permittedHosts=new Set(['localhost:'+port,'127.0.0.1:'+port]);
@@ -70,17 +73,17 @@ const server=http.createServer(async(req,res)=>{
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'local_only'}));return;
  }
- if(origin&&origin!==allowedOrigin){
+ if(origin&&origin!==expectedOrigin){
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'origin_not_allowed'}));return;
  }
- const cors=origin===allowedOrigin&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{};
+ const cors=origin===expectedOrigin&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{};
  // The server intentionally never exposes bootstrap or raw DB status on the public host.
  if(publicRequestHost&&['/auth/setup-status','/auth/setup-domina','/ready'].includes(pathname)){
   res.writeHead(404,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'not_found'}));return;
  }
- if(req.method==='OPTIONS'&&origin===allowedOrigin){
+ if(req.method==='OPTIONS'&&origin===expectedOrigin){
   res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
   res.end();return;
  }
@@ -120,7 +123,8 @@ server.headersTimeout=5000;
 server.listen(port,host,()=>{
   console.log('[Eclipse Order API] Listening at http://127.0.0.1:'+port);
   console.log('[Eclipse Order API] /health checks the HTTP server. /ready checks the database.');
-  console.log('[Eclipse Order API] Allowed website origin: '+allowedOrigin);
+  console.log('[Eclipse Order API] Public website origin: '+allowedOrigin);
+ console.log('[Eclipse Order API] Local website origin: '+localOrigin);
  console.log('[Eclipse Order API] Public routing '+(isPublic?'ENABLED for '+publicHost:'DISABLED')+'.');
 });
 const close=async()=>{
