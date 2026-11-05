@@ -99,3 +99,9 @@ The setup command prompts once for your **local MySQL administrator password**, 
 The frontend remains in a separate PowerShell window in the repository root. Keep root `.env.local` set to `VITE_ECLIPSE_API_URL=http://127.0.0.1:3182` and run `npm run dev`; then open `http://localhost:5173`. You should see the original Eclipse Order navigation after signing in: Overview, Character roster, Character sheets, Black Market, Order accounts (Domina), Encounters & dice, Events & signups, My RP profile, Member RP profiles, Binding requests, and Workspace & backup / FC rules.
 
 **Important functional expectations:** The database starts empty except for your account. Create/assign characters before inviting players to events. Members must explicitly save their 18+ declaration and opt in to event themes before signing up or rolling in encounters. RP profile sharing is always off by default and revocable; bound/free changes require the character player's OOC approval and command application. Member passwords and session data remain local. The API is intentionally not publicly exposed through Cloudflare until tested. The existing Supabase production site on `main` is unchanged.
+
+## Publish the Cloudflare Tunnel (production)
+
+The project's existing Cloudflare tunnel **Eclipse-Order-API** should route `api.rosefires.com` → `http://127.0.0.1:3182`. The production GitHub Pages deployment builds with `VITE_ECLIPSE_API_URL=https://api.rosefires.com` so the website no longer needs Supabase.
+
+For the exact Windows settings, Cloudflare dashboard fields, rate limiting, and checks, use **[CLOUDFLARE-LAUNCH.md](CLOUDFLARE-LAUNCH.md)**. Do not create another tunnel, open MySQL to the public internet, or enable public API mode before confirming the HTTPS website origin and a database backup. The `main` deployment will remain unchanged while this PR is still draft.
