@@ -2,33 +2,8 @@ import readline from 'node:readline/promises';
 import {randomUUID} from 'node:crypto';
 import {createPool} from 'mysql2/promise';
 import {hashPassword,normalizeEmail,validPassword} from './credentials.js';
+import {askSecret} from './terminal-secret.js';
 
-function askSecret(label){
- return new Promise((resolve,reject)=>{
-  const input=process.stdin,output=process.stdout;
-  if(!input.isTTY||typeof input.setRawMode!=='function'){
-   reject(new Error('Password entry requires an interactive local terminal.'));return;
-  }
-  let value='';
-  output.write(label);
-  input.setRawMode(true);input.resume();
-  const onData=chunk=>{
-   const content=chunk.toString('utf8');
-   if(content==='\u0003'){
-    cleanup();reject(new Error('Cancelled by user.'));return;
-   }
-   if(content==='\r'||content==='\n'){
-    cleanup();output.write('\n');resolve(value);return;
-   }
-   if(content==='\u0008'||content==='\u007f'){
-    value=value.slice(0,-1);return;
-   }
-   if(!content.includes('\u001b')&&value.length+content.length<=1024)value+=content;
-  };
-  const cleanup=()=>{input.off('data',onData);input.setRawMode(false);input.pause();};
-  input.on('data',onData);
- });
-}
 async function main(){
  if(!process.env.DB_USER||!process.env.DB_PASSWORD)throw new Error('Configure DB_USER and DB_PASSWORD in server/.env first.');
  const rl=readline.createInterface({input:process.stdin,output:process.stdout});
