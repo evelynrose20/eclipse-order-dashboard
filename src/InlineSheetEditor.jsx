@@ -7,7 +7,7 @@ const SKILLS=['Acrobatics','Animal Handling','Arcana','Athletics','Deception','H
 const SECTIONS=[
  ['Identity & story',[['name','Character name'],['player','Player handle'],['owner','Assigned to'],['specialty','Specialty'],['species','Species / race'],['background','Background'],['alignment','Alignment']]],
  ['Combat & progression',[['hp','Current HP'],['temp_hp','Temporary HP'],['armor_class','Armor class'],['speed','Speed'],]],
- ['Traits & equipment',[['features','Features & traits'],['proficiencies','Proficiencies & languages'],['spells','Spells & magic'],['inventory','Equipment & belongings'],['conditions','Conditions']]],
+ ['Traits & equipment',[['features','Features & traits'],['proficiencies','Proficiencies & languages'],['spells','Additional spell notes (not class unlocks)'],['inventory','Equipment & belongings'],['conditions','Conditions']]],
  ['Roleplay details',[['personality','Personality'],['ideals','Ideals'],['bonds','Bonds'],['flaws','Flaws'],['notes','Ledger notes']]]
 ];
 const NUMERIC=new Set(['level','experience','hp','max_hp','temp_hp','armor_class','speed','proficiency_bonus']);
