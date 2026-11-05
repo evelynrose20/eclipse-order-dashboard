@@ -1,5 +1,6 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {resolveSession} from './auth.js';
+import {normalizedPosition,validateWaymarks} from './map-state.js';
 
 export const err=(status,error)=>({status,body:{error}});
 export const ok=(body,status=200)=>({status,body});
@@ -32,9 +33,9 @@ async function shape(pool,u,e){
  const [pending]=gm(u,e)?await pool.execute('SELECT COUNT(*) AS n FROM order_event_signups WHERE encounter_id=? AND status="requested"',[e.id]):[[{n:0}]];
  return {id:e.id,name:e.name,notes:gm(u,e)?e.notes:'',themes:unpack(e.themes),created_by:e.created_by,
   status:e.status,turn_index:e.turn_index,round_number:e.round_number,
-  map_columns:e.map_columns,map_rows:e.map_rows,map_style:e.map_style,map_image_url:e.map_image_url,
+  map_columns:e.map_columns,map_rows:e.map_rows,map_style:e.map_style,map_image_url:e.map_image_url,waymarks:unpack(e.waymarks)||{},
   starts_at:e.starts_at,location:e.location,description:e.description,capacity:e.capacity,published:Boolean(e.published),
-  signup_count:Number(approved[0].n),pending_count:Number(pending[0].n),combatants:combatants.map(c=>({...c,conditions:unpack(c.conditions)}))};
+  signup_count:Number(approved[0].n),pending_count:Number(pending[0].n),combatants:combatants.map(c=>({...c,conditions:unpack(c.conditions),notes:gm(u,e)?c.notes:null}))};
 }
 export async function encounterRoute(pool,req,path){
  if(!pool)return err(503,'database_unavailable');
@@ -56,7 +57,7 @@ export async function encounterRoute(pool,req,path){
    [id,name,text(b.notes,5000),JSON.stringify(b.themes.filter(x=>typeof x==='string').slice(0,30)),u.id,text(b.notes,2400)]);
   return ok(id,201);
  }
- const route=/^\/encounters\/([a-f0-9-]{36})(?:\/(turn|map|image|plan|state|check|pause|initiative))?$/.exec(path);
+ const route=/^\/encounters\/([a-f0-9-]{36})(?:\/(turn|map|image|waymarks|plan|state|check|pause|initiative))?$/.exec(path);
  if(route){
   const [,id,action]=route,e=await getEvent(pool,id);
   if(!e||!await hasAccess(pool,u,e))return err(404,'encounter_not_found');
@@ -119,6 +120,12 @@ export async function encounterRoute(pool,req,path){
    await pool.execute('UPDATE order_encounters SET map_columns=?,map_rows=?,map_style=? WHERE id=?',[columns,rows,b.style,id]);
    return ok({status:'saved'});
   }
+  if(action==='waymarks'){
+   const waymarks=validateWaymarks(b?.waymarks);
+   if(waymarks===null)return err(400,'invalid_waymarks');
+   await pool.execute('UPDATE order_encounters SET waymarks=? WHERE id=?',[JSON.stringify(waymarks),id]);
+   return ok({waymarks});
+  }
   if(action==='image'){
    const image=text(b?.image_url,1200);
    if(image&&!/^https:\/\/[^\s"'<>]+$/.test(image))return err(400,'https_image_required');
@@ -157,15 +164,10 @@ export async function encounterRoute(pool,req,path){
   if(req.method==='DELETE'){await pool.execute('DELETE FROM order_combatants WHERE id=?',[id]);return ok({status:'deleted'})}
   const b=await read(req);
   if(action==='move'){
-   const x=b.x===null?null:int(b.x,0,29),y=b.y===null?null:int(b.y,0,19);
-   if((x===null)!==(y===null))return err(400,'invalid_coordinates');
-   const e=await getEvent(pool,c.encounter_id);
-   if(x!==null&&(x>=e.map_columns||y>=e.map_rows))return err(400,'out_of_bounds');
-   if(x!==null){
-    const [occupied]=await pool.execute('SELECT id FROM order_combatants WHERE encounter_id=? AND tile_x=? AND tile_y=? AND id<>? LIMIT 1',[e.id,x,y,id]);
-    if(occupied.length)return err(409,'occupied');
-   }
-   await pool.execute('UPDATE order_combatants SET tile_x=?,tile_y=? WHERE id=?',[x,y,id]);return ok({status:'saved'});
+   const point=normalizedPosition(b?.x,b?.y);
+   if(!point)return err(400,'invalid_coordinates');
+   await pool.execute('UPDATE order_combatants SET pos_x=?,pos_y=?,tile_x=NULL,tile_y=NULL WHERE id=?',[point.x,point.y,id]);
+   return ok({status:'saved'});
   }
   if(action==='hp'){
    const delta=int(b?.delta,-999999,999999);
@@ -179,13 +181,14 @@ export async function encounterRoute(pool,req,path){
    [hp,initiative,ac,JSON.stringify(b.conditions.filter(x=>typeof x==='string'&&x.length<50)),id]);
   return ok({status:'saved'});
  }
+ const monsterEditor=['domina','high_command','handler'].includes(u.account_role);
  if(path==='/monsters'&&req.method==='GET'){
-  if(!['domina','high_command','handler'].includes(u.account_role))return err(403,'director_required');
+  if(!monsterEditor)return err(403,'director_required');
   const [rows]=await pool.query('SELECT * FROM order_monster_templates ORDER BY name LIMIT 200');
   return ok(rows);
  }
  if(path==='/monsters'&&req.method==='POST'){
-  if(!['domina','high_command','handler'].includes(u.account_role))return err(403,'director_required');
+  if(!monsterEditor)return err(403,'director_required');
   const b=await read(req);
   const name=text(b?.name,120),hp=int(b?.hit_points,1,999999),ac=int(b?.armor_class,0,99),bonus=int(b?.initiative_bonus,-100,100);
   if(!name||hp===null||ac===null||bonus===null)return err(400,'invalid_monster');
@@ -194,6 +197,24 @@ export async function encounterRoute(pool,req,path){
    [id,name,text(b.challenge,40)||'Custom',hp,ac,bonus,text(b.actions,5000),text(b.notes,5000),u.id]);
   return ok(id,201);
  }
+ const monsterRoute=/^\/monsters\/([a-f0-9-]{36})$/.exec(path);
+ if(monsterRoute){
+  if(!monsterEditor)return err(403,'director_required');
+  const [owned]=await pool.execute('SELECT created_by FROM order_monster_templates WHERE id=?',[monsterRoute[1]]);
+  if(!owned.length)return err(404,'monster_not_found');
+  if(!command(u)&&owned[0].created_by!==u.id)return err(403,'monster_owner_required');
+  if(req.method==='DELETE'){
+   await pool.execute('DELETE FROM order_monster_templates WHERE id=?',[monsterRoute[1]]);
+   return ok({status:'deleted'});
+  }
+  if(req.method!=='PUT')return err(405,'method_not_allowed');
+  const b=await read(req);
+  const name=text(b?.name,120),hp=int(b?.hit_points,1,999999),ac=int(b?.armor_class,0,99),bonus=int(b?.initiative_bonus,-100,100);
+  if(!name||hp===null||ac===null||bonus===null)return err(400,'invalid_monster');
+  await pool.execute('UPDATE order_monster_templates SET name=?,challenge=?,hit_points=?,armor_class=?,initiative_bonus=?,actions=?,notes=? WHERE id=?',
+   [name,text(b.challenge,40)||'Custom',hp,ac,bonus,text(b.actions,5000),text(b.notes,5000),monsterRoute[1]]);
+  return ok({status:'saved'});
+ }
  const addMonster=/^\/encounters\/([a-f0-9-]{36})\/monsters\/([a-f0-9-]{36})$/.exec(path);
  if(addMonster&&req.method==='POST'){
   const e=await getEvent(pool,addMonster[1]);
@@ -201,8 +222,8 @@ export async function encounterRoute(pool,req,path){
   const [monsters]=await pool.execute('SELECT * FROM order_monster_templates WHERE id=?',[addMonster[2]]);
   const m=monsters[0];if(!m)return err(404,'monster_not_found');
   const id=randomUUID();
-  await pool.execute('INSERT INTO order_combatants(id,encounter_id,name,kind,initiative,hp,max_hp,ac,conditions) VALUES(?,?,?,?,?,?,?,?,?)',
-   [id,e.id,m.name,'npc',m.initiative_bonus,m.hit_points,m.hit_points,m.armor_class,'[]']);
+  await pool.execute('INSERT INTO order_combatants(id,encounter_id,name,kind,initiative,hp,max_hp,ac,conditions,monster_template_id,actions,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+   [id,e.id,m.name,'npc',m.initiative_bonus,m.hit_points,m.hit_points,m.armor_class,'[]',m.id,m.actions,m.notes]);
   return ok(id,201);
  }
  return err(404,'not_found');

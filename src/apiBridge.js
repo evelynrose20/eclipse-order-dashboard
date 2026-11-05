@@ -26,10 +26,13 @@ export const encounterRoll=(...args)=>(useLocal?local:original).encounterRoll(..
 export const encounterRolls=(...args)=>(useLocal?local:original).encounterRolls(...args);
 export const listMonsterTemplates=(...args)=>(useLocal?local:original).listMonsterTemplates(...args);
 export const createMonsterTemplate=(...args)=>(useLocal?local:original).createMonsterTemplate(...args);
+export const updateMonsterTemplate=(...args)=>useLocal?local.updateMonsterTemplate(...args):Promise.reject(new Error('Editing stat blocks requires the Order member portal.'));
+export const deleteMonsterTemplate=(...args)=>useLocal?local.deleteMonsterTemplate(...args):Promise.reject(new Error('Deleting stat blocks requires the Order member portal.'));
 export const addMonsterToEncounter=(...args)=>(useLocal?local:original).addMonsterToEncounter(...args);
 export const rollAllInitiative=(...args)=>(useLocal?local:original).rollAllInitiative(...args);
 export const setEncounterMap=(...args)=>(useLocal?local:original).setEncounterMap(...args);
 export const moveEncounterToken=(...args)=>(useLocal?local:original).moveEncounterToken(...args);
+export const saveEncounterWaymarks=(...args)=>useLocal?local.saveEncounterWaymarks(...args):Promise.reject(new Error('Waymarks require the Order member portal.'));
 export const setEncounterMapImage=(...args)=>(useLocal?local:original).setEncounterMapImage(...args);
 export const listGMRequests=(...args)=>(useLocal?local:original).listGMRequests(...args);
 export const requestGMRoll=(...args)=>(useLocal?local:original).requestGMRoll(...args);

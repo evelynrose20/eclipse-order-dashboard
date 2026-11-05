@@ -98,7 +98,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname.startsWith('/profile/')||pathname==='/settings')result=await profileRoute(pool,req,pathname);
   else if(/^\/events\/[a-f0-9-]{36}\/xp(?:\/[a-f0-9-]{36})?$/.test(pathname))result=await eventXpRoute(pool,req,pathname);
   else if(pathname.startsWith('/events/')||pathname.startsWith('/signups/'))result=await eventRoute(pool,req,pathname);
-  else if(pathname==='/monsters'||pathname.startsWith('/combatants/')||pathname==='/combatants')result=await encounterRoute(pool,req,pathname);
+  else if(pathname==='/monsters'||pathname.startsWith('/monsters/')||pathname.startsWith('/combatants/')||pathname==='/combatants')result=await encounterRoute(pool,req,pathname);
   else if(pathname.startsWith('/roll-requests/')||pathname.startsWith('/rolls/')||/\/encounters\/[a-f0-9-]{36}\/(rolls|roll-requests)$/.test(pathname))result=await diceRoute(pool,req,pathname);
   else if(pathname==='/encounters'||pathname.startsWith('/encounters/'))result=await encounterRoute(pool,req,pathname);
   else if(pathname==='/auth/register'||pathname.startsWith('/admin/'))result=await accountRoute(pool,req,pathname);
