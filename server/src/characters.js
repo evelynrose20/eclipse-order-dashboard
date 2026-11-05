@@ -89,6 +89,8 @@ export async function characterRoute(pool,req,path){
     details={spell_id:spell.id,spell_name:spell.name,cost:spell.cost,remaining};
    }else{
     if(body?.confirm!==true){await cn.rollback();return err(400,'rest_confirmation_required')}
+    const [ongoing]=await cn.execute('SELECT 1 FROM order_combatants c JOIN order_encounters e ON e.id=c.encounter_id WHERE c.character_id=? AND e.status IN ("active","paused") LIMIT 1',[id]);
+    if(ongoing.length){await cn.rollback();return err(409,'rest_unavailable_during_active_encounter')}
     remaining=cap;
     details={restored_spell_points:cap};
    }
