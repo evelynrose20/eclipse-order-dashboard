@@ -34,7 +34,7 @@ export function EventEditor({event,save,working}){
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
  </form>;
 }
-export function EventSignups({event,characters,userId,canDirect,working,action,refresh}){
+export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false}){
  const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState('');
  const [error,setError]=useState('');
  const own=characters.filter(c=>c.player_user_id===userId);
@@ -44,15 +44,15 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
  const approve=signups.filter(s=>s.status==='approved');
  return <section className="panel event-signups">
   <div className="panel-heading"><div><h2>Registration & party approvals</h2><p>Members apply with their own character. The GM approves applicants, then chooses when to add them to the party.</p></div><span className="event-count">{approve.length} / {event.capacity||8} approved</span></div>
-  {!canDirect&&event.published&&event.status==='draft'&&<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>}
+  {!canDirect&&event.published&&event.status==='draft'&&<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={previewOnly||!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>}
   {!canDirect&&!event.published&&<p className="muted">This event isn't accepting sign-ups yet.</p>}
-  <div className="signup-list">{signups.length?signups.map(s=><div key={s.id} className="signup-row">
+  <div className="signup-list">{(previewOnly?signups.filter(s=>s.player_user_id===userId):signups).length?(previewOnly?signups.filter(s=>s.player_user_id===userId):signups).map(s=><div key={s.id} className="signup-row">
     <div><strong>{s.character_name}</strong><small>{s.status} · applied {new Date(s.created_at).toLocaleDateString()}</small></div>
     <div className="signup-actions">
       {canDirect&&s.status==='requested'&&<><button className="mini-btn" disabled={working} onClick={()=>apply(()=>decideEventSignup(s.id,true))}>Approve</button><button className="mini-btn danger" disabled={working} onClick={()=>apply(()=>decideEventSignup(s.id,false))}>Decline</button></>}
       {canDirect&&s.status==='approved'&&!event.combatants.some(c=>c.character_id===s.character_id)&&<button className="mini-btn" disabled={working||event.status!=='draft'} onClick={()=>apply(()=>addApprovedEventPlayer(s.id))}>Add to party</button>}
       {canDirect&&s.status==='approved'&&event.combatants.some(c=>c.character_id===s.character_id)&&<span className="event-added">In party</span>}
-      {s.mine&&['requested','approved'].includes(s.status)&&<button className="mini-btn danger" disabled={working} onClick={()=>apply(()=>withdrawEventSignup(s.id))}>Withdraw</button>}
+      {!previewOnly&&s.mine&&['requested','approved'].includes(s.status)&&<button className="mini-btn danger" disabled={working} onClick={()=>apply(()=>withdrawEventSignup(s.id))}>Withdraw</button>}
     </div>
   </div>):<p className="muted">No applications yet. Publish the event to open registration.</p>}</div>
   {error&&<div className="alert" role="alert">{error}</div>}
