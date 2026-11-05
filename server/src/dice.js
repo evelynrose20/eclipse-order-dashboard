@@ -29,6 +29,9 @@ async function createRoll(pool,user,encounterId,b,privateAllowed){
 async function canRoll(pool,u,e){
  if(!await canParticipate(pool,u,e))return false;
  if(e.status!=='active')return false;
+ const [prefs]=await pool.execute('SELECT adult_declaration,content_preferences FROM order_profile_preferences WHERE user_id=?',[u.id]);
+ const categories=prefs[0]?unpack(prefs[0].content_preferences)||{}:{};
+ if(!prefs[0]?.adult_declaration||(unpack(e.themes)||[]).some(t=>categories[t]!==true))return false;
  const [paused]=await pool.execute('SELECT 1 FROM order_encounter_pauses WHERE encounter_id=? AND paused=1 LIMIT 1',[e.id]);
  return paused.length===0;
 }
