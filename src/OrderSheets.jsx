@@ -50,6 +50,7 @@ export function FullDndSheet({character}){
         ['Background',character.background],['Alignment',character.alignment],['XP',character.experience]
       ].map(([label,value])=><div key={label}><small>{label.toUpperCase()}</small><strong>{value || '—'}</strong></div>)}
     </div>
+    {character.progression_version===1&&<section className="panel"><h2>Class progression</h2><p>Level {character.level||1} · {Number(character.experience||0).toLocaleString()} XP · {character.ability_points||0} ability points to spend</p><p><strong>Unlocked class abilities:</strong> {Array.isArray(character.class_features)?character.class_features.join(' · '):'None yet'}</p></section>}
     <div className="combat-stats">
       {[
         ['Armor Class',character.armor_class ?? 10],['Initiative',signed(mod(character.dex))],

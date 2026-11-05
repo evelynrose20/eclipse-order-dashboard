@@ -9,6 +9,8 @@ import {profileRoute} from './profiles.js';
 import {encounterRoute} from './encounters.js';
 import {eventRoute} from './events.js';
 import {diceRoute} from './dice.js';
+import {economyRoute} from './economy.js';
+import {CLASSES,POINT_BUDGET,SCORE_COST,xpForLevel} from './progression.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
@@ -84,12 +86,14 @@ const server=http.createServer(async(req,res)=>{
   res.end(JSON.stringify({error:'not_found'}));return;
  }
  if(req.method==='OPTIONS'&&origin===expectedOrigin){
-  res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
+  res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
   res.end();return;
  }
  let result;
  try{
-  if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
+  if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{classes:CLASSES,point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
+  else if(pathname.startsWith('/economy/'))result=await economyRoute(pool,req,pathname);
+  else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
   else if(pathname.startsWith('/profile/')||pathname==='/settings')result=await profileRoute(pool,req,pathname);
