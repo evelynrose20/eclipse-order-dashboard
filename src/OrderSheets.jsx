@@ -85,6 +85,6 @@ export function MemberDirectory({members,currentRole,onChangeRole,onChangeStandi
       onChange={e=>onChangeRole(m,e.target.value)}>
       {Object.entries(ACCOUNT_ROLES).filter(([key])=>currentRole==='domina'||(!['domina','high_command'].includes(key))).map(([key,value])=><option value={key} key={key}>{value.label}</option>)}
       </select></td></tr>)}</tbody></table></div>
-    <div className="hint-box"><strong>Account creation</strong><p>Create member accounts in Supabase Authentication → Users, then approve each account in order_members. Members manage their private RP content choices and 18+ declaration on My RP profile. Staff manage account roles here; passwords and ID documents are not collected by this dashboard.</p></div>
+    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to the Order. The Domina approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
   </section>;
 }
