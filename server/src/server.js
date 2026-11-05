@@ -5,6 +5,9 @@ import {accountRoute} from './accounts.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
+const allowedOrigin=process.env.API_ALLOWED_ORIGIN||'';
+const publicHost=process.env.API_PUBLIC_ENABLED==='true'?(process.env.API_PUBLIC_HOST||'').toLowerCase():'';
+if(publicHost&&!/^api[.][a-z0-9.-]+$/.test(publicHost))throw new Error('Invalid API_PUBLIC_HOST.');
 if (!Number.isInteger(port) || port<1024 || port>65535) throw new Error('Invalid API_PORT.');
 const dbReady=Boolean(process.env.DB_USER&&process.env.DB_PASSWORD);
 const pool=dbReady?createPool({
@@ -44,13 +47,19 @@ const server=http.createServer(async(req,res)=>{
  // IMPORTANT: Even when a tunnel is Healthy, reject traffic routed under an external Host header.
  // Login is for local PowerShell testing ONLY until the public API is completed and reviewed.
  const permittedHosts=new Set(['localhost:'+port,'127.0.0.1:'+port]);
+ if(publicHost&&allowedOrigin.startsWith('https://'))permittedHosts.add(publicHost);
  if(!permittedHosts.has(hostHeader)){
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'local_only'}));return;
  }
- if(origin){
+ if(origin&&origin!==allowedOrigin){
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
-  res.end(JSON.stringify({error:'browser_origin_not_enabled'}));return;
+  res.end(JSON.stringify({error:'origin_not_allowed'}));return;
+ }
+ const cors=origin===allowedOrigin&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{};
+ if(req.method==='OPTIONS'&&origin===allowedOrigin){
+  res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
+  res.end();return;
  }
  let result;
  try{
@@ -66,6 +75,7 @@ const server=http.createServer(async(req,res)=>{
   }
  }
  res.writeHead(result.status,{
+  ...cors,
   'Content-Type':'application/json; charset=utf-8',
   'Cache-Control':'no-store',
   'X-Content-Type-Options':'nosniff',
