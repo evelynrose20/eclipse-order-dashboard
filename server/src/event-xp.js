@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {applyExperience} from './progression.js';
+import {loadClassCatalog} from './class-catalog.js';
 import {err,ok,read,gm,getEvent,uuid,unpack} from './encounters.js';
 
 // Participation rewards are never tied to currency or the retired shop.
@@ -37,7 +38,8 @@ export async function eventXpRoute(pool,req,path){
   if(old.progression_version!==1){await connection.rollback();return err(409,'legacy_character_requires_progression_setup')}
   const [prior]=await connection.execute('SELECT 1 FROM order_event_xp_awards WHERE event_id=? AND character_id=?',[eventId,characterId]);
   if(prior.length){await connection.rollback();return err(409,'event_xp_already_awarded')}
-  const next=applyExperience(old,amount);
+  const catalog=await loadClassCatalog(connection);
+  const next=applyExperience(old,amount,catalog[old.class_id]);
   await connection.execute('INSERT INTO order_event_xp_awards(event_id,character_id,amount,granted_by) VALUES(?,?,?,?)',[eventId,characterId,amount,actor.id]);
   await connection.execute('UPDATE characters SET sheet_json=? WHERE id=?',[JSON.stringify(next),characterId]);
   await connection.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
