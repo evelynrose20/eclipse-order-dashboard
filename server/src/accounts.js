@@ -22,7 +22,11 @@ const allowedStanding=new Set(['initiate','associate','established','veteran']);
 export async function accountRoute(pool,req,path){
  if(!pool)return error(503,'database_unavailable');
  if(path==='/auth/register'&&req.method==='POST'){
-  const address=req.socket?.remoteAddress||'unknown';
+  // Cloudflare Tunnel connects from loopback. For a public, allowlisted hostname,
+  // use its per-visitor IP header instead of limiting all visitors as one person.
+  const fromTunnel=process.env.API_PUBLIC_ENABLED==='true'&&req.headers.host===process.env.API_PUBLIC_HOST;
+  const forwarded=String(req.headers['cf-connecting-ip']||'');
+  const address=fromTunnel&&/^[0-9a-fA-F:.]{3,45}$/.test(forwarded)?forwarded:(req.socket?.remoteAddress||'unknown');
   if(throttle('register-ip:'+address,12))return error(429,'too_many_requests');
   const body=await bodyJSON(req);
   const email=normalizeEmail(body?.email);
