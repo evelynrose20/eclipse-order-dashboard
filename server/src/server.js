@@ -8,6 +8,7 @@ import {transitionRoute} from './transitions.js';
 import {profileRoute} from './profiles.js';
 import {encounterRoute} from './encounters.js';
 import {eventRoute} from './events.js';
+import {eventXpRoute} from './event-xp.js';
 import {diceRoute} from './dice.js';
 import {CLASSES,POINT_BUDGET,SCORE_COST,xpForLevel} from './progression.js';
 
@@ -95,6 +96,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
   else if(pathname.startsWith('/profile/')||pathname==='/settings')result=await profileRoute(pool,req,pathname);
+  else if(/^\/events\/[a-f0-9-]{36}\/xp(?:\/[a-f0-9-]{36})?$/.test(pathname))result=await eventXpRoute(pool,req,pathname);
   else if(pathname.startsWith('/events/')||pathname.startsWith('/signups/'))result=await eventRoute(pool,req,pathname);
   else if(pathname==='/monsters'||pathname.startsWith('/combatants/')||pathname==='/combatants')result=await encounterRoute(pool,req,pathname);
   else if(pathname.startsWith('/roll-requests/')||pathname.startsWith('/rolls/')||/\/encounters\/[a-f0-9-]{36}\/(rolls|roll-requests)$/.test(pathname))result=await diceRoute(pool,req,pathname);
