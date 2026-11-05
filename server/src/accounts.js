@@ -63,7 +63,7 @@ export async function accountRoute(pool,req,path){
   if(id===actor.id&&action!=='standing')return error(400,'You cannot modify your own role, approval, or syndicate rank.');
   const body=await bodyJSON(req);
   if(!body||typeof body!=='object')return error(400,'invalid_request');
-  const [accounts]=await pool.execute('SELECT approval_status,account_role FROM accounts WHERE id=? LIMIT 1',[id]);
+  const [accounts]=await pool.execute('SELECT approval_status,account_role,syndicate_rank FROM accounts WHERE id=? LIMIT 1',[id]);
   if(accounts.length!==1)return error(404,'account_not_found');
   if(action==='approve'||action==='reject'){
    if(accounts[0].approval_status!=='pending')return error(409,'This request is no longer pending.');
@@ -72,7 +72,11 @@ export async function accountRoute(pool,req,path){
   }else if(action==='role'){
    if(accounts[0].approval_status!=='approved')return error(409,'Approve the account first.');
    if(!allowedRoles.has(body.role))return error(400,'invalid_role');
-   await pool.execute('UPDATE accounts SET account_role=? WHERE id=?',[body.role,id]);
+   if(accounts[0].account_role==='domina'&&body.role!=='domina'){
+    const [[others]]=await pool.execute("SELECT COUNT(*) AS count FROM accounts WHERE account_role='domina' AND id<>? AND is_active=1 AND approval_status='approved'",[id]);
+    if(!Number(others.count))return error(409,'cannot_remove_last_domina');
+   }
+   await pool.execute("UPDATE accounts SET account_role=?,syndicate_rank=CASE WHEN ?='domina' THEN 'domina' WHEN syndicate_rank='domina' THEN 'kumi_in' ELSE syndicate_rank END WHERE id=?",[body.role,body.role,id]);
   }else if(action==='syndicate-rank'){
    if(accounts[0].approval_status!=='approved')return error(409,'Approve the account first.');
    if(!syndicateRanks.has(body.syndicate_rank))return error(400,'invalid_syndicate_rank');
