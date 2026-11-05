@@ -6,6 +6,7 @@ import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
+import {SHOP_ITEMS,RANKS} from './data/initialData.js';
 import './dashboard.css';
 import './local-accounts.css';
 
@@ -39,6 +40,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['overview','Overview','◈'],
   ['roster','Character roster','▦'],
   ['sheet','Character sheets','◇'],
+  ['market','Black Market','◆'],
   ...(profile.role==='domina'?[['members','Order accounts','♛']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
@@ -106,6 +108,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id)?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.view_mode==='bound'?<LimitedSheet character={character}/>:<FullDndSheet character={character}/>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
+    {tab==='market'&&<section className="panel"><h2>Order Black Market</h2><p className="muted">Catalogue and rank allowances for RP reference only. No real currency or transactions are processed.</p><div className="eo-character-grid">{SHOP_ITEMS.map(item=><article className="eo-character" key={item.name}><strong>{item.name}</strong><span>{item.cost.toLocaleString()} gil · {item.rank}</span><small>{item.effect}</small></article>)}</div><h3 style={{marginTop:24}}>Rank allowances</h3><div className="eo-character-grid">{Object.entries(RANKS).map(([name,benefit])=><article className="eo-character" key={name}><strong>{name}</strong><span>{benefit.cut}% gil cut</span><small>{benefit.food} · Dice {benefit.mod>=0?'+':''}{benefit.mod}</small></article>)}</div></section>}
     {(tab==='encounters'||tab==='events')&&<Encounters role={profile.role} userId={profile.id} characters={characters} onOpenProfile={()=>setTab('profile')}/>}
     {tab==='profile'&&<ProfileConsent/>}
     {tab==='directory'&&<MemberRPDirectory/>}
