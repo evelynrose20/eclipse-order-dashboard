@@ -18,7 +18,7 @@ const isPublic=process.env.API_PUBLIC_ENABLED==='true';
 const allowedOrigin=process.env.API_ALLOWED_ORIGIN||(!isPublic?'http://localhost:5173':'');
 if(isPublic&&!/^https:\/\/[a-z0-9.-]+$/.test(allowedOrigin))throw new Error('Public API requires an explicit HTTPS API_ALLOWED_ORIGIN.');
 const publicHost=isPublic?(process.env.API_PUBLIC_HOST||'').toLowerCase():'';
-if(publicHost&&!/^api[.][a-z0-9.-]+$/.test(publicHost))throw new Error('Invalid API_PUBLIC_HOST.');
+if(isPublic&&(!publicHost||!/^api[.][a-z0-9.-]+$/.test(publicHost)))throw new Error('Public API requires explicit API_PUBLIC_HOST.');
 if (!Number.isInteger(port) || port<1024 || port>65535) throw new Error('Invalid API_PORT.');
 const dbReady=Boolean(process.env.DB_USER&&process.env.DB_PASSWORD);
 const pool=dbReady?createPool({
@@ -56,9 +56,9 @@ const server=http.createServer(async(req,res)=>{
  const origin=req.headers.origin;
  const hostHeader=(req.headers.host||'').toLowerCase();
  // IMPORTANT: Even when a tunnel is Healthy, reject traffic routed under an external Host header.
- // Login is for local PowerShell testing ONLY until the public API is completed and reviewed.
+ // A published Cloudflare route is accepted only after explicit public mode configuration.
  const permittedHosts=new Set(['localhost:'+port,'127.0.0.1:'+port]);
- if(publicHost&&allowedOrigin.startsWith('https://'))permittedHosts.add(publicHost);
+ if(isPublic&&publicHost&&allowedOrigin.startsWith('https://'))permittedHosts.add(publicHost);
  if(!permittedHosts.has(hostHeader)){
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'local_only'}));return;
@@ -68,6 +68,11 @@ const server=http.createServer(async(req,res)=>{
   res.end(JSON.stringify({error:'origin_not_allowed'}));return;
  }
  const cors=origin===allowedOrigin&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{};
+ // The server intentionally never exposes bootstrap or raw DB status on the public host.
+ if(isPublic&&hostHeader===publicHost&&['/auth/setup-status','/auth/setup-domina','/ready'].includes(pathname)){
+  res.writeHead(404,{'Content-Type':'application/json','Cache-Control':'no-store'});
+  res.end(JSON.stringify({error:'not_found'}));return;
+ }
  if(req.method==='OPTIONS'&&origin===allowedOrigin){
   res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
   res.end();return;
@@ -106,10 +111,10 @@ const server=http.createServer(async(req,res)=>{
 server.requestTimeout=5000;
 server.headersTimeout=5000;
 server.listen(port,host,()=>{
-  console.log('[Eclipse Order API] Local bootstrap listening at http://127.0.0.1:'+port);
+  console.log('[Eclipse Order API] Listening at http://127.0.0.1:'+port);
   console.log('[Eclipse Order API] /health checks the HTTP server. /ready checks the database.');
   console.log('[Eclipse Order API] Allowed website origin: '+allowedOrigin);
- console.log('[Eclipse Order API] Local auth test enabled; Cloudflare/public routing must remain OFF.');
+ console.log('[Eclipse Order API] Public routing '+(isPublic?'ENABLED for '+publicHost:'DISABLED')+'.');
 });
 const close=async()=>{
   server.close();
