@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
+import {accountRoute} from './accounts.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
@@ -53,7 +54,8 @@ const server=http.createServer(async(req,res)=>{
  }
  let result;
  try{
-  if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
+  if(pathname==='/auth/register'||pathname.startsWith('/admin/'))result=await accountRoute(pool,req,pathname);
+  else if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
   else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
   else result=buildResponse(pathname,req.method,()=>({status:503,body:{status:'not_ready'}}));
  }catch(error){
