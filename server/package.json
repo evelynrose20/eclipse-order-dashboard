@@ -9,12 +9,15 @@
     "dev": "node --watch --env-file=.env src/server.js",
     "test": "node --test",
     "setup:domina": "node --env-file=.env src/bootstrap-admin.js",
-    "check:login": "node --env-file=.env src/check-login.js"
+    "check:login": "node --env-file=.env src/check-login.js",
+    "migrate:from-supabase": "node --env-file=.env src/migrate-from-supabase.js"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
-    "mysql2": "^3.15.0"
+    "mysql2": "^3.15.0",
+    "pg": "^8.16.3",
+    "bcryptjs": "^3.0.2"
   }
 }
