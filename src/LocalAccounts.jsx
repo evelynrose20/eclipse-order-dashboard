@@ -10,7 +10,7 @@ async function request(path,{method='GET',token,body}={}){
   ...(body?{'Content-Type':'application/json'}:{}),
   ...(token?{Authorization:'Bearer '+token}:{})
  },body:body?JSON.stringify(body):undefined,cache:'no-store'});}catch{
-  throw new Error('Cannot reach the Windows API. Make sure it is running on port 3182 and allows this website origin.');
+  throw new Error('Cannot reach the Eclipse Order API. Check the API connection and the website origin settings.');
  }
  const data=response.status===204?{}:await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(({
@@ -34,7 +34,16 @@ export default function LocalAccounts(){
  const [rows,setRows]=useState([]);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
- useEffect(()=>{let live=true;request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(error=>{if(live)setMessage('Could not check first-account setup: '+error.message)}).finally(()=>{if(live)setCheckingSetup(false)});return()=>{live=false}},[]);
+ useEffect(()=>{
+  // Initial Domina bootstrap is intentionally local-only; the public API returns 404.
+  // Do not call it from the deployed website or show a false setup error on sign-in.
+  if(!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(API)){
+   setCheckingSetup(false);return;
+  }
+  let live=true;
+  request('/auth/setup-status').then(result=>{if(live&&result.needs_setup){setMode('setup');setMessage('Create the first Domina account here. Your password is entered in the browser, not PowerShell.')}}).catch(error=>{if(live)setMessage('Could not check first-account setup: '+error.message)}).finally(()=>{if(live)setCheckingSetup(false)});
+  return()=>{live=false};
+ },[]);
  const reload=async(access=token)=>{
   const r=await request('/auth/me',{token:access});
   setProfile(r.user);
