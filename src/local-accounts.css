@@ -32,3 +32,27 @@
 .eo-actions select{padding:9px;background:#19111e;border:1px solid #745773;color:#fff;border-radius:8px}
 .eo-empty{padding:24px;background:#261b2b;border-radius:12px}
 @media(max-width:650px){.eo-auth-card{margin:18px;padding:24px}.eo-local-head{padding:18px}.eo-member{align-items:stretch;flex-direction:column}.eo-summary{flex-direction:column}.eo-members{margin:10px auto}.eo-local-head small{display:none}}
+
+/* Reuse the original Eclipse Order dashboard shell; avoid auth-button styling overriding navigation. */
+.eo-local.app-shell{background:radial-gradient(ellipse at 85% 2%,#2a151b 0,transparent 45%),#0d0d12}
+.eo-local .nav-link{display:flex;width:100%;text-align:left;align-items:center;gap:10px;background:transparent;border:1px solid transparent;padding:12px 14px;border-radius:9px;color:#c8b8bd;font-weight:500}
+.eo-local .nav-link:hover{border-color:#50353b;background:#2b1b22}
+.eo-local .nav-link.active{background:#422831;border-color:#966070;color:#fff}
+.eo-nav-count{margin-left:auto;padding:2px 7px;border-radius:14px;background:#ad5a80;color:#fff;font-size:11px;font-style:normal}
+.eo-local .sidebar{position:sticky;top:0;min-height:100vh;height:100vh}
+.eo-local .sidebar .side-bottom{overflow-wrap:anywhere}
+.eo-local .topbar button{background:#241d24;border:1px solid #4f3c43}
+.eo-local .eo-search{width:100%;max-width:410px;margin:16px 0;padding:12px;border:1px solid #53414c;background:#19151d;color:#eee;border-radius:9px}
+.eo-character-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.eo-local .eo-character{display:grid;gap:6px;text-align:left;min-height:125px;padding:18px;background:#211a23;border:1px solid #57414b;border-radius:12px}
+.eo-character strong{font-family:Georgia,serif;font-size:20px}
+.eo-character span{font-size:12px;color:#eab8d0}
+.eo-character small{font-size:12px;color:#b9a7b4}
+.eo-local .eo-sheet-picker{width:min(100%,440px);padding:12px;margin:12px 0 24px;border:1px solid #68515d;color:#fff;background:#1d1820;border-radius:8px}
+.eo-local .eo-sheet-head{display:flex;justify-content:space-between;align-items:center;margin:12px 0}
+.eo-local .eo-editor{max-width:1050px}
+.eo-local .eo-editor input,.eo-local .eo-editor textarea{width:100%;background:#1c1820;border:1px solid #594951;border-radius:8px;padding:10px;color:#fff}
+.eo-local .eo-editor .field{display:grid;gap:8px;margin-bottom:14px}
+.eo-member-title{margin-top:30px}
+.eo-local .eo-summary{margin:18px 0 30px}
+@media(max-width:780px){.eo-local.app-shell{display:block}.eo-local .sidebar{position:static;min-height:auto;height:auto;width:100%}.eo-local .sidebar nav{display:flex;gap:8px;overflow:auto}.eo-local .nav-link{min-width:max-content}.eo-local .sidebar .side-bottom{display:none}}
