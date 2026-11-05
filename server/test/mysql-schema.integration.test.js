@@ -4,7 +4,6 @@ import {readFile} from 'node:fs/promises';
 import {createPool} from 'mysql2/promise';
 import {generateToken,hashToken} from '../src/credentials.js';
 import {characterRoute} from '../src/characters.js';
-import {economyRoute} from '../src/economy.js';
 import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
 
@@ -14,7 +13,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','006_economy.sql','007_syndicate_ranks.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -31,12 +30,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   for(const name of ['accounts','characters','character_status_requests','account_sessions',
     'order_profile_preferences','order_member_rp_profiles','order_encounters','order_combatants',
     'order_monster_templates','order_encounter_rolls','order_roll_requests','order_event_signups',
-    'order_encounter_pauses','order_settings','eo_wallets','eo_inventory','eo_item_catalog','eo_economy_ledger','eo_paychecks','eo_ration_claims'])assert.ok(names.has(name),'missing '+name);
+    'order_encounter_pauses','order_settings'])assert.ok(names.has(name),'missing '+name);
   const [[row]]=await admin.execute('SELECT account_role FROM accounts WHERE id=?',[id]);
   assert.equal(row.account_role,'domina');
   const [[rank]]=await admin.execute('SELECT syndicate_rank FROM accounts WHERE id=?',[id]);
   assert.equal(rank.syndicate_rank,'domina');
-  // Exercise the real character, wallet, payroll and shop code against disposable MySQL.
+  // Exercise character creation and syndicate ranks against disposable MySQL.
   const token=generateToken();
   await admin.execute('INSERT INTO account_sessions(account_id,token_hash,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 HOUR))',[id,hashToken(token)]);
   const request=(method,body)=>({method,headers:{authorization:'Bearer '+token},[Symbol.asyncIterator]:async function*(){if(body!==undefined)yield Buffer.from(JSON.stringify(body))}});
@@ -56,18 +55,6 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(myProfile.body.user.syndicate_rank,'domina');
   const char=await characterRoute(admin,request('POST',{name:'CI Hero',class_id:'warrior',str:15,dex:14,con:13,int:12,wis:10,cha:8}),'/characters');
   assert.equal(char.status,201,JSON.stringify(char.body));
-  const cid=char.body.id;
-  const paycheck=await economyRoute(admin,request('POST',{base_amount:10000}),'/economy/characters/'+cid+'/paycheck');
-  assert.equal(paycheck.status,200,JSON.stringify(paycheck.body));
-  assert.equal(paycheck.body.balance,10000);
-  const duplicate=await economyRoute(admin,request('POST',{base_amount:10000}),'/economy/characters/'+cid+'/paycheck');
-  assert.equal(duplicate.status,409);
-  const bought=await economyRoute(admin,request('POST',{item_id:'iron_collar',quantity:1}),'/economy/characters/'+cid+'/buy');
-  assert.equal(bought.status,200,JSON.stringify(bought.body));
-  assert.equal(bought.body.balance,8000);
-  const state=await economyRoute(admin,request('GET'),'/economy/characters/'+cid);
-  assert.equal(state.status,200);
-  assert.equal(state.body.balance,8000);
-  assert.equal(state.body.inventory.find(x=>x.item_id==='iron_collar').quantity,1);
+
  }finally{await admin.end();}
 });

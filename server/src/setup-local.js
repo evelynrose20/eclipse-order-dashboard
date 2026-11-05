@@ -25,8 +25,6 @@ async function main(){
   // Additive migration is safe for existing accounts and characters; never drops data.
   const features=await readFile(new URL('../sql/005_features.sql',import.meta.url),'utf8');
   await pool.query(features);
-  const economy=await readFile(new URL('../sql/006_economy.sql',import.meta.url),'utf8');
-  await pool.query(economy);
   const syndicateRanks=await readFile(new URL('../sql/007_syndicate_ranks.sql',import.meta.url),'utf8');
   await pool.query(syndicateRanks);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');

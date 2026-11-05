@@ -9,7 +9,6 @@ import {profileRoute} from './profiles.js';
 import {encounterRoute} from './encounters.js';
 import {eventRoute} from './events.js';
 import {diceRoute} from './dice.js';
-import {economyRoute} from './economy.js';
 import {CLASSES,POINT_BUDGET,SCORE_COST,xpForLevel} from './progression.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
@@ -92,7 +91,6 @@ const server=http.createServer(async(req,res)=>{
  let result;
  try{
   if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{classes:CLASSES,point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
-  else if(pathname.startsWith('/economy/'))result=await economyRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);

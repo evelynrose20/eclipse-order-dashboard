@@ -28,8 +28,8 @@ export function EventEditor({event,save,working}){
    <label className="field"><span>LOCATION / VENUE</span><input maxLength={160} placeholder="FC house, Kugane, etc." value={form.location} onChange={e=>field('location',e.target.value)}/></label>
    <label className="field"><span>PARTY CAPACITY</span><input type="number" min={1} max={60} value={form.capacity} onChange={e=>field('capacity',Number(e.target.value))}/></label>
   </div>
-  <label className="field"><span>PLAYER-FACING EVENT DESCRIPTION</span><textarea rows={4} maxLength={2400} value={form.description} onChange={e=>field('description',e.target.value)}/></label>
-  <div className="event-theme-box"><strong>Event content categories</strong><p>These are public event tags checked against private player-profile preferences before sign-up.</p><div className="encounter-themes">{CONTENT_THEMES.map(([id,label])=><label key={id}><input type="checkbox" checked={form.themes.includes(id)} onChange={e=>field('themes',e.target.checked?[...form.themes,id]:form.themes.filter(t=>t!==id))}/>{label}</label>)}</div></div>
+  <label className="field"><span>EVENT DESCRIPTION</span><textarea rows={4} maxLength={2400} value={form.description} onChange={e=>field('description',e.target.value)}/></label>
+  <div className="event-theme-box"><strong>Event content categories</strong><p>Choose the themes participants should know about before signing up.</p><div className="encounter-themes">{CONTENT_THEMES.map(([id,label])=><label key={id}><input type="checkbox" checked={form.themes.includes(id)} onChange={e=>field('themes',e.target.checked?[...form.themes,id]:form.themes.filter(t=>t!==id))}/>{label}</label>)}</div></div>
   <label className="event-publish"><input type="checkbox" checked={form.published} onChange={e=>field('published',e.target.checked)}/> Publish event and open sign-ups <small>Leave unchecked to prepare privately first.</small></label>
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
  </form>;

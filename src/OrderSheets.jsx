@@ -24,7 +24,7 @@ const signed = n => (n>=0?'+':'')+n;
 export function LimitedSheet({character}){
   return <section className="panel bound-sheet">
     <div className="bound-heading"><div className="bound-emblem">◇</div><div><div className="eyebrow">ARCANE COLLAR · BOUND RECORD</div><h2>{character.name}</h2><p>{character.rank}</p></div></div>
-    <p className="bound-intro">Your character is under a magical binding. The Order's system displays only the details the collar allows you to perceive. This is a roleplay restriction on the fictional character sheet.</p>
+    <p className="bound-intro">Your character is under a magical binding. The Order's system displays only the details the collar allows you to perceive. This seal affects only the character's knowledge, never the player's choices or boundaries.</p>
     <div className="limited-grid">
       <div><small>CHARACTER</small><strong>{character.name}</strong></div>
       <div><small>ROLE</small><strong>{character.specialty||'Unassigned'}</strong></div>
@@ -32,7 +32,7 @@ export function LimitedSheet({character}){
       <div><small>COLLAR STATUS</small><strong>Binding active</strong></div>
       <div><small>VISIBLE CONDITION</small><strong>{character.hp ?? 'Unknown'} HP</strong></div>
     </div>
-    <div className="sealed"><span className="sealed-symbol">✦</span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. Authorized staff can still maintain the complete D&D sheet.</p></div></div>
+    <div className="sealed"><span className="sealed-symbol">✦</span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. The Domina and authorized handlers may consult the complete record.</p></div></div>
   </section>;
 }
 function TextSection({label,value}){
@@ -85,6 +85,6 @@ export function MemberDirectory({members,currentRole,onChangeRole,onChangeStandi
       onChange={e=>onChangeRole(m,e.target.value)}>
       {Object.entries(ACCOUNT_ROLES).filter(([key])=>currentRole==='domina'||(!['domina','high_command'].includes(key))).map(([key,value])=><option value={key} key={key}>{value.label}</option>)}
       </select></td></tr>)}</tbody></table></div>
-    <div className="hint-box"><strong>Account creation</strong><p>Create member accounts in Supabase Authentication → Users, then approve each account in order_members. Members manage their private RP content choices and 18+ declaration on My RP profile. Staff manage account roles here; passwords and ID documents are not collected by this dashboard.</p></div>
+    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to the Order. The Domina approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
   </section>;
 }
