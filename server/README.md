@@ -12,7 +12,7 @@ This development branch replaces Supabase **for account creation and approval on
 - Database-backed login sessions expire and logout revokes them
 - Passwords are hashed with scrypt and never stored as plaintext
 
-**Still in development:** Character sheets, events, encounters, member RP profiles and binding request APIs are not ported from Supabase yet. The existing production dashboard remains unchanged on `main`. Do not switch the main website to local-only mode until these APIs are implemented. The new account portal is independently testable now.
+**Still in development:** Character sheets now have a guarded first local roster/edit API with the existing full/limited D&D views; the complete existing sheet editor, assignment flows, events, encounters, member RP profiles and binding request APIs are not yet ported from Supabase. The existing production dashboard remains unchanged on `main`. Do not switch the main website to local-only mode until these APIs are implemented. The integrated local dashboard (Overview, roster, sheets, account approvals) is independently testable now.
 
 ## Windows setup (no manual SQL)
 
@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. If the database contains no accounts, it first displays **Create your Domina account** with regular password and confirmation fields. Set a password at least 16 characters long and submit; then sign in. The account portal also has `Request membership`. Create a test member (with a different email), then sign in with the Domina account, open **Pending account requests**, and click **Approve**. The approved member can then sign in. Browser requests are allowed only from the exact `API_ALLOWED_ORIGIN` in your local `.env`.
+Open `http://localhost:5173`. If the database contains no accounts, it first displays **Create your Domina account** with regular password and confirmation fields. Set a password at least 16 characters long and submit; then sign in. The account portal also has `Request membership`. Create a test member (with a different email), then sign in with the Domina account, open **Pending account requests**, and click **Approve**. The approved member can then sign in. Once signed in, the site opens the original dashboard-inspired navigation with Overview, Character roster, Character sheets, and the Domina-only Order accounts section. The current roster uses the local MySQL character table, starting empty. Encounters, events, RP profiles and binding requests explicitly show a not-yet-connected message. Browser requests are allowed only from the exact `API_ALLOWED_ORIGIN` in your local `.env`.
 
 When working on other dashboard features, remove `VITE_ECLIPSE_API_URL` from root `.env.local` to view the existing legacy UI.
 
@@ -77,3 +77,9 @@ When working on other dashboard features, remove `VITE_ECLIPSE_API_URL` from roo
 ## Fix for the old console password confirmation error
 
 If your previous `npm run setup:local` ended with `Password invalid or confirmation mismatch`, the SQL setup had already completed but the first Domina account was NOT inserted. The old terminal raw-input code was fragile on Windows. Update to the latest development branch and run `npm run setup:local` again; it will only verify/complete schema changes and should not ask for the Domina password. Then start `npm start` and use the browser form at `http://localhost:5173` as described above. Do not share passwords or database admin credentials. Keep `API_PUBLIC_ENABLED=false` during bootstrap.
+
+## Integrated dashboard progress
+
+The local account portal now transitions into `src/LocalWorkspace.jsx` after login, with the original dashboard sidebar and member approvals embedded in **Order accounts**. The first MySQL `/characters` API supports guarded listing, command-created characters and editing permitted sheet fields. A member only receives their own records; a bound player receives a limited sheet with private D&D details omitted server-side; a handler receives the full sheet only for assigned characters; command sees full records. A linked character cannot be directly switched to bound status through sheet editing.
+
+**Current limits:** Character assignment, full D&D editor parity, reversible binding approval workflow, events, dice, group scenes, privacy preference controls and administrative settings are still in progress. Their original Supabase implementations are not reused by the local frontend. Do not publish the Cloudflare route or merge to production until full access-control and end-to-end testing is complete.
