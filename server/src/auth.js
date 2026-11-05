@@ -77,7 +77,16 @@ export async function authRoute(pool,request,path){
   // For absent users, still perform one expensive hash verification to reduce account enumeration timing.
   const storedHash=rows[0]?.password_hash || await dummyPasswordHash;
   const valid=await verifyPassword(password,storedHash);
-  if(!valid){noteFailure(email);failedIP(ipKey);return forbidden();}
+  if(!valid){
+   // Diagnostic only: no email, password, token, IP or submitted body in logs.
+   // Distinguishes missing account vs hash mismatch when tracing local vs tunnel logins.
+   console.warn('[Eclipse Order auth] Login rejected:',{
+    route:request.headers.host===process.env.API_PUBLIC_HOST?'public':'local',
+    account_found:Boolean(rows[0]),
+    password_match:false
+   });
+   noteFailure(email);failedIP(ipKey);return forbidden();
+  }
   if(rows[0].approval_status==='pending')return {status:403,body:{error:'account_pending_approval'}};
   if(rows[0].approval_status!=='approved')return {status:403,body:{error:'account_not_approved'}};
   failures.delete(email);
