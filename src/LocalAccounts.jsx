@@ -10,7 +10,7 @@ async function request(path,{method='GET',token,body}={}){
   ...(body?{'Content-Type':'application/json'}:{}),
   ...(token?{Authorization:'Bearer '+token}:{})
  },body:body?JSON.stringify(body):undefined,cache:'no-store'});}catch{
-  throw new Error('The Order's records are temporarily unavailable. Please try again shortly.');
+  throw new Error("The Order's records are temporarily unavailable. Please try again shortly.");
  }
  const data=response.status===204?{}:await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(({
