@@ -58,6 +58,23 @@ export async function characterRoute(pool,req,path){
    [id,name,owner,handler,bound?1:0,rank,JSON.stringify(saved)]);
   return {status:201,body:{id}};
  }
+ const assignment=/^\/characters\/([a-f0-9-]{36})\/assign$/.exec(path);
+ if(assignment&&req.method==='POST'){
+  if(!commands.has(actor.account_role))return err(403,'command_required');
+  const data=await payload(req);
+  const player=data?.player_user_id||null,handler=data?.handler_user_id||null;
+  if((player&&!U.test(player))||(handler&&!U.test(handler)))return err(400,'invalid_account');
+  const [characters]=await pool.execute('SELECT player_account_id,collar_bound FROM characters WHERE id=?',[assignment[1]]);
+  if(!characters.length)return err(404,'character_not_found');
+  if(characters[0].collar_bound&&player!==characters[0].player_account_id)return err(403,'cannot_reassign_bound_character');
+  for(const id of [player,handler].filter(Boolean)){
+   const [members]=await pool.execute('SELECT id,account_role FROM accounts WHERE id=? AND is_active=1 AND approval_status="approved"',[id]);
+   if(!members.length)return err(400,'approved_account_required');
+   if(id===handler&&!['domina','high_command','handler'].includes(members[0].account_role))return err(400,'invalid_handler_role');
+  }
+  await pool.execute('UPDATE characters SET player_account_id=?,handler_account_id=? WHERE id=?',[player,handler,assignment[1]]);
+  return {status:200,body:{status:'assigned'}};
+ }
  const match=/^\/characters\/([a-f0-9-]{36})$/.exec(path);
  if(match&&req.method==='PUT'){
   const id=match[1];
