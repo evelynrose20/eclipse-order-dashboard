@@ -11,7 +11,7 @@ The CORS **origin** for that URL is \`https://evelynrose20.github.io\` (NO repos
 
 If your real published site has a custom domain, use its exact URL origin instead (for example \`https://orders.rosefires.com\`). Do not guess. The full page URL and API URL are different concepts.
 
-The GitHub Pages workflow on this development branch builds with:
+The GitHub Pages workflow on the current Windows/MySQL implementation builds with:
 \`VITE_ECLIPSE_API_URL=https://api.rosefires.com\`
 
 That public URL contains **no secret**.
@@ -20,7 +20,7 @@ That public URL contains **no secret**.
 
 Make a HeidiSQL backup/export of \`eclipse_order\`, including your Domina account, before publishing.
 
-Update the feature branch on your PC, retaining your private \`server/.env\`.
+Update the intended release revision on your PC, retaining your private \`server/.env\`.
 
 In \`server/.env\`, keep DB_* unchanged and use:
 
@@ -91,7 +91,7 @@ Invoke-WebRequest -Uri "https://api.rosefires.com/auth/login" -Method OPTIONS -H
 
 Replace the Origin if the published site uses a custom hostname. Expect HTTP 204 and \`Access-Control-Allow-Origin\` matching the specified origin. Ensure \`/auth/setup-domina\` and \`/ready\` are not available publicly (404). Never expose setup endpoints for remote account creation.
 
-Finally open your published GitHub Pages site and check browser-based sign-in, account request, Domina account approval, roster and event screens. A GitHub Pages build on **main** must contain the public API URL. The existing draft pull request does not deploy automatically: merge it only after the API route and browser test are successful.
+Finally open your published GitHub Pages site and check browser-based sign-in, account request, Domina account approval, roster and event screens. A GitHub Pages build on **main** must contain the public API URL. A pull request does not deploy automatically; merge an approved release only after API routing and browser tests succeed.
 
 ## 6. Keep the API online
 
