@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {resolveSession} from './auth.js';
+import {createProgression,applyExperience,CLASSES} from './progression.js';
 
 const commands=new Set(['domina','high_command']);
 const limit=(s,max)=>typeof s==='string'?s.trim().slice(0,max):'';
@@ -52,11 +53,34 @@ export async function characterRoute(pool,req,path){
   if(bound&&owner)return err(403,'player_approval_required');
   const rank=bound?ranks.get(data.rank)||'rank_i':null;
   const id=randomUUID();
-  const saved={...data,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
+  const initial=createProgression(data);
+  if(initial.error)return err(400,initial.error);
+  const saved={...initial,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
   await pool.execute(
    'INSERT INTO characters(id,character_name,player_account_id,handler_account_id,collar_bound,bound_rank,sheet_json) VALUES(?,?,?,?,?,?,?)',
    [id,name,owner,handler,bound?1:0,rank,JSON.stringify(saved)]);
   return {status:201,body:{id}};
+ }
+ const reward=/^\/characters\/([a-f0-9-]{36})\/experience$/.exec(path);
+ if(reward&&req.method==='POST'){
+  if(!commands.has(actor.account_role))return err(403,'command_required');
+  const data=await payload(req),amount=Number(data?.amount);
+  if(!Number.isSafeInteger(amount)||amount<1||amount>5000)return err(400,'invalid_experience_amount');
+  const cn=await pool.getConnection();
+  try{
+   await cn.beginTransaction();
+   const [rows]=await cn.execute('SELECT sheet_json FROM characters WHERE id=? FOR UPDATE',[reward[1]]);
+   if(!rows.length){await cn.rollback();return err(404,'character_not_found')}
+   const old=typeof rows[0].sheet_json==='string'?JSON.parse(rows[0].sheet_json):rows[0].sheet_json;
+   if(old.progression_version!==1){await cn.rollback();return err(409,'legacy_character_requires_progression_setup')}
+   const next=applyExperience(old,amount);
+   await cn.execute('UPDATE characters SET sheet_json=? WHERE id=?',[JSON.stringify(next),reward[1]]);
+   await cn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
+    [actor.id,'award_experience','character',reward[1],JSON.stringify({amount,level:next.level})]);
+   await cn.commit();
+   return {status:200,body:{experience:next.experience,level:next.level,next_level_xp:next.level>=20?null:100*next.level*(next.level+1)}};
+  }catch(error){await cn.rollback().catch(()=>{});throw error}
+  finally{cn.release()}
  }
  const assignment=/^\/characters\/([a-f0-9-]{36})\/assign$/.exec(path);
  if(assignment&&req.method==='POST'){
@@ -88,6 +112,11 @@ export async function characterRoute(pool,req,path){
   const old=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
   // Never accept ownership, handler assignment, collar or bound-rank changes through normal sheet save.
   const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode']);
+  if(old.progression_version===1){
+   for(const key of ['progression_version','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws'])blocked.add(key);
+   // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
+   for(const key of ['str','dex','con','int','wis','cha'])blocked.add(key);
+  }
   const fields=Object.fromEntries(Object.entries(body).filter(([key])=>!blocked.has(key)));
   const next={...old,...fields};
   const name=limit(next.name,120);
