@@ -4,7 +4,7 @@ import {characterRoute} from '../src/characters.js';
 
 function mock(role,id,rows){
  const writes=[];
- const pool={execute:async(sql,values)=>{
+ const pool={query:async()=>[[]],execute:async(sql,values)=>{
   if(sql.startsWith('SELECT a.id'))return [[{id,account_role:role}]];
   if(sql.startsWith('SELECT * FROM characters WHERE id='))return [rows.filter(c=>c.id===values[0])];
   if(sql.startsWith('SELECT * FROM characters WHERE player_account_id=? OR handler_account_id=?'))return [rows.filter(c=>c.player_account_id===id||c.handler_account_id===id)];
