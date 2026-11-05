@@ -23,7 +23,6 @@ export async function hasAccess(pool,u,event){
  return party.length>0;
 }
 export async function canParticipate(pool,u,event){
- if(gm(u,event))return true;
  const [party]=await pool.execute('SELECT 1 FROM order_combatants b JOIN characters c ON c.id=b.character_id WHERE b.encounter_id=? AND c.player_account_id=? LIMIT 1',[event.id,u.id]);
  return party.length>0;
 }
@@ -68,7 +67,7 @@ export async function encounterRoute(pool,req,path){
    const [prefs]=await pool.execute('SELECT adult_declaration,content_preferences FROM order_profile_preferences WHERE user_id=?',[u.id]);
    const adult=Boolean(prefs[0]?.adult_declaration),content=prefs[0]?unpack(prefs[0].content_preferences):{};
    const missing=(unpack(e.themes)||[]).filter(theme=>content?.[theme]!==true);
-   return ok({adult_declaration:adult,paused:!!paused[0]?.paused,missing_themes:missing,can_direct:director,eligible:await canParticipate(pool,u,e)});
+   return ok({adult_declaration:adult,paused:!!paused[0]?.paused,missing_themes:missing,can_direct:director,eligible:await canParticipate(pool,u,e),is_director:e.created_by===u.id});
   }
   if(action==='pause'&&req.method==='POST'){
    if(!await canParticipate(pool,u,e))return err(403,'participant_required');

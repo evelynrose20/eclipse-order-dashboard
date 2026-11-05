@@ -12,7 +12,7 @@ const PRESETS=[
  ['percentile','Percentile','1d100+0'],['death_save','Death save','1d20+0'],['concentration','Concentration save','1d20+0'],['custom','Custom dice','1d20+0']
 ];
 const CHECK_KINDS=['ability','saving_throw','attack','contest','skill'];
-export function DicePanel({encounter,characters,canDirect,userId,check,working,action}){
+export function DicePanel({encounter,characters,canDirect,userId,check,working,action,previewOnly=false,isDirector=false}){
  const [requests,setRequests]=useState([]),[rolls,setRolls]=useState([]),[formula,setFormula]=useState('1d20+0');
  const [preset,setPreset]=useState('ability'),[visibility,setVisibility]=useState('public');
  const [target,setTarget]=useState(''),[targetDC,setTargetDC]=useState(12);
@@ -22,10 +22,10 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  const [classCharacter,setClassCharacter]=useState('');
  const [last,setLast]=useState(null),[error,setError]=useState('');
  const [hpTarget,setHpTarget]=useState(''),[appliedRollIds,setAppliedRollIds]=useState([]);
- const eligible=Boolean(check?.adult_declaration&&!check?.paused&&!check?.missing_themes?.length);
- async function refresh(){const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);setRequests(r);setRolls(l)}
- useEffect(()=>{let active=true;const load=async()=>{try{const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);if(active){setRequests(r);setRolls(l)}}catch(e){if(active)setError(e.message)}};load();const timer=setInterval(load,15000);return()=>{active=false;clearInterval(timer)}},[encounter.id]);
- async function run(fn){setError('');try{const result=await action(fn);await refresh();return result}catch(e){setError(e.message)}}
+ const eligible=Boolean(!previewOnly&&check?.adult_declaration&&!check?.paused&&!check?.missing_themes?.length);
+ async function refresh(){const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);setRequests(previewOnly?r.filter(row=>row.player_user_id===userId):r);setRolls(previewOnly?l.filter(row=>row.visibility==='public'):l)}
+ useEffect(()=>{let active=true;const load=async()=>{try{const [r,l]=await Promise.all([listGMRequests(encounter.id),encounterRolls(encounter.id)]);if(active){setRequests(previewOnly?r.filter(row=>row.player_user_id===userId):r);setRolls(previewOnly?l.filter(row=>row.visibility==='public'):l)}}catch(e){if(active)setError(e.message)}};load();const timer=setInterval(load,15000);return()=>{active=false;clearInterval(timer)}},[encounter.id,previewOnly,userId]);
+ async function run(fn){if(previewOnly)return;setError('');try{const result=await action(fn);await refresh();return result}catch(e){setError(e.message)}}
  async function generalRoll(){const p=parseDiceFormula(formula);if(!p.ok){setError(p.error);return}const kind=['advantage','disadvantage','percentile'].includes(preset)?'custom':preset;
  const out=await run(()=>rollEncounterAction(encounter.id,p.normalized,visibility,kind,(kind==='attack'?target:null),(['ability','saving_throw','skill','contest','concentration'].includes(kind)?Number(targetDC):null)));if(out)setLast(out)}
  async function request(e){e.preventDefault();const p=parseDiceFormula(reqFormula);if(!p.ok){setError(p.error);return}
@@ -34,7 +34,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  async function resolve(id){const result=await run(()=>resolveGMRoll(id));if(result)setLast({...result.roll,success:result.success,dc:result.dc})}
  const linked=encounter.combatants.filter(c=>c.kind==='player'&&c.character_id).map(c=>({...c,record:characters.find(x=>x.id===c.character_id)})).filter(c=>c.record?.player_user_id);
  const canRoll=eligible&&encounter.status==='active';
- const classCharacters=characters.filter(c=>c.progression_version===1&&c.view_mode==='full'&&CLASSES[c.class_id]&&encounter.combatants.some(e=>e.character_id===c.id)&&(canDirect||c.player_user_id===userId));
+ const classCharacters=characters.filter(c=>!previewOnly&&c.progression_version===1&&c.view_mode==='full'&&CLASSES[c.class_id]&&encounter.combatants.some(e=>e.character_id===c.id)&&c.player_user_id===userId&&!isDirector);
  const currentClassCharacter=classCharacters.find(c=>c.id===classCharacter)||classCharacters[0];
  async function rollClassCheck(){
   if(!currentClassCharacter||!canRoll)return;
@@ -46,7 +46,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
   if(out)setLast(out);
  }
  return <section className="panel dice-panel">
-  <div className="panel-heading"><div><h2>Dice chamber & GM checks</h2><p>Every roll is recorded in the encounter history and shown to its intended participants.</p></div></div>
+  <div className="panel-heading"><div><h2>Dice chamber & GM checks</h2><p>{canDirect?'Roll for NPCs and encounter effects, or request a linked player to roll their own character.':'Every roll is recorded in the encounter history and shown to its intended participants.'}</p></div></div>
   {classCharacters.length>0&&<div className="panel"><h3>Class check</h3><p className="muted">Use your character's main ability and level-based proficiency modifier. The result is recorded in the encounter history.</p><div className="encounter-roll-controls"><label className="field"><span>CLASS CHARACTER</span><select value={currentClassCharacter?.id||''} onChange={e=>setClassCharacter(e.target.value)}>{classCharacters.map(c=><option key={c.id} value={c.id}>{c.name} · {CLASSES[c.class_id].name} level {c.level}</option>)}</select></label><button className="btn secondary" disabled={!canRoll||working} onClick={rollClassCheck}>Roll primary ability check</button></div></div>}
   <div className="dice-preset-row">{PRESETS.map(([id,title,template])=><button key={id} type="button" className={'mini-btn '+(preset===id?'dice-active':'')} onClick={()=>{setPreset(id);setFormula(template)}}>{title}</button>)}</div>
   <div className="encounter-roll-controls"><label className="field"><span>DICE FORMULA</span><input maxLength={24} value={formula} onChange={e=>setFormula(e.target.value)} placeholder="2d20kh1+4"/></label>
@@ -73,8 +73,8 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
   </form>}
   <div className="gm-request-list"><h3>Requested rolls</h3>{requests.length?requests.map(r=><div className="gm-request-row" key={r.id}>
    <div><strong>{r.name}: {r.label}</strong><small>{r.formula} · DC {r.dc} · {r.state}{r.state==='resolved'?' · total '+r.result_total+(r.result_total>=r.dc?' PASS':' FAIL'):''}</small></div>
-   <div className="gm-request-actions">{r.state==='pending'&&r.player_user_id===userId&&<button className="mini-btn" disabled={!canRoll||working} onClick={()=>resolve(r.id)}>Roll requested check</button>}
-   {r.state==='pending'&&(canDirect||r.player_user_id===userId)&&<button className="mini-btn danger" disabled={working} onClick={()=>run(()=>cancelGMRoll(r.id))}>Cancel</button>}</div>
+   <div className="gm-request-actions">{!previewOnly&&r.state==='pending'&&r.player_user_id===userId&&<button className="mini-btn" disabled={!canRoll||working} onClick={()=>resolve(r.id)}>Roll requested check</button>}
+   {!previewOnly&&r.state==='pending'&&(canDirect||r.player_user_id===userId)&&<button className="mini-btn danger" disabled={working} onClick={()=>run(()=>cancelGMRoll(r.id))}>Cancel</button>}</div>
   </div>):<p className="muted">No requests for this encounter.</p>}</div>
   <div className="encounter-roll-log"><h3>Roll history</h3>{rolls.map(r=><div key={r.id}><span>{r.kind&&r.kind!=='custom'?r.kind.replaceAll('_',' ')+' · ':''}{r.formula} · {r.rolls.join(', ')} {r.target_dc!=null?' · DC/AC '+r.target_dc+' · '+String(r.outcome||'').replaceAll('_',' '):''} {r.visibility==='gm_private'?'· GM only':''}</span><strong>{r.total}</strong></div>)}</div>
   {error&&<div className="alert" role="alert">{error}</div>}

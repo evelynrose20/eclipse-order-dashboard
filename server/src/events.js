@@ -19,6 +19,7 @@ export async function eventRoute(pool,req,path){
   }
   if(req.method==='POST'){
    if(!e.published||e.status!=='draft')return err(409,'event_not_accepting_signups');
+   if(e.created_by===u.id)return err(403,'event_director_cannot_join_party');
    const b=await read(req);
    if(!uuid(b?.character_id))return err(400,'character_required');
    const [chars]=await pool.execute('SELECT player_account_id FROM characters WHERE id=?',[b.character_id]);
@@ -59,6 +60,7 @@ export async function eventRoute(pool,req,path){
    return ok({status:b.approved?'approved':'declined'});
   }
   if(type==='add-player'){
+   if(s.player_user_id===s.created_by)return err(403,'event_director_cannot_join_party');
    if(s.status!=='approved'||s.event_status!=='draft')return err(409,'signup_not_approved_or_event_started');
    const [characters]=await pool.execute('SELECT * FROM characters WHERE id=? AND player_account_id=?',[s.character_id,s.player_user_id]);
    if(!characters.length)return err(409,'character_no_longer_owned');
