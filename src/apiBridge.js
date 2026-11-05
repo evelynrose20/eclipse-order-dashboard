@@ -44,3 +44,6 @@ export const decideEventSignup=(...args)=>(useLocal?local:original).decideEventS
 export const withdrawEventSignup=(...args)=>(useLocal?local:original).withdrawEventSignup(...args);
 export const addApprovedEventPlayer=(...args)=>(useLocal?local:original).addApprovedEventPlayer(...args);
 export const setAdultRPAccess=(...args)=>(useLocal?local:original).setAdultRPAccess(...args);
+
+export const listEventXpAwards=(...args)=>(useLocal?local:original).listEventXpAwards(...args);
+export const awardEventXp=(...args)=>(useLocal?local:original).awardEventXp(...args);
