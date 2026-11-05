@@ -123,3 +123,53 @@ Enter the new email and password in the terminal (password stays hidden). A succ
 This initial API has three local-only authentication endpoints: `POST /auth/login`, `GET /auth/me`, and `POST /auth/logout`. Sessions expire after 12 hours and can be revoked by logout. There is a basic failed-login throttle; advanced rate limits, MFA, password reset and member-registration flows are not yet implemented. Do not expose these routes through Cloudflare.
 
 **Do not enable the public Cloudflare route or move any Supabase records yet.** A local Domina sign-in does not mean the frontend is switched off Supabase. The account and character APIs, permission model, player migration and HTTPS/Cloudflare security still require implementation and testing.
+
+## One-command Supabase → Windows data migration (in progress)
+
+Rather than manually creating one table per session, the repository includes `npm run migrate:from-supabase`. **This is a complete raw-data preservation tool and partial normalized import, NOT yet a production cutover or feature-complete API replacement.** It imports the Eclipse Order app data from Supabase PostgreSQL read-only and verifies source/target row counts.
+
+### Preparation (one time)
+
+- Keep the current Supabase site live. In Supabase Dashboard → Connect, obtain the project's **PostgreSQL connection URI**, preferably the Session Pooler URI if your Windows network lacks IPv6. You need the database password. This is NOT your Supabase browser/public publishable key. **Never paste the URI, password, tokens or the contents of your local `.env` into GitHub or ChatGPT.**
+- Use the `feature/windows-local-api-bootstrap` branch, not the old ZIP. Make sure the latest `server` folder is on your PC, with the existing `.env` kept local.
+- Your existing `eclipse_order` target should have the five starter tables but **no account or character rows yet**. The migration refuses to overwrite existing accounts/characters. Your existing local `eclipse_api` user and DB password remain in `.env`.
+- Know the **local MySQL administrator** password you use with HeidiSQL. The utility prompts for it without echoing it, then creates any missing session and snapshot tables automatically. If your local admin account isn't named `root`, set `MIGRATION_DB_USER=your_local_admin_username` in `.env` (no admin password stored there).
+
+### Run on your Windows PC
+
+In PowerShell opened inside your **updated** `server` directory:
+
+```powershell
+npm install
+npm run migrate:from-supabase
+```
+
+The utility prompts privately for the **Supabase PostgreSQL URI** and **local MySQL administrator password**, discovers Eclipse Order's `public.characters` and `public.order_*` tables, counts rows and asks you to type `MIGRATE`. It only reads Supabase. After the copy, it records per-table counts in `migration_source_counts` and maps approved member IDs and character records into the local core tables. Other features (events, dice, RP profiles, audit/consent history) are preserved intact in the private `migration_source_rows` archive. It does not delete or change any Supabase records.
+
+The script copies only the Eclipse Order `public.order_*` and `characters` tables, not unrelated public tables, Storage objects, auth provider identities, media files, OAuth connections or Supabase Auth password hashes. **Do not assume those are migrated.**
+
+### After the copy
+
+For each approved member account, including Domina, use the **local-only** password-reset command on the Windows PC:
+
+```powershell
+npm run account:set-password
+```
+
+It asks for the account's email and a new password twice, without printing the password. It is intentionally a trusted **local operator** tool with database-write access, not a public password-reset endpoint. Member self-service reset and email verification have yet to be implemented.
+
+Check results in HeidiSQL:
+
+```sql
+USE eclipse_order;
+SELECT id,started_at,completed_at,status,source_tables,source_rows FROM migration_runs ORDER BY started_at DESC;
+SELECT source_table,expected_rows,imported_rows FROM migration_source_counts ORDER BY source_table;
+SELECT COUNT(*) AS members FROM accounts;
+SELECT COUNT(*) AS characters FROM characters;
+```
+
+All `expected_rows` must equal `imported_rows`; the migration run status must be `complete`.
+
+### **Cutover remains BLOCKED**
+
+The current React frontend still uses Supabase Auth and RPCs. The Windows API does NOT yet implement all authorization-checked equivalents for encounters, dice, settings, consent, event signups, character redaction, binding transitions, and RP profile visibility. The raw snapshot is for **lossless recovery and mapping**, not member API exposure. Before switching the site to `api.rosefires.com`, we must implement and test those APIs, current account/session flow, and backups, and perform an actual dry run and validation against your real Supabase data. Keep both the existing Supabase service and the Cloudflare public API route unchanged until verified.
