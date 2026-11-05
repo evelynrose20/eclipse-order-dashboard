@@ -57,7 +57,7 @@ export async function resolveSession(pool,request){
  const token=authHeader(request);
  if(!token)return null;
  const [rows]=await pool.execute(
-  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing FROM account_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
+  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing,a.syndicate_rank FROM account_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
   [hashToken(token)]
  );
  return rows[0]||null;
@@ -98,7 +98,7 @@ export async function authRoute(pool,request,path){
  if(path==='/auth/me'&&request.method==='GET'){
   const session=await resolveSession(pool,request);
   if(!session)return {status:401,body:{error:'not_authenticated'}};
-  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,role:session.account_role,standing:session.standing}}};
+  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,role:session.account_role,standing:session.standing,syndicate_rank:session.syndicate_rank}}};
  }
  if(path==='/auth/logout'&&request.method==='POST'){
   const token=authHeader(request);
