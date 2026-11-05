@@ -54,12 +54,19 @@ export async function readiness(){
 const server=http.createServer(async(req,res)=>{
  const pathname=(req.url||'').split('?')[0];
  const origin=req.headers.origin;
- const hostHeader=(req.headers.host||'').toLowerCase();
+ const hostHeader=(req.headers.host||'').trim().toLowerCase();
+ // HTTPS proxies can preserve the default :443 authority in the Host header.
+ const publicRequestHost=isPublic&&(hostHeader===publicHost||hostHeader===publicHost+':443');
  // IMPORTANT: Even when a tunnel is Healthy, reject traffic routed under an external Host header.
  // A published Cloudflare route is accepted only after explicit public mode configuration.
  const permittedHosts=new Set(['localhost:'+port,'127.0.0.1:'+port]);
- if(isPublic&&publicHost&&allowedOrigin.startsWith('https://'))permittedHosts.add(publicHost);
+ if(isPublic&&publicHost&&allowedOrigin.startsWith('https://')){
+  permittedHosts.add(publicHost);
+  permittedHosts.add(publicHost+':443');
+ }
  if(!permittedHosts.has(hostHeader)){
+  // Log only the rejected hostname and public-mode state; never print cookies or credentials.
+  console.warn('[Eclipse Order API] Rejected Host:',hostHeader||'(missing)','public mode:',isPublic?'enabled':'disabled');
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'local_only'}));return;
  }
@@ -69,7 +76,7 @@ const server=http.createServer(async(req,res)=>{
  }
  const cors=origin===allowedOrigin&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{};
  // The server intentionally never exposes bootstrap or raw DB status on the public host.
- if(isPublic&&hostHeader===publicHost&&['/auth/setup-status','/auth/setup-domina','/ready'].includes(pathname)){
+ if(publicRequestHost&&['/auth/setup-status','/auth/setup-domina','/ready'].includes(pathname)){
   res.writeHead(404,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'not_found'}));return;
  }
