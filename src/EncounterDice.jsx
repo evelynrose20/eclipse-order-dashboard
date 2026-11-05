@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP,applyRolledHP} from './supabase.js';
+import {listGMRequests,requestGMRoll,resolveGMRoll,cancelGMRoll,rollEncounterAction,encounterRolls,adjustCombatantHP,applyRolledHP} from './apiBridge.js';
 import {parseDiceFormula,sheetCheckFormula,DND_SKILL_ABILITIES} from './rpRules.js';
 import './encounter-dice.css';
 
