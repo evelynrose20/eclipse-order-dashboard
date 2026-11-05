@@ -10,7 +10,7 @@ const makeRequest=(body)=>({
  method:'POST',headers:{authorization:'Bearer '+('T'.repeat(48))},
  [Symbol.asyncIterator]:async function*(){yield Buffer.from(JSON.stringify(body))}
 });
-function mock({player=ALICE,bound=0,level=1,points=4,actor=ALICE}={}){
+function mock({player=ALICE,bound=0,level=1,points=4,actor=ALICE,activeEncounter=false}={}){
  let sheet={progression_version:1,class_id:'mage',level,spell_points:points,max_spell_points:4};
  const sql=[],audit=[];
  const conn={
@@ -21,6 +21,7 @@ function mock({player=ALICE,bound=0,level=1,points=4,actor=ALICE}={}){
   query:async()=>[[]],
   execute:async(query,params)=>{
    if(query.includes('FROM characters WHERE id=? FOR UPDATE'))return [[{player_account_id:player,collar_bound:bound,sheet_json:sheet}]];
+   if(query.includes('FROM order_combatants c JOIN order_encounters e'))return [activeEncounter?[{id:'active'}]:[]];
    if(query.startsWith('UPDATE characters')){sheet=JSON.parse(params[0]);return [{affectedRows:1}]}
    if(query.startsWith('INSERT INTO audit_log')){audit.push(params);return [{affectedRows:1}]}
    throw Error('Unexpected query: '+query);
@@ -68,4 +69,11 @@ test('long rest requires confirmation and restores spell resources',async()=>{
 test('builtin definitions include editable class features',()=>{
  const mage=builtinClassCatalog().mage;
  assert.ok(mage.features.some(f=>f.level===3&&f.name==='Arcane Ward'));
+});
+
+test('long rest cannot replenish spell points mid-encounter',async()=>{
+ const m=mock({points:0,activeEncounter:true});
+ const r=await characterRoute(m.pool,makeRequest({confirm:true}),'/characters/'+CHAR+'/rest');
+ assert.equal(r.status,409);
+ assert.equal(m.getSheet().spell_points,0);
 });
