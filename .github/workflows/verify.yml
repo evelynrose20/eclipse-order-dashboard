@@ -18,3 +18,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Install API dependencies
+        run: npm install --prefix server --no-audit --no-fund
+      - name: Test API authorization and migration schema
+        run: npm test --prefix server
+      - name: Check migration script syntax
+        run: node --check server/src/migrate-from-supabase.js
+      - name: Check password-management script syntax
+        run: node --check server/src/set-local-password.js
