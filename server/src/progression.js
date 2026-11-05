@@ -21,12 +21,14 @@ export function xpForLevel(level){return 100*level*(level-1);}
 export function levelForXp(xp){let level=1;while(level<MAX_LEVEL&&xp>=xpForLevel(level+1))level++;return level;}
 export const abilityModifier=score=>Math.floor((Number(score||10)-10)/2);
 export const proficiencyForLevel=level=>Math.min(6,2+Math.floor((level-1)/4));
-export function unlockedClassFeatures(classId,level){
- const klass=CLASSES[classId];if(!klass)return [];
- return [...klass.features,...Object.entries(klass.unlocks||{}).filter(([required])=>Number(required)<=level).map(([,name])=>name)];
+export function unlockedClassFeatures(classId,level,definition=CLASSES[classId]){
+ if(!definition)return [];
+ return Array.isArray(definition.features)&&definition.features[0]&&typeof definition.features[0]==='object'?
+  definition.features.filter(f=>f.level<=level).map(f=>f.name):
+  [...(definition.features||[]),...Object.entries(definition.unlocks||{}).filter(([required])=>Number(required)<=level).map(([,name])=>name)];
 }
-export function createProgression(sheet){
- const klass=CLASSES[sheet?.class_id];
+export function createProgression(sheet,definition){
+ const klass=definition||CLASSES[sheet?.class_id];
  if(!klass)return {error:'Choose a class.'};
  const spent=pointCost(sheet);
  if(spent===null||spent>POINT_BUDGET)return {error:'Ability scores must be 8–15 and spend at most 27 points.'};
@@ -34,11 +36,13 @@ export function createProgression(sheet){
  const hp=Math.max(1,klass.hit_die+con);
  const skills=sheet.skills&&typeof sheet.skills==='object'&&!Array.isArray(sheet.skills)?sheet.skills:{};
  return {...sheet,class_id:sheet.class_id,class_name:klass.name,progression_version:1,level:1,experience:0,
-  hp,max_hp:hp,hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:klass.features.join(', '),
-  ability_points:0,class_features:unlockedClassFeatures(sheet.class_id,1),saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
+  hp,max_hp:hp,hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:unlockedClassFeatures(sheet.class_id,1,klass).join(', '),
+  ability_points:0,class_features:unlockedClassFeatures(sheet.class_id,1,klass),
+  spell_points:klass.casting==='full'?4:0,max_spell_points:klass.casting==='full'?4:0,
+  saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
 }
-export function applyExperience(sheet,amount){
- const klass=CLASSES[sheet.class_id];
+export function applyExperience(sheet,amount,definition){
+ const klass=definition||CLASSES[sheet.class_id];
  const prevLevel=Number(sheet.level)||1;
  const experience=Math.max(0,Math.trunc(Number(sheet.experience)||0)+amount);
  const level=levelForXp(experience);
@@ -46,6 +50,11 @@ export function applyExperience(sheet,amount){
  const milestones=[4,8,12,16,19];
  const pointsGained=milestones.filter(n=>n>prevLevel&&n<=level).length*2;
  const maxHp=Math.max(1,Number(sheet.max_hp)||1)+levelsGained*Math.max(1,Math.floor((klass?.hit_die||8)/2)+1+abilityModifier(sheet.con));
- return {...sheet,experience,level,class_features:unlockedClassFeatures(sheet.class_id,level),ability_points:(Number(sheet.ability_points)||0)+pointsGained,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
+ const pool=(casting,lvl)=>casting==='full'?2+2*lvl:casting==='half'?(lvl<2?0:1+Math.floor(lvl/2)):0;
+ const oldLimit=Number.isInteger(sheet.max_spell_points)?sheet.max_spell_points:pool(klass?.casting,prevLevel);
+ const oldCurrent=Number.isInteger(sheet.spell_points)?sheet.spell_points:oldLimit;
+ const newLimit=pool(klass?.casting,level);
+ return {...sheet,experience,level,class_features:unlockedClassFeatures(sheet.class_id,level,klass),
+  max_spell_points:newLimit,spell_points:Math.min(newLimit,oldCurrent+Math.max(0,newLimit-oldLimit)),ability_points:(Number(sheet.ability_points)||0)+pointsGained,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
   hit_dice:klass?level+'d'+klass.hit_die:sheet.hit_dice,proficiency_bonus:proficiencyForLevel(level)};
 }
