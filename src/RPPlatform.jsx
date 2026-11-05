@@ -1,7 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {
  listStatusRequests,requestCharacterStatus,decideCharacterStatus,cancelCharacterStatus,applyCharacterStatus
- } from './supabase.js';
+ } from './apiBridge.js';
 import './rp-platform.css';
 import {parseDiceFormula} from './rpRules.js';
 
