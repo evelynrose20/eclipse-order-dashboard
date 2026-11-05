@@ -1,14 +1,26 @@
-import React,{useState} from 'react';
-import {setEncounterMap,moveEncounterToken,setEncounterMapImage} from './apiBridge.js';
+import React,{useEffect,useRef,useState} from 'react';
+import {setEncounterMap,moveEncounterToken,setEncounterMapImage,saveEncounterWaymarks} from './apiBridge.js';
 import './battlemap.css';
 
-function Token({combatant,canDirect,onSelect,selected}) {
+const MARK_IDS=['A','B','C','D','1','2','3','4'];
+const clamp=v=>Math.max(0,Math.min(1,v));
+const point=(event,board)=>{
+ const bounds=board.getBoundingClientRect();
+ return {x:Math.round(clamp((event.clientX-bounds.left)/bounds.width)*100000)/100000,
+  y:Math.round(clamp((event.clientY-bounds.top)/bounds.height)*100000)/100000};
+};
+const tokenPoint=(c,cols,rows)=>{
+ if(c.pos_x!==null&&c.pos_x!==undefined&&c.pos_y!==null&&c.pos_y!==undefined)return {x:Number(c.pos_x),y:Number(c.pos_y)};
+ if(c.tile_x!==null&&c.tile_x!==undefined&&c.tile_y!==null&&c.tile_y!==undefined)return {x:(Number(c.tile_x)+.5)/cols,y:(Number(c.tile_y)+.5)/rows};
+ return null;
+};
+const locationStyle=p=>({left:(p.x*100)+'%',top:(p.y*100)+'%'});
+
+function Token({combatant,canDirect,selected,position}){
  const hp=Math.max(0,Math.min(100,combatant.hp/Math.max(1,combatant.max_hp)*100));
- return <button type="button"
-  draggable={Boolean(canDirect)}
-  onDragStart={e=>{if(!canDirect){e.preventDefault();return}e.dataTransfer.setData('text/plain',combatant.id);e.dataTransfer.effectAllowed='move'}}
-  onClick={e=>{e.stopPropagation();if(canDirect)onSelect(combatant.id)}}
-  className={'map-token '+(combatant.kind==='npc'?'enemy':'ally')+(selected?' selected':'')}
+ return <button type="button" data-token={combatant.id} disabled={!canDirect}
+  className={'map-token map-floating '+(combatant.kind==='npc'?'enemy':'ally')+(selected?' selected':'')}
+  style={locationStyle(position)}
   title={combatant.name+' · '+combatant.hp+'/'+combatant.max_hp+' HP · AC '+combatant.ac}
   aria-label={combatant.name+' '+combatant.hp+' of '+combatant.max_hp+' HP'}>
   <span className="token-symbol">{String(combatant.name||'?').slice(0,2).toUpperCase()}</span>
@@ -17,57 +29,110 @@ function Token({combatant,canDirect,onSelect,selected}) {
  </button>;
 }
 export default function BattleMap({encounter,canDirect,onRefresh,onError}){
- const [selected,setSelected]=useState(null),[saving,setSaving]=useState(false),[mapStyle,setMapStyle]=useState(null);
+ const [selected,setSelected]=useState(null);
+ const [placingMark,setPlacingMark]=useState(null);
+ const [saving,setSaving]=useState(false);
+ const [preview,setPreview]=useState(null);
  const [imageUrl,setImageUrl]=useState(encounter.map_image_url||'');
+ const drag=useRef(null),board=useRef(null);
  const cols=encounter.map_columns||16,rows=encounter.map_rows||10,style=encounter.map_style||'dungeon';
  const combatants=encounter.combatants||[];
- const onBoard=combatants.filter(c=>c.tile_x!=null&&c.tile_y!=null);
- const offBoard=combatants.filter(c=>c.tile_x==null||c.tile_y==null);
- const occupied=new Map(onBoard.map(c=>[c.tile_x+':'+c.tile_y,c]));
- async function drop(id,x,y){
-  if(!canDirect||saving||!id)return;
-  const c=combatants.find(x=>x.id===id);
-  if(!c)return;
-  if(x!=null&&occupied.has(x+':'+y)&&occupied.get(x+':'+y).id!==id){onError('That square is occupied.');return}
+ const marks=encounter.waymarks||{};
+ useEffect(()=>{setSelected(null);setPlacingMark(null);setPreview(null);setImageUrl(encounter.map_image_url||'')},[encounter.id]);
+ const onBoard=combatants.filter(c=>tokenPoint(c,cols,rows));
+ const offBoard=combatants.filter(c=>!tokenPoint(c,cols,rows));
+ async function placeToken(id,p){
+  if(!canDirect||saving)return;
   setSaving(true);
-  try{await moveEncounterToken(id,x,y);setSelected(null);await onRefresh();}
-  catch(err){onError(err.message)}
-  finally{setSaving(false)}
+  try{await moveEncounterToken(id,p?.x??null,p?.y??null);setSelected(null);await onRefresh()}
+  catch(e){onError(e.message)}finally{setSaving(false);setPreview(null)}
+ }
+ async function saveMarks(next){
+  if(!canDirect||saving)return;
+  setSaving(true);
+  try{await saveEncounterWaymarks(encounter.id,next);setPlacingMark(null);await onRefresh()}
+  catch(e){onError(e.message)}finally{setSaving(false);setPreview(null)}
  }
  async function updateMap(nextStyle){
-  setSaving(true);try{await setEncounterMap(encounter.id,cols,rows,nextStyle);setMapStyle(null);await onRefresh()}
-  catch(err){onError(err.message)}finally{setSaving(false)}
+  setSaving(true);
+  try{await setEncounterMap(encounter.id,cols,rows,nextStyle);await onRefresh()}
+  catch(e){onError(e.message)}finally{setSaving(false)}
  }
- async function updateImage(e){e.preventDefault();setSaving(true);try{await setEncounterMapImage(encounter.id,imageUrl);await onRefresh()}catch(err){onError(err.message)}finally{setSaving(false)}}
- const tiles=Array.from({length:cols*rows},(_,i)=>({x:i%cols,y:Math.floor(i/cols)}));
+ async function updateImage(e){
+  e.preventDefault();setSaving(true);
+  try{await setEncounterMapImage(encounter.id,imageUrl);await onRefresh()}
+  catch(e){onError(e.message)}finally{setSaving(false)}
+ }
+ function pointerDown(e){
+  if(!canDirect||saving||e.button!==0||!board.current)return;
+  const token=e.target.closest('[data-token]')?.dataset.token;
+  const mark=e.target.closest('[data-waymark]')?.dataset.waymark;
+  if(!token&&!mark)return;
+  e.preventDefault();
+  board.current.setPointerCapture(e.pointerId);
+  drag.current={pointerId:e.pointerId,token,mark,startX:e.clientX,startY:e.clientY,pos:point(e,board.current)};
+  if(token){setSelected(token);setPlacingMark(null)}
+  if(mark){setPlacingMark(mark);setSelected(null)}
+ }
+ function pointerMove(e){
+  if(!drag.current||drag.current.pointerId!==e.pointerId||!board.current)return;
+  setPreview({...point(e,board.current),token:drag.current.token,mark:drag.current.mark});
+ }
+ function pointerUp(e){
+  if(!canDirect||saving||!board.current)return;
+  const d=drag.current;
+  if(d&&d.pointerId===e.pointerId){
+   drag.current=null;
+   const moved=Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>4;
+   if(moved){
+    const p=point(e,board.current);
+    if(d.token)void placeToken(d.token,p);
+    else if(d.mark)void saveMarks({...marks,[d.mark]:p});
+   }else setPreview(null);
+   return;
+  }
+  if(e.target.closest('[data-token],[data-waymark]'))return;
+  const p=point(e,board.current);
+  if(placingMark)void saveMarks({...marks,[placingMark]:p});
+  else if(selected)void placeToken(selected,p);
+ }
+ function keyDown(e){
+  if(!canDirect||saving||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
+  const chosen=combatants.find(c=>c.id===selected);
+  const current=placingMark?marks[placingMark]:chosen&&tokenPoint(chosen,cols,rows);
+  if(!current)return;
+  e.preventDefault();
+  const step=e.shiftKey?.05:.01;
+  const p={x:clamp(Number(current.x)+(e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0)),
+   y:clamp(Number(current.y)+(e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0))};
+  if(placingMark)void saveMarks({...marks,[placingMark]:p});
+  else if(chosen)void placeToken(chosen.id,p);
+ }
  return <section className="panel battlemap-panel">
-  <div className="panel-heading wrap"><div><h2>Encounter battle map</h2><p>Move tokens around the tactical grid. Locations save only when a token is dropped or placed.</p></div>
-   {canDirect&&<label className="field map-style-picker"><span>MAP TERRAIN</span><select disabled={saving} value={mapStyle||style} onChange={e=>updateMap(e.target.value)}><option value="dungeon">Dungeon stone</option><option value="forest">Woodland</option><option value="parchment">Parchment</option></select></label>}
+  <div className="panel-heading wrap"><div><h2>Encounter battle map</h2><p>Move tokens freely anywhere on the map. The grid is a visual guide only; placements save when released.</p></div>
+   {canDirect&&<label className="field map-style-picker"><span>MAP TERRAIN</span><select disabled={saving} value={style} onChange={e=>updateMap(e.target.value)}><option value="dungeon">Dungeon stone</option><option value="forest">Woodland</option><option value="parchment">Parchment</option></select></label>}
   </div>
-  {canDirect&&<form className="map-image-form" onSubmit={updateImage}><label className="field"><span>OPTIONAL BATTLEMAP IMAGE URL</span><input type="url" value={imageUrl} placeholder="https://example.com/my-battlemap.webp" onChange={e=>setImageUrl(e.target.value)}/></label><button className="mini-btn" type="submit" disabled={saving}>Apply image</button><span className="muted">Use a trusted image link for your battle map.</span></form>}
-  <div className={'tactical-board terrain-'+style} style={{gridTemplateColumns:'repeat('+cols+',minmax(0,1fr))','--map-cols':cols,...(encounter.map_image_url?{backgroundImage:'url('+JSON.stringify(encounter.map_image_url)+')',backgroundSize:'cover',backgroundPosition:'center'}:{})}}>
-   {tiles.map(({x,y})=>{
-    const c=occupied.get(x+':'+y);
-    return <div className={'battle-tile '+(selected&&!c?'target-tile':'')} key={x+':'+y}
-      onDragOver={e=>{if(canDirect&&!c){e.preventDefault();e.dataTransfer.dropEffect='move'}}}
-      onDrop={e=>{e.preventDefault();if(canDirect)drop(e.dataTransfer.getData('text/plain'),x,y)}}
-      onClick={()=>{if(selected&&!c)drop(selected,x,y)}}
-      aria-label={'Tile '+(x+1)+', '+(y+1)+(c?' occupied by '+c.name:'')}
-      role={selected?'button':'presentation'} tabIndex={selected&&!c?0:undefined}
-      onKeyDown={e=>{if(selected&&!c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();drop(selected,x,y)}}}>
-       {c&&<Token combatant={c} canDirect={canDirect} onSelect={setSelected} selected={selected===c.id}/>}
-     </div>;
-   })}
+  {canDirect&&<form className="map-image-form" onSubmit={updateImage}><label className="field"><span>OPTIONAL BATTLEMAP IMAGE URL</span><input type="url" value={imageUrl} placeholder="https://example.com/my-battlemap.webp" onChange={e=>setImageUrl(e.target.value)}/></label><button className="mini-btn" type="submit" disabled={saving}>Apply image</button><span className="muted">Use a trusted HTTPS image link.</span></form>}
+  <div className="waymark-tools"><div><strong>FFXIV waymarks</strong><p className="muted">Choose a marker, then click or tap its location. Drag an existing marker to reposition it.</p></div><div className="waymark-picker">{MARK_IDS.map(id=><button type="button" key={id} disabled={!canDirect||saving} className={'waymark-choice mark-'+id+(placingMark===id?' active':'')} aria-pressed={placingMark===id} onClick={()=>{setSelected(null);setPlacingMark(placingMark===id?null:id)}}>{id}</button>)}</div>
+   {canDirect&&<div className="waymark-actions"><button className="mini-btn" type="button" disabled={!placingMark||!marks[placingMark]||saving} onClick={()=>{const next={...marks};delete next[placingMark];saveMarks(next)}}>Remove selected waymark</button><button className="mini-btn" type="button" disabled={!Object.keys(marks).length||saving} onClick={()=>{if(window.confirm('Clear all eight waymarks from this event?'))saveMarks({})}}>Clear waymarks</button></div>}
   </div>
-  <div className="map-legend"><span className="map-legend-ally"/> Players <span className="map-legend-enemy"/> Monsters / NPCs <span className="map-legend-hint">{selected?'Select an empty tile to place the chosen token.':'Drag tokens to a tile, or select one and click its destination.'}</span></div>
-  <div className="map-reserve"><div><h3>Off-map combatants <small>({offBoard.length})</small></h3><p className="muted">New characters appear here until placed on the map.</p></div>
-   <div className="map-reserve-items">{offBoard.map(c=><button className={'map-reserve-token '+(selected===c.id?'selected':'')} disabled={!canDirect||saving} draggable={Boolean(canDirect)}
-     onDragStart={e=>{e.dataTransfer.setData('text/plain',c.id);e.dataTransfer.effectAllowed='move'}}
-     onClick={()=>setSelected(c.id)} key={c.id}>{c.kind==='npc'?'◆':'●'} {c.name} · {c.hp}/{c.max_hp} HP</button>)}
+  <div ref={board} className={'tactical-board terrain-'+style} role="group" aria-label="Free movement battle map"
+   tabIndex={canDirect?0:undefined} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{drag.current=null;setPreview(null)}} onKeyDown={keyDown}
+   style={{aspectRatio:cols+'/'+rows,'--map-cols':cols,'--map-rows':rows,...(encounter.map_image_url?{backgroundImage:'url('+JSON.stringify(encounter.map_image_url)+')',backgroundSize:'cover',backgroundPosition:'center'}:{})}}>
+   <div className="map-grid-overlay" aria-hidden="true" style={{backgroundSize:(100/cols)+'% '+(100/rows)+'%'}}/>
+   {MARK_IDS.filter(id=>marks[id]).map(id=><button key={id} type="button" data-waymark={id} className={'waymark-onboard mark-'+id+(placingMark===id?' active':'')}
+      disabled={!canDirect} style={locationStyle(preview?.mark===id?preview:marks[id])} title={'Waymark '+id}>{id}</button>)}
+   {onBoard.map(c=><Token key={c.id} combatant={c} canDirect={canDirect} selected={selected===c.id}
+     position={preview?.token===c.id?preview:tokenPoint(c,cols,rows)}/>)}
+  </div>
+  <div className="map-legend"><span className="map-legend-ally"/> Players <span className="map-legend-enemy"/> Monsters / NPCs <span className="map-legend-hint">{placingMark?'Tap a location to place waymark '+placingMark+'.':selected?'Tap a location to move the selected combatant.':'Select a combatant or drag a token. Use arrow keys to nudge a selection.'}</span></div>
+  <div className="map-reserve"><div><h3>Off-map combatants <small>({offBoard.length})</small></h3><p className="muted">Choose one below, then tap anywhere on the map to place it.</p></div>
+   <div className="map-reserve-items">{offBoard.map(c=><button key={c.id} className={'map-reserve-token '+(selected===c.id?'selected':'')} disabled={!canDirect||saving}
+    onClick={()=>{setSelected(c.id);setPlacingMark(null)}}>{c.kind==='npc'?'◆':'●'} {c.name} · {c.hp}/{c.max_hp} HP</button>)}
     {!offBoard.length&&<span className="muted">All combatants are on the map.</span>}
    </div>
-   {selected&&canDirect&&<button className="mini-btn" disabled={saving} onClick={()=>drop(selected,null,null)}>Remove selected token from map</button>}
+   {selected&&canDirect&&<button className="mini-btn" disabled={saving} onClick={()=>placeToken(selected,null)}>Remove selected token from map</button>}
   </div>
-  {saving&&<p className="muted" role="status">Saving token position…</p>}
+  {saving&&<p className="muted" role="status">Saving map changes…</p>}
  </section>;
 }
