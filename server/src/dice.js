@@ -27,7 +27,7 @@ async function createRoll(pool,user,encounterId,b,privateAllowed){
  return ok({...r,id:insert.insertId,kind,visibility,target_dc:dc,outcome,rolled_by:user.id});
 }
 async function canRoll(pool,u,e){
- if(!await canParticipate(pool,u,e))return false;
+ if(!gm(u,e)&&!await canParticipate(pool,u,e))return false;
  if(e.status!=='active')return false;
  const [prefs]=await pool.execute('SELECT adult_declaration,content_preferences FROM order_profile_preferences WHERE user_id=?',[u.id]);
  const categories=prefs[0]?unpack(prefs[0].content_preferences)||{}:{};
@@ -70,6 +70,7 @@ export async function diceRoute(pool,req,path){
    if(!dice||!label||dc===null||!uuid(b?.character_id))return err(400,'invalid_roll_request');
    const [chars]=await pool.execute('SELECT player_account_id FROM characters WHERE id=?',[b.character_id]);
    if(!chars[0]?.player_account_id)return err(404,'linked_player_required');
+   if(chars[0].player_account_id===e.created_by)return err(403,'event_director_cannot_roll_as_player');
    const [party]=await pool.execute('SELECT id FROM order_combatants WHERE encounter_id=? AND character_id=?',[e.id,b.character_id]);
    if(!party.length)return err(403,'character_not_in_party');
    const id=randomUUID();
@@ -90,6 +91,7 @@ export async function diceRoute(pool,req,path){
    await pool.execute('UPDATE order_roll_requests SET state="cancelled" WHERE id=? AND state="pending"',[id]);
    return ok({status:'cancelled'});
   }
+  if(r.player_user_id===r.created_by)return err(403,'event_director_cannot_roll_as_player');
   if(r.player_user_id!==u.id||r.event_status!=='active')return err(403,'player_must_roll_during_active_encounter');
   const [pauses]=await pool.execute('SELECT 1 FROM order_encounter_pauses WHERE encounter_id=? AND paused=1',[r.encounter_id]);
   if(pauses.length)return err(409,'encounter_paused');

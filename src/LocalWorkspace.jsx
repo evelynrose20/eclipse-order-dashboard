@@ -25,6 +25,9 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const [filter,setFilter]=useState('');
+ const staff=['domina','high_command','handler'].includes(profile.role);
+ const [playerPreview,setPlayerPreview]=useState(false);
+ const changeView=()=>{setPlayerPreview(v=>!v);setTab('overview');setDraft(null);setSelected('');setFilter('');setMessage('')};
  const load=async()=>{
   const roster=await request('/characters');
   setCharacters(roster);
@@ -34,13 +37,14 @@ export default function LocalWorkspace({profile,request,onLogout}){
  useEffect(()=>{load().catch(err=>setMessage(err.message))},[profile.id]);
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
- const character=characters.find(c=>c.id===selected);
- const admin=canManage(profile.role);
+ const visibleCharacters=playerPreview?characters.filter(c=>c.player_user_id===profile.id):characters;
+ const character=visibleCharacters.find(c=>c.id===selected)||visibleCharacters[0];
+ const admin=!playerPreview&&canManage(profile.role);
  const navigation=[
   ['overview','Overview','◈'],
   ['roster','Character roster','▦'],
   ['sheet','Character sheets','◇'],
-  ...(profile.role==='domina'?[['members','Order accounts','♛']]:[]),
+  ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['profile','My RP profile','♡'],
@@ -74,20 +78,21 @@ export default function LocalWorkspace({profile,request,onLogout}){
   <aside className="sidebar">
    <div className="brand"><span className="brand-sigil">✦</span><div><strong>ECLIPSE ORDER</strong><small>THE UNDERWORLD LEDGER</small></div></div>
    <div className="workspace-chip"><span className="pulse"/> The Order<small>Private members' ledger</small></div>
-   <p className="nav-label">COMMAND CENTER</p>
+   <p className="nav-label">{playerPreview?'MEMBER PORTAL':'COMMAND CENTER'}</p>
    <nav aria-label="Primary navigation">{navigation.map(([id,label,mark])=><button key={id} className={'nav-link '+(tab===id?'active':'')} onClick={()=>{setTab(id);setDraft(null);setMessage('')}}><span className="nav-symbol">{mark}</span>{label}{id==='members'&&pending.length>0?<em className="eo-nav-count">{pending.length}</em>:null}</button>)}</nav>
    <div className="side-bottom"><div className="monogram">EO</div><div><strong>{syndicateRankLabel(profile.syndicate_rank)}</strong><small>{profile.email}</small></div></div>
   </aside>
   <main className="main">
-   <header className="topbar"><div className="breadcrumb">ECLIPSE ORDER <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions"><span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
+   <header className="topbar"><div className="breadcrumb">ECLIPSE ORDER <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className="content">
-    <div className="page-intro"><div><div className="eyebrow">ORDER OPERATIONS</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?'Your Order at a glance.':tab==='members'?'Approve membership requests; manage syndicate ranks and separate account permissions.':'Manage the Order’s records and activities.'}</p></div></div>
+    {playerPreview&&<div className="player-preview-banner" role="status"><strong>Player View · Read-only preview</strong><span>Showing member navigation and your own linked characters. Your staff login and server permissions are unchanged; use a separate member account to verify real access restrictions.</span></div>}
+    <div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'ORDER OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Order at a glance.'):tab==='members'?'Approve membership requests; manage syndicate ranks and separate account permissions.':'Manage the Order’s records and activities.'}</p></div></div>
     {message&&<div className="alert" role="status">{message}</div>}
     {tab==='overview'&&<>
-     <div className="eo-summary"><div><strong>{characters.length}</strong><span>Visible characters</span></div>{profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div></div>
+     <div className="eo-summary"><div><strong>{visibleCharacters.length}</strong><span>Visible characters</span></div>{!playerPreview&&profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}{!playerPreview&&<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div>}</div>
      <section className="panel"><h2>Welcome, {profile.display_name}</h2><p><strong>Syndicate rank:</strong> {syndicateRankLabel(profile.syndicate_rank)} · <strong>Account access:</strong> {ACCOUNT_ROLES[profile.role]?.label||profile.role}</p><p>The Order’s records, events, and character dossiers are available to you here.</p></section>
     </>}
-    {tab==='members'&&profile.role==='domina'&&<>
+    {tab==='members'&&!playerPreview&&profile.role==='domina'&&<>
      <div className="eo-toolbar"><h2>Pending membership requests ({pending.length})</h2><button className="btn secondary" onClick={()=>load().catch(err=>setMessage(err.message))}>Refresh</button></div>
      {!pending.length?<div className="panel"><p>No pending account requests.</p></div>:pending.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{m.email}</small><span>Requested {new Date(m.created_at).toLocaleDateString()}</span></div><div className="eo-actions"><button className="eo-primary" disabled={busy} onClick={()=>act(m.user_id,'approve')}>Approve</button><button disabled={busy} onClick={()=>{if(window.confirm('Reject this membership request?'))act(m.user_id,'reject')}}>Reject</button></div></article>)}
      <h2 className="eo-member-title">Approved accounts</h2><p className="muted">Syndicate rank reflects a member's place in the Order. Access permissions govern staff duties, while binding ranks belong to individual characters.</p>
@@ -96,20 +101,20 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='roster'&&<>
      <div className="eo-toolbar"><h2>Character records</h2>{admin&&<button className="btn primary" onClick={()=>{setDraft(newSheet());setTab('sheet')}}>+ Create character</button>}</div>
      <input className="eo-search" placeholder="Search characters…" aria-label="Search characters" value={filter} onChange={e=>setFilter(e.target.value)}/>
-     {!characters.length?<section className="panel"><h3>No characters yet</h3><p>No characters have been added to the Order's roster yet.</p></section>:<div className="eo-character-grid">{characters.filter(c=>[c.name,c.player,c.specialty].join(' ').toLowerCase().includes(filter.toLowerCase())).map(c=><button key={c.id} className="eo-character" onClick={()=>{setSelected(c.id);setTab('sheet')}}><strong>{c.name}</strong><span>{c.rank}</span><small>{c.class_name||'No class set'} · {c.view_mode==='bound'?'Restricted sheet':'Full sheet'}</small></button>)}</div>}
+     {!visibleCharacters.length?<section className="panel"><h3>No characters yet</h3><p>No characters have been added to the Order's roster yet.</p></section>:<div className="eo-character-grid">{visibleCharacters.filter(c=>[c.name,c.player,c.specialty].join(' ').toLowerCase().includes(filter.toLowerCase())).map(c=><button key={c.id} className="eo-character" onClick={()=>{setSelected(c.id);setTab('sheet')}}><strong>{c.name}</strong><span>{c.rank}</span><small>{c.class_name||'No class set'} · {c.view_mode==='bound'?'Restricted sheet':'Full sheet'}</small></button>)}</div>}
     </>}
     {tab==='sheet'&&<>
      <div className="eo-toolbar"><h2>Character sheets</h2>{admin&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>+ New sheet</button>}</div>
-     {characters.length>0&&<select className="eo-sheet-picker" value={selected} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{characters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
+     {visibleCharacters.length>0&&<select className="eo-sheet-picker" value={character?.id||''} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{visibleCharacters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
      {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} canCommand={admin} members={members} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
-     character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id)?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.view_mode==='bound'?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} request={request} onRefresh={load}/></>}</>:
+     character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{!playerPreview&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.collar_bound&&(playerPreview||character.view_mode==='bound')?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} readOnly={playerPreview} request={request} onRefresh={load}/></>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
-    {(tab==='encounters'||tab==='events')&&<Encounters role={profile.role} userId={profile.id} characters={characters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
-    {tab==='profile'&&<ProfileConsent/>}
+    {(tab==='encounters'||tab==='events')&&<Encounters key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
+    {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
     {tab==='directory'&&<MemberRPDirectory/>}
-    {tab==='transitions'&&<CharacterTransitions characters={characters} role={profile.role} userId={profile.id} onRefresh={load}/>}
-    {tab==='settings'&&<FCSettings role={profile.role}/>}
+    {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}
+    {tab==='settings'&&<FCSettings role={playerPreview?'member':profile.role}/>}
    </div>
   </main>
  </div>;
