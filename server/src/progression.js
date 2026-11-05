@@ -31,7 +31,7 @@ export function createProgression(sheet){
  const skills=sheet.skills&&typeof sheet.skills==='object'&&!Array.isArray(sheet.skills)?sheet.skills:{};
  return {...sheet,class_id:sheet.class_id,class_name:klass.name,progression_version:1,level:1,experience:0,
   hp,max_hp:hp,hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:klass.features.join(', '),
-  saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
+  ability_points:0,saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
 }
 export function applyExperience(sheet,amount){
  const klass=CLASSES[sheet.class_id];
@@ -39,7 +39,9 @@ export function applyExperience(sheet,amount){
  const experience=Math.max(0,Math.trunc(Number(sheet.experience)||0)+amount);
  const level=levelForXp(experience);
  const levelsGained=Math.max(0,level-prevLevel);
+ const milestones=[4,8,12,16,19];
+ const pointsGained=milestones.filter(n=>n>prevLevel&&n<=level).length*2;
  const maxHp=Math.max(1,Number(sheet.max_hp)||1)+levelsGained*Math.max(1,Math.floor((klass?.hit_die||8)/2)+1+abilityModifier(sheet.con));
- return {...sheet,experience,level,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
+ return {...sheet,experience,level,ability_points:(Number(sheet.ability_points)||0)+pointsGained,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
   hit_dice:klass?level+'d'+klass.hit_die:sheet.hit_dice,proficiency_bonus:proficiencyForLevel(level)};
 }
