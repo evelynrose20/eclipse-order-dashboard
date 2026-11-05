@@ -17,7 +17,7 @@ test('new registration is pending, inactive and always a member',async()=>{
  const r=await accountRoute(pool,req({email:'new@rosefires.com',display_name:'New Member',password:'a unique very long password!',adult_declaration:true}),'/auth/register');
  assert.equal(r.status,201);
  assert.equal(r.body.status,'pending');
- assert.ok(inserted.query.includes("'member','initiate',0,'pending'"));
+ assert.ok(inserted.query.includes("'member','initiate','kumi_in',0,'pending'"));
  assert.equal(inserted.args[1],'new@rosefires.com');
  assert.ok(!inserted.args[2].includes('a unique'));
 });
