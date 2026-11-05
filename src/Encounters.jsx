@@ -10,7 +10,7 @@ import {editPlannedEvent} from './apiBridge.js';
 import './event-planning.css';
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const label=key=>CONTENT_THEMES.find(x=>x[0]===key)?.[1]||key;
-export default function Encounters({role,userId,characters,onOpenProfile,onRefreshCharacters,previewOnly=false}){
+export default function Encounters({role,userId,characters,onOpenProfile,onRefreshCharacters,previewOnly=false,classCatalog}){
  const directorRole=['domina','high_command','handler'].includes(role);
  const [data,setData]=useState([]),[chosenId,setChosenId]=useState('');
  const [combatName,setCombatName]=useState(''),[kind,setKind]=useState('npc'),[charId,setCharId]=useState(''),[initiative,setInitiative]=useState(10),[hp,setHp]=useState(20),[ac,setAc]=useState(10);
@@ -126,7 +126,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
       <button className="btn primary" disabled={working} type="submit">Add</button>
      </div></form>}
     </section>}
-    {section==='dice'&&((isParticipant||canDirect)&&!(previewOnly&&!isParticipant)?<DicePanel key={selected.id} previewOnly={previewOnly} isDirector={isDirector} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Dice & checks</h2><p className="muted">Only approved party participants and the GM can roll. Sign up first, then have the GM add your character to the party.</p></section>)}
+    {section==='dice'&&((isParticipant||canDirect)&&!(previewOnly&&!isParticipant)?<DicePanel classCatalog={classCatalog} key={selected.id} previewOnly={previewOnly} isDirector={isDirector} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Dice & checks</h2><p className="muted">Only approved party participants and the GM can roll. Sign up first, then have the GM add your character to the party.</p></section>)}
    </>}
    {error&&<div className="alert" role="alert">{error}</div>}
   </section>

@@ -1,0 +1,12 @@
+.homebrew-workspace,.homebrew-editor{display:grid;gap:18px;align-content:start}
+.class-library-toolbar,.homebrew-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));align-items:end;gap:12px}.class-library-toolbar .field{margin:0}
+.homebrew-wide{grid-column:1/-1}.homebrew-rows{display:grid;gap:9px}.homebrew-row{display:grid;grid-template-columns:72px minmax(140px,1fr) minmax(180px,2fr) auto;gap:10px;padding:12px;background:#281f2c;border:1px solid #594451;border-radius:9px;align-items:end}
+.homebrew-row.spell{grid-template-columns:65px 65px minmax(110px,1fr) minmax(130px,1fr) minmax(170px,2fr) auto}
+.homebrew-row label{display:grid;gap:5px;color:#c8aebd;font-size:10px;letter-spacing:.06em}.homebrew-row input{max-width:100%;width:100%;padding:9px 7px;background:#1b1921;color:#f2e0e9;border:1px solid #67515f;border-radius:7px}.homebrew-row .mini-btn{margin-bottom:1px}
+.class-level-list{display:grid;gap:5px;margin:13px 0}.class-level-row{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:8px 10px;background:#2a222d;border-radius:7px;font-size:12px}.class-level-row>div{display:flex;gap:7px;flex-wrap:wrap}.class-level-row span{background:#574050;border-radius:6px;padding:3px 7px}.class-level-row .spell-unlock{background:#354d68}
+.class-spellbook{margin-top:18px}.class-spellbook h3{margin:19px 0 12px}
+.spell-resource{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#302a40;border:1px solid #78638a;border-radius:9px;padding:14px}.spell-resource strong{font-size:17px}.spell-resource span{font-size:12px;color:#b8acbf;flex:1}
+.class-feature-grid,.class-spell-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.class-feature-grid article,.class-spell-grid article{padding:13px;background:#2b222d;border:1px solid #624a5b;border-radius:9px}.class-feature-grid small,.class-spell-grid small{display:block;font-size:11px;color:#c4aaba;margin-top:4px}.class-feature-grid p,.class-spell-grid p{white-space:pre-wrap;color:#c8b8c3;font-size:12px;line-height:1.5}.class-spell-grid button{margin-top:8px}
+.spell-future-list{display:grid;gap:6px}.spell-future-list>div{display:flex;gap:12px;background:#241e29;padding:10px 12px;border-radius:7px;align-items:center}.spell-future-list span{flex:1}.spell-future-list small{color:#af9dab}
+@media(max-width:850px){.homebrew-row,.homebrew-row.spell{grid-template-columns:repeat(2,minmax(0,1fr))}.homebrew-row-description{grid-column:1/-1}.homebrew-row .mini-btn{justify-self:start}}

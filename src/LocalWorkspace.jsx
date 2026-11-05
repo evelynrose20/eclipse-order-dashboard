@@ -7,6 +7,8 @@ import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
 import CharacterProgression from './CharacterProgression.jsx';
+import HomebrewClasses from './HomebrewClasses.jsx';
+import ClassSpellbook from './ClassSpellbook.jsx';
 import {SYNDICATE_RANKS,syndicateRankLabel} from './syndicateRanks.js';
 import './dashboard.css';
 import './local-accounts.css';
@@ -25,6 +27,8 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const [filter,setFilter]=useState('');
+ const [classCatalog,setClassCatalog]=useState({});
+ const reloadClasses=async()=>{const result=await request('/classes');setClassCatalog(result.classes||{})};
  const staff=['domina','high_command','handler'].includes(profile.role);
  const [playerPreview,setPlayerPreview]=useState(false);
  const changeView=()=>{setPlayerPreview(v=>!v);setTab('overview');setDraft(null);setSelected('');setFilter('');setMessage('')};
@@ -34,7 +38,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   setSelected(old=>old&&roster.some(c=>c.id===old)?old:roster[0]?.id||'');
   if(profile.role==='domina')setMembers(await request('/admin/accounts'));
  };
- useEffect(()=>{load().catch(err=>setMessage(err.message))},[profile.id]);
+ useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message))},[profile.id]);
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
  const visibleCharacters=playerPreview?characters.filter(c=>c.player_user_id===profile.id):characters;
@@ -45,6 +49,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['roster','Character roster','▦'],
   ['sheet','Character sheets','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
+  ...(!playerPreview&&canManage(profile.role)?[['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['profile','My RP profile','♡'],
@@ -106,11 +111,12 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='sheet'&&<>
      <div className="eo-toolbar"><h2>Character sheets</h2>{admin&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>+ New sheet</button>}</div>
      {visibleCharacters.length>0&&<select className="eo-sheet-picker" value={character?.id||''} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{visibleCharacters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
-     {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} canCommand={admin} members={members} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
-     character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{!playerPreview&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.collar_bound&&(playerPreview||character.view_mode==='bound')?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} readOnly={playerPreview} request={request} onRefresh={load}/></>}</>:
+     {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} classCatalog={classCatalog} canCommand={admin} members={members} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
+     character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{!playerPreview&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.collar_bound&&(playerPreview||character.view_mode==='bound')?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} readOnly={playerPreview} request={request} onRefresh={load}/><ClassSpellbook character={character} klass={classCatalog[character.class_id]} request={request} onRefresh={load} userId={profile.id} readOnly={playerPreview}/></>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
-    {(tab==='encounters'||tab==='events')&&<Encounters key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
+    {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
+    {(tab==='encounters'||tab==='events')&&<Encounters classCatalog={classCatalog} key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}

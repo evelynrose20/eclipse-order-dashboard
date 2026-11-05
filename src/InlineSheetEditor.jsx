@@ -7,7 +7,7 @@ const SKILLS=['Acrobatics','Animal Handling','Arcana','Athletics','Deception','H
 const SECTIONS=[
  ['Identity & story',[['name','Character name'],['player','Player handle'],['owner','Assigned to'],['specialty','Specialty'],['species','Species / race'],['background','Background'],['alignment','Alignment']]],
  ['Combat & progression',[['hp','Current HP'],['temp_hp','Temporary HP'],['armor_class','Armor class'],['speed','Speed'],]],
- ['Traits & equipment',[['features','Features & traits'],['proficiencies','Proficiencies & languages'],['spells','Spells & magic'],['inventory','Equipment & belongings'],['conditions','Conditions']]],
+ ['Traits & equipment',[['features','Features & traits'],['proficiencies','Proficiencies & languages'],['spells','Additional spell notes (not class unlocks)'],['inventory','Equipment & belongings'],['conditions','Conditions']]],
  ['Roleplay details',[['personality','Personality'],['ideals','Ideals'],['bonds','Bonds'],['flaws','Flaws'],['notes','Ledger notes']]]
 ];
 const NUMERIC=new Set(['level','experience','hp','max_hp','temp_hp','armor_class','speed','proficiency_bonus']);
@@ -18,15 +18,16 @@ function EditorField({name,label,form,set,disabled}){
  {LONG.has(name)?<textarea rows={4} maxLength={name==='notes'?4000:12000} disabled={disabled} value={value} onChange={e=>set(name,e.target.value)}/>:<input disabled={disabled} type={NUMERIC.has(name)?'number':'text'} min={NUMERIC.has(name)?0:undefined} maxLength={NUMERIC.has(name)?undefined:160} value={value} onChange={e=>set(name,NUMERIC.has(name)?Number(e.target.value):e.target.value)}/>}
  </label>;
 }
-export default function InlineSheetEditor({character,canCommand,members,onSave,onCancel,saving}){
+export default function InlineSheetEditor({character,canCommand,members,onSave,onCancel,saving,classCatalog}){
  const [form,setForm]=useState(()=>({...character}));
  useEffect(()=>setForm({...character}),[character.id]);
  const [section,setSection]=useState('Identity & story');
  const firstCreation=!character.id;
+ const availableClasses=classCatalog&&Object.keys(classCatalog).length?classCatalog:CLASSES;
  const tracked=character.progression_version===1;
  const spent=pointCost(form);
  const remaining=spent===null?null:POINT_BUDGET-spent;
- const invalidCreation=firstCreation&&(!CLASSES[form.class_id]||remaining===null||remaining<0);
+ const invalidCreation=firstCreation&&(!availableClasses[form.class_id]||remaining===null||remaining<0);
  function set(name,value){setForm(old=>({...old,[name]:value}))}
  async function submit(e){e.preventDefault();if(invalidCreation)return;await onSave(form)}
  return <form className="inline-sheet-editor" onSubmit={submit}>
@@ -34,7 +35,7 @@ export default function InlineSheetEditor({character,canCommand,members,onSave,o
   <div className="inline-sheet-nav" role="tablist" aria-label="Character sheet sections">
    {[...SECTIONS.map(s=>s[0]),'Abilities & proficiency'].map(label=><button type="button" key={label} role="tab" aria-selected={section===label} className={section===label?'active':''} onClick={()=>setSection(label)}>{label}</button>)}
   </div>
-  {section==='Identity & story'&&<section className="panel"><h3>Character class and progression</h3><div className="inline-sheet-grid"><label className="inline-field"><span>Class</span><select disabled={!firstCreation} required value={form.class_id||''} onChange={e=>set('class_id',e.target.value)}><option value="">Choose a class</option>{Object.entries(CLASSES).map(([id,c])=><option value={id} key={id}>{c.name} · d{c.hit_die} HP</option>)}</select></label><div className="inline-field"><span>Level / Experience</span><strong>Level {form.level||1} · {form.experience||0} XP</strong><small>{(form.level||1)>=20?'Maximum level':`Next level: ${xpForLevel((form.level||1)+1)} XP`}</small></div></div><p className="muted">{CLASSES[form.class_id]?.description||'Choose a class to define your starting HP, saving throws and class abilities.'} {tracked?'Experience and level-ups are awarded by Order command.':''}</p></section>}
+  {section==='Identity & story'&&<section className="panel"><h3>Character class and progression</h3><div className="inline-sheet-grid"><label className="inline-field"><span>Class</span><select disabled={!firstCreation} required value={form.class_id||''} onChange={e=>set('class_id',e.target.value)}><option value="">Choose a class</option>{Object.entries(availableClasses).map(([id,c])=><option value={id} key={id}>{c.name} · d{c.hit_die} HP</option>)}</select></label><div className="inline-field"><span>Level / Experience</span><strong>Level {form.level||1} · {form.experience||0} XP</strong><small>{(form.level||1)>=20?'Maximum level':`Next level: ${xpForLevel((form.level||1)+1)} XP`}</small></div></div><p className="muted">{availableClasses[form.class_id]?.description||'Choose a class to define your starting HP, saving throws and class abilities.'} {tracked?'Experience and level-ups are awarded by Order command.':''}</p></section>}
   {SECTIONS.filter(([key])=>section===key).map(([name,fields])=><section className="panel" key={name}><h3>{name}</h3><div className="inline-sheet-grid">{fields.map(([key,label])=><EditorField key={key} name={key} label={label} form={form} set={set} disabled={!canCommand&&['player','owner'].includes(key)}/>)}</div>
    {name==='Identity & story'&&<div className="inline-sheet-linked">
     <h3>FC assignments</h3><p>Collar status is changed through the separate player-approved Binding requests system, not here.</p>

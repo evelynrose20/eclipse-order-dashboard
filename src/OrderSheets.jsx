@@ -70,7 +70,7 @@ export function FullDndSheet({character}){
     </div>
     <div className="full-grid">
       <section className="panel"><TextSection label="Features & traits" value={character.features}/><TextSection label="Proficiencies & languages" value={character.proficiencies}/><TextSection label="Conditions" value={character.conditions}/></section>
-      <section className="panel"><TextSection label="Spells & magic" value={character.spells}/><TextSection label="Equipment & inventory" value={character.inventory}/></section>
+      <section className="panel"><TextSection label="Additional spell notes" value={character.spells}/><TextSection label="Equipment & inventory" value={character.inventory}/></section>
     </div>
     <section className="panel"><h2>Personality & character history</h2><div className="full-grid personality-grid">
       <TextSection label="Personality traits" value={character.personality}/><TextSection label="Ideals" value={character.ideals}/>

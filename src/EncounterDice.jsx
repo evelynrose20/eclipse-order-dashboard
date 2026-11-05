@@ -12,7 +12,8 @@ const PRESETS=[
  ['percentile','Percentile','1d100+0'],['death_save','Death save','1d20+0'],['concentration','Concentration save','1d20+0'],['custom','Custom dice','1d20+0']
 ];
 const CHECK_KINDS=['ability','saving_throw','attack','contest','skill'];
-export function DicePanel({encounter,characters,canDirect,userId,check,working,action,previewOnly=false,isDirector=false}){
+export function DicePanel({encounter,characters,canDirect,userId,check,working,action,previewOnly=false,isDirector=false,classCatalog}){
+ const availableClasses=classCatalog&&Object.keys(classCatalog).length?classCatalog:CLASSES;
  const [requests,setRequests]=useState([]),[rolls,setRolls]=useState([]),[formula,setFormula]=useState('1d20+0');
  const [preset,setPreset]=useState('ability'),[visibility,setVisibility]=useState('public');
  const [target,setTarget]=useState(''),[targetDC,setTargetDC]=useState(12);
@@ -34,11 +35,11 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  async function resolve(id){const result=await run(()=>resolveGMRoll(id));if(result)setLast({...result.roll,success:result.success,dc:result.dc})}
  const linked=encounter.combatants.filter(c=>c.kind==='player'&&c.character_id).map(c=>({...c,record:characters.find(x=>x.id===c.character_id)})).filter(c=>c.record?.player_user_id);
  const canRoll=eligible&&encounter.status==='active';
- const classCharacters=characters.filter(c=>!previewOnly&&c.progression_version===1&&c.view_mode==='full'&&CLASSES[c.class_id]&&encounter.combatants.some(e=>e.character_id===c.id)&&c.player_user_id===userId&&!isDirector);
+ const classCharacters=characters.filter(c=>!previewOnly&&c.progression_version===1&&c.view_mode==='full'&&availableClasses[c.class_id]&&encounter.combatants.some(e=>e.character_id===c.id)&&c.player_user_id===userId&&!isDirector);
  const currentClassCharacter=classCharacters.find(c=>c.id===classCharacter)||classCharacters[0];
  async function rollClassCheck(){
   if(!currentClassCharacter||!canRoll)return;
-  const primary=CLASSES[currentClassCharacter.class_id].primary;
+  const primary=availableClasses[currentClassCharacter.class_id].primary;
   const proficiency=Number(currentClassCharacter.proficiency_bonus)||2;
   const bonus=Math.floor((Number(currentClassCharacter[primary]||10)-10)/2)+proficiency;
   const expression='1d20'+(bonus>=0?'+':'')+bonus;
@@ -47,7 +48,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  }
  return <section className="panel dice-panel">
   <div className="panel-heading"><div><h2>Dice chamber & GM checks</h2><p>{canDirect?'Roll for NPCs and encounter effects, or request a linked player to roll their own character.':'Every roll is recorded in the encounter history and shown to its intended participants.'}</p></div></div>
-  {classCharacters.length>0&&<div className="panel"><h3>Class check</h3><p className="muted">Use your character's main ability and level-based proficiency modifier. The result is recorded in the encounter history.</p><div className="encounter-roll-controls"><label className="field"><span>CLASS CHARACTER</span><select value={currentClassCharacter?.id||''} onChange={e=>setClassCharacter(e.target.value)}>{classCharacters.map(c=><option key={c.id} value={c.id}>{c.name} · {CLASSES[c.class_id].name} level {c.level}</option>)}</select></label><button className="btn secondary" disabled={!canRoll||working} onClick={rollClassCheck}>Roll primary ability check</button></div></div>}
+  {classCharacters.length>0&&<div className="panel"><h3>Class check</h3><p className="muted">Use your character's main ability and level-based proficiency modifier. The result is recorded in the encounter history.</p><div className="encounter-roll-controls"><label className="field"><span>CLASS CHARACTER</span><select value={currentClassCharacter?.id||''} onChange={e=>setClassCharacter(e.target.value)}>{classCharacters.map(c=><option key={c.id} value={c.id}>{c.name} · {availableClasses[c.class_id].name} level {c.level}</option>)}</select></label><button className="btn secondary" disabled={!canRoll||working} onClick={rollClassCheck}>Roll primary ability check</button></div></div>}
   <div className="dice-preset-row">{PRESETS.map(([id,title,template])=><button key={id} type="button" className={'mini-btn '+(preset===id?'dice-active':'')} onClick={()=>{setPreset(id);setFormula(template)}}>{title}</button>)}</div>
   <div className="encounter-roll-controls"><label className="field"><span>DICE FORMULA</span><input maxLength={24} value={formula} onChange={e=>setFormula(e.target.value)} placeholder="2d20kh1+4"/></label>
    <label className="field"><span>ROLL VISIBILITY</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Everyone in encounter</option>{canDirect&&<option value="gm_private">GM/private</option>}</select></label>

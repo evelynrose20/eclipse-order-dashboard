@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -34,7 +34,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   for(const name of ['accounts','characters','character_status_requests','account_sessions',
     'order_profile_preferences','order_member_rp_profiles','order_encounters','order_combatants',
     'order_monster_templates','order_encounter_rolls','order_roll_requests','order_event_signups',
-    'order_encounter_pauses','order_settings','order_event_xp_awards'])assert.ok(names.has(name),'missing '+name);
+    'order_encounter_pauses','order_settings','order_event_xp_awards','order_homebrew_classes'])assert.ok(names.has(name),'missing '+name);
   const [[row]]=await admin.execute('SELECT account_role FROM accounts WHERE id=?',[id]);
   assert.equal(row.account_role,'domina');
   const [[rank]]=await admin.execute('SELECT syndicate_rank FROM accounts WHERE id=?',[id]);

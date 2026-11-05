@@ -31,6 +31,8 @@ async function main(){
   await pool.query(eventXp);
   const freeMap=await readFile(new URL('../sql/009_free_map_and_statblocks.sql',import.meta.url),'utf8');
   await pool.query(freeMap);
+  const homebrew=await readFile(new URL('../sql/010_homebrew_classes.sql',import.meta.url),'utf8');
+  await pool.query(homebrew);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. Open the local account portal in your browser to create the first Domina account.');
