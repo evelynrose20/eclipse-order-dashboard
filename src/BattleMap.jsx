@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-import {setEncounterMap,moveEncounterToken,setEncounterMapImage} from './supabase.js';
+import {setEncounterMap,moveEncounterToken,setEncounterMapImage} from './apiBridge.js';
 import './battlemap.css';
 
 function Token({combatant,canDirect,onSelect,selected}) {
