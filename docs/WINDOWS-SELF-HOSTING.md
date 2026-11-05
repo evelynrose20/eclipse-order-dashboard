@@ -1,36 +1,22 @@
-# Self-hosting Eclipse Order on a Windows PC — migration plan
+# Eclipse Order — Windows hosting overview
 
-## Current architecture
+**Current direction:** The Windows Node.js + MySQL API and matching React client are already implemented in the repository. This is no longer only a hypothetical migration plan. Production readiness still requires real-server migration, permissions, backup, and Cloudflare checks.
 
-The production app is a React/Vite static site. Its browser client uses Supabase's /auth/v1 login and /rest/v1/rpc endpoints. The database is PostgreSQL with Row Level Security and SECURITY DEFINER functions. Simply changing the frontend URL to `localhost`, a MySQL port, or a PostgreSQL server will NOT work for other players: browsers cannot safely connect directly to a database, and the old RPCs are PostgreSQL functions.
+## Components
 
-**This branch does not migrate the application off Supabase.** It introduces only the inline sheet editor and RP profile system. Leave the current database connected until a replacement backend is built and tested.
+- Frontend: React/Vite static site on GitHub Pages, built with `VITE_ECLIPSE_API_URL=https://api.rosefires.com` for the documented public setup.
+- API: Node.js 22+ on Windows, bound to `127.0.0.1:3182`; keep `server/.env` private.
+- Database: local MySQL `eclipse_order`; do not expose port 3306.
+- External access: existing **Eclipse-Order-API** Cloudflare Tunnel, configured to the local Node API after security checks.
 
-## Recommended Windows-local option
+See [server setup](../server/README.md) for installation and [Cloudflare launch](../server/CLOUDFLARE-LAUNCH.md) for routing. Use `npm run setup:local` from `server/` after a backup to install additive MySQL migrations, including event XP.
 
-For a small FC, use a dedicated Windows PC that runs 24/7:
+## What the old Supabase files mean
 
-- Node.js HTTP API listening on `127.0.0.1:3182` or another private port (a future component; not implemented yet).
-- MySQL/MariaDB on `127.0.0.1:3306`, or a locally installed PostgreSQL instance. If you already maintain MySQL/HeidiSQL on Windows, it can work, but it requires converting Supabase PostgreSQL functions to application-service authorization.
-- Expose **only the authenticated HTTP API**, not the database port, through Cloudflare Tunnel to a domain you control, e.g. `api.example.com`.
-- Keep the React website on GitHub Pages; change the app's API client only after endpoint/auth/data migrations are complete.
-- Run the API and Cloudflare tunnel as Windows services with automatic restart; configure Windows Firewall to disallow inbound MySQL/PostgreSQL connections from the public Internet.
+The legacy browser/Supabase adapter remains in the repository for compatibility when `VITE_ECLIPSE_API_URL` is unset. It is not the supported Windows member portal. Do not run PostgreSQL/Supabase SQL against MySQL or assume legacy users/passwords automatically moved into MySQL. If there is historical data to preserve, plan and verify any transfer separately before retiring the old instance.
 
-## Required implementation phases
+## Before opening access
 
-1. **Inventory and snapshot**: Export all Supabase character rows, role/membership records, character status requests, event signups, encounter combatants, dice history, FC rules, private RP preferences, kink profiles and audit history. Encrypt the backup. Verify counts.
-2. **Choose destination DB**: Use existing Windows MySQL if you prefer; PostgreSQL on Windows minimizes changes to schema types but still requires replacing the Supabase Auth/RPC gateway, or running an equivalent self-hosted API layer.
-3. **Implement backend auth**: Email/password reset, strong password hashing, session/refresh-token handling, rate limits and audit logs. Avoid reusing old frontend admin credentials. Existing Supabase password hashes/session tokens cannot simply be copied over into a custom login implementation; plan a new sign-in/password-reset rollout or an explicit auth bridge.
-4. **Move permissions server-side**: Domina, High Command, Handler and Member authorization; bound sheet redaction; reversible status approvals; event signup ownership; OOC stop/withdrawal; private-by-default kink/profile sharing; GM-only dice. These must be checked before every read/write.
-5. **Migrate data** into the destination schema with stable user and character IDs. Verify all public/private record access for at least four distinct accounts.
-6. **Cut over safely** with a staging hostname, backup/restore drill, HTTPS, health checks, and a rollback plan. Only switch the production frontend once tests pass.
+Verify account approval and login, server-side role checks, private bound-sheet redaction, OOC pause and revocation, event signup ownership, GM dice, completed-event XP, HTTPS/CORS, rate limiting and a restorable encrypted database backup. Test from a second device through the published website; local `/ready` is not a substitute for a public login check.
 
-## Reliability, cost, and privacy
-
-Self-hosting can avoid Supabase subscription charges but does **not** eliminate operational work. If the PC loses power, goes to sleep, reboots, or the home Internet is down, the FC API goes offline. Protect it with Windows updates, a UPS where possible, an external encrypted backup drive plus a separate offsite copy, and a tested restore procedure. Never store player OOC preferences in a public GitHub repo.
-
-Cloudflare Tunnel uses outbound connections, so it can publish a localhost HTTP API without opening router inbound ports; it does not replace proper API authentication/authorization. Keep the DB socket private. Use a domain with Cloudflare DNS for a stable hostname.
-
-## Why this is a project, not a SQL setting
-
-The existing client requires Supabase Auth and PostgreSQL RPC semantics. Hosting only MySQL/PostgreSQL on your Windows PC is not enough. A standalone Windows Node API and matching React client changes are separate implementation work; this repo intentionally does not claim that switch is already complete.
+Hosting from a Windows PC means downtime during power loss, sleep, restarts, or network failure unless you add reliable service startup and power protection. Do not store passwords, private member records or backups in GitHub. 

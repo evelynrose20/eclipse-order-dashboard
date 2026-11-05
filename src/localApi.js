@@ -66,7 +66,7 @@ export const listEventSignups=id=>get('/events/'+id+'/signups');
 export const decideEventSignup=(id,approved)=>post('/signups/'+id+'/decide',{approved});
 export const withdrawEventSignup=id=>post('/signups/'+id+'/withdraw');
 export const addApprovedEventPlayer=id=>post('/signups/'+id+'/add-player');
-export const setAdultRPAccess=()=>{throw new Error('Staff age approval workflow is not yet available.');};
+export const setAdultRPAccess=()=>{throw new Error('This older approval action is unavailable. Use your RP profile to manage the 18+ declaration.');};
 
 export const listEventXpAwards=id=>get('/events/'+id+'/xp');
 export const awardEventXp=(eventId,characterId,amount)=>post('/events/'+eventId+'/xp/'+characterId,{amount});
