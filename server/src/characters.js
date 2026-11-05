@@ -25,7 +25,7 @@ function view(row,account){
   handler_user_id:row.handler_account_id,collar_bound:Boolean(row.collar_bound),
   rank:row.collar_bound?(labels[row.bound_rank]||labels.rank_i):'Unbound: Free'};
  const full=commands.has(account.account_role)||(account.account_role==='handler'&&row.handler_account_id===account.id)||!row.collar_bound;
- if(full)return {...record,view_mode:'full'};
+ if(full){const {gil,...visible}=record;return {...visible,view_mode:'full'};}
  return {id:record.id,name:record.name,player:record.player||'',owner:record.owner||'',specialty:record.specialty||'',
   rank:record.rank,hp:record.hp,collar_bound:true,player_user_id:row.player_account_id,view_mode:'bound'};
 }
@@ -55,7 +55,8 @@ export async function characterRoute(pool,req,path){
   const id=randomUUID();
   const initial=createProgression(data);
   if(initial.error)return err(400,initial.error);
-  const saved={...initial,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
+  const {gil:discardedGil,...cleanInitial}=initial;
+  const saved={...cleanInitial,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
   await pool.execute(
    'INSERT INTO characters(id,character_name,player_account_id,handler_account_id,collar_bound,bound_rank,sheet_json) VALUES(?,?,?,?,?,?,?)',
    [id,name,owner,handler,bound?1:0,rank,JSON.stringify(saved)]);
@@ -157,7 +158,7 @@ export async function characterRoute(pool,req,path){
   if(!body||typeof body!=='object'||Array.isArray(body))return err(400,'invalid_character');
   const old=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
   // Never accept ownership, handler assignment, collar or bound-rank changes through normal sheet save.
-  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode']);
+  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode','gil']);
   if(old.progression_version===1){
    for(const key of ['progression_version','class_features','ability_points','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws'])blocked.add(key);
    // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
