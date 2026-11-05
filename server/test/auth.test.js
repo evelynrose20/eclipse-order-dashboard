@@ -19,7 +19,7 @@ test('valid login creates opaque database session and logout revokes it',async()
  const hash=await hashPassword(password);
  const tokenStore=new Map();
  const pool={execute:async(sql,args)=>{
-   if(sql.startsWith('SELECT id,password_hash'))return [[{id:'account-uuid',password_hash:hash}]];
+   if(sql.startsWith('SELECT id,password_hash'))return [[{id:'account-uuid',password_hash:hash,approval_status:'approved'}]];
    if(sql.startsWith('INSERT INTO account_sessions')){
     tokenStore.set(args[1],{account_id:args[0],revoked:false});
     return [{}];
