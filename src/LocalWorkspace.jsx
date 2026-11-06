@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {ACCOUNT_ROLES} from './OrderSheets.jsx';
 import Encounters from './Encounters.jsx';
+import EventBoard from './EventBoard.jsx';
 import {CharacterTransitions} from './RPPlatform.jsx';
 import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
@@ -115,7 +116,8 @@ export default function LocalWorkspace({profile,request,onLogout}){
     </>}
     {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
-    {(tab==='encounters'||tab==='events')&&<Encounters classCatalog={classCatalog} key={(playerPreview?'preview-':'live-')+tab} role={playerPreview?'member':profile.role} playerFacing={tab==='events'} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
+    {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview}/>}
+    {tab==='encounters'&&<Encounters classCatalog={classCatalog} key={playerPreview?'preview-encounters':'live-encounters'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}
