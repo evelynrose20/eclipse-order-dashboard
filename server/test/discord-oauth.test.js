@@ -76,6 +76,23 @@ test('Discord login uses secure fixed redirects and opt-in join scope only',asyn
  assert.equal(discordOAuthConfig({...env,DISCORD_FRONTEND_URL:'https://bad.example/'}),null);
  assert.equal(discordOAuthConfig({...env,DISCORD_GUILD_ID:''}),null);
 });
+test('GitHub Pages callback defaults to the deployed project path when frontend URL is omitted',async()=>{
+ const config=discordOAuthConfig({...env,DISCORD_FRONTEND_URL:''});
+ assert.ok(config);
+ assert.equal(config.frontendUrl,'https://evelynrose20.github.io/eclipse-order-dashboard/');
+ const explicit=discordOAuthConfig({...env,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/custom-portal/'});
+ assert.equal(explicit.frontendUrl,'https://evelynrose20.github.io/custom-portal/');
+ const m=setup({approved:true});
+ const {state}=await authorize(m);
+ const result=await discordRoute(m.pool,request(),'/auth/discord/callback',{
+  env:{...env,DISCORD_FRONTEND_URL:''},httpFetch:m.httpFetch,query:'state='+encodeURIComponent(state)+'&code=sample-code'
+ });
+ const url=new URL(result.redirect);
+ assert.equal(url.origin,'https://evelynrose20.github.io');
+ assert.equal(url.pathname,'/eclipse-order-dashboard/');
+ assert.equal(url.searchParams.has('portal'),true);
+ assert.ok(new URLSearchParams(url.hash.slice(1)).has('discord_ticket'));
+});
 test('adult acknowledgement is mandatory before beginning Discord OAuth',async()=>{
  const m=setup();
  const result=await call(m,'/auth/discord/start',request('POST',{body:{adult_confirmed:false}}));
