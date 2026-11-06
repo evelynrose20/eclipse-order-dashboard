@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import {defaultEventStory,readEventStory,MAX_CHAPTERS} from '../server/src/event-story.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {
  editPlannedEvent,signupForEvent,listEventSignups,decideEventSignup,
@@ -14,12 +15,16 @@ const localDate=value=>{
 const initial=evt=>({
  name:evt?.name||'',description:evt?.description||'',location:evt?.location||'',
  starts_at:localDate(evt?.starts_at),capacity:evt?.capacity||8,
- published:Boolean(evt?.published),themes:evt?.themes||[]
+ published:Boolean(evt?.published),themes:evt?.themes||[],event_story:readEventStory(evt?.event_story)
 });
 export function EventEditor({event,save,working}){
  const [form,setForm]=useState(()=>initial(event));
  useEffect(()=>setForm(initial(event)),[event?.id]);
  const field=(k,value)=>setForm(f=>({...f,[k]:value}));
+ const story=(key,value)=>setForm(f=>({...f,event_story:{...f.event_story,[key]:value}}));
+ const chapters=form.event_story.chapters;
+ const editChapter=(i,key,value)=>story('chapters',chapters.map((c,n)=>n===i?{...c,[key]:value}:c));
+ const addChapter=()=>{if(chapters.length<MAX_CHAPTERS)story('chapters',[...chapters,{title:'',description:'',difficulty:form.event_story.difficulty}])};
  function submit(e){e.preventDefault();save({...form,starts_at:form.starts_at?new Date(form.starts_at).toISOString():null})}
  return <form className="event-editor" onSubmit={submit}>
   <div className="event-form-grid">
@@ -29,6 +34,21 @@ export function EventEditor({event,save,working}){
    <label className="field"><span>PARTY CAPACITY</span><input type="number" min={1} max={60} value={form.capacity} onChange={e=>field('capacity',Number(e.target.value))}/></label>
   </div>
   <label className="field"><span>EVENT DESCRIPTION</span><textarea rows={4} maxLength={2400} value={form.description} onChange={e=>field('description',e.target.value)}/></label>
+  <section className="event-story-editor">
+   <div className="event-story-head"><h3>Story & stakes</h3><p>Mark major Order story events and set the challenge and consequences participants can expect.</p></div>
+   <div className="event-form-grid">
+    <label className="field"><span>EVENT TYPE</span><select value={form.event_story.type} onChange={e=>story('type',e.target.value)}><option value="standard">Order Event</option><option value="fc_msq">FC MSQ · Main Story</option><option value="side_story">Side Story</option></select></label>
+    <label className="field"><span>DIFFICULTY · D1–D10</span><select value={form.event_story.difficulty} onChange={e=>story('difficulty',Number(e.target.value))}>{Array.from({length:10},(_,n)=><option value={n+1} key={n+1}>D{n+1}</option>)}</select></label>
+    <label className="field"><span>IMPACT · I1–I5</span><select value={form.event_story.impact} onChange={e=>story('impact',Number(e.target.value))}>{Array.from({length:5},(_,n)=><option value={n+1} key={n+1}>I{n+1}</option>)}</select></label>
+   </div>
+   <div className="event-story-legend"><span><strong>Difficulty</strong> measures how challenging the event is.</span><span><strong>Impact</strong> measures how far its outcome reaches into the Order's story.</span></div>
+   <div className="event-story-head"><h3>Chapters</h3><p>Divide an event into scenes or sessions. Each chapter can have its own difficulty.</p></div>
+   <div className="event-chapter-edit-list">{chapters.map((chapter,i)=><div className="event-chapter-edit" key={i}><div className="event-chapter-edit-top"><strong>Chapter {i+1}</strong><button className="mini-btn danger" type="button" onClick={()=>story('chapters',chapters.filter((_,n)=>i!==n))}>Remove</button></div>
+    <div className="event-form-grid"><label className="field"><span>TITLE</span><input required maxLength={100} value={chapter.title} onChange={e=>editChapter(i,'title',e.target.value)} placeholder="Chapter title"/></label><label className="field"><span>DIFFICULTY</span><select value={chapter.difficulty} onChange={e=>editChapter(i,'difficulty',Number(e.target.value))}>{Array.from({length:10},(_,n)=><option value={n+1} key={n+1}>D{n+1}</option>)}</select></label></div>
+    <label className="field"><span>CHAPTER DESCRIPTION</span><textarea rows={2} maxLength={500} value={chapter.description} onChange={e=>editChapter(i,'description',e.target.value)}/></label>
+   </div>)}</div>
+   <button type="button" className="btn secondary" disabled={chapters.length>=MAX_CHAPTERS} onClick={addChapter}>+ Add chapter {chapters.length}/{MAX_CHAPTERS}</button>
+  </section>
   <div className="event-theme-box"><strong>Event content categories</strong><p>Choose the themes participants should know about before signing up.</p><div className="encounter-themes">{CONTENT_THEMES.map(([id,label])=><label key={id}><input type="checkbox" checked={form.themes.includes(id)} onChange={e=>field('themes',e.target.checked?[...form.themes,id]:form.themes.filter(t=>t!==id))}/>{label}</label>)}</div></div>
   <label className="event-publish"><input type="checkbox" checked={form.published} onChange={e=>field('published',e.target.checked)}/> Publish event and open sign-ups <small>Leave unchecked to prepare privately first.</small></label>
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
