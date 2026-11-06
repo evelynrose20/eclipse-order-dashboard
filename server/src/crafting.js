@@ -309,8 +309,8 @@ export async function craftingRoute(pool,req,path){
   const plotId=Number(plotPath[1]),action=plotPath[2],body=await read(req);
   if(!Number.isInteger(plotId)||plotId<1||plotId>255)return fail(400,'invalid_garden_action');
   return withTransaction(pool,async conn=>{
-   // Garden activities belong to the authenticated member, not an owned character.
-   // This allows command staff and members without a character sheet to contribute.
+   if(!validUuid(body?.character_id))return fail(400,'character_required');
+   if(!await checkCharacter(conn,user,body.character_id))return fail(403,'character_not_owned');
    const [plots]=await conn.execute('SELECT id,crop_material,growth,health FROM fc_garden_plots WHERE id=? FOR UPDATE',[plotId]);
    if(!plots.length)return fail(404,'plot_not_found');
    const plot=plots[0];
@@ -327,7 +327,7 @@ export async function craftingRoute(pool,req,path){
    if(Number(plot.growth)<100||Number(plot.health)<40)return fail(409,'crop_not_ready');
    const [garden]=await conn.execute('SELECT level FROM fc_garden WHERE id=1');
    const yieldCount=2+Number(garden[0].level)+Math.floor(Number(plot.health)/30);
-   if(!await stockChange(conn,plot.crop_material,yieldCount,'harvest',user.id,null,'Garden plot '+plotId))return fail(409,'stock_limit');
+   if(!await stockChange(conn,plot.crop_material,yieldCount,'harvest',user.id,body.character_id,'Garden plot '+plotId))return fail(409,'stock_limit');
    await conn.execute('UPDATE fc_garden_plots SET growth=0,health=GREATEST(40,health-15),harvests=harvests+1 WHERE id=?',[plotId]);
    return ok({status:'harvested',material_id:plot.crop_material,quantity:yieldCount});
   });
