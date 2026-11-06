@@ -22,32 +22,7 @@ const syndicateRanks=new Set(['domina','oyabun','kusushi','operative','kumi_in']
 
 export async function accountRoute(pool,req,path){
  if(!pool)return error(503,'database_unavailable');
- if(path==='/auth/register'&&req.method==='POST'){
-  // Cloudflare Tunnel connects from loopback. For a public, allowlisted hostname,
-  // use its per-visitor IP header instead of limiting all visitors as one person.
-  const fromTunnel=process.env.API_PUBLIC_ENABLED==='true'&&req.headers.host===process.env.API_PUBLIC_HOST;
-  const forwarded=String(req.headers['cf-connecting-ip']||'');
-  const address=fromTunnel&&/^[0-9a-fA-F:.]{3,45}$/.test(forwarded)?forwarded:(req.socket?.remoteAddress||'unknown');
-  if(throttle('register-ip:'+address,12))return error(429,'too_many_requests');
-  const body=await bodyJSON(req);
-  const email=normalizeEmail(body?.email);
-  const name=typeof body?.display_name==='string'?body.display_name.trim():'';
-  const password=body?.password;
-  if(!email||name.length<2||name.length>80||!validPassword(password))
-   return error(400,'Enter a valid email, display name (2–80 characters), and password (16+ characters).');
-  if(body?.adult_declaration!==true) return error(400,'An adult-only membership declaration is required.');
-  const [existing]=await pool.execute('SELECT id FROM accounts WHERE email=? LIMIT 1',[email]);
-  if(existing.length)return error(409,'This email is already registered. Contact an administrator if you need help.');
-  const id=randomUUID();
-  const passwordHash=await hashPassword(password);
-  try{
-   await pool.execute(
-    "INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,syndicate_rank,is_active,approval_status) VALUES(?,?,?,?, 'member','initiate','kumi_in',0,'pending')",
-    [id,email,passwordHash,name]
-   );
-  }catch(e){if(e.code==='ER_DUP_ENTRY')return error(409,'This email is already registered.');throw e;}
-  return {status:201,body:{status:'pending',message:'Registration received. You can sign in after the Domina approves your account.'}};
- }
+ if(path==='/auth/register'&&req.method==='POST')return error(403,'discord_only_registration');
  if(!path.startsWith('/admin/'))return error(404,'not_found');
  const actor=await resolveSession(pool,req);
  if(!actor||actor.account_role!=='domina')return error(403,'forbidden');
