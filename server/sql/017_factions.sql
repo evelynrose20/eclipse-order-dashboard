@@ -35,5 +35,11 @@ INSERT IGNORE INTO order_factions(id,name,leader,relationship,description,notes,
 ('blackthorn-consortium','Blackthorn Consortium','Lord Darius Blackthorn','rival','A commercially powerful syndicate that took over several markets during the Order\'s absence. Opposes any attempt to reclaim those interests.','',40),
 ('ashen-veil','The Ashen Veil','Seraphine Voss','watchful_rival','An intelligence organization that expanded into territory once controlled by the Snakes. Interested in exploiting Elira\'s weakened position rather than rushing into war.','',50);
 
+UPDATE order_factions SET image_reference_url='https://images.openai.com/static-rsc-4/qMClPr5U0rxYWUZoKg48EzXC01fhWlS3VP2ZDi-DV_SgD8sNuL8artI_xT0Lvc47kB_s8iDqyV7Rm63DRkMkTbg-7RBgNLzNPCHDVJrVhRRBicnA8x5VOnYLUOPdAtvd2MUi1J7ua21ljlB3n2mrx5MnBW01LPhjtXxrw1ZBjlg?purpose=inline' WHERE id='house-kurogane' AND image_reference_url='';
+UPDATE order_factions SET image_reference_url='https://images.openai.com/static-rsc-4/VUm11tszt_AQuHc7nQX2sZsyICx4N6tQjPRKBxnUaraWm-elsLGiYuH8PMYrfNSqFzBpLgpB9W0HRtf8oN217v8iaGTbD8w4cDfbc4eQtOELw7XpJmICzCTtG_9En7-dg7MJ_Kufhxp9OtlM1Y2b3ZLbiS2nXpBmtE7udkxo1Xg?purpose=inline' WHERE id='crimson-lotus-society' AND image_reference_url='';
+UPDATE order_factions SET image_reference_url='https://images.openai.com/static-rsc-4/IG-SlgNMax1ZULazZMo3UpxuLlQ1t8ej_3pOGeloWn-zHKfvhj8-ewtft97R7QzxBPSepgJRBV1fP8cL6IHefB29xBMOw0yEWK0cATj6afJdDYFkVAXFSUVpG6WqNaNJ5h8DdF4RYguLP7s4619MeWtm9I603ONElH37IK7A13M?purpose=inline' WHERE id='iron-remnant' AND image_reference_url='';
+UPDATE order_factions SET image_reference_url='https://images.openai.com/static-rsc-4/nZD8IubWZMDaMSuWFDF0CTDv7WPLsfJxHhBsHNY59la07TU-Fpi2O60ZvVmyhuZ68Yali7pY-q8jRnccJ65idr-ZYyohEdaxRrURnAcnGJ95TmGOMjPO_qcK3AsfWnns17Ra7LbCCVvUUiu9P3VqBoHKu-HyWBXM7L7VzqyoDfE?purpose=inline' WHERE id='blackthorn-consortium' AND image_reference_url='';
+UPDATE order_factions SET image_reference_url='https://images.openai.com/static-rsc-4/yheew_4xq4E0gMrcJp723xuR3gUgmoyAZ6Hj_jeF6ZlTiYiOH9z8YzG0PwhyONcsyGTkX2YtlHDcvuOActvKHzODYfGlR2NDJMzlukxQcuiiiwCbDHOpSa5uAi79RnUV-hwk_7k379G-veFGjR9D9Btwp85x4SLoBmKmICtDiXE?purpose=inline' WHERE id='ashen-veil' AND image_reference_url='';
+
 INSERT INTO schema_migrations(version) VALUES('017_factions')
 ON DUPLICATE KEY UPDATE version=VALUES(version);
