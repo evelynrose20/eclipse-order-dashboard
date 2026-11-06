@@ -147,6 +147,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
     await connection.execute("INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,syndicate_rank,is_active,approval_status) VALUES(?,?,?,?, 'member','initiate','kumi_in',0,'pending')",
      [newAccountId,'discord-'+identity.id+'@members.eclipse.invalid',secret,identity.username.slice(0,80)]);
     await connection.execute('INSERT INTO account_discord_links(account_id,discord_user_id,discord_username) VALUES(?,?,?)',[newAccountId,identity.id,identity.username]);
+    await connection.execute("INSERT INTO account_order_ranks(account_id,track,rank_code) VALUES(?,'membership','freshscales')",[newAccountId]);
     await connection.commit();
     account=newAccountId;
    }catch(error){
