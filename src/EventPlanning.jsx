@@ -34,19 +34,20 @@ export function EventEditor({event,save,working}){
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
  </form>;
 }
-export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false}){
+export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false,ownOnly=false}){
  const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState('');
  const [error,setError]=useState('');
  const own=characters.filter(c=>c.player_user_id===userId);
  async function load(){try{setSignups(await listEventSignups(event.id));setError('')}catch(e){setError(e.message)}}
  useEffect(()=>{let active=true;const reload=async()=>{try{const rows=await listEventSignups(event.id);if(active)setSignups(rows)}catch(e){if(active)setError(e.message)}};reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}},[event.id]);
  async function apply(fn){await action(fn);await load();await refresh()}
+ const visibleSignups=(ownOnly||previewOnly)?signups.filter(s=>s.player_user_id===userId):signups;
  const approve=signups.filter(s=>s.status==='approved');
  return <section className="panel event-signups">
-  <div className="panel-heading"><div><h2>Registration & party approvals</h2><p>Members apply with their own character. The GM approves applicants, then chooses when to add them to the party.</p></div><span className="event-count">{approve.length} / {event.capacity||8} approved</span></div>
+  <div className="panel-heading"><div><h2>{ownOnly?'My event registration':'Registration & party approvals'}</h2><p>{ownOnly?'Choose one of your characters to request a place, or review and withdraw your own signups.':'Members apply with their own character. The GM approves applicants, then chooses when to add them to the party.'}</p></div><span className="event-count">{approve.length} / {event.capacity||8} approved</span></div>
   {!canDirect&&event.published&&event.status==='draft'&&<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={previewOnly||!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>}
   {!canDirect&&!event.published&&<p className="muted">This event isn't accepting sign-ups yet.</p>}
-  <div className="signup-list">{(previewOnly?signups.filter(s=>s.player_user_id===userId):signups).length?(previewOnly?signups.filter(s=>s.player_user_id===userId):signups).map(s=><div key={s.id} className="signup-row">
+  <div className="signup-list">{visibleSignups.length?visibleSignups.map(s=><div key={s.id} className="signup-row">
     <div><strong>{s.character_name}</strong><small>{s.status} · applied {new Date(s.created_at).toLocaleDateString()}</small></div>
     <div className="signup-actions">
       {canDirect&&s.status==='requested'&&<><button className="mini-btn" disabled={working} onClick={()=>apply(()=>decideEventSignup(s.id,true))}>Approve</button><button className="mini-btn danger" disabled={working} onClick={()=>apply(()=>decideEventSignup(s.id,false))}>Decline</button></>}
@@ -58,10 +59,10 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
   {error&&<div className="alert" role="alert">{error}</div>}
  </section>;
 }
-export function EventSummary({event,canDirect,onPlan,onSignups,onPrepare,onCombat}){
+export function EventSummary({event,canDirect,onPlan,onSignups,onPrepare,onCombat,playerFacing=false}){
  return <section className="panel event-summary">
   <div className="event-summary-top"><div><span className="event-kicker">FC STORY EVENT</span><h2>{event.name}</h2><p>{event.description||'No public story description yet.'}</p></div><span className={'event-status '+(event.status==='active'?'live':'')}>{event.status==='draft'?(event.published?'Open for sign-ups':'Private draft'):event.status}</span></div>
-  <div className="event-facts"><div><small>DATE & TIME</small><strong>{displayDate(event.starts_at)}</strong></div><div><small>LOCATION</small><strong>{event.location||'Not assigned'}</strong></div><div><small>PARTY</small><strong>{event.signup_count||0}/{event.capacity||8} approved</strong></div><div><small>ENEMIES / COMBATANTS</small><strong>{event.combatants.length} prepared</strong></div></div>
-  <div className="event-summary-actions">{canDirect&&event.status==='draft'&&<button className="btn secondary" onClick={onPlan}>Edit event</button>}<button className="btn secondary" onClick={onSignups}>{canDirect?'Manage sign-ups':'My sign-ups'}</button>{canDirect&&<button className="btn secondary" onClick={onPrepare}>Prepare encounters</button>}{event.status==='active'&&<button className="btn primary" onClick={onCombat}>Open live combat</button>}</div>
+  <div className="event-facts"><div><small>DATE & TIME</small><strong>{displayDate(event.starts_at)}</strong></div><div><small>LOCATION</small><strong>{event.location||'Not assigned'}</strong></div><div><small>PARTY</small><strong>{event.signup_count||0}/{event.capacity||8} approved</strong></div>{!playerFacing&&<div><small>ENEMIES / COMBATANTS</small><strong>{event.combatants.length} prepared</strong></div>}</div>
+  <div className="event-summary-actions">{canDirect&&event.status==='draft'&&<button className="btn secondary" onClick={onPlan}>Edit event</button>}<button className="btn secondary" onClick={onSignups}>{canDirect?'Manage sign-ups':'My sign-ups'}</button>{canDirect&&<button className="btn secondary" onClick={onPrepare}>Prepare encounters</button>}{!playerFacing&&event.status==='active'&&<button className="btn primary" onClick={onCombat}>Open live combat</button>}</div>
  </section>;
 }
