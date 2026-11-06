@@ -15,7 +15,7 @@ import HomebrewClasses from './HomebrewClasses.jsx';
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
-import {SYNDICATE_RANKS,syndicateRankLabel} from './syndicateRanks.js';
+import {syndicateRankLabel} from './syndicateRanks.js';
 import './dashboard.css';
 import './local-accounts.css';
 
@@ -33,6 +33,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const [tab,setTab]=useState('overview');
  const [menuOpen,setMenuOpen]=useState(false);
  const [members,setMembers]=useState([]);
+ const [rankCatalog,setRankCatalog]=useState([]);
  const [characters,setCharacters]=useState([]);
  const [selected,setSelected]=useState('');
  const [draft,setDraft]=useState(null);
@@ -48,7 +49,10 @@ export default function LocalWorkspace({profile,request,onLogout}){
   const roster=await request('/characters');
   setCharacters(roster);
   setSelected(old=>old&&roster.some(c=>c.id===old)?old:roster[0]?.id||'');
-  if(profile.role==='domina')setMembers(await request('/admin/accounts'));
+  if(profile.role==='domina'){
+   const [accounts,catalog]=await Promise.all([request('/admin/accounts'),request('/admin/order-ranks')]);
+   setMembers(accounts);setRankCatalog(catalog.ranks||[]);
+  }
  };
  useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message))},[profile.id]);
  const pending=members.filter(m=>m.approval_status==='pending');
@@ -97,7 +101,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   finally{setBusy(false)}
  };
  return <div className="app-shell eo-local">
-  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram" aria-hidden="true">{memberMonogram(memberIdentity(profile))}</div><div className="side-identity"><strong title={memberIdentity(profile)}>{memberIdentity(profile)}</strong><small>{syndicateRankLabel(profile.syndicate_rank)}</small></div></div>}/>
+  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram" aria-hidden="true">{memberMonogram(memberIdentity(profile))}</div><div className="side-identity"><strong title={memberIdentity(profile)}>{memberIdentity(profile)}</strong><small>{profile.order_ranks?.leadership==='domina'?'Domina':syndicateRankLabel(profile.syndicate_rank)}</small></div></div>}/>
   <main className="main">
    <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className={"content"+(tab==='encounters'?" encounter-content":"")}>
@@ -113,7 +117,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      <div className="eo-toolbar"><h2>Pending membership requests ({pending.length})</h2><button className="btn secondary" onClick={()=>load().catch(err=>setMessage(err.message))}>Refresh</button></div>
      {!pending.length?<div className="panel"><p>No pending account requests.</p></div>:pending.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{memberIdentity(m)}</small><span>Requested {new Date(m.created_at).toLocaleDateString()}</span></div><div className="eo-actions"><button className="eo-primary" disabled={busy} onClick={()=>act(m.user_id,'approve')}>Approve</button><button disabled={busy} onClick={()=>{if(window.confirm('Reject this membership request?'))act(m.user_id,'reject')}}>Reject</button></div></article>)}
      <h2 className="eo-member-title">Approved accounts</h2><p className="muted">Syndicate rank reflects a member's place in the Order. Access permissions govern staff duties, while binding ranks belong to individual characters.</p>
-     {active.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{m.email}</small></div><div className="eo-actions"><label>Role<select value={m.role} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'role',{role:e.target.value})}>{ROLE_OPTIONS.map(role=><option value={role} key={role}>{ACCOUNT_ROLES[role]?.label||role}</option>)}</select></label><label>Syndicate rank<select value={m.syndicate_rank||'kumi_in'} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'syndicate-rank',{syndicate_rank:e.target.value})}>{SYNDICATE_RANKS.filter(r=>r.id!=='domina'||m.role==='domina').map(r=><option key={r.id} value={r.id}>{r.label}</option>)}</select></label></div></article>)}
+     {active.map(m=><article className="eo-member" key={m.user_id}><div><strong>{memberIdentity(m)}</strong><small>{m.role==='domina'?'Order leadership':'Order member'}</small></div><div className="eo-actions"><label>Website access<select value={m.role} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'role',{role:e.target.value})}>{ROLE_OPTIONS.map(role=><option value={role} key={role}>{ACCOUNT_ROLES[role]?.label||role}</option>)}</select></label>{['leadership','membership','snakes','fangs','golden_claws','household'].map(track=><label key={track}>{({leadership:'Order leadership',membership:'Membership standing',snakes:'The Snakes',fangs:'The Fangs',golden_claws:'The Golden Claws',household:'The Household'})[track]}<select value={m.order_ranks?.[track]||''} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'order-rank',{track,code:e.target.value})}><option value="">Not assigned</option>{rankCatalog.filter(r=>r.track===track).map(r=><option value={r.code} key={r.code}>{r.title}</option>)}</select></label>)}</div></article>)}
     </>}
     {tab==='roster'&&<>
      <div className="eo-toolbar"><h2>Character records</h2>{admin&&<button className="btn primary" onClick={()=>{setDraft(newSheet());setTab('sheet')}}>+ Create character</button>}</div>
