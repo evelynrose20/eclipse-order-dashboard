@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -44,6 +44,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(storyMigration); // rerunning is safe
 
   assert.ok(columns.some(c=>c.TABLE_NAME==='order_combatants'&&c.COLUMN_NAME==='pos_x'));
+  const [seedFactions]=await admin.query('SELECT id,leader,relationship,image_reference_url FROM order_factions ORDER BY sort_order');
+  assert.equal(seedFactions.length,5);
+  assert.equal(seedFactions.find(f=>f.id==='house-kurogane')?.leader,'Lady Reika Kurogane');
+  assert.equal(seedFactions.find(f=>f.id==='ashen-veil')?.relationship,'watchful_rival');
+  assert.match(seedFactions.find(f=>f.id==='iron-remnant')?.image_reference_url||'',/^https:\/\//);
+  await admin.query(await readFile(new URL('../sql/017_factions.sql',import.meta.url),'utf8'));
+  const [[seedCount]]=await admin.query('SELECT COUNT(*) AS total FROM order_factions');
+  assert.equal(Number(seedCount.total),5,'re-running migration does not duplicate seeded factions');
   const [tables]=await admin.query('SHOW TABLES');
   const names=new Set(tables.map(r=>Object.values(r)[0]));
   for(const name of ['accounts','characters','character_status_requests','account_sessions',
