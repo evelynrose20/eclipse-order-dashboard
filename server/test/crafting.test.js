@@ -27,7 +27,7 @@ const member=role=>({
 });
 test('unauthenticated and invalid gathering are rejected before materials change',async()=>{
  assert.equal((await craftingRoute({execute:async()=>[[]]},req('POST',{material_id:'iron-ore',quantity:1,character_id:char}),'/workshop/gather')).status,401);
- assert.equal((await craftingRoute(member('member'),req('POST',{material_id:'iron-ore',quantity:100000,character_id:char}),'/workshop/gather')).status,400);
+ assert.equal((await craftingRoute(member('member'),req('POST',{material_id:'bad id',character_id:char}),'/workshop/gather')).status,400);
 });
 test('only command can upgrade the FC garden',async()=>{
  assert.equal((await craftingRoute(member('member'),req('POST',{}),'/workshop/garden/upgrade')).status,403);
