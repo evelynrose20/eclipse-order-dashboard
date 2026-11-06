@@ -99,3 +99,9 @@ DMs can archive a draft or completed encounter, restore an archived encounter, o
 **Database upgrade:** Back up MySQL, then run `npm run setup:local` in `server/` to apply the additive, rerunnable `012_encounter_archives.sql` migration. Restart the API afterward. Deploy the matching frontend and backend together so scene actions use the new API endpoints.
 
 Dice roll errors now distinguish inactive encounters, paused participation, missing player characters, and unconfirmed RP declarations/themes. An authorized encounter DM can make DM rolls without adding their own player character.
+
+## NPC allies in encounters
+
+DMs can add **NPC allies** from Combatants using the same initiative, hit points, armor class, conditions and map placement as other combatants. These friendly NPCs have their own teal ally markers, appear in initiative and are controlled solely by the encounter DM. They are not player characters, do not require a player account, and do not confer player signup or player-controlled roll permissions. Saved NPC/creature stat blocks may be added either as enemies or as NPC allies.
+
+**Windows/MySQL setup:** Back up the database, pull the updated frontend/backend, and run `npm run setup:local` in the `server/` folder, then restart the Node API. The rerunnable `013_npc_allies.sql` migration extends the combatant kind enum without changing existing player or enemy combatants.
