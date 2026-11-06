@@ -61,7 +61,7 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
  function pickJob(e){if(firstCreation)set('class_id',e.target.value)}
  function setNamePart(part,value){set('name',joinCharacterName(part==='first'?value:nameParts.first,part==='last'?value:nameParts.last))}
  function updateGameProficiency(value,checked){set('proficiencies',updateProficiencySelection(form.proficiencies,value,checked))}
- function updateOtherProficiencies(text){set('proficiencies',[...gameSelected,text.trim()].filter(Boolean).join('\n')}
+ function updateOtherProficiencies(text){set('proficiencies',[...gameSelected,text.trim()].filter(Boolean).join('\n'))}
  async function submit(e){
   e.preventDefault();
   setSubmitAttempt(true);
