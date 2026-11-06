@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './inline-sheet.css';
 import {xpForLevel} from './progressionRules.js';
 import {ATTRIBUTES,BUDGET,POINT_COST,pointsSpent,creationIssue,characterClassGroups,editorJobPreview} from './characterEditorRules.js';
+import {SPECIALIZATIONS,ALIGNMENTS,GAME_PROFICIENCIES,splitCharacterName,joinCharacterName,skillBonus,formatSigned,selectedGameProficiencies,otherProficiencyNotes,updateProficiencySelection,classArmor} from './characterFieldRules.js';
 
 const SECTIONS=[
  ['identity','Identity & job','Character name, race, class and background'],
@@ -12,13 +13,13 @@ const SECTIONS=[
 ];
 const SKILLS=['Acrobatics','Animal Handling','Arcana','Athletics','Deception','History','Insight','Intimidation','Investigation','Medicine','Nature','Perception','Performance','Persuasion','Religion','Sleight of Hand','Stealth','Survival'];
 const FIELDS={
- identity:[['name','Character name'],['species','Race / species'],['player','Player handle'],['specialty','Syndicate specialization'],['background','Background / origin'],['alignment','Outlook / alignment']],
+ identity:[['species','Race / species'],['player','Player handle'],['background','Background / origin']],
  roleplay:[['personality','Personality and demeanor'],['ideals','Ideals and motivations'],['bonds','Relationships and bonds'],['flaws','Flaws and complications']],
- equipment:[['hp','Current hit points'],['temp_hp','Temporary hit points'],['armor_class','Armor class'],['speed','Movement speed'],['features','Additional features and traits'],['proficiencies','Languages and other proficiencies'],['spells','Additional spell notes'],['inventory','Equipment and possessions'],['conditions','Conditions']],
- assignments:[['owner','Assigned-to description'],['notes','Ledger notes']]
+ equipment:[['features','Additional features and traits'],['spells','Additional spell notes'],['inventory','Personal effects (RP only)'],['conditions','Conditions']],
+ assignments:[['notes','Ledger notes']]
 };
-const LONG=new Set(['background','personality','ideals','bonds','flaws','features','proficiencies','spells','inventory','conditions','notes']);
-const NUMERIC=new Set(['hp','temp_hp','armor_class','speed']);
+const LONG=new Set(['background','personality','ideals','bonds','flaws','features','spells','inventory','conditions','notes']);
+const NUMERIC=new Set([]);
 const NO_EDIT_CREATION=new Set(['player','owner']);
 function Field({name,label,form,onSet,disabled=false,help}){
  const value=form[name]??'';
@@ -40,6 +41,9 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
  const groups=useMemo(()=>characterClassGroups(catalog),[catalog]);
  const job=catalog[form.class_id];
  const preview=editorJobPreview(job);
+ const nameParts=splitCharacterName(form.name);
+ const gameSelected=selectedGameProficiencies(form.proficiencies);
+ const playerOwned=Boolean(form.collar_bound);
  const spent=pointsSpent(form);
  const remaining=spent===null?null:BUDGET-spent;
  const issue=firstCreation?creationIssue(form,catalog):'';
@@ -55,13 +59,17 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
   onCancel();
  }
  function pickJob(e){if(firstCreation)set('class_id',e.target.value)}
+ function setNamePart(part,value){set('name',joinCharacterName(part==='first'?value:nameParts.first,part==='last'?value:nameParts.last))}
+ function updateGameProficiency(value,checked){set('proficiencies',updateProficiencySelection(form.proficiencies,value,checked))}
+ function updateOtherProficiencies(text){set('proficiencies',[...gameSelected,text.trim()].filter(Boolean).join('\n'))}
  async function submit(e){
   e.preventDefault();
   setSubmitAttempt(true);
-  if(issue){if(firstCreation)setSection(issue.includes('ability')||issue.includes('budget')?'attributes':'identity');return;}
+  if(issue||nameIssue){if(firstCreation)setSection(issue.includes('ability')||issue.includes('budget')?'attributes':'identity');return;}
   await onSave(form);
  }
- const canSave=!saving&&String(form.name||'').trim()&&(!firstCreation||!issue);
+ const nameIssue=firstCreation&&(!nameParts.first||!nameParts.last)?'Enter both a first and last name.':'';
+ const canSave=!saving&&String(form.name||'').trim()&&(!firstCreation||(!issue&&!nameIssue));
  const fieldSet=(key)=>FIELDS[key].map(([id,label])=><Field key={id} name={id} label={label} form={form} onSet={set} disabled={!canCommand&&NO_EDIT_CREATION.has(id)} />);
  const sectionIndex=SECTIONS.findIndex(s=>s[0]===section);
  return <form className="inline-sheet-editor" onSubmit={submit} noValidate>
@@ -93,30 +101,30 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
     <div><h5>Starting spells</h5>{preview.spells.length?preview.spells.map(s=><div key={s.id} className="inline-preview-unlock"><strong>{s.name} · {s.cost} SP</strong><p>{s.description}</p></div>):<p className="muted">No spells at level 1.</p>}
     <h5>Future milestones</h5><div className="inline-preview-future">{preview.upcoming.map((f,i)=><span key={i}>Lv {f.level} · {f.name}</span>)}</div></div></div>
    </div>}
-   <div className="inline-sheet-grid">{fieldSet('identity')}</div>
+   <div className="inline-sheet-grid"><div className="inline-field"><span>Character name · first</span><input value={nameParts.first} maxLength={60} required onChange={e=>setNamePart('first',e.target.value)}/></div><div className="inline-field"><span>Character name · last</span><input value={nameParts.last} maxLength={60} required={firstCreation} onChange={e=>setNamePart('last',e.target.value)}/>{!nameParts.last&&!firstCreation&&<small className="inline-help">This older character has a single name on record. A surname can be added without changing other data.</small>}</div>{fieldSet('identity')}<label className="inline-field"><span>Syndicate specialization</span><select value={form.specialty||'Unassigned'} onChange={e=>set('specialty',e.target.value)}>{form.specialty&&!SPECIALIZATIONS.includes(form.specialty)&&<option value={form.specialty}>{form.specialty} · Existing</option>}{SPECIALIZATIONS.map(v=><option value={v} key={v}>{v}</option>)}</select></label><label className="inline-field"><span>Outlook / alignment</span><select value={form.alignment||''} onChange={e=>set('alignment',e.target.value)}><option value="">Not chosen</option>{form.alignment&&!ALIGNMENTS.includes(form.alignment)&&<option value={form.alignment}>{form.alignment} · Existing</option>}{ALIGNMENTS.map(v=><option value={v} key={v}>{v}</option>)}</select></label></div>
   </section>}
   {section==='attributes'&&<section className="panel">
    <SectionTitle number="02" title="Attributes and skills" description="The six standard dice attributes remain in use while our original tabletop rules are developed."/>
    {firstCreation?<div className={'inline-point-banner '+(remaining===null||remaining<0?'over':'')} role="status">
-    <div><span>CREATION POINT BUDGET</span><strong>{remaining===null?'Invalid':remaining+' remaining'} <small>/ {BUDGET}</small></strong></div><p>Start with 8 in each attribute. Assign scores of 8–15 using the 27-point buy system. Unspent points are allowed.</p></div>:
+    <div><span>CREATION POINT BUDGET</span><strong>{remaining===null?'Invalid':remaining+' remaining'} <small>/ {BUDGET}</small></strong></div><p>Unbound characters start with 10 in every attribute (+0 modifiers). Raise or lower scores within 8–15 and stay under the 27-point budget.</p></div>:
     <div className="inline-point-banner locked"><div><span>CHARACTER PROGRESSION</span><strong>Level {form.level||1}</strong></div><p>{tracked?'Ability scores and class saving throws are locked after creation. Spend earned ability points from the dossier’s Progression tab.':'This legacy character may retain editable scores until migrated to managed progression.'}</p></div>}
    <div className="inline-abilities">{ATTRIBUTES.map(([key,label])=>{
     const score=Number(form[key]??8);const modifier=Math.floor((score-10)/2);
     return <label key={key}><span>{label}</span><input type="number" min={firstCreation?8:1} max={firstCreation?15:30} disabled={tracked&&!firstCreation} value={form[key]??8} onChange={e=>set(key,Number(e.target.value))}/><small>{modifier>=0?'+':''}{modifier} modifier{firstCreation&&Object.hasOwn(POINT_COST,score)?' · '+POINT_COST[score]+' pts':''}</small></label>})}</div>
    <div className="inline-proficiency-head"><div><h4>Saving throws</h4><p>{firstCreation?'Automatically determined by your chosen job.':'Class saving throws are preserved by progression rules.'}</p></div><div>{preview?.saves.join(' · ')||'Select a job'}</div></div>
    {!firstCreation&&<div className="inline-checkboxes">{ATTRIBUTES.map(([key,label])=><label key={key}><input type="checkbox" checked={Boolean(form.saving_throws?.[key])} disabled={tracked} onChange={e=>set('saving_throws',{...form.saving_throws,[key]:e.target.checked})}/>{label}</label>)}</div>}
-   <h4>Skill proficiencies</h4><p className="muted">Select the noncombat skills that reflect this character’s training.</p>
-   <div className="inline-checkboxes">{SKILLS.map(skill=><label key={skill}><input type="checkbox" checked={Boolean(form.skills?.[skill])} onChange={e=>set('skills',{...form.skills,[skill]:e.target.checked})}/>{skill}</label>)}</div>
+   <h4>Skill proficiencies · used in dice checks</h4><p className="muted">A checked skill adds your level-based proficiency bonus to its associated attribute modifier. These bonuses appear on the Classic Sheet and can be applied to skill rolls in Encounters & dice when the GM selects “Use sheet modifier.”</p>
+   <div className="inline-checkboxes">{SKILLS.map(skill=><label key={skill}><input type="checkbox" checked={Boolean(form.skills?.[skill])} onChange={e=>set('skills',{...form.skills,[skill]:e.target.checked})}/><span>{skill}<small className="inline-skill-bonus">{formatSigned(skillBonus(form,skill))} check</small></span></label>)}</div>
   </section>}
   {section==='roleplay'&&<section className="panel"><SectionTitle number="03" title="Character story and roleplay" description="These are in-character details only. The player's OOC consent preferences are configured separately under My RP preferences."/><div className="inline-story-warning"><strong>Character knowledge and player consent are different.</strong><p>Character history, fictional relationships and IC restrictions never override the player's boundaries or OOC permissions.</p></div><div className="inline-sheet-grid">{fieldSet('roleplay')}</div></section>}
-  {section==='equipment'&&<section className="panel"><SectionTitle number="04" title="Combat record and belongings" description="Current conditions, combat counters and freeform equipment notes from the existing classic character sheet."/><p className="muted">{tracked?'Maximum HP, XP, class features and level-based resources are calculated by the server and cannot be overwritten here.':'Legacy character statistics remain editable until progression is migrated.'}</p><div className="inline-sheet-grid">{fieldSet('equipment')}</div></section>}
-  {section==='assignments'&&<section className="panel"><SectionTitle number="05" title="Order records and assignments" description="Link characters to approved accounts. Roleplay binding changes use their separate player-approved workflow."/><div className="inline-sheet-grid">{fieldSet('assignments')}
+  {section==='equipment'&&<section className="panel"><SectionTitle number="04" title="Combat record and belongings" description="Class-derived HP and defense, plus personal effects and RP notes. Real equipment and inventories will come from the future economy system."/><p className="muted">HP is determined by job, Constitution and level; Armor Class by Dexterity and job role. Neither value can be edited directly. Combat damage and healing are handled in encounters, not through the sheet editor.</p><div className="inline-computed-stats"><div><span>Current HP</span><strong>{firstCreation?(job?Math.max(1,Number(job.hit_die||8)+Math.floor((Number(form.con??10)-10)/2)):'Choose a job'):form.hp??'—'}</strong></div><div><span>Maximum HP</span><strong>{firstCreation?(job?Math.max(1,Number(job.hit_die||8)+Math.floor((Number(form.con??10)-10)/2)):'Choose a job'):form.max_hp??'—'}</strong></div><div><span>Armor Class</span><strong>{firstCreation?classArmor(form.class_id,job,form):form.armor_class??'—'}</strong></div><div><span>Level</span><strong>{firstCreation?1:form.level||1}</strong></div></div><div className="inline-sheet-grid">{fieldSet('equipment')}</div><section className="inline-game-proficiencies"><h4>Languages, crafting & gathering</h4><p className="muted">Check the FFXIV disciplines and RP languages this character knows. These are descriptive proficiencies, not automatically granted game jobs or inventory items.</p>{['Languages','Crafting','Gathering'].map(group=><div key={group}><h5>{group}</h5><div className="inline-checkboxes">{GAME_PROFICIENCIES.filter(([g])=>g===group).map(([,value])=><label key={value}><input type="checkbox" checked={gameSelected.includes(value)} onChange={e=>updateGameProficiency(value,e.target.checked)}/>{value}</label>)}</div></div>)}<label className="inline-field"><span>Other recorded proficiencies (legacy/freeform)</span><textarea rows={3} value={otherProficiencyNotes(form.proficiencies)} onChange={e=>updateOtherProficiencies(e.target.value)}/></label></section><p className="inline-assign-note">Personal effects are descriptive RP items only. Equipment with combat bonuses, ownership, or economic value will use the future inventory/economy system.</p></section>}
+  {section==='assignments'&&<section className="panel"><SectionTitle number="05" title="Order records and assignments" description="Link characters to approved accounts. Roleplay binding changes use their separate player-approved workflow."/><div className="inline-sheet-grid">{fieldSet('assignments')}{playerOwned&&<Field name="owner" label="Assigned-to description" form={form} onSet={set} disabled={!canCommand}/> }
    <label className="inline-field"><span>Binding status</span><input readOnly value={form.collar_bound?(form.rank||'Bound'):'Free / Unbound'}/><small className="inline-help">Not editable from this screen. Use Binding requests for player-approved transitions.</small></label>
    {canCommand&&<label className="inline-field"><span>Linked player account</span><select value={form.player_user_id||''} onChange={e=>set('player_user_id',e.target.value)}><option value="">Unlinked</option>{members.map(m=><option value={m.user_id} key={m.user_id}>{m.display_name||m.email} · {m.email}</option>)}</select></label>}
-   {canCommand&&<label className="inline-field"><span>Assigned handler</span><select value={form.handler_user_id||''} onChange={e=>set('handler_user_id',e.target.value)}><option value="">None</option>{members.filter(m=>['domina','high_command','handler'].includes(m.role)).map(m=><option key={m.user_id} value={m.user_id}>{m.display_name||m.email} · {m.email}</option>)}</select></label>}
+   {canCommand&&playerOwned&&<label className="inline-field"><span>Assigned handler</span><select value={form.handler_user_id||''} onChange={e=>set('handler_user_id',e.target.value)}><option value="">None</option>{members.filter(m=>['domina','high_command','handler'].includes(m.role)).map(m=><option key={m.user_id} value={m.user_id}>{m.display_name||m.email} · {m.email}</option>)}</select></label>}
    </div><p className="inline-assign-note">Account links are saved through the existing staff assignment endpoint. An approved player must explicitly authorize a binding; changing these fields does not grant IC consent.</p>
   </section>}
-  {submitAttempt&&issue&&<div className="alert" role="alert">{issue}</div>}
+  {submitAttempt&&(issue||nameIssue)&&<div className="alert" role="alert">{nameIssue||issue}</div>}
   <footer className="inline-sheet-footer"><div><strong>{firstCreation?'Character creation':'Editing '+(character.name||'character')}</strong><span>{firstCreation?'The class and starting HP are assigned when the server creates the character.':'Unsubmitted changes do not affect the existing character record.'}</span></div><div><button type="button" className="btn secondary" disabled={saving} onClick={cancel}>Cancel</button>{sectionIndex>0&&<button type="button" className="btn secondary" onClick={()=>setSection(SECTIONS[sectionIndex-1][0])}>Previous</button>}{sectionIndex<SECTIONS.length-1&&<button type="button" className="btn secondary" onClick={()=>setSection(SECTIONS[sectionIndex+1][0])}>Next</button>}<button type="submit" className="btn primary" disabled={!canSave}>{saving?'Saving…':firstCreation?'Create character':'Save changes'}</button></div></footer>
  </form>;
 }

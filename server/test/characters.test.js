@@ -61,3 +61,20 @@ test('sheet save does not allow collar, player or handler mutation',async()=>{
  assert.equal(saved.collar_bound,undefined);
  assert.equal(saved.player_user_id,undefined);
 });
+
+test('normal sheet updates cannot alter job, HP or Armor Class',async()=>{
+ const managed={...bound,collar_bound:0,sheet_json:{name:'Hidden Wisp',progression_version:1,class_id:'paladin',class_name:'Paladin',hp:12,max_hp:12,armor_class:12,notes:'old'}};
+ const m=mock('domina',Bob,[managed]);
+ const result=await characterRoute(m.pool,req('PUT',{name:'Hidden Wisp',hp:999,max_hp:999,armor_class:99,class_id:'zephyr',class_name:'Zephyr',notes:'updated'}),'/characters/'+Char);
+ assert.equal(result.status,200);
+ const saved=JSON.parse(m.writes[0].values[1]);
+ assert.equal(saved.hp,12);assert.equal(saved.max_hp,12);assert.equal(saved.armor_class,12);
+ assert.equal(saved.class_id,'paladin');assert.equal(saved.notes,'updated');
+});
+test('new characters must have first and last names',async()=>{
+ const m=mock('domina',Bob,[]);
+ const result=await characterRoute(m.pool,req('POST',{name:'Single',class_id:'warrior'}),'/characters');
+ assert.equal(result.status,400);
+ assert.equal(result.body.error,'first_and_last_name_required');
+ assert.equal(m.writes.length,0);
+});

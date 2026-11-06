@@ -19,7 +19,13 @@ export function pointCost(sheet){
 }
 export function xpForLevel(level){return 100*level*(level-1);}
 export function levelForXp(xp){let level=1;while(level<MAX_LEVEL&&xp>=xpForLevel(level+1))level++;return level;}
-export const abilityModifier=score=>Math.floor((Number(score||10)-10)/2);
+export const abilityModifier=score=>Math.floor((Number(score??10)-10)/2);
+export function classArmor(sheet,klass){
+ const role=klass?.job_role;
+ const tank=role==='tank'||['warrior','paladin','warrior-job','dark-knight','gunbreaker','bastion'].includes(sheet?.class_id);
+ const level=Math.min(20,Math.max(1,Number(sheet?.level)||1));
+ return Math.max(5,10+abilityModifier(sheet?.dex)+(tank?2:0)+Math.floor((level-1)/5));
+}
 export const proficiencyForLevel=level=>Math.min(6,2+Math.floor((level-1)/4));
 export function unlockedClassFeatures(classId,level,definition=CLASSES[classId]){
  if(!definition)return [];
@@ -36,7 +42,7 @@ export function createProgression(sheet,definition){
  const hp=Math.max(1,klass.hit_die+con);
  const skills=sheet.skills&&typeof sheet.skills==='object'&&!Array.isArray(sheet.skills)?sheet.skills:{};
  return {...sheet,class_id:sheet.class_id,class_name:klass.name,progression_version:1,level:1,experience:0,
-  hp,max_hp:hp,hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:unlockedClassFeatures(sheet.class_id,1,klass).join(', '),
+  hp,max_hp:hp,armor_class:classArmor({...sheet,level:1},klass),hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:unlockedClassFeatures(sheet.class_id,1,klass).join(', '),
   ability_points:0,class_features:unlockedClassFeatures(sheet.class_id,1,klass),
   spell_points:klass.casting==='full'?4:0,max_spell_points:klass.casting==='full'?4:0,
   saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
@@ -54,7 +60,7 @@ export function applyExperience(sheet,amount,definition){
  const oldLimit=Number.isInteger(sheet.max_spell_points)?sheet.max_spell_points:pool(klass?.casting,prevLevel);
  const oldCurrent=Number.isInteger(sheet.spell_points)?sheet.spell_points:oldLimit;
  const newLimit=pool(klass?.casting,level);
- return {...sheet,experience,level,class_features:unlockedClassFeatures(sheet.class_id,level,klass),
+ return {...sheet,experience,level,armor_class:classArmor({...sheet,level},klass),class_features:unlockedClassFeatures(sheet.class_id,level,klass),
   max_spell_points:newLimit,spell_points:Math.min(newLimit,oldCurrent+Math.max(0,newLimit-oldLimit)),ability_points:(Number(sheet.ability_points)||0)+pointsGained,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
   hit_dice:klass?level+'d'+klass.hit_die:sheet.hit_dice,proficiency_bonus:proficiencyForLevel(level)};
 }

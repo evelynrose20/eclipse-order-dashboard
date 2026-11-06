@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {resolveSession} from './auth.js';
-import {createProgression} from './progression.js';
+import {createProgression,classArmor} from './progression.js';
 import {loadClassCatalog,schoolSlots} from './class-catalog.js';
 
 const commands=new Set(['domina','high_command']);
@@ -52,6 +52,7 @@ export async function characterRoute(pool,req,path){
   // Linked players cannot be bound by a direct write; an OOC approval workflow is required.
   const bound=Boolean(data.collar_bound);
   if(bound&&owner)return err(403,'player_approval_required');
+  if(name.split(/\s+/).filter(Boolean).length<2)return err(400,'first_and_last_name_required');
   const rank=bound?ranks.get(data.rank)||'rank_i':null;
   const id=randomUUID();
   const catalog=await loadClassCatalog(pool);
@@ -122,6 +123,10 @@ export async function characterRoute(pool,req,path){
     await cn.rollback();return err(409,'ability_at_maximum');
    }
    sheet[ability]+=1;sheet.ability_points-=1;
+   if(ability==='dex'){
+    const catalog=await loadClassCatalog(cn);
+    sheet.armor_class=classArmor(sheet,catalog[sheet.class_id]);
+   }
    await cn.execute('UPDATE characters SET sheet_json=? WHERE id=?',[JSON.stringify(sheet),allocation[1]]);
    await cn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
     [actor.id,'spend_ability_point','character',allocation[1],JSON.stringify({ability,new_value:sheet[ability]})]);
@@ -176,7 +181,7 @@ export async function characterRoute(pool,req,path){
   if(!body||typeof body!=='object'||Array.isArray(body))return err(400,'invalid_character');
   const old=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
   // Never accept ownership, handler assignment, collar or bound-rank changes through normal sheet save.
-  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode','gil']);
+  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode','gil','hp','max_hp','armor_class','class_id','class_name']);
   if(old.progression_version===1){
    for(const key of ['progression_version','class_features','ability_points','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws','spell_points','max_spell_points'])blocked.add(key);
    // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
