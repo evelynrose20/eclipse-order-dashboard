@@ -116,7 +116,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{!playerPreview&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.collar_bound&&(playerPreview||character.view_mode==='bound')?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} readOnly={playerPreview} request={request} onRefresh={load}/><ClassSpellbook character={character} klass={classCatalog[character.class_id]} request={request} onRefresh={load} userId={profile.id} readOnly={playerPreview}/></>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
-    {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview/>}
+    {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {(tab==='encounters'||tab==='events')&&<Encounters classCatalog={classCatalog} key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
