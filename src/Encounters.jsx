@@ -33,7 +33,8 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const shownScenes=data.filter(e=>showArchived?Boolean(e.archived_at):!e.archived_at);
- const canDirect=Boolean(!playerFacing&&selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId)));
+ const canManageScene=Boolean(!playerFacing&&selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId)));
+ const canDirect=Boolean(canManageScene&&!selected.archived_at);
  const isParticipant=Boolean(selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
  const isDirector=Boolean(!playerFacing&&selected?.created_by===userId);
  const activeCombatant=selected?.combatants?.[selected.turn_index%Math.max(1,selected.combatants.length)];
@@ -49,7 +50,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  },[chosenId]);
  async function action(fn){if(previewOnly)return;setWorking(true);setError('');setNotice('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
  async function changeArchive(archive){
-  if(!selected||!canDirect||working)return;
+  if(!selected||!canManageScene||working)return;
   if(archive&&!window.confirm('Archive "'+selected.name+'"? You can restore it later.'))return;
   setWorking(true);setError('');setNotice('');
   try{
@@ -59,7 +60,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   }catch(e){setError(e.message)}finally{setWorking(false)}
  }
  async function removeScene(){
-  if(!selected?.archived_at||!canDirect||working)return;
+  if(!selected?.archived_at||!canManageScene||working)return;
   const answer=window.prompt('Permanently delete this archived scene and all linked combat, signups and roll history? Type the full scene name to confirm:');
   if(answer!==selected.name)return;
   setWorking(true);setError('');setNotice('');
@@ -114,7 +115,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
    !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
     <header className="encounter-studio-header">
      <div><span className="encounter-eyebrow">DM WORKSPACE · {selected.status.toUpperCase()}</span><h2>{selected.name}</h2><p>{selected.location||'Location unassigned'} · {selected.combatants.length} combatants · Round {selected.round_number||1}</p></div>
-     <div className="encounter-studio-header-actions">{canDirect&&(selected.archived_at?<><button className="btn secondary" disabled={working} onClick={()=>changeArchive(false)}>Restore scene</button><button className="btn secondary encounter-danger" disabled={working} onClick={removeScene}>Delete permanently</button></>:<button className="btn secondary" disabled={working||['active','paused'].includes(selected.status)} onClick={()=>changeArchive(true)} title={['active','paused'].includes(selected.status)?'Finish the encounter before archiving':'Archive scene'}>Archive</button>)}<button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
+     <div className="encounter-studio-header-actions">{canManageScene&&(selected.archived_at?<><button className="btn secondary" disabled={working} onClick={()=>changeArchive(false)}>Restore scene</button><button className="btn secondary encounter-danger" disabled={working} onClick={removeScene}>Delete permanently</button></>:<button className="btn secondary" disabled={working||['active','paused'].includes(selected.status)} onClick={()=>changeArchive(true)} title={['active','paused'].includes(selected.status)?'Finish the encounter before archiving':'Archive scene'}>Archive</button>)}<button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
       {canDirect&&selected.status==='draft'&&<button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start the encounter now?'))action(()=>encounterTurn(chosenId,'start'))}}>Start encounter</button>}
       {canDirect&&selected.status==='active'&&<button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button>}
      </div>
