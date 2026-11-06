@@ -12,7 +12,11 @@ const configured=env=>Boolean(/^\d{15,25}$/.test(env.DISCORD_CLIENT_ID||'')&&env
 // Never trust request-supplied URLs, identities, or scopes; use server configuration only.
 export function discordOAuthConfig(env=process.env){
  if(!configured(env))return null;
- return {clientId:env.DISCORD_CLIENT_ID,secret:env.DISCORD_CLIENT_SECRET,redirectUri:env.DISCORD_REDIRECT_URI,frontendOrigin:env.API_ALLOWED_ORIGIN};
+ const site=env.DISCORD_FRONTEND_URL||env.API_ALLOWED_ORIGIN+'/';
+ let siteUrl;
+ try{siteUrl=new URL(site)}catch{return null}
+ if(siteUrl.origin!==env.API_ALLOWED_ORIGIN||siteUrl.protocol!=='https:'||siteUrl.username||siteUrl.password||siteUrl.hash)return null;
+ return {clientId:env.DISCORD_CLIENT_ID,secret:env.DISCORD_CLIENT_SECRET,redirectUri:env.DISCORD_REDIRECT_URI,frontendOrigin:env.API_ALLOWED_ORIGIN,frontendUrl:siteUrl.href};
 }
 export function discordAuthorizationUrl(config,state){
  const url=new URL('https://discord.com/oauth2/authorize');
@@ -25,7 +29,7 @@ export function discordAuthorizationUrl(config,state){
  return url.toString();
 }
 function returnUrl(config,params){
- const url=new URL(config.frontendOrigin+'/');
+ const url=new URL(config.frontendUrl||config.frontendOrigin+'/');
  url.searchParams.set('portal','');
  url.hash=new URLSearchParams(params).toString();
  return url.toString();
