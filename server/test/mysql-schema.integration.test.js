@@ -154,7 +154,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    assert.ok(gathered.body.quantity>=1&&gathered.body.quantity<=4);
    gatheredTotal+=gathered.body.quantity;
   }
-  const exhausted=await craftingRoute(admin,request('POST',{material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
+  const exhausted=await craftingRoute(admin,request('POST',{zone_id:'ironridge-quarry',material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
   assert.equal(exhausted.status,409,'daily expedition cap must be enforced');
   const crafted=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id}),'/workshop/craft');
   assert.equal(crafted.status,200,JSON.stringify(crafted.body));
