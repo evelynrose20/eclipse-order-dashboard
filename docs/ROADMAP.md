@@ -13,6 +13,21 @@ This checklist distinguishes **implemented in the repository** from **verified i
 - [x] Removed active shop, paycheck, wallet, purchase and ration-claiming features
 - [x] Frontend build and automated repository test workflows
 
+
+## Long-term rebuild: design captured, not launched
+
+The approved direction for the immersive public site, Discord hybrid permissions, five-seat Council, dual-approval fronts, custom spell review, faction systems and living criminal economy is recorded in [Platform Foundation Plan](PLATFORM-FOUNDATION-PLAN.md) and [Governance Charter](GOVERNANCE-CHARTER-0.2.md). **None of those replacement production systems is live yet.**
+
+- [x] Governance design captured and safely testable with fabricated actors (pure prototype only)
+- [ ] Disposable database + fake users and multi-account authorization tests
+- [ ] Discord test guild, role-reconciliation and failure-mode tests
+- [ ] Staff-only Council and approval workflow pilots behind feature flags
+- [ ] Front-business licensing, faction progression and economy simulations
+- [ ] Original RPG rules, class migration and approved spell system
+- [ ] Public website, onboarding and old-account migration testing
+
+See [Testing without players](TESTING-WITHOUT-PLAYERS.md) for the verification gates. No production schema or authentication changes were made by the prototype.
+
 ## Required before general member launch
 
 - [ ] Back up the Windows MySQL database, run `npm run setup:local` (including migration `008_event_xp`), and confirm the API returns ready
