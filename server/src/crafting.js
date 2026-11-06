@@ -40,7 +40,7 @@ export function wildernessEligible(character){
 async function checkCharacter(conn,user,characterId,{wilderness=false}={}){
  if(!validUuid(characterId))return false;
  const [rows]=await conn.execute(
-  "SELECT c.id,c.player_account_id,c.collar_bound,CASE WHEN cat.track='servitude' THEN cor.rank_code ELSE NULL END AS servitude_rank FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cor.rank_code AND cat.track='servitude' WHERE c.id=? LIMIT 1",
+  "SELECT c.id,c.player_account_id,c.collar_bound,cor.rank_code AS servitude_rank FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id AND cor.rank_code IN (SELECT code FROM order_rank_catalog WHERE track='servitude') WHERE c.id=? LIMIT 1",
   [characterId]);
  const c=rows[0];
  if(!c||c.player_account_id!==user.id)return false;
