@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -32,6 +32,9 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(storyCols.length,1);
   const [archiveCols]=await admin.query("SHOW COLUMNS FROM order_encounters LIKE 'archived_at'");
   assert.equal(archiveCols.length,1);
+  const [[combatantType]]=await admin.query("SHOW COLUMNS FROM order_combatants LIKE 'kind'");
+  assert.match(combatantType.Type,/ally/);
+  await admin.query(await readFile(new URL('../sql/013_npc_allies.sql',import.meta.url),'utf8')); // migration is repeatable
   await admin.query(await readFile(new URL('../sql/012_encounter_archives.sql',import.meta.url),'utf8'));
   const storyMigration=await readFile(new URL('../sql/011_event_story.sql',import.meta.url),'utf8');
   await admin.query(storyMigration); // rerunning is safe
