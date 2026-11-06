@@ -11,7 +11,8 @@
     "setup:domina": "node --env-file=.env src/bootstrap-admin.js",
     "check:login": "node --env-file=.env src/check-login.js",
     "account:set-password": "node --env-file=.env src/set-local-password.js",
-    "setup:local": "node --env-file=.env src/setup-local.js"
+    "setup:local": "node --env-file=.env src/setup-local.js",
+    "discord:account": "node --env-file=.env src/manage-discord-account.js"
   },
   "engines": {
     "node": ">=22"

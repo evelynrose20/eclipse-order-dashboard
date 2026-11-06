@@ -8,7 +8,8 @@ const app=get('App.jsx'),site=get('src/PublicSite.jsx'),style=get('src/public-si
 test('public homepage is the default and existing member portal remains separate',()=>{
  assert.match(app,/return <PublicSite\/>/);
  assert.match(app,/new URLSearchParams\(window\.location\.search\)\.has\('portal'\)/);
- assert.match(app,/VITE_ECLIPSE_API_URL\?<LocalAccounts\/>:<Dashboard\/>/);
+ assert.match(app,/if\(memberRoute\)return <LocalAccounts\/>/);
+ assert.doesNotMatch(app,/<Dashboard\/>/);
  assert.match(site,/href="\?portal"/);
  assert.doesNotMatch(site,/href="\/portal"/);
 });

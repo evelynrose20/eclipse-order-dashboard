@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -27,12 +27,15 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    await admin.query(sql);
   }
   await admin.query(await readFile(new URL('../sql/014_discord_oauth.sql',import.meta.url),'utf8')); // repeatable
+  await admin.query(await readFile(new URL('../sql/015_discord_membership.sql',import.meta.url),'utf8')); // repeatable
   const [columns]=await admin.query("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND COLUMN_NAME IN ('pos_x','pos_y','waymarks','monster_template_id','actions','notes')");
   assert.ok(columns.some(c=>c.TABLE_NAME==='order_encounters'&&c.COLUMN_NAME==='waymarks'));
   const [storyCols]=await admin.query("SHOW COLUMNS FROM order_encounters LIKE 'event_story'");
   assert.equal(storyCols.length,1);
   const [archiveCols]=await admin.query("SHOW COLUMNS FROM order_encounters LIKE 'archived_at'");
   assert.equal(archiveCols.length,1);
+  const [authColumns]=await admin.query("SHOW COLUMNS FROM account_sessions LIKE 'auth_method'");
+  assert.equal(authColumns.length,1);
   const [[combatantType]]=await admin.query("SHOW COLUMNS FROM order_combatants LIKE 'kind'");
   assert.match(combatantType.Type,/ally/);
   await admin.query(await readFile(new URL('../sql/013_npc_allies.sql',import.meta.url),'utf8')); // migration is repeatable

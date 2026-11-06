@@ -1,3 +1,4 @@
+import {checkGuildMember,guildConfiguration} from './discord-guild.js';
 import {normalizeEmail,hashPassword,verifyPassword,generateToken,hashToken} from './credentials.js';
 
 const failures=new Map();
@@ -53,48 +54,26 @@ function failedIP(key){
  ipFailures.set(key,!row||now-row.since>WINDOW_MS?{since:now,count:1}:{...row,count:row.count+1});
  if(ipFailures.size>4000)for(const [k,v] of ipFailures){if(now-v.since>WINDOW_MS||ipFailures.size>4000)ipFailures.delete(k)}
 }
-export async function resolveSession(pool,request){
+export async function resolveSession(pool,request,{allowUnlinked=false}={}){
  const token=authHeader(request);
  if(!token)return null;
  const [rows]=await pool.execute(
-  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing,a.syndicate_rank FROM account_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
+  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing,a.syndicate_rank,l.discord_user_id,s.auth_method FROM account_sessions s JOIN accounts a ON a.id=s.account_id LEFT JOIN account_discord_links l ON l.account_id=a.id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
   [hashToken(token)]
  );
- return rows[0]||null;
+ const account=rows[0];
+ if(!account)return null;
+ if(allowUnlinked)return account;
+ if((guildConfiguration(process.env)||process.env.API_PUBLIC_ENABLED==='true')&&account.auth_method!=='discord')return null;
+ // Every authenticated API request is gated by Discord membership, with a short bot lookup cache.
+ // Production fails closed when guild verification is not configured.
+ if(!guildConfiguration(process.env))return process.env.API_PUBLIC_ENABLED==='true'?null:account;
+ if(!account.discord_user_id)return null;
+ return await checkGuildMember(account.discord_user_id)==='member'?account:null;
 }
 export async function authRoute(pool,request,path){
  if(!pool)return {status:503,body:{error:'database_not_configured'}};
- if(path==='/auth/login'&&request.method==='POST'){
-  const body=await readJSON(request);
-  const email=normalizeEmail(body?.email);
-  const password=body?.password;
-  if(!email||typeof password!=='string'||password.length>1024)return forbidden();
-  const ipKey=clientKey(request);
-  if(ipBlocked(ipKey)||loginThrottle(email))return {status:429,body:{error:'too_many_attempts'}};
-  const [rows]=await pool.execute(
-   'SELECT id,password_hash,approval_status FROM accounts WHERE email=? LIMIT 1',[email]
-  );
-  // For absent users, still perform one expensive hash verification to reduce account enumeration timing.
-  const storedHash=rows[0]?.password_hash || await dummyPasswordHash;
-  const valid=await verifyPassword(password,storedHash);
-  if(!valid){
-   // Diagnostic only: no email, password, token, IP or submitted body in logs.
-   // Distinguishes missing account vs hash mismatch when tracing local vs tunnel logins.
-   console.warn('[Eclipse Order auth] Login rejected:',{
-    route:request.headers.host===process.env.API_PUBLIC_HOST?'public':'local',
-    account_found:Boolean(rows[0]),
-    password_match:false
-   });
-   noteFailure(email);failedIP(ipKey);return forbidden();
-  }
-  if(rows[0].approval_status==='pending')return {status:403,body:{error:'account_pending_approval'}};
-  if(rows[0].approval_status!=='approved')return {status:403,body:{error:'account_not_approved'}};
-  failures.delete(email);
-  const token=generateToken();
-  await pool.execute('INSERT INTO account_sessions(account_id,token_hash,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? HOUR))',
-   [rows[0].id,hashToken(token),SESSION_HOURS]);
-  return {status:200,body:{access_token:token,token_type:'Bearer',expires_in:SESSION_HOURS*3600}};
- }
+ if(path==='/auth/login'&&request.method==='POST')return {status:403,body:{error:'discord_only_login'}};
  if(path==='/auth/me'&&request.method==='GET'){
   const session=await resolveSession(pool,request);
   if(!session)return {status:401,body:{error:'not_authenticated'}};

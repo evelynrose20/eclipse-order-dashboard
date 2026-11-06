@@ -2,37 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-
-test('members may sign in with Discord and exchange only a one-use ticket in browser',()=>{
- const login=read('src/LocalAccounts.jsx');
+test('only Discord login is rendered by portal and no alternate login application remains',()=>{
+ const login=read('src/LocalAccounts.jsx'),app=read('App.jsx');
  assert.match(login,/Continue with Discord/);
- assert.match(login,/\/auth\/discord\/start/);
- assert.match(login,/\/auth\/discord\/complete/);
- assert.match(login,/window\.history\.replaceState/);
- assert.match(login,/sessionStorage\.setItem\(storageKey,result\.access_token\)/);
- assert.match(login,/discordCallbackHandled=useRef\(false\)/);
- assert.doesNotMatch(login,/DISCORD_CLIENT_SECRET|oauth2\/token|discord\.com\/api\/v10\/users/);
+ assert.match(login,/Request to join the Order’s Discord/);
+ assert.match(login,/Bad End Roleplay Free Company/);
+ assert.match(login,/adult_confirmed:true/);
+ assert.doesNotMatch(login,/<input[^>]*type="password"|\/auth\/login|\/auth\/register|Password<input/);
+ assert.doesNotMatch(app,/Dashboard\/|<Dashboard\/>/);
 });
-test('Discord connection settings are account-bound and never grant account roles',()=>{
- const view=read('src/DiscordAccountConnection.jsx');
- const workspace=read('src/LocalWorkspace.jsx');
- assert.match(view,/\/auth\/discord\/status/);
- assert.match(view,/\/auth\/discord\/start/);
- assert.match(view,/\/auth\/discord\/unlink/);
- assert.match(view,/Connect Discord/);
- assert.match(workspace,/<DiscordAccountConnection request=\{request\}/);
- assert.doesNotMatch(view,/syndicate_rank|account_role|password_hash/);
+test('Discord server access is verified by bot and opt-in server join is distinct from login',()=>{
+ const api=read('server/src/discord-oauth.js'),guild=read('server/src/discord-guild.js'),auth=read('server/src/auth.js');
+ assert.match(api,/guilds\.join/);
+ assert.match(api,/discord_not_in_server/);
+ assert.match(api,/approval_status/);
+ assert.match(guild,/https:\/\/discord\.com\/api\/v10\/guilds\//);
+ assert.match(guild,/method:'PUT'/);
+ assert.match(auth,/checkGuildMember/);
+ assert.match(read('server/src/accounts.js'),/discord_only_registration/);
 });
-test('backend installs a one-account-one-discord identity schema and server-only OAuth exchange',()=>{
- const migration=read('server/sql/014_discord_oauth.sql');
- const server=read('server/src/server.js');
- const module=read('server/src/discord-oauth.js');
- assert.match(migration,/UNIQUE KEY uq_discord_user/);
- assert.match(migration,/CREATE TABLE IF NOT EXISTS discord_oauth_states/);
- assert.match(migration,/CREATE TABLE IF NOT EXISTS discord_oauth_tickets/);
- assert.match(server,/discordRoute\(pool,req,pathname/);
- assert.match(server,/if\(result\.redirect\)/);
- assert.match(module,/scope','identify'/);
- assert.match(module,/discord_account_not_linked/);
- assert.doesNotMatch(module,/guilds\.join|email','/);
+test('new migration and public site explain Discord onboarding and Bad End RP',()=>{
+ const schema=read('server/sql/015_discord_membership.sql');
+ const site=read('src/PublicSite.jsx');
+ assert.match(schema,/adult_confirmed/);
+ assert.match(schema,/intent ENUM\('login','join'\)/);
+ assert.match(site,/id="bad-end"/);
+ assert.match(site,/BAD END FC/);
+ assert.match(site,/PLAYER CONSENT/);
+ assert.match(site,/Discord server membership and approval/);
 });

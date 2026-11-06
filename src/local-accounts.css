@@ -75,3 +75,15 @@
 .eo-local .eo-discord-button:disabled{opacity:.5;cursor:not-allowed}
 .eo-local .eo-discord-button:focus-visible{outline:2px solid #edced8;outline-offset:3px}
 .eo-local .eo-discord-login small{font-size:11px;line-height:1.6;color:#bda8b8}
+
+/* Discord-only member entry: no legacy password form. */
+.eo-local .eo-discord-only{max-width:560px}
+.eo-local .eo-bad-end-note{border:1px solid #9c6176;background:#402637;border-radius:10px;padding:16px;text-align:left}
+.eo-local .eo-bad-end-note strong{font-size:14px;color:#f3c2d3}
+.eo-local .eo-bad-end-note p{font-size:12px;line-height:1.7;margin:8px 0 0;color:#e3c4d3}
+.eo-local .eo-discord-consent{display:flex;gap:12px;align-items:start;margin:20px 0 4px;font-size:12px;line-height:1.55;color:#f0d5e0;cursor:pointer}
+.eo-local .eo-discord-consent input{width:18px;height:18px;flex:none;accent-color:#c17a99}
+.eo-local .eo-join-discord{display:flex;width:100%;justify-content:center;align-items:center;min-height:48px;margin-top:7px}
+.eo-local .eo-discord-login small{line-height:1.65}
+.eo-local .eo-discord-only .eo-link{display:block;margin-top:20px;text-align:center}
+.eo-local .eo-membership-wait{font-size:12px;line-height:1.7;color:#cdb3bf}

@@ -6,6 +6,7 @@ const NAV=[
  ['history','Our History'],
  ['ranks','Hierarchy'],
  ['roleplay','Roleplay'],
+ ['bad-end','Bad End RP'],
  ['visit','Visit Us'],
  ['membership','Membership'],
  ['questions','Questions']
@@ -24,7 +25,8 @@ const FAQ=[
  {q:'Do I need to play a villain?',a:'Not necessarily. The Order includes characters with different loyalties, talents, motives, and personal boundaries. What matters is that your character has a believable reason to become involved.'},
  {q:'How do events and character sheets work?',a:'Members use a companion portal for character dossiers, event registrations, and the Order’s dice-based encounters. Roleplay still takes place in Final Fantasy XIV.'},
  {q:'Can my character have a different rank from my account role?',a:'Yes. In-character standing is separate from out-of-character site permissions and moderation responsibilities.'},
- {q:'How do I request membership?',a:'Use Request membership to create an account. Access is reviewed by Order command before the member portal becomes available.'}
+ {q:'How do I request membership?',a:'Start with Discord sign-in. If you are not in our Discord, the portal will offer to request entry. Order command must approve your membership before you can access character and event tools.'},
+ {q:'What does Bad End FC mean?',a:'Characters can face long-lasting negative outcomes, including captivity, servitude, or death. It is an 18+ roleplay premise with player consent and out-of-character boundaries.'}
 ];
 const MODES=[
  {name:'Story',mark:'I',heading:'The Order remembers.',body:'An arrangement made in one scene may change the next. Rivalries, debts, fragile trust, and personal loyalties build an ongoing shared story.'},
@@ -60,8 +62,9 @@ export default function PublicSite(){
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> A SHADOW OVER HYDAELYN</span>
      <h1>Some loyalties<br/>are forged <em>in darkness.</em></h1>
-     <p className="public-hero-subtitle">An FFXIV roleplay free company of dangerous bargains, uncertain allegiances, and stories that refuse to be forgotten.</p>
+     <p className="public-hero-subtitle">An adult, Bad End-focused FFXIV roleplay free company of dangerous bargains, uncertain allegiances, and stories that refuse to be forgotten.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
+     <div className="public-hero-bad-end"><span aria-hidden="true">✦</span> BAD END FC · 18+ · CONSEQUENCE-DRIVEN RP</div>
      <div className="public-hero-notes"><span>STORY-FOCUSED ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
      <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</a></div>
     </div>
@@ -121,15 +124,31 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
+   <section className="public-section public-bad-end" id="bad-end">
+    <div className="public-section-inner">
+     <SectionTag number="05">THE NATURE OF THE ORDER</SectionTag>
+     <div className="public-bad-end-layout">
+      <div><div className="public-bad-end-label"><span aria-hidden="true">✦</span> ADULT ROLEPLAY · BAD END FC</div><h2>Not every story<br/><em>ends in freedom.</em></h2><p className="public-lead">The Eclipse Order is a Bad End-focused Free Company. This is a core part of our storytelling, not a hidden twist.</p></div>
+      <div className="public-bad-end-explanation">
+       <h3>What a Bad End means here</h3>
+       <p>Characters can lose power, freedom, status, and even their lives. Captivity, servitude, coercion, betrayal, and permanent consequences can be part of the in-character world. Being defeated may shape a character’s future rather than return them to the way things were.</p>
+       <p>Our stories take those outcomes seriously: some character arcs have no easy escape, and an in-character departure may carry severe consequences. This is a darker, high-stakes environment, not a conventional heroic adventure.</p>
+       <h3>The player always has a choice</h3>
+       <p>Bad ends apply to fictional characters, never the player behind them. No one is required to accept unwanted scenes, and out-of-character safety, consent, and boundaries take priority. If someone needs to step away, Order command can discuss an appropriate story exit.</p>
+       <div className="public-bad-end-highlights"><span>18+ COMMUNITY</span><span>CHARACTER CONSEQUENCES</span><span>PLAYER CONSENT</span></div>
+      </div>
+     </div>
+    </div>
+   </section>
    <section className="public-section public-conduct" id="conduct">
     <div className="public-section-inner">
-     <SectionTag number="05">BEYOND THE MASK</SectionTag>
+     <SectionTag number="06">BEYOND THE MASK</SectionTag>
      <div className="public-conduct-grid"><div><h2>Dark stories.<br/><em>Clear boundaries.</em></h2></div><div><p className="public-lead">The Order can be ruthless in-character. Our community should never be.</p><p>Character conflict is not player conflict. We expect members to respect consent, keep in-character and out-of-character matters separate, and collaborate before imposing lasting consequences on another person’s character.</p><p>The strongest stories are possible when everyone involved knows where their boundaries lie.</p><div className="public-conduct-principles"><span>CONSENT</span><span>RESPECT</span><span>COMMUNICATION</span></div></div></div>
     </div>
    </section>
    <section className="public-section public-visit" id="visit">
     <div className="public-section-inner">
-     <SectionTag number="06">FIND THE ORDER</SectionTag>
+     <SectionTag number="07">FIND THE ORDER</SectionTag>
      <div className="public-visit-grid">
       <div className="public-visit-story"><h2>Two places.<br/><em>One hidden home.</em></h2><p className="public-lead">The Order’s doors can be found in Eorzea. Its true in-character refuge lies farther away, high among the mountains.</p><p>Use the estate address to find us in Final Fantasy XIV. Our mountain sanctuary belongs to the Order’s roleplay setting; the residential plot is the place to visit in-game.</p>
        <a href="#membership" className="public-text-link">How to join us <span aria-hidden="true">↗</span></a>
@@ -147,20 +166,20 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
-     <SectionTag number="07">THE DOOR IS OPEN</SectionTag>
-     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p><a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a><span className="public-membership-note">Membership requests are reviewed before portal access is granted.</span></div>
-      <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Create a membership request through the portal.'},{title:'Meet the Order',text:'Order command reviews the request and can discuss how your character may fit.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
+     <SectionTag number="08">THE DOOR IS OPEN</SectionTag>
+     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p><a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a><span className="public-membership-note">Discord server membership and approval by Order command are both required before portal access is granted.</span></div>
+      <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
     </div>
    </section>
    <section className="public-section public-faq" id="questions">
     <div className="public-section-inner">
-     <SectionTag number="08">QUESTIONS BEFORE THE OATH</SectionTag>
+     <SectionTag number="09">QUESTIONS BEFORE THE OATH</SectionTag>
      <div className="public-section-heading"><h2>What would you<br/><em>like to know?</em></h2><p>An invitation should come with a few answers.</p></div>
      <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#visit">Visit Us</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
