@@ -164,6 +164,7 @@ export async function encounterRoute(pool,req,path){
  if(path==='/combatants'&&req.method==='POST'){
   const b=await read(req),e=await getEvent(pool,b?.encounter_id);
   if(!e||!gm(u,e))return err(403,'director_required');
+  if(e.archived_at)return err(409,'encounter_archived');
   const name=text(b?.name,120),hp=int(b?.hp,1,999999),ac=int(b?.ac,0,99),initiative=int(b?.initiative,-100,100);
   if(!name||hp===null||ac===null||initiative===null||!['npc','player'].includes(b?.kind))return err(400,'invalid_combatant');
   let charId=null;
@@ -180,8 +181,9 @@ export async function encounterRoute(pool,req,path){
  const combat=/^\/combatants\/([a-f0-9-]{36})(?:\/(move|hp))?$/.exec(path);
  if(combat){
   const [,id,action]=combat;
-  const [rows]=await pool.execute('SELECT c.*,e.created_by FROM order_combatants c JOIN order_encounters e ON e.id=c.encounter_id WHERE c.id=?',[id]);
+  const [rows]=await pool.execute('SELECT c.*,e.created_by,e.archived_at FROM order_combatants c JOIN order_encounters e ON e.id=c.encounter_id WHERE c.id=?',[id]);
   const c=rows[0];if(!c||!gm(u,c))return err(403,'director_required');
+  if(c.archived_at)return err(409,'encounter_archived');
   if(req.method!=='POST'&&req.method!=='DELETE')return err(405,'method_not_allowed');
   if(req.method==='DELETE'){await pool.execute('DELETE FROM order_combatants WHERE id=?',[id]);return ok({status:'deleted'})}
   const b=await read(req);
@@ -241,6 +243,7 @@ export async function encounterRoute(pool,req,path){
  if(addMonster&&req.method==='POST'){
   const e=await getEvent(pool,addMonster[1]);
   if(!e||!gm(u,e))return err(403,'director_required');
+  if(e.archived_at)return err(409,'encounter_archived');
   const [monsters]=await pool.execute('SELECT * FROM order_monster_templates WHERE id=?',[addMonster[2]]);
   const m=monsters[0];if(!m)return err(404,'monster_not_found');
   const id=randomUUID();
