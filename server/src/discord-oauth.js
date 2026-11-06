@@ -130,7 +130,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
    membership=await joinGuild(identity.id,identity.accessToken,{env,httpFetch});
   }
   if(membership!=='member'){
-   const problem=membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':'discord_server_check_unavailable';
+   const problem=membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable';
    return redirect(config,{discord_error:problem});
   }
   const target=rows[0].target_account_id;
@@ -171,7 +171,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   if(!rows.length)return fail(409,'discord_ticket_expired');
   const item=rows[0];
   const membership=await checkGuildMember(item.discord_user_id,{env,httpFetch,useCache:false});
-  if(membership!=='member')return fail(403,membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':'discord_server_check_unavailable');
+  if(membership!=='member')return fail(403,membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable');
   const [links]=await pool.execute('SELECT account_id FROM account_discord_links WHERE discord_user_id=? AND account_id=? LIMIT 1',[item.discord_user_id,item.account_id]);
   if(!links.length){
    const session=await resolveSession(pool,request,{allowUnlinked:true});
