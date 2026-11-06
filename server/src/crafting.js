@@ -51,6 +51,84 @@ export async function craftingRoute(pool,req,path){
  const user=await resolveSession(pool,req);
  if(!user)return fail(401,'not_authenticated');
  const command=isCommand(user);
+ if(path==='/workshop/encounters'&&req.method==='GET'){
+  const [active]=await pool.execute(
+   'SELECT e.id,e.status,e.player_health,e.enemy_health,e.turn_number,s.name,s.kind,s.description,s.outcome_text,s.enemy_defense,r.material_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.account_id=? AND e.status="active" ORDER BY e.id DESC LIMIT 1',[user.id]);
+  const [scenarios]=command?await pool.query('SELECT id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense,enabled FROM fc_expedition_scenarios ORDER BY kind,name'):[[]];
+  return ok({active:active[0]||null,scenarios:command?scenarios:[]});
+ }
+ if(path==='/workshop/encounters/scenarios'&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const b=await read(req);
+  if(!validId(b?.id)||!label(b?.name,110)||!['wildlife','bandits','mystery','mature'].includes(b?.kind)||
+    !label(b?.description,1800)||typeof b?.outcome_text!=='string'||b.outcome_text.length>600||
+    !Number.isInteger(b.weight)||b.weight<1||b.weight>100||
+    !Number.isInteger(b.enemy_health)||b.enemy_health<1||b.enemy_health>100||
+    !Number.isInteger(b.enemy_defense)||b.enemy_defense<1||b.enemy_defense>20)return fail(400,'invalid_scenario');
+  try{
+   await pool.execute('INSERT INTO fc_expedition_scenarios(id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense,enabled) VALUES(?,?,?,?,?,?,?,?,1)',
+    [b.id,b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.weight,b.enemy_health,b.enemy_defense]);
+   return ok({status:'created'});
+  }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'scenario_exists');throw e}
+ }
+ const scenarioEdit=/^\\/workshop\\/encounters\\/scenarios\\/([a-z0-9-]+)$/.exec(path);
+ if(scenarioEdit&&req.method==='PUT'){
+  if(!command)return fail(403,'command_required');
+  const b=await read(req);
+  if(!label(b?.name,110)||!['wildlife','bandits','mystery','mature'].includes(b?.kind)||
+   !label(b?.description,1800)||typeof b.outcome_text!=='string'||b.outcome_text.length>600||
+   !Number.isInteger(b.weight)||b.weight<1||b.weight>100||!Number.isInteger(b.enemy_health)||b.enemy_health<1||b.enemy_health>100||
+   !Number.isInteger(b.enemy_defense)||b.enemy_defense<1||b.enemy_defense>20||typeof b.enabled!=='boolean')return fail(400,'invalid_scenario');
+  const [changed]=await pool.execute('UPDATE fc_expedition_scenarios SET name=?,kind=?,description=?,outcome_text=?,weight=?,enemy_health=?,enemy_defense=?,enabled=? WHERE id=?',
+   [b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.weight,b.enemy_health,b.enemy_defense,b.enabled?1:0,scenarioEdit[1]]);
+  return changed.affectedRows?ok({status:'saved'}):fail(404,'scenario_not_found');
+ }
+ const encounterAction=/^\\/workshop\\/encounters\\/(\\d+)\\/action$/.exec(path);
+ if(encounterAction&&req.method==='POST'){
+  const b=await read(req);
+  if(!['attack','retreat','continue','decline'].includes(b?.action))return fail(400,'invalid_encounter_action');
+  return withTransaction(pool,async conn=>{
+   const [rows]=await conn.execute(
+    'SELECT e.*,s.kind,s.name,s.description,s.outcome_text,s.enemy_defense,r.material_id,r.character_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.id=? AND e.account_id=? FOR UPDATE',
+    [Number(encounterAction[1]),user.id]);
+   const encounter=rows[0];
+   if(!encounter)return fail(404,'encounter_not_found');
+   if(encounter.status!=='active')return fail(409,'encounter_already_resolved');
+   const battle=['wildlife','bandits'].includes(encounter.kind);
+   if((battle&&!['attack','retreat'].includes(b.action))||(!battle&&!['continue','decline'].includes(b.action)))return fail(400,'invalid_encounter_action');
+   let hp=Number(encounter.player_health),enemyHp=Number(encounter.enemy_health),round=Number(encounter.turn_number),status='active',message='',quantity=0;
+   if(!battle){
+    status=b.action==='decline'?'declined':'resolved';
+    quantity=randomInt(1,4);
+    message=b.action==='decline'?'You continue safely without taking part in the encounter.':encounter.outcome_text;
+   }else if(b.action==='retreat'){
+    status='retreated';quantity=0;message='You withdraw safely, leaving the gathered supplies behind.';
+   }else{
+    round++;
+    const attackRoll=randomInt(1,21);
+    const hit=attackRoll+3>=Number(encounter.enemy_defense);
+    if(hit)enemyHp=Math.max(0,enemyHp+(-randomInt(2,7)));
+    message=hit?'Your strike lands.':'Your strike misses.';
+    if(enemyHp===0){status='victory';quantity=randomInt(2,6);message+=' '+encounter.outcome_text}
+    else{
+     const enemyRoll=randomInt(1,21);
+     if(enemyRoll+2>=11){hp=Math.max(0,hp-randomInt(1,5));message+=' The opponent strikes back.'}
+     else message+=' You evade the counterattack.';
+     if(hp===0||round>=6){status='defeat';quantity=0;message+=' You retreat and recover at the estate.'}
+    }
+   }
+   if(status==='active'){
+    await conn.execute('UPDATE fc_expedition_encounters SET player_health=?,enemy_health=?,turn_number=?,outcome=? WHERE id=?',
+     [hp,enemyHp,round,message,encounter.id]);
+   }else{
+    if(quantity>0&&!await stockChange(conn,encounter.material_id,quantity,'gather',user.id,encounter.character_id,'Encounter: '+encounter.name))return fail(409,'stock_limit');
+    await conn.execute('UPDATE fc_gathering_runs SET quantity=? WHERE id=?',[quantity,encounter.gathering_run_id]);
+    await conn.execute('UPDATE fc_expedition_encounters SET status=?,player_health=?,enemy_health=?,turn_number=?,outcome=?,completed_at=UTC_TIMESTAMP() WHERE id=?',
+     [status,hp,enemyHp,round,message,encounter.id]);
+   }
+   return ok({status,message,player_health:hp,enemy_health:enemyHp,turn_number:round,quantity,material_id:encounter.material_id});
+  });
+ }
  if(path==='/workshop'&&req.method==='GET'){
   const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions]] = await Promise.all([
    pool.query('SELECT m.id,m.name,m.category,m.description,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY FIELD(m.category,"ore","herb","botanical","refined","supply"),m.name'),
@@ -68,6 +146,8 @@ export async function craftingRoute(pool,req,path){
   if(!validId(body?.material_id)||!validUuid(body?.character_id)||!['steady','daring'].includes(body?.approach||'steady'))return fail(400,'invalid_gathering');
   return withTransaction(pool,async conn=>{
    if(!await checkCharacter(conn,user,body.character_id,{wilderness:true}))return fail(403,'character_not_eligible_for_wilderness');
+   const [alreadyActive]=await conn.execute('SELECT id FROM fc_expedition_encounters WHERE account_id=? AND status="active" LIMIT 1',[user.id]);
+   if(alreadyActive.length)return fail(409,'finish_previous_expedition');
    const [materials]=await conn.execute("SELECT id FROM fc_materials WHERE id=? AND category IN ('ore','herb')",[body.material_id]);
    if(!materials.length)return fail(400,'not_gatherable');
    // Lock member account to serialize daily attempt checks across concurrent requests.
@@ -75,6 +155,20 @@ export async function craftingRoute(pool,req,path){
    const [[used]]=await conn.execute('SELECT COUNT(*) AS total FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE()',[user.id]);
    if(Number(used.total)>=5)return fail(409,'daily_expeditions_used');
    const approach=body.approach||'steady';
+   if(body.allow_mature!==undefined&&typeof body.allow_mature!=='boolean')return fail(400,'invalid_content_preference');
+   const encounterChance=approach==='daring'?45:20;
+   const triggered=randomInt(1,101)<=encounterChance;
+   let scenario=null;
+   if(triggered){
+    const [available]=await conn.execute('SELECT id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense FROM fc_expedition_scenarios WHERE enabled=1 AND (kind<>"mature" OR ?=1)',[body.allow_mature===true?1:0]);
+    const total=available.reduce((sum,row)=>sum+Number(row.weight),0);
+    if(total>0){let roll=randomInt(1,total+1);for(const row of available){roll-=Number(row.weight);if(roll<=0){scenario=row;break}}}
+   }
+   if(scenario){
+    const [run]=await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,0,UTC_DATE())',[user.id,body.character_id,body.material_id]);
+    const [created]=await conn.execute('INSERT INTO fc_expedition_encounters(gathering_run_id,scenario_id,account_id,player_health,enemy_health) VALUES(?,?,?,?,?)',[run.insertId,scenario.id,user.id,12,scenario.enemy_health]);
+    return ok({status:'encounter',encounter:{id:created.insertId,name:scenario.name,kind:scenario.kind,description:scenario.description,outcome_text:scenario.outcome_text,enemy_health:scenario.enemy_health,player_health:12,turn_number:0},remaining:4-Number(used.total)});
+   }
    const qty=approach==='daring'?randomInt(0,8):randomInt(1,4);
    if(qty>0&&!await stockChange(conn,body.material_id,qty,'gather',user.id,body.character_id,approach==='daring'?'Deep wilderness expedition':'Careful wilderness expedition'))return fail(409,'stock_limit');
    await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,?,UTC_DATE())',[user.id,body.character_id,body.material_id,qty]);
