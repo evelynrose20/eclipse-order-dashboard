@@ -59,7 +59,7 @@ export async function characterRoute(pool,req,path){
   const catalog=await loadClassCatalog(pool);
   const initial=createProgression(data,catalog[data.class_id]);
   if(initial.error)return err(400,initial.error);
-  const {gil:discardedGil,...cleanInitial}=initial;
+  const {gil:discardedGil,player_user_id:ignoredOwner,handler_user_id:ignoredHandler,...cleanInitial}=initial;
   const saved={...cleanInitial,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
   await pool.execute(
    'INSERT INTO characters(id,character_name,player_account_id,handler_account_id,collar_bound,bound_rank,sheet_json) VALUES(?,?,?,?,?,?,?)',
