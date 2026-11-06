@@ -7,6 +7,7 @@ import {characterRoute} from '../src/characters.js';
 import {eventXpRoute} from '../src/event-xp.js';
 import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
+import {factionRoute} from '../src/factions.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
  const admin=createPool({
@@ -100,6 +101,16 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(invalidRank.status,400,'rank must belong to chosen branch');
   const invalidDomina=await accountRoute(admin,request('POST',{track:'leadership',code:'domina'}),'/admin/accounts/'+recruitId+'/order-rank');
   assert.equal(invalidDomina.status,403,'cannot assign Domina to a regular account');
+  const diplomacy=await factionRoute(admin,request('POST',{target:'order_view',delta:10,event_title:'Trade mission',event_details:'The Order renewed market access.',account_id:null}),'/factions/house-kurogane/reputation');
+  assert.equal(diplomacy.status,200,JSON.stringify(diplomacy.body));
+  assert.equal(diplomacy.body.score,55);
+  const personal=await factionRoute(admin,request('POST',{target:'player',delta:20,event_title:'Individual service',event_details:'The recruit aided House Kurogane.',account_id:recruitId}),'/factions/house-kurogane/reputation');
+  assert.equal(personal.status,200,JSON.stringify(personal.body));
+  const [[personalRank]]=await admin.execute('SELECT reputation FROM player_faction_reputation WHERE account_id=? AND faction_id=?',[recruitId,'house-kurogane']);
+  assert.equal(personalRank.reputation,20);
+  const [[orderRankAfter]]=await admin.execute("SELECT order_view,faction_view FROM order_faction_reputation WHERE faction_id='house-kurogane'");
+  assert.equal(orderRankAfter.order_view,55);
+  assert.equal(orderRankAfter.faction_view,40,'personal award must not change faction diplomacy');
   const memberList=await accountRoute(admin,request('GET'),'/admin/accounts');
   assert.equal(memberList.body.find(a=>a.user_id===recruitId)?.syndicate_rank,'oyabun');
   const myProfile=await authRoute(admin,request('GET'),'/auth/me');
