@@ -15,7 +15,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -66,6 +66,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/017_factions.sql',import.meta.url),'utf8'));
   const [[seedCount]]=await admin.query('SELECT COUNT(*) AS total FROM order_factions');
   assert.equal(Number(seedCount.total),6,'re-running migration preserves the five initial factions and the new settlement');
+  const [fcMaterials]=await admin.query('SELECT id,name FROM fc_materials');
+  assert.ok(fcMaterials.some(m=>m.id==='iron-ore'));
+  assert.ok(fcMaterials.some(m=>m.id==='duskbloom'));
+  const [fcPlots]=await admin.query('SELECT id,crop_material FROM fc_garden_plots');
+  assert.equal(fcPlots.length,2);
+  await admin.query(await readFile(new URL('../sql/020_fc_crafting_garden.sql',import.meta.url),'utf8'));
+  const [[plotCount]]=await admin.query('SELECT COUNT(*) AS n FROM fc_garden_plots');
+  assert.equal(Number(plotCount.n),2,'setup should not duplicate FC garden plots');
   const [tables]=await admin.query('SHOW TABLES');
   const names=new Set(tables.map(r=>Object.values(r)[0]));
   for(const name of ['accounts','characters','character_status_requests','account_sessions',
