@@ -12,7 +12,8 @@
     "check:login": "node --env-file=.env src/check-login.js",
     "account:set-password": "node --env-file=.env src/set-local-password.js",
     "setup:local": "node --env-file=.env src/setup-local.js",
-    "discord:account": "node --env-file=.env src/manage-discord-account.js"
+    "discord:account": "node --env-file=.env src/manage-discord-account.js",
+    "discord:check": "node --env-file=.env src/check-discord-membership.js"
   },
   "engines": {
     "node": ">=22"
