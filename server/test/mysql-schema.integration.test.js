@@ -187,6 +187,26 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(planted.status,200,JSON.stringify(planted.body));
   const [[newPlot]]=await admin.query("SELECT crop_material FROM fc_garden_plots WHERE id=3");
   assert.equal(newPlot.crop_material,'gloom-moss');
+  const encounterRun=await admin.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,0,UTC_DATE())',[id,char.body.id,'wild-herbs']);
+  const [encounterCreated]=await admin.execute('INSERT INTO fc_expedition_encounters(gathering_run_id,scenario_id,account_id,player_health,enemy_health) VALUES(?,?,?,?,?)',
+   [encounterRun[0].insertId,'masked-stranger',id,12,1]);
+  const matureId=encounterCreated.insertId;
+  const ongoing=await craftingRoute(admin,request('GET'),'/workshop/encounters');
+  assert.equal(ongoing.status,200);
+  assert.equal(Number(ongoing.body.active.id),matureId);
+  const declined=await craftingRoute(admin,request('POST',{action:'decline'}),'/workshop/encounters/'+matureId+'/action');
+  assert.equal(declined.status,200,JSON.stringify(declined.body));
+  assert.equal(declined.body.status,'declined');
+  assert.ok(declined.body.quantity>=1,'declining optional mature encounters keeps the ordinary expedition materials');
+  const duplicate=await craftingRoute(admin,request('POST',{action:'continue'}),'/workshop/encounters/'+matureId+'/action');
+  assert.equal(duplicate.status,409,'resolved encounters never award a second time');
+  const enemyRun=await admin.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,0,UTC_DATE())',[id,char.body.id,'iron-ore']);
+  const [enemyCreated]=await admin.execute('INSERT INTO fc_expedition_encounters(gathering_run_id,scenario_id,account_id,player_health,enemy_health) VALUES(?,?,?,?,?)',
+   [enemyRun[0].insertId,'wild-boar',id,12,9]);
+  const fled=await craftingRoute(admin,request('POST',{action:'retreat'}),'/workshop/encounters/'+enemyCreated.insertId+'/action');
+  assert.equal(fled.status,200,JSON.stringify(fled.body));
+  assert.equal(fled.body.status,'retreated');
+  assert.equal(fled.body.quantity,0);
   const eventId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   await admin.execute('INSERT INTO order_encounters(id,name,notes,themes,created_by,status,description) VALUES(?,?,?,?,?,?,?)',
    [eventId,'CI Adventure','',JSON.stringify([]),id,'completed','']);
