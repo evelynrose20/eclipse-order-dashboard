@@ -56,14 +56,11 @@ export default function LocalAccounts(){
    discord_unavailable:'Discord could not verify your identity. Please retry.'
   })[problem]||'Discord sign-in could not be completed. Please retry.');return}
   if(!ticket)return;
-  let alive=true;
   setBusy(true);
   request('/auth/discord/complete',{method:'POST',token:sessionStorage.getItem(storageKey)||undefined,body:{ticket}}).then(async result=>{
-   if(!alive)return;
    if(result.status==='linked'){setMessage('Discord connected successfully. You can now sign in with Discord.');window.dispatchEvent(new Event('eclipse-discord-linked'));return}
    if(result.access_token){sessionStorage.setItem(storageKey,result.access_token);setToken(result.access_token);setPassword('')}
-  }).catch(e=>{if(alive)setMessage(e.message)}).finally(()=>{if(alive)setBusy(false)});
-  return()=>{alive=false};
+  }).catch(e=>setMessage(e.message)).finally(()=>setBusy(false));
  },[]);
  useEffect(()=>{
   // Initial Domina bootstrap is intentionally local-only; the public API returns 404.
