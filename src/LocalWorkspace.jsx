@@ -15,7 +15,6 @@ import HomebrewClasses from './HomebrewClasses.jsx';
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
-import {syndicateRankLabel} from './syndicateRanks.js';
 import './dashboard.css';
 import './local-accounts.css';
 
@@ -101,7 +100,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   finally{setBusy(false)}
  };
  return <div className="app-shell eo-local">
-  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram" aria-hidden="true">{memberMonogram(memberIdentity(profile))}</div><div className="side-identity"><strong title={memberIdentity(profile)}>{memberIdentity(profile)}</strong><small>{profile.order_ranks?.leadership==='domina'?'Domina':syndicateRankLabel(profile.syndicate_rank)}</small></div></div>}/>
+  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram" aria-hidden="true">{memberMonogram(memberIdentity(profile))}</div><div className="side-identity"><strong title={memberIdentity(profile)}>{memberIdentity(profile)}</strong><small>{profile.order_rank_titles?.leadership||profile.order_rank_titles?.membership||'Order member'}</small></div></div>}/>
   <main className="main">
    <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className={"content"+(tab==='encounters'?" encounter-content":"")}>
@@ -111,7 +110,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='overview'&&<>
      <div className="eo-summary"><div><strong>{visibleCharacters.length}</strong><span>Visible characters</span></div>{!playerPreview&&profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}{!playerPreview&&<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div>}</div>
      {!playerPreview&&<DiscordAccountConnection request={request}/>}
-     <section className="panel"><h2>Welcome, {profile.display_name}</h2><p><strong>Syndicate rank:</strong> {syndicateRankLabel(profile.syndicate_rank)} · <strong>Account access:</strong> {ACCOUNT_ROLES[profile.role]?.label||profile.role}</p><p>The Order’s records, events, and character dossiers are available to you here.</p></section>
+     <section className="panel"><h2>Welcome, {profile.display_name}</h2><p><strong>Order standing:</strong> {profile.order_rank_titles?.leadership||profile.order_rank_titles?.membership||'Unassigned'} · <strong>Website access:</strong> {ACCOUNT_ROLES[profile.role]?.label||profile.role}</p><p>The Order’s records, events, and character dossiers are available to you here.</p></section>
     </>}
     {tab==='members'&&!playerPreview&&profile.role==='domina'&&<>
      <div className="eo-toolbar"><h2>Pending membership requests ({pending.length})</h2><button className="btn secondary" onClick={()=>load().catch(err=>setMessage(err.message))}>Refresh</button></div>
