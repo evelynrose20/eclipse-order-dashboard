@@ -38,7 +38,7 @@ if(!valid||!validSnowflake(operation==='owner'?identifier:discordId)||operation=
      if(!applicant||applicant.account_role!=='member'||Number(applicant.is_active)!==0||
         applicant.approval_status!=='pending'||applicant.email!=='discord-'+discordId+'@members.eclipse.invalid')
       throw Error('Discord is linked to an established account. Nothing was changed.');
-     const [characterRows]=await conn.execute('SELECT id FROM characters WHERE account_id=? LIMIT 1',[source]);
+     const [characterRows]=await conn.execute('SELECT id FROM characters WHERE player_account_id=? OR handler_account_id=? LIMIT 1',[source,source]);
      if(characterRows.length)throw Error('The pending account has characters; manual reconciliation is required. Nothing was changed.');
      await conn.execute('UPDATE account_discord_links SET account_id=?,discord_username=? WHERE account_id=? AND discord_user_id=?',
       [target,'Recovered by local administrator',source,discordId]);
