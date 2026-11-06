@@ -26,7 +26,12 @@ const configured=env=>Boolean(validSnowflake(env.DISCORD_CLIENT_ID)&&env.DISCORD
 // Never trust request-supplied URLs, identities, or scopes; use server configuration only.
 export function discordOAuthConfig(env=process.env){
  if(!configured(env))return null;
- const site=env.DISCORD_FRONTEND_URL||env.API_ALLOWED_ORIGIN+'/';
+ // GitHub Pages serves this repository at a project path, not at the account root.
+ // Keep an explicit deployment URL authoritative for other hosts.
+ const defaultSite=env.API_ALLOWED_ORIGIN==='https://evelynrose20.github.io'
+  ?env.API_ALLOWED_ORIGIN+'/eclipse-order-dashboard/'
+  :env.API_ALLOWED_ORIGIN+'/';
+ const site=env.DISCORD_FRONTEND_URL||defaultSite;
  let siteUrl;
  try{siteUrl=new URL(site)}catch{return null}
  if(siteUrl.origin!==env.API_ALLOWED_ORIGIN||siteUrl.protocol!=='https:'||siteUrl.username||siteUrl.password||siteUrl.hash)return null;
