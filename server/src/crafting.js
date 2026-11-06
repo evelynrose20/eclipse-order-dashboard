@@ -40,7 +40,7 @@ export function wildernessEligible(character){
 async function checkCharacter(conn,user,characterId,{wilderness=false}={}){
  if(!validUuid(characterId))return false;
  const [rows]=await conn.execute(
-  "SELECT c.id,c.player_account_id,c.collar_bound,cor.rank_code AS servitude_rank FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cor.rank_code AND cat.track='servitude' WHERE c.id=? LIMIT 1",
+  "SELECT c.id,c.player_account_id,c.collar_bound,CASE WHEN cat.track='servitude' THEN cor.rank_code ELSE NULL END AS servitude_rank FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cor.rank_code AND cat.track='servitude' WHERE c.id=? LIMIT 1",
   [characterId]);
  const c=rows[0];
  if(!c||c.player_account_id!==user.id)return false;
@@ -65,7 +65,7 @@ export async function craftingRoute(pool,req,path){
  }
  if(path==='/workshop/gather'&&req.method==='POST'){
   const body=await read(req);
-  if(!validId(body?.material_id)||!validUuid(body?.character_id))return fail(400,'invalid_gathering');
+  if(!validId(body?.material_id)||!validUuid(body?.character_id)||!['steady','daring'].includes(body?.approach||'steady'))return fail(400,'invalid_gathering');
   return withTransaction(pool,async conn=>{
    if(!await checkCharacter(conn,user,body.character_id,{wilderness:true}))return fail(403,'character_not_eligible_for_wilderness');
    const [materials]=await conn.execute("SELECT id FROM fc_materials WHERE id=? AND category IN ('ore','herb')",[body.material_id]);
@@ -74,10 +74,11 @@ export async function craftingRoute(pool,req,path){
    await conn.execute('SELECT id FROM accounts WHERE id=? FOR UPDATE',[user.id]);
    const [[used]]=await conn.execute('SELECT COUNT(*) AS total FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE()',[user.id]);
    if(Number(used.total)>=5)return fail(409,'daily_expeditions_used');
-   const qty=randomInt(1,5);
-   if(!await stockChange(conn,body.material_id,qty,'gather',user.id,body.character_id,'Wilderness expedition'))return fail(409,'stock_limit');
+   const approach=body.approach||'steady';
+   const qty=approach==='daring'?randomInt(0,8):randomInt(1,4);
+   if(qty>0&&!await stockChange(conn,body.material_id,qty,'gather',user.id,body.character_id,approach==='daring'?'Deep wilderness expedition':'Careful wilderness expedition'))return fail(409,'stock_limit');
    await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,?,UTC_DATE())',[user.id,body.character_id,body.material_id,qty]);
-   return ok({status:'recorded',quantity:qty,remaining:4-Number(used.total)});
+   return ok({status:'recorded',quantity:qty,approach,remaining:4-Number(used.total)});
   });
  }
  if(path==='/workshop/catalog/materials'&&req.method==='POST'){
