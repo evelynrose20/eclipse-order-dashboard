@@ -72,3 +72,5 @@
 .order-event-chapter strong{font:normal 14px Georgia,serif;color:#ffe2e6}
 .order-event-chapter p{font-size:12px;color:#c2aeb9;line-height:1.6;margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .order-event-chapter-difficulty{border:1px solid #9a7282;color:#e0b8c8;padding:5px 7px;font-size:10px}
+
+.order-event-chapter-msq{display:inline-block;margin-left:10px;border:1px solid #ad8968;color:#eac89f;background:#3b2c2b;padding:2px 6px;font-size:9px;font-weight:700;letter-spacing:.08em;vertical-align:middle}
