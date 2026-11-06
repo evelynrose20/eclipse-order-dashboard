@@ -1,5 +1,5 @@
 .app-shell:has(.order-nav){background:radial-gradient(ellipse at 80% 0%,#2b1d27 0,transparent 45%),#120f16}
-.app-shell .order-nav{width:278px;min-width:278px;height:100vh;min-height:100vh;position:sticky;top:0;display:flex;flex-direction:column;gap:0;padding:0;background:linear-gradient(180deg,#1c171f,#141218);border-right:1px solid #493441;z-index:35}
+.eo-local.app-shell .order-nav,.app-shell .order-nav{width:278px;min-width:278px;height:100vh;min-height:100vh;position:sticky;top:0;display:flex;flex-direction:column;gap:0;padding:0;background:linear-gradient(180deg,#1c171f,#141218);border-right:1px solid #493441;z-index:35}
 .order-nav-brand{display:flex;align-items:center;gap:12px;padding:26px 17px 20px;border-bottom:1px solid #362a33}
 .order-nav-brand-icon{height:40px;width:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#62313f,#2d1d29);border:1px solid #995b6b;color:#f4c5ba;font-size:23px}
 .order-nav-brand strong{font-size:12px;letter-spacing:.1em;color:#f7e5df;white-space:nowrap}
@@ -40,7 +40,7 @@
 .app-shell .top-actions{gap:9px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:920px){
  .app-shell:has(.order-nav){display:block}
- .app-shell .order-nav{position:fixed;top:0;bottom:0;left:0;height:100dvh;min-height:0;width:min(310px,88vw);min-width:0;transform:translateX(-105%);transition:transform .18s ease;box-shadow:20px 0 60px #0009;z-index:101}
+ .eo-local.app-shell .order-nav,.app-shell .order-nav{position:fixed;top:0;bottom:0;left:0;height:100dvh;min-height:0;width:min(310px,88vw);min-width:0;transform:translateX(-105%);transition:transform .18s ease;box-shadow:20px 0 60px #0009;z-index:101}
  .app-shell .order-nav.order-nav-open{transform:translateX(0)}
  .app-shell .order-nav-close{display:block;margin-left:auto;padding:2px 8px;border:0;background:transparent;font-size:25px;color:#e8ced7}
  .app-shell .order-nav-menu{display:flex}
