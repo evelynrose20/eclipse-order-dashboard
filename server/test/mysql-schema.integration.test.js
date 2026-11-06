@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -22,7 +22,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   await admin.execute("INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,approval_status) VALUES(?,?,?,?,?,?,?)",
    [id,'admin@example.com','not-a-real-hash','Domina','domina','veteran','approved']);
-  for(const filename of ['002_sessions.sql','005_features.sql','007_syndicate_ranks.sql']){
+  for(const filename of ['002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','016_order_hierarchy.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -54,6 +54,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(row.account_role,'domina');
   const [[rank]]=await admin.execute('SELECT syndicate_rank FROM accounts WHERE id=?',[id]);
   assert.equal(rank.syndicate_rank,'domina');
+  const [[canonicalDomina]]=await admin.execute("SELECT rank_code FROM account_order_ranks WHERE account_id=? AND track='leadership'",[id]);
+  assert.equal(canonicalDomina.rank_code,'domina');
+  const [rankCatalog]=await admin.query('SELECT code,track FROM order_rank_catalog');
+  assert.ok(rankCatalog.some(x=>x.track==='leadership'&&x.code==='grand_viper'));
+  assert.ok(rankCatalog.some(x=>x.track==='snakes'&&x.code==='high_serpent'));
+  assert.ok(rankCatalog.some(x=>x.track==='servitude'&&x.code==='eclipsed_consort'));
+
   // Exercise character creation and syndicate ranks against disposable MySQL.
   const token=generateToken();
   await admin.execute('INSERT INTO account_sessions(account_id,token_hash,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 HOUR))',[id,hashToken(token)]);
@@ -63,6 +70,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    [recruitId,'recruit@example.com','not-a-real-hash','Recruit','member','initiate','approved']);
   const [[recruitBefore]]=await admin.execute('SELECT syndicate_rank FROM accounts WHERE id=?',[recruitId]);
   assert.equal(recruitBefore.syndicate_rank,'kumi_in');
+  const [[recruitStanding]]=await admin.execute("SELECT rank_code FROM account_order_ranks WHERE account_id=? AND track='membership'",[recruitId]);
+  assert.equal(recruitStanding.rank_code,'freshscales');
   const changeRank=await accountRoute(admin,request('POST',{syndicate_rank:'oyabun'}),'/admin/accounts/'+recruitId+'/syndicate-rank');
   assert.equal(changeRank.status,200,JSON.stringify(changeRank.body));
   const [[recruitAfter]]=await admin.execute('SELECT syndicate_rank,account_role FROM accounts WHERE id=?',[recruitId]);
