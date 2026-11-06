@@ -31,7 +31,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
   setFactions(rows||[]);
   setCurrent(old=>(rows||[]).some(x=>x.id===old)?old:rows?.[0]?.id||'');
  }
- useEffect(()=>{reload().catch(e=>setError(e.message));if(editable)request('/admin/accounts').then(setAccounts).catch(()=>{})},[]);
+ useEffect(()=>{reload().catch(e=>setError(e.message));if(editable)request('/factions/accounts').then(data=>setAccounts(data.accounts||[])).catch(()=>{})},[]);
  useEffect(()=>{
   if(!current){setEvents([]);return}
   let active=true;
@@ -135,7 +135,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
     <label className="wide">Whose relationship changes?<select value={repDraft.target} onChange={e=>setRepDraft({...repDraft,target:e.target.value})}>
      <option value="order_view">The Order’s view of this faction</option><option value="faction_view">This faction’s view of the Order</option><option value="player">A member’s personal reputation</option>
     </select></label>
-    {repDraft.target==='player'&&<label className="wide">Member<select value={repDraft.account_id} onChange={e=>setRepDraft({...repDraft,account_id:e.target.value})}><option value="">Choose a member</option>{accounts.filter(a=>a.approval_status==='approved').map(a=><option key={a.user_id} value={a.user_id}>{a.discord_username||a.display_name||'Member'}</option>)}</select></label>}
+    {repDraft.target==='player'&&<label className="wide">Member<select value={repDraft.account_id} onChange={e=>setRepDraft({...repDraft,account_id:e.target.value})}><option value="">Choose a member</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.discord_username||a.display_name||'Member'}</option>)}</select></label>}
     <label>Reputation change (-100 to +100)<input type="number" min="-100" max="100" step="1" value={repDraft.delta} onChange={e=>setRepDraft({...repDraft,delta:e.target.value})}/></label>
     <label className="wide">Event or reason<input maxLength={140} value={repDraft.event_title} onChange={e=>setRepDraft({...repDraft,event_title:e.target.value})}/></label>
     <label className="wide">What happened?<textarea rows="4" maxLength={5000} value={repDraft.event_details} onChange={e=>setRepDraft({...repDraft,event_details:e.target.value})}/></label>
