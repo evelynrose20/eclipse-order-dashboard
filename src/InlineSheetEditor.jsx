@@ -46,6 +46,8 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
  const playerOwned=Boolean(form.collar_bound);
  const spent=pointsSpent(form);
  const remaining=spent===null?null:BUDGET-spent;
+ const trainedSkills=Object.values(form.skills||{}).filter(value=>value===true).length;
+ const tooManySkills=trainedSkills>3;
  const issue=firstCreation?creationIssue(form,catalog):'';
  const changed=JSON.stringify(form)!==JSON.stringify(character);
  const title=SECTIONS.find(s=>s[0]===section)?.[1]||'Character';
@@ -65,11 +67,12 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
  async function submit(e){
   e.preventDefault();
   setSubmitAttempt(true);
+  if(tooManySkills){setSection('attributes');return;}
   if(issue||nameIssue){if(firstCreation)setSection(issue.includes('ability')||issue.includes('budget')?'attributes':'identity');return;}
   await onSave(form);
  }
  const nameIssue=firstCreation&&(!nameParts.first||!nameParts.last)?'Enter both a first and last name.':'';
- const canSave=!saving&&String(form.name||'').trim()&&(!firstCreation||(!issue&&!nameIssue));
+ const canSave=!saving&&!tooManySkills&&String(form.name||'').trim()&&(!firstCreation||(!issue&&!nameIssue));
  const fieldSet=(key)=>FIELDS[key].map(([id,label])=><Field key={id} name={id} label={label} form={form} onSet={set} disabled={!canCommand&&NO_EDIT_CREATION.has(id)} />);
  const sectionIndex=SECTIONS.findIndex(s=>s[0]===section);
  return <form className="inline-sheet-editor" onSubmit={submit} noValidate>
@@ -113,8 +116,8 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
     return <label key={key}><span>{label}</span><input type="number" min={firstCreation?8:1} max={firstCreation?15:30} disabled={tracked&&!firstCreation} value={form[key]??8} onChange={e=>set(key,Number(e.target.value))}/><small>{modifier>=0?'+':''}{modifier} modifier{firstCreation&&Object.hasOwn(POINT_COST,score)?' · '+POINT_COST[score]+' pts':''}</small></label>})}</div>
    <div className="inline-proficiency-head"><div><h4>Saving throws</h4><p>{firstCreation?'Automatically determined by your chosen job.':'Class saving throws are preserved by progression rules.'}</p></div><div>{preview?.saves.join(' · ')||'Select a job'}</div></div>
    {!firstCreation&&<div className="inline-checkboxes">{ATTRIBUTES.map(([key,label])=><label key={key}><input type="checkbox" checked={Boolean(form.saving_throws?.[key])} disabled={tracked} onChange={e=>set('saving_throws',{...form.saving_throws,[key]:e.target.checked})}/>{label}</label>)}</div>}
-   <h4>Skill proficiencies · used in dice checks</h4><p className="muted">A checked skill adds your level-based proficiency bonus to its associated attribute modifier. These bonuses appear on the Classic Sheet and can be applied to skill rolls in Encounters & dice when the GM selects “Use sheet modifier.”</p>
-   <div className="inline-checkboxes">{SKILLS.map(skill=><label key={skill}><input type="checkbox" checked={Boolean(form.skills?.[skill])} onChange={e=>set('skills',{...form.skills,[skill]:e.target.checked})}/><span>{skill}<small className="inline-skill-bonus">{formatSigned(skillBonus(form,skill))} check</small></span></label>)}</div>
+   <h4>Skill proficiencies · {trainedSkills}/3 selected</h4><p className="muted">Choose up to three trained skills. Your proficiency bonus applies to those skills during dice checks.</p>{tooManySkills&&<p className="alert" role="alert">This character has more than three trained skills. Uncheck extras to save.</p>}
+   <div className="inline-checkboxes">{SKILLS.map(skill=><label key={skill}><input type="checkbox" checked={Boolean(form.skills?.[skill])} disabled={!form.skills?.[skill]&&trainedSkills>=3} onChange={e=>set('skills',{...form.skills,[skill]:e.target.checked})}/><span>{skill}<small className="inline-skill-bonus">{formatSigned(skillBonus(form,skill))} check</small></span></label>)}</div>
   </section>}
   {section==='roleplay'&&<section className="panel"><SectionTitle number="03" title="Character story and roleplay" description="These are in-character details only. The player's OOC consent preferences are configured separately under My RP preferences."/><div className="inline-story-warning"><strong>Character knowledge and player consent are different.</strong><p>Character history, fictional relationships and IC restrictions never override the player's boundaries or OOC permissions.</p></div><div className="inline-sheet-grid">{fieldSet('roleplay')}</div></section>}
   {section==='equipment'&&<section className="panel"><SectionTitle number="04" title="Combat record and belongings" description="View combat statistics and record personal belongings."/><p className="muted">HP is determined by job, Constitution and level; Armor Class by Dexterity and job role. Neither value can be edited directly. Combat damage and healing are handled in encounters, not through the sheet editor.</p><div className="inline-computed-stats"><div><span>Current HP</span><strong>{firstCreation?(job?Math.max(1,Number(job.hit_die||8)+Math.floor((Number(form.con??10)-10)/2)):'Choose a job'):form.hp??'—'}</strong></div><div><span>Maximum HP</span><strong>{firstCreation?(job?Math.max(1,Number(job.hit_die||8)+Math.floor((Number(form.con??10)-10)/2)):'Choose a job'):form.max_hp??'—'}</strong></div><div><span>Armor Class</span><strong>{firstCreation?classArmor(form.class_id,job,form):form.armor_class??'—'}</strong></div><div><span>Level</span><strong>{firstCreation?1:form.level||1}</strong></div></div><div className="inline-sheet-grid">{fieldSet('equipment')}</div><section className="inline-game-proficiencies"><h4>Languages, crafting & gathering</h4><p className="muted">Choose the disciplines and languages your character knows.</p>{['Languages','Crafting','Gathering'].map(group=><div key={group}><h5>{group}</h5><div className="inline-checkboxes">{GAME_PROFICIENCIES.filter(([g])=>g===group).map(([,value])=><label key={value}><input type="checkbox" checked={gameSelected.includes(value)} onChange={e=>updateGameProficiency(value,e.target.checked)}/>{value}</label>)}</div></div>)}<label className="inline-field"><span>Other recorded proficiencies (legacy/freeform)</span><textarea rows={3} value={otherProficiencyNotes(form.proficiencies)} onChange={e=>updateOtherProficiencies(e.target.value)}/></label></section></section>}

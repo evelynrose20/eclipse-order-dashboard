@@ -14,7 +14,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -28,6 +28,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   }
   const [columns]=await admin.query("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND COLUMN_NAME IN ('pos_x','pos_y','waymarks','monster_template_id','actions','notes')");
   assert.ok(columns.some(c=>c.TABLE_NAME==='order_encounters'&&c.COLUMN_NAME==='waymarks'));
+  const [storyCols]=await admin.query("SHOW COLUMNS FROM order_encounters LIKE 'event_story'");
+  assert.equal(storyCols.length,1);
+  const storyMigration=await readFile(new URL('../sql/011_event_story.sql',import.meta.url),'utf8');
+  await admin.query(storyMigration); // rerunning is safe
+
   assert.ok(columns.some(c=>c.TABLE_NAME==='order_combatants'&&c.COLUMN_NAME==='pos_x'));
   const [tables]=await admin.query('SHOW TABLES');
   const names=new Set(tables.map(r=>Object.values(r)[0]));

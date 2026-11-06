@@ -83,3 +83,11 @@ From the repo root, run `npm test` and `npm run build`; from `server/`, run `npm
 Follow **[Cloudflare launch](CLOUDFLARE-LAUNCH.md)** using the existing tunnel and documented `https://api.rosefires.com` hostname. The Node service continues to bind `127.0.0.1:3182` and Cloudflare routes to it. The public API must be explicitly enabled with exact HTTPS origin/host settings, tested throttling, encrypted backups and an actual browser login check. Do not expose `/ready` or first-account setup publicly.
 
 Until backed up, hardened, and independently tested, a successful GitHub Pages deployment is **not** a declaration that the self-hosted API is ready for all FC members. The Windows PC, MySQL and Node process must remain running; a healthy tunnel cannot replace a stopped backend.
+
+## Event stories and chapter ratings
+
+Event directors can set **Difficulty (D1–D10)**, **Impact (I1–I5)**, mark a posting **FC MSQ** when it advances the Order's main storyline, and add up to 12 named chapters, each with its own difficulty and description. The public **Events & signups** board displays these details; signup and encounter permissions are unchanged. Existing events retain all their data and remain unrated until edited.
+
+**Windows/MySQL database upgrade required:** After backing up the database and pulling this update on the Windows host, run `npm run setup:local` from `server/` and restart the Node API. This applies the repeatable, additive `011_event_story.sql` migration. Publishing only the frontend without migrating MySQL is not sufficient.
+
+Character creation and sheet updates now allow at most **three** trained skill proficiencies. Existing selections are not silently removed; characters with more than three must uncheck extras before saving the sheet.

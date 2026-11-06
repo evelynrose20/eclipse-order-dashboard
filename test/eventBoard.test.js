@@ -27,3 +27,11 @@ test('event board is responsive and gives controls keyboard focus styles',()=>{
  assert.match(board,/aria-pressed/);
  assert.match(board,/aria-expanded/);
 });
+
+test('story board displays FC MSQ and chapters without exposing GM controls',()=>{
+ assert.match(board,/eventTypeLabel/);
+ assert.match(board,/order-event-chapters/);
+ assert.match(board,/order-event-stakes/);
+ assert.match(board,/readEventStory\(selected\.event_story\)/);
+ assert.doesNotMatch(board,/EventEditor|BattleMap|DicePanel/);
+});

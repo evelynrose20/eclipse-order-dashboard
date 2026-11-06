@@ -58,3 +58,19 @@
 @media(max-width:820px){.order-event-board-frame{grid-template-columns:1fr}.order-event-list{display:flex;overflow-x:auto;padding-bottom:5px;scroll-snap-type:x proximity}.order-event-board .order-event-posting{min-width:205px;max-width:260px;scroll-snap-align:start}.order-event-detail-facts{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:590px){.order-event-heading{align-items:start}.order-event-sigil{height:44px;width:42px;font-size:24px}.order-event-board-frame{padding:10px;gap:11px}.order-event-detail{padding:16px;gap:18px}.order-event-detail-top{flex-direction:column}.order-event-detail-facts{grid-template-columns:1fr}.order-event-join{grid-template-columns:1fr}.order-event-board .order-event-join-button{justify-content:space-between;width:100%}.order-event-signups .signup-form{flex-direction:column;align-items:stretch}}
 @media(prefers-reduced-motion:reduce){.order-event-board .order-event-posting{transition:none}}
+
+/* Difficulty, impact, FC MSQ and serialized chapter presentation. */
+.order-event-posting-metadata{font-size:10px;line-height:1.6;color:#d1a8b5}
+.order-event-msq{font-weight:800;letter-spacing:.04em;color:#f6d29d;border:1px solid #a68a62;background:#48352a;padding:2px 5px}
+.order-event-stakes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.order-event-stakes>span{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;color:#d6aabd;border:1px solid #614654;background:#2b222b;font-size:11px}
+.order-event-stakes strong{font:normal 19px Georgia,serif;color:#f1bbcb}
+.order-event-stakes>span:nth-child(2) strong{color:#f0c68c}
+.order-event-chapters h4{font-size:10px;letter-spacing:.16em;color:#d7a5b5;text-transform:uppercase;margin:0 0 10px}
+.order-event-chapter{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:15px;align-items:start;padding:14px 7px;border-bottom:1px solid #59424d}
+.order-event-chapter-number{font:normal 24px Georgia,serif;color:#dba4b3;line-height:1}
+.order-event-chapter strong{font:normal 14px Georgia,serif;color:#ffe2e6}
+.order-event-chapter p{font-size:12px;color:#c2aeb9;line-height:1.6;margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.order-event-chapter-difficulty{border:1px solid #9a7282;color:#e0b8c8;padding:5px 7px;font-size:10px}
+
+.order-event-chapter-msq{display:inline-block;margin-left:10px;border:1px solid #ad8968;color:#eac89f;background:#3b2c2b;padding:2px 6px;font-size:9px;font-weight:700;letter-spacing:.08em;vertical-align:middle}

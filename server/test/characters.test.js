@@ -78,3 +78,15 @@ test('new characters must have first and last names',async()=>{
  assert.equal(result.body.error,'first_and_last_name_required');
  assert.equal(m.writes.length,0);
 });
+
+test('a character cannot save four trained skills by bypassing the editor',async()=>{
+ const m=mock('domina',Bob,[bound]);
+ const skills={Acrobatics:true,Arcana:true,Perception:true,Stealth:true};
+ const response=await characterRoute(m.pool,req('PUT',{name:'Hidden Wisp',skills}),'/characters/'+Char);
+ assert.equal(response.status,400);
+ assert.equal(response.body.error,'max_three_skill_proficiencies');
+ assert.equal(m.writes.length,0);
+ const valid=await characterRoute(m.pool,req('PUT',{name:'Hidden Wisp',skills:{Acrobatics:true,Arcana:true,Perception:true}}),'/characters/'+Char);
+ assert.equal(valid.status,200);
+ assert.equal(JSON.parse(m.writes[0].values[1]).skills.Stealth,undefined);
+});
