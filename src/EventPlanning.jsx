@@ -54,8 +54,8 @@ export function EventEditor({event,save,working}){
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
  </form>;
 }
-export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false,ownOnly=false,unlinkedCharacters=[],onLinkCharacter,isEventDirector=false}){
- const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState(''),[linkCandidate,setLinkCandidate]=useState('');
+export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false,ownOnly=false,isEventDirector=false}){
+ const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState('');
  const [error,setError]=useState('');
  const own=characters.filter(c=>c.player_user_id===userId);
  async function load(){try{setSignups(await listEventSignups(event.id));setError('')}catch(e){setError(e.message)}}
@@ -68,8 +68,8 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
   {!canDirect&&event.published&&event.status==='draft'&&<>
    {isEventDirector?<div className="signup-eligibility-note" role="note"><strong>You're directing this event.</strong><p>The DM manages the party from Encounters & dice → Combatants, rather than sending a player signup to their own event.</p></div>:<>
     {own.length>0?<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={previewOnly||!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>:
-     <div className="signup-eligibility-note" role="status"><strong>No characters linked to your account</strong><p>A character can be unbound and still need a linked player account before appearing in this list.</p></div>}
-    {unlinkedCharacters.length>0&&onLinkCharacter&&!previewOnly&&<div className="signup-account-link"><label className="field"><span>LINK AN UNASSIGNED CHARACTER</span><select value={linkCandidate} onChange={e=>setLinkCandidate(e.target.value)}><option value="">Choose a character</option>{unlinkedCharacters.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><button type="button" className="btn secondary" disabled={!unlinkedCharacters.some(c=>c.id===linkCandidate)||working} onClick={async()=>{await onLinkCharacter(linkCandidate);setLinkCandidate('')}}>Link to my account</button></div>}
+     <div className="signup-eligibility-note" role="status"><strong>No characters linked to your account</strong><p>New characters belong to their creator's account. Older characters may not have an account assigned.</p></div>}
+
    </>}
   </>}
   {!canDirect&&!event.published&&<p className="muted">This event isn't accepting sign-ups yet.</p>}
