@@ -50,3 +50,21 @@ test('DM focus, scenes and contextual dice rail are interactive',()=>{
  assert.match(css,/rail-collapsed/);
  assert.match(css,/scene-focus/);
 });
+
+test('map dice rail uses a compact tray rather than the full GM forms',()=>{
+ const tray=read('DiceTray.jsx');
+ assert.match(dm,/import DiceTray from '\.\/DiceTray\.jsx'/);
+ assert.match(dm,/<DiceTray key=\{selected\.id\+'-tray'\}/);
+ assert.match(dm,/onOpenFull=\{\(\)=>setSection\('dice'\)\}/);
+ assert.match(dm,/useState\(false\)/);
+ for(const marker of ['rollEncounterAction','parseDiceFormula','encounterRolls','dice-tray-roll-button','dice-tray-preset-grid','target_dc'])
+  assert.ok(tray.includes(marker),marker);
+ assert.doesNotMatch(tray,/gm-check-form|requestGMRoll|monster-library/);
+});
+test('encounter page prioritizes the battlefield without redundant global page intro',()=>{
+ const workspace=read('LocalWorkspace.jsx');
+ assert.match(workspace,/tab!=='encounters'&&<div className="page-intro"/);
+ assert.match(workspace,/encounter-content/);
+ assert.match(read('encounter-studio.css'),/encounter-studio-map-layout:has\(\.encounter-rail-dice\)/);
+ assert.match(read('encounter-dice.css'),/dice-preset-row/);
+});

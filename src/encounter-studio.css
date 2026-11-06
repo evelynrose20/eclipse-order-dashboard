@@ -127,3 +127,25 @@
 .encounter-dm-view.rail-collapsed .encounter-rail-tabs button:not(:last-child){display:none}
 .encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{padding:10px 5px}
 @media(max-width:930px){.encounter-dm-view.rail-collapsed .encounter-studio-map-layout{grid-template-columns:minmax(0,1fr)}.encounter-dm-view.rail-collapsed .encounter-studio-battle-rail{width:100%;min-height:46px}.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{width:100%}}
+
+/* Immersive encounter layout: reduce the dashboard layers around the map. */
+.eo-local .content.encounter-content{max-width:none;padding:16px clamp(12px,1.5vw,25px) 38px}
+.encounter-content .encounter-dm-view{gap:8px}
+.encounter-dm-view .encounter-sidebar{padding:9px 13px}
+.encounter-dm-view .encounter-studio-aside-header{padding:2px 2px;gap:10px}
+.encounter-dm-view .encounter-studio-aside-header h2{font-size:18px}
+.encounter-dm-view .encounter-studio-aside-header .encounter-eyebrow{display:none}
+.encounter-dm-view .encounter-studio-header{padding:11px 14px}
+.encounter-dm-view .encounter-studio-header h2{font-size:23px}
+.encounter-dm-view .encounter-studio-header .encounter-eyebrow{font-size:9px}
+.encounter-dm-view .encounter-studio-map-layout:has(.encounter-rail-dice){grid-template-columns:minmax(0,1fr) minmax(290px,325px)}
+.encounter-studio-map-layout .encounter-studio-battle-rail{min-width:0;padding:11px;max-height:calc(100vh - 100px)}
+.encounter-rail-dice{max-height:none;overflow:visible}
+.encounter-rail-tabs{flex-wrap:nowrap}
+.encounter-rail-tabs button{min-width:0}
+.encounter-studio .battlemap-panel{padding:10px}
+.encounter-dm-view .encounter-studio-tabs{padding:4px}
+.encounter-dm-view .encounter-studio-tabs .event-tab{font-size:11px}
+@media(max-width:1250px){.encounter-dm-view .encounter-studio-map-layout:has(.encounter-rail-dice){grid-template-columns:minmax(0,1fr) 290px}}
+@media(max-width:930px){.encounter-dm-view .encounter-studio-map-layout:has(.encounter-rail-dice){grid-template-columns:1fr}.encounter-studio-map-layout .encounter-studio-battle-rail{position:static;max-height:none}}
+@media(max-width:650px){.eo-local .content.encounter-content{padding:10px 9px 28px}}

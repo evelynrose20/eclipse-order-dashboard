@@ -4,6 +4,7 @@ import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
 import {DicePanel,QuickHP} from './EncounterDice.jsx';
+import DiceTray from './DiceTray.jsx';
 import {EventEditor,EventSignups,EventSummary} from './EventPlanning.jsx';
 import EventXPRewards from './EventXPRewards.jsx';
 import {editPlannedEvent} from './apiBridge.js';
@@ -26,7 +27,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const [focusMode,setFocusMode]=useState(false);
  const [railMode,setRailMode]=useState('turns');
  const [railOpen,setRailOpen]=useState(true);
- const [scenesOpen,setScenesOpen]=useState(true);
+ const [scenesOpen,setScenesOpen]=useState(false);
  const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const canDirect=Boolean(!playerFacing&&selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId)));
@@ -122,7 +123,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
        <button type="button" className="btn secondary" onClick={()=>setSection('dice')}>Dice & checks</button>
        {selected.status==='active'&&<button type="button" className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button>}
       </div>}</>}
-      {railOpen&&railMode==='dice'&&<div className="encounter-rail-dice">{(isParticipant||canDirect)&&!(previewOnly&&!isParticipant)&&<DicePanel classCatalog={classCatalog} key={selected.id+'-rail'} previewOnly={previewOnly} isDirector={isDirector} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>}</div>}
+      {railOpen&&railMode==='dice'&&<div className="encounter-rail-dice"><DiceTray key={selected.id+'-tray'} encounter={selected} canDirect={canDirect} working={working} action={action} onOpenFull={()=>setSection('dice')}/></div>}
      </aside></div>}
     {section==='combat'&&<section className="panel encounter-header"><div className="encounter-topline"><div><small>LIVE ENCOUNTER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&selected.status==='active'&&<div className="encounter-actions"><button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button><button className="btn secondary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'finish'))}>Finish combat</button></div>}</div>
     {activeCombatant&&selected.status==='active'&&<div className="current-turn"><span>NOW ACTING</span><strong>{activeCombatant.name}</strong><small>Round {selected.round_number} · Initiative {activeCombatant.initiative}</small></div>}
