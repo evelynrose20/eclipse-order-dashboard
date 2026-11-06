@@ -18,6 +18,25 @@ Because GitHub Pages does not automatically rewrite arbitrary deep URLs to the a
 
 The new public site has original Eclipse Order copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
 
+## Discord sign-in for existing Order accounts
+
+The member portal supports **Continue with Discord** after a one-time, authenticated connection to the existing Eclipse Order account. It does not automatically create members, approve recruitment requests, change privileges, or attach characters based on Discord email. Roles, approvals, character ownership and account permissions stay in MySQL. Existing email/password login remains available.
+
+**One-time production setup (Windows server):**
+
+1. Back up MySQL, update the backend and frontend, and run `npm run setup:local` inside `server/` to add the additive `014_discord_oauth.sql` tables.
+2. In the [Discord Developer Portal](https://discord.com/developers/applications), create or open the Discord application used for Eclipse Order. Under OAuth2 register the exact **HTTPS** callback `https://api.rosefires.com/auth/discord/callback` if that is the live API hostname. This is an OAuth redirect, not a Discord bot installation URL. The sole requested scope is `identify`.
+3. Store the following in **private** `server/.env` on the Windows host (NEVER in GitHub, Vite, frontend environment variables or chat):
+   - `DISCORD_CLIENT_ID` — Discord OAuth2 application Client ID
+   - `DISCORD_CLIENT_SECRET` — Discord OAuth2 Client Secret
+   - `DISCORD_REDIRECT_URI` — exact registered HTTPS callback URL
+   - `DISCORD_FRONTEND_URL` — exact public frontend URL, including a GitHub Pages project path when applicable (e.g. `https://evelynrose20.github.io/eclipse-order-dashboard/`); must use the same origin as `API_ALLOWED_ORIGIN`.
+4. Ensure `API_PUBLIC_ENABLED=true`, the exact `API_PUBLIC_HOST`, and the exact frontend `API_ALLOWED_ORIGIN` already work securely through the existing Cloudflare Tunnel. Restart the Node API after changing `.env`.
+5. An existing member signs in with **email/password**, opens **Discord sign-in** in their account dashboard or RP preferences and chooses **Connect Discord**. Discord's authorization returns to the portal and links that verified Discord account.
+6. On future visits, use **Continue with Discord** at the portal sign-in screen. To stop using Discord, choose **Disconnect** from the same account panel. Email/password login remains functional.
+
+**Security:** OAuth2 state is short-lived and one-use. Discord authorization codes and access tokens are exchanged only on the backend; they are not kept or sent to the frontend. A short-lived one-use handoff ticket is returned in a URL **fragment** and exchanged for the existing opaque MySQL session. Server-issued member approval and role checks remain authoritative. Discord email, guild membership and nicknames do not grant access. This release connects Discord identity to the **web member portal**, not Discord role synchronization, automatic Discord server invites, or bot commands.
+
 ## Member experience
 
 - Request membership; a Domina approves or rejects the application before access is granted.
