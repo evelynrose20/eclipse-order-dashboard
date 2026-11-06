@@ -30,7 +30,8 @@ test('editor is inline on existing sheet and modal is new-character only',()=>{
  assert.match(dashboard,/editor\?\.id&&selected\?\.id===editor\.id&&canEdit\(selected\)\?<InlineSheetEditor/);
  assert.match(dashboard,/editor && !editor\.id && <div className="modal-backdrop"/);
  assert.match(dashboard,/normalize\(\{\.\.\.candidate,id,name:candidate\.name\.trim\(\)\},0\)/);
- assert.match(editor,/Save character sheet/);
+ assert.match(editor,/Character Dossier|CHARACTER DOSSIER/);
+ assert.match(editor,/Save changes/);
 });
 test('SQL function delimiter structure is balanced and transaction closed',()=>{
  const starts=[...sql.matchAll(/\bas \$([a-z0-9]+)\$/gi)].map(x=>x[1]);
