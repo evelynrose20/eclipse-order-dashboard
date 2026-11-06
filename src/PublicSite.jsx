@@ -6,16 +6,18 @@ const NAV=[
  ['history','Our History'],
  ['ranks','Hierarchy'],
  ['roleplay','Roleplay'],
+ ['visit','Visit Us'],
  ['membership','Membership'],
  ['questions','Questions']
 ];
-const RANKS=[
- {name:'Domina',title:'The authority at the eclipse',symbol:'✦',text:'The Order answers to one sovereign voice. Its direction, alliances, and final decisions rest here.'},
- {name:'Oyabun',title:'The inner command',symbol:'◆',text:'Senior officers entrusted with the Order’s operations, people, and difficult decisions.'},
- {name:'Kusushi',title:'The chosen specialists',symbol:'✧',text:'Alchemists, enforcers, and skilled agents whose work demands expertise or discretion.'},
- {name:'Operative',title:'The hands of the Order',symbol:'◇',text:'Members entrusted with assignments, expeditions, intelligence, and the daily life of the syndicate.'},
- {name:'Kumi-in / Initiate',title:'The first step within',symbol:'◈',text:'New arrivals who have yet to earn their place, loyalties, and responsibilities.'}
+const ORDER_BRANCHES=[
+ {name:'The Snakes',symbol:'◇',summary:'Secrets, information, and the art of remaining unseen.',ranks:['Hatchling','Coil','Whisper','Shadowkeeper','High Serpent']},
+ {name:'The Fangs',symbol:'⚔',summary:'The Order’s strength, enforcement, and protection.',ranks:['Fangling','Fang','Viper','Fangmaster','High Fang']},
+ {name:'The Golden Claws',symbol:'✦',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
+ {name:'The Household',symbol:'♜',summary:'The people entrusted with the Order’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
 ];
+const SERVITUDE_RANKS=['Unmarked','Marked Thrall','Bound Serpent','Eclipse Attendant','Silken Thrall','Violet Keeper','Serpent’s Chosen','Eclipsed Consort'];
+const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const FAQ=[
  {q:'What kind of FFXIV group is this?',a:'The Eclipse Order is a story-focused Final Fantasy XIV roleplay free company built around a morally dark syndicate. We tell stories about loyalty, ambition, consequence, and the people caught between them.'},
  {q:'Do I need to know the Order’s history?',a:'No. New characters do not need to have been present for past events. You can arrive knowing only rumors and discover the Order through roleplay.'},
@@ -36,6 +38,7 @@ export default function PublicSite(){
  const [letterOpen,setLetterOpen]=useState(false);
  const [mode,setMode]=useState(0);
  const [expandedFAQ,setExpandedFAQ]=useState(-1);
+ const [addressCopied,setAddressCopied]=useState(false);
  useEffect(()=>{
   document.title='The Eclipse Order — A Final Fantasy XIV Roleplay Free Company';
   const handleEscape=e=>{if(e.key==='Escape'){setLetterOpen(false);setMenuOpen(false)}};
@@ -48,7 +51,7 @@ export default function PublicSite(){
   <header className="public-header">
    <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>The Eclipse Order</strong><small>FINAL FANTASY XIV · ROLEPLAY</small></span></a>
    <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
-   <div className="public-header-actions"><a className="public-portal-link" href="?portal">Member sign-in</a><a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a></div>
+   <div className="public-header-actions"><a className="public-recruitment-link" href="#membership"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</a><a className="public-portal-link" href="?portal">Member sign-in</a><a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a></div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
   <main id="content">
@@ -60,6 +63,7 @@ export default function PublicSite(){
      <p className="public-hero-subtitle">An FFXIV roleplay free company of dangerous bargains, uncertain allegiances, and stories that refuse to be forgotten.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-notes"><span>STORY-FOCUSED ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
+     <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</a></div>
     </div>
     <div className="public-scroll-cue" aria-hidden="true"><span>DESCEND INTO THE ORDER</span><i/></div>
    </section>
@@ -84,10 +88,22 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-hierarchy" id="ranks">
     <div className="public-section-inner">
-     <SectionTag number="03">THE HIERARCHY</SectionTag>
-     <div className="public-section-heading"><div><h2>Five ranks.<br/><em>One Order.</em></h2></div><p>Authority is earned, delegated, and sometimes contested. Every rank carries its own expectations within the syndicate.</p></div>
-     <div className="public-rank-list">{RANKS.map((rank,index)=><article className="public-rank" key={rank.name}><span className="public-rank-index">0{index+1}</span><span className="public-rank-symbol" aria-hidden="true">{rank.symbol}</span><div><h3>{rank.name}</h3><small>{rank.title}</small></div><p>{rank.text}</p></article>)}</div>
-     <p className="public-footnote">These ranks describe the characters’ place in the Order. Site administration and community moderation are handled separately.</p>
+     <SectionTag number="03">THE ORDER OF THE SERPENT</SectionTag>
+     <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>The Order is not a single ladder. Its leadership, specialized branches, membership standing, and bonds of service are distinct.</p></div>
+     <div className="public-command-tree">
+      <div className="public-command-crest" aria-hidden="true">✦</div>
+      <div className="public-command-line"/>
+      <article><span>THE SOVEREIGN</span><h3>Domina</h3><p>At the center of the Order stands its supreme authority.</p></article>
+      <article><span>SECOND IN COMMAND</span><h3>Grand Viper</h3><p>The Domina’s foremost deputy and the link between the throne and the Order’s command.</p></article>
+      <article><span>THE INNER CIRCLE</span><h3>Inner Council</h3><p>The council offices guide the Order’s affairs beneath the Domina.</p></article>
+     </div>
+     <div className="public-branch-intro"><h3>Paths beneath the eclipse</h3><p>Each branch has its own progression, duties, and leadership.</p></div>
+     <div className="public-branch-grid">{ORDER_BRANCHES.map(branch=><article className="public-branch-card" key={branch.name}><span className="public-branch-symbol" aria-hidden="true">{branch.symbol}</span><h3>{branch.name}</h3><p>{branch.summary}</p><div className="public-branch-tiers">{branch.ranks.map((name,index)=><div key={name}><small>{String(index+1).padStart(2,'0')}</small><span>{name}</span></div>)}</div></article>)}</div>
+     <div className="public-other-standing">
+      <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Freshscales <em>→</em> Voidscales</h3><p>The Order's membership standing is distinct from a character's branch duties.</p></article>
+      <article><span className="public-branch-kicker">BONDS OF SERVICE</span><h3>The bound path</h3><p>Service has its own hierarchy. Standing within the Order does not automatically grant freedom from an in-character bond.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
+     </div>
+     <p className="public-footnote">In-character rank, membership standing, bonds of service, and out-of-character account permissions are separate.</p>
     </div>
    </section>
    <section className="public-section public-play" id="roleplay">
@@ -111,9 +127,27 @@ export default function PublicSite(){
      <div className="public-conduct-grid"><div><h2>Dark stories.<br/><em>Clear boundaries.</em></h2></div><div><p className="public-lead">The Order can be ruthless in-character. Our community should never be.</p><p>Character conflict is not player conflict. We expect members to respect consent, keep in-character and out-of-character matters separate, and collaborate before imposing lasting consequences on another person’s character.</p><p>The strongest stories are possible when everyone involved knows where their boundaries lie.</p><div className="public-conduct-principles"><span>CONSENT</span><span>RESPECT</span><span>COMMUNICATION</span></div></div></div>
     </div>
    </section>
+   <section className="public-section public-visit" id="visit">
+    <div className="public-section-inner">
+     <SectionTag number="06">FIND THE ORDER</SectionTag>
+     <div className="public-visit-grid">
+      <div className="public-visit-story"><h2>Two places.<br/><em>One hidden home.</em></h2><p className="public-lead">The Order’s doors can be found in Eorzea. Its true in-character refuge lies farther away, high among the mountains.</p><p>Use the estate address to find us in Final Fantasy XIV. Our mountain sanctuary belongs to the Order’s roleplay setting; the residential plot is the place to visit in-game.</p>
+       <a href="#membership" className="public-text-link">How to join us <span aria-hidden="true">↗</span></a>
+       <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>THE MOUNTAIN SANCTUARY</strong><small>IN-CHARACTER HOME OF THE ECLIPSE ORDER</small></div></div>
+      </div>
+      <aside className="public-estate-card" aria-label="The Eclipse Order in-game estate address">
+       <span className="public-estate-corner top-left" aria-hidden="true"/><span className="public-estate-corner top-right" aria-hidden="true"/><span className="public-estate-corner bottom-left" aria-hidden="true"/><span className="public-estate-corner bottom-right" aria-hidden="true"/>
+       <div className="public-estate-eyebrow">THE ORDER · IN THE REALM</div>
+       {ESTATE.map(([label,value])=><div className="public-estate-field" key={label}><small>{label}</small><strong>{value}</strong></div>)}
+       <div className="public-estate-note"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</div>
+       <button className="public-copy-address" type="button" onClick={async()=>{try{await navigator.clipboard.writeText('Dynamis · Seraph · The Goblet · Ward 5 · Plot 41');setAddressCopied(true)}catch{setAddressCopied(false)}}}>{addressCopied?'Address copied ✓':'Copy estate address'} <span aria-hidden="true">↗</span></button>
+      </aside>
+     </div>
+    </div>
+   </section>
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
-     <SectionTag number="06">THE DOOR IS OPEN</SectionTag>
+     <SectionTag number="07">THE DOOR IS OPEN</SectionTag>
      <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p><a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a><span className="public-membership-note">Membership requests are reviewed before portal access is granted.</span></div>
       <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Create a membership request through the portal.'},{title:'Meet the Order',text:'Order command reviews the request and can discuss how your character may fit.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
@@ -121,12 +155,12 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-faq" id="questions">
     <div className="public-section-inner">
-     <SectionTag number="07">QUESTIONS BEFORE THE OATH</SectionTag>
+     <SectionTag number="08">QUESTIONS BEFORE THE OATH</SectionTag>
      <div className="public-section-heading"><h2>What would you<br/><em>like to know?</em></h2><p>An invitation should come with a few answers.</p></div>
      <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#visit">Visit Us</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
