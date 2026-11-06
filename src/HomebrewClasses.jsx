@@ -35,7 +35,7 @@ export default function HomebrewClasses({classes,onRefresh,request}){
     <label className="field"><span>NEW CLASS ID</span><input value={newId} onChange={e=>setNewId(e.target.value)} placeholder="e.g. rune-knight" maxLength={40}/></label>
     <button type="button" className="btn secondary" onClick={newClass}>Create new class</button>
    </div>
-   <p className="muted">Includes every standard combat job, including Viper and Pictomancer, plus simplified Blue Mage and Beastmaster options. Each job has its own milestone techniques through level 20. Legacy templates are intentionally preserved for existing characters.</p>
+   <p className="muted">Includes every standard combat job, including Evercold’s Bastion and Zephyr alongside Viper and Pictomancer. Limited jobs are excluded. Each job has its own milestone techniques through level 20. Legacy templates are intentionally preserved for existing characters.</p>
   </section>
   {id&&<form onSubmit={save} className="homebrew-editor">
    <section className="panel"><div className="panel-heading"><div><h2>{draft.name||'New class'} · {id}</h2><p>Define class identity, HP growth, proficiencies and magical resources.</p></div><button className="btn primary" type="submit" disabled={busy}>{busy?'Saving…':'Save class'}</button></div>

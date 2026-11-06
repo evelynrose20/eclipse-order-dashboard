@@ -67,21 +67,22 @@ const JOBS=[
  ['pictomancer','Pictomancer','caster','int','int,cha',6,'full','Brush-wielding mage painting motifs into temporary reality.',
   'Living Canvas|Color Palette|Creature Motif|Paint Reserve|Hammer Motif|Landscape Muse|Starry Canvas|Masterpiece',
   'Red Pigment|Green Gust|Blue Torrent|Painted Shield|Sketch Beast|White Splash|Chromatic Comet|Star Prism'],
- // Limited jobs: simplified for equal 1–20 tabletop advancement.
- ['blue-mage','Blue Mage','limited','int','int,con',8,'full','Unconventional caster learning stylized monster techniques.',
-  'Observation|Mimicry|Monster Lore|Improvised Ward|Adaptive Study|Monstrous Resonance|Arcane Assimilation|Perfect Imitation',
-  'Aqua Breath|Goblin Spark|Stone Gaze|Seed Cannon|Frost Breath|Mighty Guard|Thunder Roar|Grand Mimicry'],
- ['beastmaster','Beastmaster','limited','wis','wis,dex',10,'half','Beast companion trainer directing creatures in encounters.',
-  'Companion Bond|Tamer’s Signal|Bestial Insight|Guarding Beast|Pack Tactics|Feral Charge|Bonded Instinct|Alpha Pact',
-  'Beast Call|Mending Bond|Howling Guard|Claw Rush|Scent Trail|Feral Ward|Pack Rally|Primal Accord']
+ // Evercold (8.0) — simplified to the same eight milestones as earlier jobs.
+ // Bastion: main tank with paired skyltborg greatshields and aetherial artillery.
+ ['bastion','Bastion','tank','str','str,con',12,'half','Main tank wielding twin skyltborg greatshields that intercept blows and fire aetherial bursts.',
+  'Twin Skyltborg Discipline|Interlocking Guard|Aether Cannon|Shieldwall Advance|Retaliatory Volley|Fortress Stance|Skyltborg Barrage|Unyielding Bastion',
+  'Shield Pulse|Aether Guard|Bulwark Cannon|Linked Aegis|Repelling Burst|Fortress Ward|Skyltborg Nova|Last Rampart'],
+ // Zephyr: physical ranged crossbow hunter aided by an avian familiar.
+ ['zephyr','Zephyr','ranged','dex','dex,wis',8,'half','Physical ranged DPS using precision crossbow shots and coordinated attacks with an avian familiar.',
+  'Crossbow Discipline|Nephele Companion|Winged Mark|Raking Volley|Featherstep|Familiar Coordination|Skyhunter Barrage|Tempest Hunt',
+  'Guided Bolt|Wing Ward|Aerial Scout|Gale Shot|Nephele Dive|Pinning Bolt|Stormwing Salvo|Horizon Strike']
 ];
 const DESCRIPTIONS={
  tank:'Intercept an attack or hold the line, using normal GM-adjudicated dice checks.',
  healer:'Heal, mitigate or cleanse with an action and the encounter healing dice.',
  melee:'Make a close-range attack or maneuver, using normal encounter dice.',
  ranged:'Make a ranged attack or support maneuver, using normal encounter dice.',
- caster:'Resolve a magical attack or effect using the encounter dice and GM adjudication.',
- limited:'Use a restricted thematic technique under normal GM adjudication.'
+ caster:'Resolve a magical attack or effect using the encounter dice and GM adjudication.'
 };
 const spellEffect=(name,role,level)=>{
  const special=/cure|mend|benefic|regen|succor|diagnos|prognos|heal|blessing|medica|verse|ward|shield|aegis|guard|sanctuary|asylum|kerachole|kardia|pact|accord|protect|barrier/i.test(name);
