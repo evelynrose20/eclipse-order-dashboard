@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dossierTabs,dossierSummary,isDossierRestricted} from '../src/characterDossierRules.js';
+import {dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab} from '../src/characterDossierRules.js';
 
 const base={
  id:'synthetic-character',name:'Astra Moonveil',species:'Viera',class_name:'Mage',
@@ -11,7 +11,7 @@ const base={
 };
 test('full permitted records expose the redesigned dossier sections',()=>{
  const tabs=dossierTabs(base).map(x=>x.id);
- assert.deepEqual(tabs,['identity','roleplay','combat','spells','possessions','progression','legacy']);
+ assert.deepEqual(tabs,['legacy','identity','roleplay','combat','spells','possessions','progression']);
  assert.equal(dossierSummary(base).className,'Mage');
  assert.equal(dossierSummary(base).equipment,'Rare reagent');
 });
@@ -36,4 +36,11 @@ test('unbound members retain the normal dossier view',()=>{
 test('missing character produces no accidentally detailed dossier',()=>{
  assert.equal(dossierSummary(null),null);
  assert.deepEqual(dossierTabs(null).map(x=>x.id),dossierTabs(base).map(x=>x.id));
+});
+
+test('classic sheet is the main default for permitted characters',()=>{
+ assert.equal(defaultDossierTab(base),'legacy');
+ assert.equal(dossierTabs(base)[0].id,'legacy');
+ assert.equal(defaultDossierTab({...base,collar_bound:true,view_mode:'bound'}),'identity');
+ assert.equal(defaultDossierTab({...base,collar_bound:true,view_mode:'full'},true),'identity');
 });
