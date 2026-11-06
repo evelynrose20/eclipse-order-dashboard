@@ -15,7 +15,7 @@ test('Discord-created sessions remain opaque and logout revokes a session',async
  let revoked=false;
  const pool={execute:async(sql,args)=>{
   if(sql.startsWith('SELECT a.id,a.email'))return [revoked?[]:[{id:'account-id',email:'discord@members.eclipse.invalid',display_name:'Order Member',account_role:'member',standing:'initiate',discord_user_id:'123456789012345678'}]];
-  if(sql.startsWith('SELECT track,rank_code FROM account_order_ranks'))return [[{track:'membership',rank_code:'freshscales'}]];
+  if(sql.startsWith('SELECT a.track,a.rank_code,c.title FROM account_order_ranks'))return [[{track:'membership',rank_code:'freshscales',title:'Freshscales'}]];
   if(sql.startsWith('UPDATE account_sessions')){assert.equal(args[0],hashToken(token));revoked=true;return [{affectedRows:1}]}
   throw Error('Unexpected query: '+sql);
  }};
