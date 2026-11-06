@@ -17,6 +17,7 @@ function memory(){
  const calls=[];
  const pool={execute:async(sql,args=[])=>{
   calls.push({sql,args});
+  if(sql.startsWith('DELETE FROM discord_oauth_states WHERE expires_at')||sql.startsWith('DELETE FROM discord_oauth_tickets WHERE expires_at'))return [{affectedRows:0}];
   if(sql.startsWith('SELECT a.id,a.email')){
    const id=sessions.get(args[0]);return [id?[{id,email:'admin@test.example',account_role:'domina'}]:[]];
   }
