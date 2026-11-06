@@ -57,6 +57,8 @@ async function main(){
   await pool.query(workshopExpansion);
   const expeditionEncounters=await readFile(new URL('../sql/022_expedition_encounters.sql',import.meta.url),'utf8');
   await pool.query(expeditionEncounters);
+  const zones=await readFile(new URL('../sql/023_expedition_zones.sql',import.meta.url),'utf8');
+  await pool.query(zones);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
