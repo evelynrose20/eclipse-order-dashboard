@@ -58,12 +58,13 @@ export async function resolveSession(pool,request,{allowUnlinked=false}={}){
  const token=authHeader(request);
  if(!token)return null;
  const [rows]=await pool.execute(
-  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing,a.syndicate_rank,l.discord_user_id FROM account_sessions s JOIN accounts a ON a.id=s.account_id LEFT JOIN account_discord_links l ON l.account_id=a.id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
+  'SELECT a.id,a.email,a.display_name,a.account_role,a.standing,a.syndicate_rank,l.discord_user_id,s.auth_method FROM account_sessions s JOIN accounts a ON a.id=s.account_id LEFT JOIN account_discord_links l ON l.account_id=a.id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP() AND a.is_active=1 AND a.approval_status="approved" LIMIT 1',
   [hashToken(token)]
  );
  const account=rows[0];
  if(!account)return null;
  if(allowUnlinked)return account;
+ if((guildConfiguration(process.env)||process.env.API_PUBLIC_ENABLED==='true')&&account.auth_method!=='discord')return null;
  // Every authenticated API request is gated by Discord membership, with a short bot lookup cache.
  // Production fails closed when guild verification is not configured.
  if(!guildConfiguration(process.env))return process.env.API_PUBLIC_ENABLED==='true'?null:account;
