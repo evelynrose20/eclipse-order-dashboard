@@ -31,3 +31,16 @@ test('new migration and public site explain Discord onboarding and Bad End RP',(
  assert.match(site,/PLAYER CONSENT/);
  assert.match(site,/Discord server membership and approval/);
 });
+
+test('Discord guild errors have a full public-facing explanation and a distinct opt-in join page',()=>{
+ const site=read('src/DiscordAccessPage.jsx');
+ const portal=read('src/LocalAccounts.jsx');
+ assert.match(site,/The door is not open yet/);
+ assert.match(site,/The Order cannot confirm the server/);
+ assert.match(site,/Request to join the Order’s Discord/);
+ assert.match(site,/Verify with Discord again/);
+ assert.match(site,/onAdultChange/);
+ assert.match(portal,/discord_guild_configuration_error/);
+ assert.match(portal,/<DiscordAccessPage reason=\{reason\}/);
+ assert.match(read('src/discord-access-page.css'),/@media\(max-width:540px\)/);
+});
