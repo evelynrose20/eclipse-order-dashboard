@@ -59,3 +59,20 @@
 @media(max-width:1050px){.inline-sheet-editor .inline-sheet-nav{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){.inline-sheet-editor .inline-sheet-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.inline-job-preview-top{display:block}.inline-job-meta{flex-direction:row;flex-wrap:wrap;margin-top:14px}.inline-job-preview-columns{grid-template-columns:1fr}.inline-point-banner{display:block}.inline-point-banner p{margin-top:13px}.inline-sheet-editor .inline-sheet-footer{position:static}.inline-sheet-editor .inline-sheet-footer>div:last-child{width:100%;display:flex;flex-wrap:wrap}}
 @media(max-width:420px){.inline-sheet-editor .inline-sheet-nav{grid-template-columns:1fr}.inline-sheet-editor .inline-sheet-nav button span{display:none}.inline-sheet-editor .panel{padding:16px}.inline-sheet-editor .inline-sheet-footer>div:last-child .btn{flex:1}}
+
+/* Character identity, derived combat stats and RP-only proficiencies. */
+.inline-computed-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:17px 0 25px}
+.inline-computed-stats>div{padding:18px;background:#302333;border:1px solid #795369;border-radius:10px}
+.inline-computed-stats span{display:block;font-size:10px;color:#c3a7b4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:9px}
+.inline-computed-stats strong{font-size:25px;color:#f3e5ea}
+.inline-game-proficiencies{border-top:1px solid #624b59;margin-top:22px;padding-top:19px}
+.inline-game-proficiencies h4{margin:0 0 6px;color:#e9cbd6;font-size:15px}
+.inline-game-proficiencies h5{font-size:11px;letter-spacing:.11em;color:#d2adba;text-transform:uppercase;margin:17px 0 10px}
+.inline-game-proficiencies .inline-checkboxes{margin:0 0 13px}
+.inline-game-proficiencies>.inline-field{margin-top:18px}
+.inline-skill-bonus{display:block;font-size:11px;color:#e5aebf;margin-top:4px;font-variant-numeric:tabular-nums}
+.inline-checkboxes label>span{min-width:0}
+.skill-check-preview{padding:8px 10px;background:#2c2230;border:1px solid #6b4d5e;border-radius:8px;display:grid;gap:3px}
+.skill-check-preview strong{color:#efdbe4;font-size:13px}
+.skill-check-preview small{color:#b9a5b2;font-size:10px}
+@media(max-width:760px){.inline-computed-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
