@@ -80,6 +80,10 @@ test('GitHub Pages callback defaults to the deployed project path when frontend 
  const config=discordOAuthConfig({...env,DISCORD_FRONTEND_URL:''});
  assert.ok(config);
  assert.equal(config.frontendUrl,'https://evelynrose20.github.io/eclipse-order-dashboard/');
+ for(const root of ['https://evelynrose20.github.io','https://evelynrose20.github.io/']){
+  assert.equal(discordOAuthConfig({...env,DISCORD_FRONTEND_URL:root}).frontendUrl,
+   'https://evelynrose20.github.io/eclipse-order-dashboard/');
+ }
  const explicit=discordOAuthConfig({...env,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/custom-portal/'});
  assert.equal(explicit.frontendUrl,'https://evelynrose20.github.io/custom-portal/');
  const m=setup({approved:true});
