@@ -16,7 +16,6 @@ const ORDER_BRANCHES=[
  {name:'The Golden Claws',symbol:'✦',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
  {name:'The Household',symbol:'♜',summary:'The people entrusted with the Order’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
 ];
-const ORDER_STANDING=['Freshscales','Voidscales'];
 const SERVITUDE_RANKS=['Unmarked','Marked Thrall','Bound Serpent','Eclipse Attendant','Silken Thrall','Violet Keeper','Serpent’s Chosen','Eclipsed Consort'];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const FAQ=[
@@ -39,6 +38,7 @@ export default function PublicSite(){
  const [letterOpen,setLetterOpen]=useState(false);
  const [mode,setMode]=useState(0);
  const [expandedFAQ,setExpandedFAQ]=useState(-1);
+ const [addressCopied,setAddressCopied]=useState(false);
  useEffect(()=>{
   document.title='The Eclipse Order — A Final Fantasy XIV Roleplay Free Company';
   const handleEscape=e=>{if(e.key==='Escape'){setLetterOpen(false);setMenuOpen(false)}};
@@ -140,7 +140,7 @@ export default function PublicSite(){
        <div className="public-estate-eyebrow">THE ORDER · IN THE REALM</div>
        {ESTATE.map(([label,value])=><div className="public-estate-field" key={label}><small>{label}</small><strong>{value}</strong></div>)}
        <div className="public-estate-note"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</div>
-       <button className="public-copy-address" type="button" onClick={async e=>{const address='Dynamis · Seraph · The Goblet · Ward 5 · Plot 41';try{await navigator.clipboard.writeText(address);e.currentTarget.textContent='Address copied ✓'}catch{e.currentTarget.textContent=address}}}>Copy estate address <span aria-hidden="true">↗</span></button>
+       <button className="public-copy-address" type="button" onClick={async()=>{try{await navigator.clipboard.writeText('Dynamis · Seraph · The Goblet · Ward 5 · Plot 41');setAddressCopied(true)}catch{setAddressCopied(false)}}}>{addressCopied?'Address copied ✓':'Copy estate address'} <span aria-hidden="true">↗</span></button>
       </aside>
      </div>
     </div>
