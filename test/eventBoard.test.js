@@ -7,7 +7,8 @@ const workspace=readFileSync(new URL('../src/LocalWorkspace.jsx',import.meta.url
 const css=readFileSync(new URL('../src/event-board.css',import.meta.url),'utf8');
 test('Events & signups uses its own member noticeboard, not the GM encounter workspace',()=>{
  assert.match(workspace,/tab==='events'&&<EventBoard/);
- assert.match(workspace,/tab==='encounters'&&<Encounters/);
+ assert.match(workspace,/tab==='encounters'&&\(playerPreview\|\|!staff\?<PlayerBattleView/);
+ assert.match(workspace,/:<Encounters classCatalog/);
  assert.doesNotMatch(board,/BattleMap|DicePanel|MonsterTemplate|EventXPRewards|EventEditor/);
 });
 test('event board displays real published events and preserves member-only registrations',()=>{
