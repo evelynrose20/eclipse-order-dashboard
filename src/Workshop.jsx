@@ -16,6 +16,10 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const [notice,setNotice]=useState('');
  const [selectedMaterial,setSelectedMaterial]=useState('');
  const [expeditionApproach,setExpeditionApproach]=useState('steady');
+ const [allowMature,setAllowMature]=useState(false);
+ const [encounterData,setEncounterData]=useState({active:null,scenarios:[]});
+ const [encounterMessage,setEncounterMessage]=useState('');
+ const [encounterEditor,setEncounterEditor]=useState(null);
  const [selectedRecipe,setSelectedRecipe]=useState('');
  const [craftQty,setCraftQty]=useState(1);
  const [staged,setStaged]=useState([]);
@@ -27,7 +31,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const [search,setSearch]=useState('');
  const canAct=!!characterId&&!readOnly;
  const command=canManage&&!readOnly;
- async function refresh(){setData(await request('/workshop'))}
+ async function refresh(){const [workshop,encounters]=await Promise.all([request('/workshop'),request('/workshop/encounters')]);setData(workshop);setEncounterData(encounters)}
  useEffect(()=>{refresh().catch(e=>setError(e.message))},[]);
  useEffect(()=>{if(!characterId&&characters.length)setCharacterId(characters[0].id)},[characters,characterId]);
  const materials=data?.materials||[];
@@ -48,8 +52,11 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
   }catch(e){setError(String(e.message||e))}
   finally{setBusy(false)}
  }
- const doGather=()=>run('/workshop/gather',{material_id:selected?.id,character_id:characterId,approach:expeditionApproach},
-  'The expedition returned to the Order.',r=>setReveal({type:'gather',name:selected.name,quantity:r.quantity}));
+ const doGather=()=>run('/workshop/gather',{material_id:selected?.id,character_id:characterId,approach:expeditionApproach,allow_mature:allowMature},
+  'The expedition has begun.',r=>{setEncounterMessage('');if(r.status!=='encounter')setReveal({type:'gather',name:selected.name,quantity:r.quantity})});
+ const resolveEncounter=action=>run('/workshop/encounters/'+encounterData.active.id+'/action',{action},'',r=>{setEncounterMessage(r.message);if(r.status!=='active')setReveal({type:'gather',name:name(r.material_id),quantity:r.quantity,encounterText:r.message})});
+ const scenarioEmpty=()=>({name:'',kind:'wildlife',description:'',outcome_text:'',weight:10,enemy_health:8,enemy_defense:10,enabled:true});
+ const saveScenario=async()=>{if(!encounterEditor)return;const id=encounterEditor.id||slug(encounterEditor.name);const editing=Boolean(encounterEditor.id);const body={...encounterEditor,weight:Number(encounterEditor.weight),enemy_health:Number(encounterEditor.enemy_health),enemy_defense:Number(encounterEditor.enemy_defense)};setBusy(true);setError('');try{await request('/workshop/encounters/scenarios'+(editing?'/'+id:''),{method:editing?'PUT':'POST',body:editing?body:{...body,id}});await refresh();setEncounterEditor(null);setNotice('Encounter scenario saved.')}catch(e){setError(e.message)}finally{setBusy(false)}};
  const doCraft=()=>run('/workshop/craft',{recipe_id:recipe.id,quantity:Number(craftQty),character_id:characterId},
   'The workshop has delivered its finished goods to the shared stores.',r=>{setStaged([]);setReveal({type:'craft',name:name(recipe.output_material),quantity:r.quantity*recipe.output_quantity})});
  const canCraft=recipe&&recipe.inputs.every(i=>stock(i.material_id)>=i.quantity*craftQty&&staged.includes(i.material_id))&&canAct;
@@ -70,7 +77,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
     <div><span>GARDEN</span><strong>Lv. {data.garden.level}</strong><small>{data.plots.length} planted plots</small></div>
     <div><span>WILDERNESS</span><strong>{gatherLeft} / {data.expedition_limit}</strong><small>expeditions remaining today</small></div>
    </div>
-   <nav className="fc-play-nav" aria-label="Workshop locations">{nav.map(([id,title,mark])=><button key={id} type="button" className={tab===id?'active':''} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setReveal(null);setError('')}}><span aria-hidden="true">{mark}</span>{title}</button>)}{command&&<button type="button" className="fc-play-manage" onClick={()=>setCatalog('menu')}>✚ Expand catalog</button>}</nav>
+   <nav className="fc-play-nav" aria-label="Workshop locations">{nav.map(([id,title,mark])=><button key={id} type="button" className={tab===id?'active':''} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setReveal(null);setError('')}}><span aria-hidden="true">{mark}</span>{title}</button>)}{command&&<><button type="button" className="fc-play-manage" onClick={()=>setCatalog('menu')}>✚ Expand catalog</button><button type="button" className="fc-play-manage" onClick={()=>setEncounterEditor(scenarioEmpty())}>⚔ Encounters</button></>}</nav>
    {tab!=='stores'&&<div className="fc-play-actor"><span>ACTIVE CHARACTER</span><select aria-label="Choose character" value={characterId} onChange={e=>setCharacterId(e.target.value)}><option value="">Choose a character</option>{characters.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name}</option>)}</select></div>}
    {tab==='garden'&&<div className="fc-scene">
     <div className="fc-scene-title"><div><span>THE GLASSHOUSE</span><h3>Every hand helps it flourish</h3><p>Water or tend a plot once each day. Growth is shared; when a plant is ready, its harvest goes straight to the FC stores.</p></div><div className="fc-garden-badge">✿ <strong>Garden {data.garden.level}</strong></div></div>
@@ -94,7 +101,9 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
       <button type="button" className={expeditionApproach==='steady'?'chosen':''} aria-pressed={expeditionApproach==='steady'} onClick={()=>setExpeditionApproach('steady')}><span>❧</span><strong>Careful trail</strong><small>A reliable find: 1–3 materials</small></button>
       <button type="button" className={expeditionApproach==='daring'?'chosen':''} aria-pressed={expeditionApproach==='daring'} onClick={()=>setExpeditionApproach('daring')}><span>⚡</span><strong>Deep wilderness</strong><small>Risk coming back empty for a chance at 7</small></button>
     </div>
-    <div className="fc-expedition-footer"><div><strong>{selected?.name||'Choose a resource'}</strong><p>{selected?.description||'Select a gathering location above.'}</p></div><button type="button" className="fc-start-button" disabled={!canAct||busy||!selected||gatherLeft===0} onClick={doGather}>{busy?'Exploring…':'Set out on expedition'}</button></div>
+    <label className="fc-mature-opt"><input type="checkbox" checked={allowMature} onChange={e=>setAllowMature(e.target.checked)}/><span>Include optional adult-themed narrative encounters (18+). These may be declined without an additional penalty.</span></label>
+    <div className="fc-expedition-footer"><div><strong>{selected?.name||'Choose a resource'}</strong><p>{selected?.description||'Select a gathering location above.'}</p></div><button type="button" className="fc-start-button" disabled={!canAct||busy||!selected||gatherLeft===0||!!encounterData.active} onClick={doGather}>{busy?'Exploring…':'Set out on expedition'}</button></div>
+    {encounterData.active&&<p className="fc-encounter-continue">An expedition encounter is still underway. Resolve it before leaving again.</p>}
     <p className="fc-scene-hint">Five expeditions per member per UTC day. Finds are recorded for the whole FC, never in a private inventory.</p>
    </div>}
    {tab==='craft'&&<div className="fc-scene"><div className="fc-scene-title"><div><span>THE ALCHEMIST'S TABLE</span><h3>Turn common stores into something new</h3><p>Choose a blueprint and prepare its ingredients. Finished goods are returned to the FC's stores.</p></div></div>
@@ -112,7 +121,35 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
     <h4 className="fc-ledger-title">Recent contributions</h4><div className="fc-ledger">{data.ledger.map(l=><div key={l.id}><span><strong>{l.name}</strong><small>{l.display_name} · {l.activity.replace('_',' ')} · {new Date(l.created_at).toLocaleDateString()}</small></span><strong className={Number(l.delta)>=0?'gain':'loss'}>{Number(l.delta)>0?'+':''}{l.delta}</strong></div>)}{!data.ledger.length&&<p>The ledger is ready for its first contribution.</p>}</div>
    </div>}
   </>}
-  {reveal&&<div className="fc-reveal-backdrop" role="presentation"><section className="fc-reveal" role="dialog" aria-modal="true" aria-label="Activity complete"><span>✦</span><p>{reveal.type==='gather'?'EXPEDITION COMPLETE':reveal.type==='craft'?'CRAFTING COMPLETE':'HARVEST COMPLETE'}</p><h3>{reveal.quantity>0?'+ '+reveal.quantity+' '+reveal.name:'An empty-handed return'}</h3><small>{reveal.quantity>0?'Added to the shared Order stores':'The expedition was recorded; try another route next time.'}</small><button type="button" onClick={()=>setReveal(null)}>Continue</button></section></div>}
+  {encounterData.active&&<div className="fc-reveal-backdrop"><section className="fc-encounter-dialog" role="dialog" aria-modal="true" aria-label="Wilderness encounter">
+   <span className="fc-encounter-category">{encounterData.active.kind==='mature'?'OPTIONAL ADULT ROLEPLAY':encounterData.active.kind==='wildlife'?'WILDLIFE ENCOUNTER':encounterData.active.kind==='bandits'?'HOSTILE ENCOUNTER':'UNUSUAL DISCOVERY'}</span>
+   <div className="fc-encounter-emblem" aria-hidden="true">{encounterData.active.kind==='wildlife'?'♞':encounterData.active.kind==='bandits'?'⚔':encounterData.active.kind==='mature'?'☾':'✧'}</div>
+   <h3>{encounterData.active.name}</h3><p>{encounterData.active.description}</p>
+   {['wildlife','bandits'].includes(encounterData.active.kind)&&<div className="fc-encounter-health">
+    <label>Your stamina <strong>{encounterData.active.player_health}/12</strong></label><div className="fc-healthbar"><span style={{width:Math.max(0,Number(encounterData.active.player_health)/12*100)+'%'}}/></div>
+    <label>Opponent <strong>{encounterData.active.enemy_health}</strong></label><div className="fc-healthbar hostile"><span style={{width:Math.min(100,Number(encounterData.active.enemy_health)/(encounterData.active.kind==='wildlife'?9:12)*100)+'%'}}/></div>
+    <small>Turn {encounterData.active.turn_number} of 6 · Attack uses a d20 roll</small>
+   </div>}
+   {encounterMessage&&<p className="fc-encounter-feedback" role="status">{encounterMessage}</p>}
+   <div className="fc-encounter-actions">
+    {['wildlife','bandits'].includes(encounterData.active.kind)?<><button type="button" disabled={busy} onClick={()=>resolveEncounter('attack')}>⚔ Attack (d20)</button><button type="button" className="secondary" disabled={busy} onClick={()=>resolveEncounter('retreat')}>Withdraw safely</button></>:<><button type="button" disabled={busy} onClick={()=>resolveEncounter('continue')}>{encounterData.active.kind==='mature'?'Participate (fade to black)':'Investigate'}</button><button className="secondary" type="button" disabled={busy} onClick={()=>resolveEncounter('decline')}>Decline and continue</button></>}
+   </div>
+  </section></div>}
+  {encounterEditor&&command&&<div className="fc-reveal-backdrop"><section className="fc-catalog-dialog" role="dialog" aria-modal="true" aria-label="Manage expedition encounters">
+   <header><div><span>ORDER COMMAND · EXPEDITIONS</span><h3>Encounter library</h3></div><button type="button" aria-label="Close encounter editor" onClick={()=>{setEncounterEditor(null);setError('')}}>×</button></header>
+   {error&&<p className="fc-catalog-error" role="alert">{error.replaceAll('_',' ')}</p>}
+   <div className="fc-encounter-library"><button type="button" className={!encounterEditor.id?'selected':''} onClick={()=>setEncounterEditor(scenarioEmpty())}>+ New encounter</button>{encounterData.scenarios.map(item=><button type="button" key={item.id} className={encounterEditor.id===item.id?'selected':''} onClick={()=>setEncounterEditor({...item,enabled:!!item.enabled})}>{item.name}{!item.enabled?' (inactive)':''}</button>)}</div>
+   <div className="fc-catalog-fields">
+    <label>Encounter name<input maxLength={110} value={encounterEditor.name} onChange={e=>setEncounterEditor({...encounterEditor,name:e.target.value})}/></label>
+    <label>Type<select value={encounterEditor.kind} onChange={e=>setEncounterEditor({...encounterEditor,kind:e.target.value})}><option value="wildlife">Wild animal</option><option value="bandits">Hostile NPC</option><option value="mystery">Mystery / discovery</option><option value="mature">Optional adult RP (18+)</option></select></label>
+    <label>Scene description<textarea maxLength={1800} value={encounterEditor.description} onChange={e=>setEncounterEditor({...encounterEditor,description:e.target.value})}/></label>
+    <label>Successful outcome<textarea maxLength={600} value={encounterEditor.outcome_text} onChange={e=>setEncounterEditor({...encounterEditor,outcome_text:e.target.value})}/></label>
+    <div className="fc-encounter-settings"><label>Spawn weight<input type="number" min="1" max="100" value={encounterEditor.weight} onChange={e=>setEncounterEditor({...encounterEditor,weight:e.target.value})}/></label><label>NPC HP<input type="number" min="1" max="100" value={encounterEditor.enemy_health} onChange={e=>setEncounterEditor({...encounterEditor,enemy_health:e.target.value})}/></label><label>NPC defense<input type="number" min="1" max="20" value={encounterEditor.enemy_defense} onChange={e=>setEncounterEditor({...encounterEditor,enemy_defense:e.target.value})}/></label></div>
+    {encounterEditor.id&&<label className="fc-encounter-enabled"><input type="checkbox" checked={!!encounterEditor.enabled} onChange={e=>setEncounterEditor({...encounterEditor,enabled:e.target.checked})}/> Enabled for expeditions</label>}
+    <button type="button" disabled={busy||!encounterEditor.name.trim()||!encounterEditor.description.trim()} onClick={saveScenario}>Save encounter</button>
+   </div>
+  </section></div>}
+  {reveal&&<div className="fc-reveal-backdrop" role="presentation"><section className="fc-reveal" role="dialog" aria-modal="true" aria-label="Activity complete"><span>✦</span><p>{reveal.type==='gather'?'EXPEDITION COMPLETE':reveal.type==='craft'?'CRAFTING COMPLETE':'HARVEST COMPLETE'}</p><h3>{reveal.quantity>0?'+ '+reveal.quantity+' '+reveal.name:'An empty-handed return'}</h3><small>{reveal.encounterText|| (reveal.quantity>0?'Added to the shared Order stores':'The expedition was recorded; try another route next time.')}</small><button type="button" onClick={()=>setReveal(null)}>Continue</button></section></div>}
   {catalog&&command&&data&&<div className="fc-reveal-backdrop"><section className="fc-catalog-dialog" role="dialog" aria-modal="true" aria-label="Expand workshop catalog">
    <header><div><span>ORDER COMMAND</span><h3>Expand the workshop</h3></div><button type="button" aria-label="Close" onClick={()=>setCatalog(null)}>×</button></header>
    {error&&<p className="fc-catalog-error" role="alert">{error.replaceAll('_',' ')}</p>}
