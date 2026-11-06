@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS faction_reputation_changes (
  INDEX ix_rep_history(faction_id,created_at),
  INDEX ix_rep_person(account_id,created_at),
  CONSTRAINT fk_rep_history_faction FOREIGN KEY(faction_id) REFERENCES order_factions(id) ON DELETE CASCADE,
- CONSTRAINT fk_rep_history_person FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+ CONSTRAINT fk_rep_history_person FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
  CONSTRAINT fk_rep_history_author FOREIGN KEY(authored_by) REFERENCES accounts(id) ON DELETE RESTRICT,
  CONSTRAINT fk_rep_history_event FOREIGN KEY(source_event_id) REFERENCES order_encounters(id) ON DELETE SET NULL,
  CONSTRAINT ck_rep_scope CHECK ((target='player' AND account_id IS NOT NULL) OR (target<>'player' AND account_id IS NULL)),
