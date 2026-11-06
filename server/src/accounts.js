@@ -28,7 +28,7 @@ export async function accountRoute(pool,req,path){
  if(!actor||actor.account_role!=='domina')return error(403,'forbidden');
  if(path==='/admin/accounts'&&req.method==='GET'){
   const [rows]=await pool.query(
-   'SELECT id AS user_id,email,display_name,account_role AS role,standing,syndicate_rank,is_active,approval_status,created_at FROM accounts ORDER BY (approval_status="pending") DESC,created_at DESC'
+   'SELECT a.id AS user_id,a.email,a.display_name,l.discord_username,a.account_role AS role,a.standing,a.syndicate_rank,a.is_active,a.approval_status,a.created_at FROM accounts a LEFT JOIN account_discord_links l ON l.account_id=a.id ORDER BY (a.approval_status="pending") DESC,a.created_at DESC'
   );
   return {status:200,body:rows};
  }
