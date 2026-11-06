@@ -26,7 +26,13 @@ const configured=env=>Boolean(validSnowflake(env.DISCORD_CLIENT_ID)&&env.DISCORD
 // Never trust request-supplied URLs, identities, or scopes; use server configuration only.
 export function discordOAuthConfig(env=process.env){
  if(!configured(env))return null;
- const site=env.DISCORD_FRONTEND_URL||env.API_ALLOWED_ORIGIN+'/';
+ // GitHub Pages project repositories do not serve an app at the account's root.
+ // Normalize the legacy root setting as well as an omitted URL.
+ const root=env.API_ALLOWED_ORIGIN+'/';
+ const projectSite=new URL('/eclipse-order-dashboard/',root).href;
+ const pagesOrigin=new URL(root).hostname==='evelynrose20.github.io';
+ const configuredSite=env.DISCORD_FRONTEND_URL?.trim()||root;
+ const site=pagesOrigin&&new URL(configuredSite).pathname==='/'?projectSite:configuredSite;
  let siteUrl;
  try{siteUrl=new URL(site)}catch{return null}
  if(siteUrl.origin!==env.API_ALLOWED_ORIGIN||siteUrl.protocol!=='https:'||siteUrl.username||siteUrl.password||siteUrl.hash)return null;
@@ -119,7 +125,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
    membership=await joinGuild(identity.id,identity.accessToken,{env,httpFetch});
   }
   if(membership!=='member'){
-   const problem=membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':'discord_server_check_unavailable';
+   const problem=membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable';
    return redirect(config,{discord_error:problem});
   }
   const target=rows[0].target_account_id;
@@ -160,7 +166,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   if(!rows.length)return fail(409,'discord_ticket_expired');
   const item=rows[0];
   const membership=await checkGuildMember(item.discord_user_id,{env,httpFetch,useCache:false});
-  if(membership!=='member')return fail(403,membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':'discord_server_check_unavailable');
+  if(membership!=='member')return fail(403,membership==='not_member'?'discord_not_in_server':membership==='screening'?'discord_membership_screening':membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable');
   const [links]=await pool.execute('SELECT account_id FROM account_discord_links WHERE discord_user_id=? AND account_id=? LIMIT 1',[item.discord_user_id,item.account_id]);
   if(!links.length){
    const session=await resolveSession(pool,request,{allowUnlinked:true});
