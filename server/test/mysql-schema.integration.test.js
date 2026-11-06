@@ -16,7 +16,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -75,6 +75,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/020_fc_crafting_garden.sql',import.meta.url),'utf8'));
   const [[expeditionTable]]=await admin.query("SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_gathering_runs'");
   assert.equal(Number(expeditionTable.n),1);
+  const [zones]=await admin.query('SELECT id,minimum_level FROM fc_expedition_zones');
+  assert.equal(zones.length,3);
   const [[plotCount]]=await admin.query('SELECT COUNT(*) AS n FROM fc_garden_plots');
   assert.equal(Number(plotCount.n),2,'setup should not duplicate FC garden plots');
   const [tables]=await admin.query('SHOW TABLES');
@@ -135,6 +137,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(myProfile.body.user.syndicate_rank,'domina');
   const char=await characterRoute(admin,request('POST',{name:'CI Hero',class_id:'warrior',str:15,dex:14,con:13,int:12,wis:10,cha:8}),'/characters');
   assert.equal(char.status,201,JSON.stringify(char.body));
+  const [[starterZone]]=await admin.execute("SELECT minimum_level FROM fc_expedition_zones WHERE id='ironridge-quarry'");
+  assert.equal(starterZone.minimum_level,5);
+  const tooLow=await craftingRoute(admin,request('POST',{zone_id:'ironridge-quarry',material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
+  assert.equal(tooLow.status,403,'level one character cannot enter a level five zone');
+  await admin.execute("UPDATE characters SET sheet_json=JSON_SET(sheet_json,'$.level',5) WHERE id=?",[char.body.id]);
   const [encounterScenarios]=await admin.query('SELECT id,kind,enabled FROM fc_expedition_scenarios ORDER BY id');
   assert.ok(encounterScenarios.some(item=>item.kind==='wildlife'));
   assert.ok(encounterScenarios.some(item=>item.kind==='mature'));
@@ -142,7 +149,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query('UPDATE fc_expedition_scenarios SET enabled=0');
   let gatheredTotal=0;
   for(let attempt=0;attempt<5;attempt++){
-   const gathered=await craftingRoute(admin,request('POST',{material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
+   const gathered=await craftingRoute(admin,request('POST',{zone_id:'ironridge-quarry',material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
    assert.equal(gathered.status,200,JSON.stringify(gathered.body));
    assert.ok(gathered.body.quantity>=1&&gathered.body.quantity<=4);
    gatheredTotal+=gathered.body.quantity;
@@ -165,16 +172,16 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,5);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_input').length,1);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_output').length,1);
-  const newScenario=await craftingRoute(admin,request('POST',{id:'forest-wolf',name:'Forest Wolf',kind:'wildlife',description:'A wolf stands in the path.',outcome_text:'The wolf flees.',weight:10,enemy_health:7,enemy_defense:10}),'/workshop/encounters/scenarios');
+  const newScenario=await craftingRoute(admin,request('POST',{id:'forest-wolf',name:'Forest Wolf',kind:'wildlife',description:'A wolf stands in the path.',outcome_text:'The wolf flees.',failure_text:'The wolf wins the fight.',retreat_text:'The adventurer retreats.',decline_text:'The wolf is avoided.',weight:10,enemy_health:7,enemy_defense:10}),'/workshop/encounters/scenarios');
   assert.equal(newScenario.status,200,JSON.stringify(newScenario.body));
   const [[addedScenario]]=await admin.query("SELECT name FROM fc_expedition_scenarios WHERE id='forest-wolf'");
   assert.equal(addedScenario.name,'Forest Wolf');
-  const invalidScenario=await craftingRoute(admin,request('POST',{id:'bad',name:'Bad',kind:'wildlife',description:'Danger',outcome_text:'',weight:0,enemy_health:7,enemy_defense:10}),'/workshop/encounters/scenarios');
+  const invalidScenario=await craftingRoute(admin,request('POST',{id:'bad',name:'Bad',kind:'wildlife',description:'Danger',outcome_text:'',failure_text:'Failure.',retreat_text:'Retreat.',decline_text:'Declined.',weight:0,enemy_health:7,enemy_defense:10}),'/workshop/encounters/scenarios');
   assert.equal(invalidScenario.status,400);
 
   const newMaterial=await craftingRoute(admin,request('POST',{id:'gloom-moss',name:'Gloom Moss',category:'botanical',description:'A fictional shade garden crop.'}),'/workshop/catalog/materials');
   assert.equal(newMaterial.status,200,JSON.stringify(newMaterial.body));
-  const newRecipe=await craftingRoute(admin,request('POST',{id:'moss-balm',name:'Moss Balm',description:'Fantasy medicinal crafting.',output_material:'herbal-tonic',output_quantity:1,inputs:[{material_id:'gloom-moss',quantity:2}]}),'/workshop/catalog/recipes');
+  const newRecipe=await craftingRoute(admin,request('POST',{id:'moss-balm',name:'Moss Balm',description:'Fantasy medicinal crafting.',output_material:'herbal-tonic',output_quantity:1,minimum_level:1,inputs:[{material_id:'gloom-moss',quantity:2}]}),'/workshop/catalog/recipes');
   assert.equal(newRecipe.status,200,JSON.stringify(newRecipe.body));
   const [[recipeEntry]]=await admin.query("SELECT name FROM fc_recipes WHERE id='moss-balm'");
   assert.equal(recipeEntry.name,'Moss Balm');
