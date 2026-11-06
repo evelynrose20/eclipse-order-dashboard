@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,updateMonsterTemplate,deleteMonsterTemplate,addMonsterToEncounter,rollAllInitiative} from './apiBridge.js';
+import {listEncounters,createEncounter,addCombatant,editCombatant,deleteCombatant,encounterTurn,encounterCheck,pauseEncounter,listMonsterTemplates,createMonsterTemplate,updateMonsterTemplate,deleteMonsterTemplate,addMonsterToEncounter,rollAllInitiative,archiveEncounter,restoreEncounter,deleteEncounter} from './apiBridge.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import './encounters.css';
 import BattleMap from './BattleMap.jsx';
@@ -28,13 +28,16 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const [railMode,setRailMode]=useState('turns');
  const [railOpen,setRailOpen]=useState(true);
  const [scenesOpen,setScenesOpen]=useState(false);
+ const [showArchived,setShowArchived]=useState(false);
+ const [notice,setNotice]=useState('');
  const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
+ const shownScenes=data.filter(e=>showArchived?Boolean(e.archived_at):!e.archived_at);
  const canDirect=Boolean(!playerFacing&&selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId)));
  const isParticipant=Boolean(selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
  const isDirector=Boolean(!playerFacing&&selected?.created_by===userId);
  const activeCombatant=selected?.combatants?.[selected.turn_index%Math.max(1,selected.combatants.length)];
- async function refresh(){const x=await listEncounters();const visible=playerFacing?x.filter(e=>e.published):previewOnly?x.filter(e=>e.published||e.combatants.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId))):x;setData(visible);setChosenId(old=>visible.some(e=>e.id===old)?old:visible[0]?.id||'')}
+ async function refresh(){const x=await listEncounters();const visible=playerFacing?x.filter(e=>e.published):previewOnly?x.filter(e=>e.published||e.combatants.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId))):x;setData(visible);setChosenId(old=>visible.some(e=>e.id===old&&!e.archived_at)?old:visible.find(e=>!e.archived_at)?.id||'')}
  useEffect(()=>{
   refresh().catch(e=>setError(e.message));
   if(directorRole)listMonsterTemplates().then(setMonsters).catch(e=>setError(e.message));
@@ -44,7 +47,27 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   const reload=async()=>{try{const result=await encounterCheck(chosenId);if(active)setCheck(result)}catch(e){if(active)setError(e.message)}};
   reload();const timer=setInterval(reload,30000);return()=>{active=false;clearInterval(timer)}
  },[chosenId]);
- async function action(fn){if(previewOnly)return;setWorking(true);setError('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
+ async function action(fn){if(previewOnly)return;setWorking(true);setError('');setNotice('');try{const result=await fn();await refresh();if(chosenId)setCheck(await encounterCheck(chosenId));return result}catch(e){setError(e.message)}finally{setWorking(false)}}
+ async function changeArchive(archive){
+  if(!selected||!canDirect||working)return;
+  if(archive&&!window.confirm('Archive "'+selected.name+'"? You can restore it later.'))return;
+  setWorking(true);setError('');setNotice('');
+  try{
+   if(archive)await archiveEncounter(selected.id);else await restoreEncounter(selected.id);
+   setNotice(archive?'Scene archived. You can restore it from Archived scenes.':'Scene restored.');
+   setShowArchived(!archive);setChosenId('');await refresh();
+  }catch(e){setError(e.message)}finally{setWorking(false)}
+ }
+ async function removeScene(){
+  if(!selected?.archived_at||!canDirect||working)return;
+  const answer=window.prompt('Permanently delete this archived scene and all linked combat, signups and roll history? Type the full scene name to confirm:');
+  if(answer!==selected.name)return;
+  setWorking(true);setError('');setNotice('');
+  try{
+   await deleteEncounter(selected.id);
+   setNotice('Scene permanently deleted.');setChosenId('');await refresh();
+  }catch(e){setError(e.message)}finally{setWorking(false)}
+ }
  async function createEvent(details){
   const id=await action(()=>createEncounter(details.name,details.description||'',details.themes));
   if(!id)return;
@@ -80,16 +103,18 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  }
 
  return <div className={'encounter-layout encounter-studio encounter-dm-view'+(focusMode?' scene-focus':'')+(railOpen?'':' rail-collapsed')}>
-  <aside className="panel encounter-sidebar"><div className="encounter-studio-aside-header"><span className="encounter-eyebrow">THE ECLIPSE ORDER</span><h2>DM Studio</h2><p>Run stories and command the battlefield.</p><button type="button" className="mini-btn encounter-scenes-toggle" aria-expanded={scenesOpen} onClick={()=>setScenesOpen(v=>!v)}>{scenesOpen?'Hide scenes':'Scenes'}</button>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New encounter</button>}</div>{scenesOpen&&<><div className="encounter-studio-list-label">ENCOUNTERS <span>{data.length}</span></div>
-   <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('map');setError('')}}>
-    <span className="encounter-choice-state">{e.status==='active'?'LIVE':e.status==='draft'?'PREPARING':e.status.toUpperCase()}</span><strong>{e.name}</strong><small>{e.combatants.length} combatants · {e.signup_count||0}/{e.capacity||8} party</small></button>)}</div></>}
+  <aside className="panel encounter-sidebar"><div className="encounter-studio-aside-header"><span className="encounter-eyebrow">THE ECLIPSE ORDER</span><h2>DM Studio</h2><p>Run stories and command the battlefield.</p><button type="button" className="mini-btn encounter-scenes-toggle" aria-expanded={scenesOpen} onClick={()=>setScenesOpen(v=>!v)}>{scenesOpen?'Hide scenes':'Scenes'}</button>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New encounter</button>}</div>{scenesOpen&&<><div className="encounter-scene-filters" role="group" aria-label="Scene list"><button type="button" aria-pressed={!showArchived} className={!showArchived?'active':''} onClick={()=>{setShowArchived(false);setChosenId('')}}>Current</button><button type="button" aria-pressed={showArchived} className={showArchived?'active':''} onClick={()=>{setShowArchived(true);setChosenId(data.find(e=>e.archived_at)?.id||'')}}>Archived ({data.filter(e=>e.archived_at).length})</button></div><div className="encounter-studio-list-label">{showArchived?'ARCHIVED SCENES':'ENCOUNTERS'} <span>{shownScenes.length}</span></div>
+   <div className="encounter-list">{shownScenes.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('map');setError('')}}>
+    <span className="encounter-choice-state">{e.archived_at?'ARCHIVED':e.status==='active'?'LIVE':e.status==='draft'?'PREPARING':e.status.toUpperCase()}</span><strong>{e.name}</strong><small>{e.combatants.length} combatants · {e.signup_count||0}/{e.capacity||8} party</small></button>)}</div></>}
   </aside>
   <main className="encounter-main">
    {creating&&directorRole?<section className="panel"><div className="panel-heading"><div><h2>Plan a new FC event</h2><p>Build the event privately, schedule it, open sign-ups, then prepare monsters and party members.</p></div><button className="mini-btn" onClick={()=>setCreating(false)}>Cancel</button></div><EventEditor key="new-event" event={null} save={createEvent} working={working}/></section>:
    !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
+    {error&&<div className="encounter-feedback error" role="alert"><strong>Action couldn't be completed</strong><span>{error}</span><button className="mini-btn" type="button" onClick={()=>setError('')}>Dismiss</button></div>}
+    {notice&&<div className="encounter-feedback success" role="status"><span>{notice}</span><button className="mini-btn" type="button" onClick={()=>setNotice('')}>Dismiss</button></div>}
     <header className="encounter-studio-header">
      <div><span className="encounter-eyebrow">DM WORKSPACE · {selected.status.toUpperCase()}</span><h2>{selected.name}</h2><p>{selected.location||'Location unassigned'} · {selected.combatants.length} combatants · Round {selected.round_number||1}</p></div>
-     <div className="encounter-studio-header-actions"><button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
+     <div className="encounter-studio-header-actions">{canDirect&&(selected.archived_at?<><button className="btn secondary" disabled={working} onClick={()=>changeArchive(false)}>Restore scene</button><button className="btn secondary encounter-danger" disabled={working} onClick={removeScene}>Delete permanently</button></>:<button className="btn secondary" disabled={working||['active','paused'].includes(selected.status)} onClick={()=>changeArchive(true)} title={['active','paused'].includes(selected.status)?'Finish the encounter before archiving':'Archive scene'}>Archive</button>)}<button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
       {canDirect&&selected.status==='draft'&&<button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start the encounter now?'))action(()=>encounterTurn(chosenId,'start'))}}>Start encounter</button>}
       {canDirect&&selected.status==='active'&&<button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button>}
      </div>
@@ -155,7 +180,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     </section>}
     {section==='dice'&&((isParticipant||canDirect)&&!(previewOnly&&!isParticipant)?<DicePanel classCatalog={classCatalog} key={selected.id} previewOnly={previewOnly} isDirector={isDirector} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>:<section className="panel"><h2>Dice & checks</h2><p className="muted">Only approved party participants and the GM can roll. Sign up first, then have the GM add your character to the party.</p></section>)}
    </>}
-   {error&&<div className="alert" role="alert">{error}</div>}
+
   </main>
  </div>;
 }
