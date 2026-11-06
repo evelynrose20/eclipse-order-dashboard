@@ -23,7 +23,8 @@ export const abilityModifier=score=>Math.floor((Number(score??10)-10)/2);
 export function classArmor(sheet,klass){
  const role=klass?.job_role;
  const tank=role==='tank'||['warrior','paladin','warrior-job','dark-knight','gunbreaker','bastion'].includes(sheet?.class_id);
- return Math.max(5,10+abilityModifier(sheet?.dex)+(tank?2:0));
+ const level=Math.min(20,Math.max(1,Number(sheet?.level)||1));
+ return Math.max(5,10+abilityModifier(sheet?.dex)+(tank?2:0)+Math.floor((level-1)/5));
 }
 export const proficiencyForLevel=level=>Math.min(6,2+Math.floor((level-1)/4));
 export function unlockedClassFeatures(classId,level,definition=CLASSES[classId]){
