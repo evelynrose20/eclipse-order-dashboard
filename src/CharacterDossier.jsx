@@ -16,7 +16,7 @@ function TextCard({title,body}){
 }
 export default function CharacterDossier({
  character,playerPreview=false,canEdit=false,onEdit,onOpenPreferences,
- canCommand=false,request,onRefresh,onLinkToMe,linking=false,classCatalog={},userId
+ canCommand=false,request,onRefresh,classCatalog={},userId
 }){
  const restricted=isDossierRestricted(character,playerPreview);
  const summary=dossierSummary(character,playerPreview);
@@ -38,7 +38,7 @@ export default function CharacterDossier({
    </div>
    {canEdit&&!restricted&&<button type="button" className="btn primary dossier-edit" onClick={onEdit}>Edit character</button>}
   </header>
-  {!restricted&&canCommand&&!character.player_user_id&&!character.collar_bound&&<div className="dossier-account-link"><div><strong>Player account not linked</strong><p>This character can be viewed by Order staff, but cannot be selected for personal event signups until linked to a player account.</p></div><button type="button" className="btn secondary" disabled={linking} onClick={()=>onLinkToMe?.(character.id)}>{linking?"Linking…":"Link to my account"}</button></div>}
+
   {restricted&&<div className="dossier-seal" role="note"><strong>Arcane binding · Limited character knowledge</strong><p>This in-character view intentionally hides sealed mechanical and private fields. Your OOC account preferences remain under your control.</p></div>}
   <div className="dossier-frame">
    <nav className="dossier-tabs" aria-label="Character dossier sections">

@@ -45,17 +45,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
   if(profile.role==='domina')setMembers(await request('/admin/accounts'));
  };
  useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message))},[profile.id]);
- const linkToMe=async(charId)=>{
-  if(!admin)return;
-  const found=characters.find(c=>c.id===charId);
-  if(!found||found.player_user_id||found.collar_bound){setMessage('This character cannot be linked from here.');return;}
-  setBusy(true);setMessage('');
-  try{
-   await request('/characters/'+charId+'/assign',{method:'POST',body:{player_user_id:profile.id,handler_user_id:found.handler_user_id||null}});
-   await load();setMessage(found.name+' is now linked to your account.');
-  }catch(err){setMessage(err.message)}
-  finally{setBusy(false)}
- };
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
  const visibleCharacters=playerPreview?characters.filter(c=>c.player_user_id===profile.id):characters;
@@ -87,9 +76,14 @@ export default function LocalWorkspace({profile,request,onLogout}){
    const created=await request(form.id?'/characters/'+form.id:'/characters',
     {method:form.id?'PUT':'POST',body:form});
    const id=form.id||created.id;
-   if(admin&&id&&(form.player_user_id||form.handler_user_id))await request('/characters/'+id+'/assign',{
-    method:'POST',body:{player_user_id:form.player_user_id||null,handler_user_id:form.handler_user_id||null}
-   });
+   // Handler assignment is a separate Order duty. Account ownership is never edited here.
+   const original=form.id?characters.find(c=>c.id===form.id):null;
+   if(admin&&original&&original.handler_user_id!==form.handler_user_id){
+    await request('/characters/'+id+'/assign',{method:'POST',body:{
+     player_user_id:original.player_user_id||null,handler_user_id:form.handler_user_id||null
+    }});
+   }
+
    setDraft(null);await load();
    if(created.id)setSelected(created.id);
    setMessage('Character sheet saved.');
@@ -122,13 +116,13 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='sheet'&&<>
      <div className="eo-toolbar"><h2>Character sheets</h2>{admin&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>+ New sheet</button>}</div>
      {visibleCharacters.length>0&&<select className="eo-sheet-picker" value={character?.id||''} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{visibleCharacters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
-     {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} classCatalog={classCatalog} canCommand={admin} members={members} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
-     character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} request={request} onRefresh={load} onLinkToMe={linkToMe} linking={busy} classCatalog={classCatalog} userId={profile.id}/>:
+     {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} classCatalog={classCatalog} canCommand={admin} members={members} userId={profile.id} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
+     character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} request={request} onRefresh={load} classCatalog={classCatalog} userId={profile.id}/>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
     {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
-    {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} canLinkCharacters={admin} onLinkCharacter={linkToMe} linking={busy} isStaff={staff}/>}
+    {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} isStaff={staff}/>}
     {tab==='encounters'&&(playerPreview||!staff?<PlayerBattleView key={playerPreview?'preview-battle':'member-battle'}/>:<Encounters classCatalog={classCatalog} key="dm-studio" role={profile.role} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>)}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
     {tab==='directory'&&<MemberRPDirectory/>}
