@@ -20,10 +20,10 @@ import './dashboard.css';
 import './local-accounts.css';
 
 const memberIdentity=member=>{
- const email=String(member?.email||'');
- const placeholder=/^discord-\\d+@members\\.eclipse\\.invalid$/i.test(email);
- return placeholder?(member?.discord_username||member?.display_name||'Discord member'):email||member?.discord_username||member?.display_name||'Order member';
+ const label=String(member?.discord_username||member?.display_name||'').trim();
+ return label&&!/^discord-\\d+@members\\.eclipse\\.invalid$/i.test(label)?label:'Order member';
 };
+const memberMonogram=memberIdentityValue=>memberIdentityValue.trim().split(/\\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('')||'EO';
 const ROLE_OPTIONS=['member','handler','high_command','domina'];
 const field=(label,value,update)=> <label className="field"><span>{label}</span><input value={value??''} onChange={e=>update(e.target.value)}/></label>;
 const canManage=role=>role==='domina'||role==='high_command';
@@ -97,7 +97,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   finally{setBusy(false)}
  };
  return <div className="app-shell eo-local">
-  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram">EO</div><div><strong>{syndicateRankLabel(profile.syndicate_rank)}</strong><small>{memberIdentity(profile)}</small></div></div>}/>
+  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram" aria-hidden="true">{memberMonogram(memberIdentity(profile))}</div><div className="side-identity"><strong title={memberIdentity(profile)}>{memberIdentity(profile)}</strong><small>{syndicateRankLabel(profile.syndicate_rank)}</small></div></div>}/>
   <main className="main">
    <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className={"content"+(tab==='encounters'?" encounter-content":"")}>
