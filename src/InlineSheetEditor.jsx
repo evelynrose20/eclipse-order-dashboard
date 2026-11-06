@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './inline-sheet.css';
 import {xpForLevel} from './progressionRules.js';
-import {ATTRIBUTES,ROLES,BUDGET,pointsSpent,creationIssue,characterClassGroups,editorJobPreview} from './characterEditorRules.js';
+import {ATTRIBUTES,BUDGET,POINT_COST,pointsSpent,creationIssue,characterClassGroups,editorJobPreview} from './characterEditorRules.js';
 
 const SECTIONS=[
  ['identity','Identity & job','Character name, race, class and background'],
@@ -64,7 +64,7 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
  const canSave=!saving&&String(form.name||'').trim()&&(!firstCreation||!issue);
  const fieldSet=(key)=>FIELDS[key].map(([id,label])=><Field key={id} name={id} label={label} form={form} onSet={set} disabled={!canCommand&&NO_EDIT_CREATION.has(id)} />);
  const sectionIndex=SECTIONS.findIndex(s=>s[0]===section);
- return <form className="inline-sheet-editor" onSubmit={submit}>
+ return <form className="inline-sheet-editor" onSubmit={submit} noValidate>
   <div className="inline-sheet-top">
    <div><small>{firstCreation?'NEW CHARACTER / CREATION':'CHARACTER DOSSIER / EDITING'}</small><h2>{form.name||'Unnamed character'}</h2>
     <p>{firstCreation?'Build a new character using the Order’s 20-level FFXIV-inspired class rules.':'Update character details. Current XP, class and locked progression values are preserved.'}</p>
@@ -102,7 +102,7 @@ export default function InlineSheetEditor({character,canCommand,members=[],onSav
     <div className="inline-point-banner locked"><div><span>CHARACTER PROGRESSION</span><strong>Level {form.level||1}</strong></div><p>{tracked?'Ability scores and class saving throws are locked after creation. Spend earned ability points from the dossier’s Progression tab.':'This legacy character may retain editable scores until migrated to managed progression.'}</p></div>}
    <div className="inline-abilities">{ATTRIBUTES.map(([key,label])=>{
     const score=Number(form[key]??8);const modifier=Math.floor((score-10)/2);
-    return <label key={key}><span>{label}</span><input type="number" min={firstCreation?8:1} max={firstCreation?15:30} disabled={tracked&&!firstCreation} value={form[key]??8} onChange={e=>set(key,Number(e.target.value))}/><small>{modifier>=0?'+':''}{modifier} modifier{firstCreation&&score in {8:1,9:1,10:1,11:1,12:1,13:1,14:1,15:1}?' · '+({8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9})[score]+' pts':''}</small></label>})}</div>
+    return <label key={key}><span>{label}</span><input type="number" min={firstCreation?8:1} max={firstCreation?15:30} disabled={tracked&&!firstCreation} value={form[key]??8} onChange={e=>set(key,Number(e.target.value))}/><small>{modifier>=0?'+':''}{modifier} modifier{firstCreation&&Object.hasOwn(POINT_COST,score)?' · '+POINT_COST[score]+' pts':''}</small></label>})}</div>
    <div className="inline-proficiency-head"><div><h4>Saving throws</h4><p>{firstCreation?'Automatically determined by your chosen job.':'Class saving throws are preserved by progression rules.'}</p></div><div>{preview?.saves.join(' · ')||'Select a job'}</div></div>
    {!firstCreation&&<div className="inline-checkboxes">{ATTRIBUTES.map(([key,label])=><label key={key}><input type="checkbox" checked={Boolean(form.saving_throws?.[key])} disabled={tracked} onChange={e=>set('saving_throws',{...form.saving_throws,[key]:e.target.checked})}/>{label}</label>)}</div>}
    <h4>Skill proficiencies</h4><p className="muted">Select the noncombat skills that reflect this character’s training.</p>
