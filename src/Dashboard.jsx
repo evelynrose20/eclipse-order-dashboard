@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SLAVES, RANKS } from './data/initialData.js';
+import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
 import './dashboard.css';
 import './shared-login.css';
 import {configured,currentSession,signIn,signOut,loadSharedCharacters,saveSharedCharacter,removeSharedCharacter,importSharedCharacters,loadMyRole,loadOrderMembers,updateOrderMemberRole,updateOrderMemberStanding} from './supabase.js';
@@ -80,6 +81,7 @@ export default function Dashboard() {
   const canEdit = c => Boolean(c && (canCommand || (canHandle&&c.handler_user_id===session?.user?.id) || (accountRole==='member'&&c.player_user_id===session?.user?.id&&!c.collar_bound)));
   const availableNav=NAV.filter(([id])=>(id!=='members'||['domina','high_command'].includes(accountRole))&&(configured||!['scenes','profile','directory','transitions'].includes(id)));
   const [tab,setTab] = useState('overview');
+  const [menuOpen,setMenuOpen] = useState(false);
   const [search,setSearch] = useState('');
   const [rankFilter,setRankFilter] = useState('all');
   const [rosterGroup,setRosterGroup] = useState('free');
@@ -204,15 +206,9 @@ export default function Dashboard() {
     <button className="btn primary" type="submit">Sign in</button><small>Ask an administrator to provision your account.</small>
   </form></div>;
   return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-sigil">✦</span><div><strong>ECLIPSE ORDER</strong><small>THE UNDERWORLD LEDGER</small></div></div>
-      <div className="workspace-chip"><span className="pulse"/> The Order <small>Private members' ledger</small></div>
-      <p className="nav-label">COMMAND CENTER</p>
-      <nav aria-label="Primary navigation">{availableNav.map(([id,label,symbol])=><button key={id} className={'nav-link '+(tab===id?'active':'')} onClick={()=>{setTab(id);setEditor(null);}}><span className="nav-symbol">{symbol}</span>{label}</button>)}</nav>
-      <div className="side-bottom"><div className="monogram">EO</div><div><strong>{ACCOUNT_ROLES[accountRole]?.label||'Member session'}</strong><small>{configured?(session?.user?.email||'Authenticated'):'Private ledger'}</small></div></div>
-    </aside>
+    <OrderNavigation items={availableNav} active={tab} mode={accountRole==='member'?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setEditor(null);}} footer={<div className="side-bottom"><div className="monogram">EO</div><div><strong>{ACCOUNT_ROLES[accountRole]?.label||'Member session'}</strong><small>{configured?(session?.user?.email||'Authenticated'):'Private ledger'}</small></div></div>}/>
     <main className="main">
-      <header className="topbar"><div className="breadcrumb">ECLIPSE ORDER <span>/</span> {availableNav.find(x=>x[0]===tab)?.[1] || 'Dashboard'}</div><div className="top-actions"><span className="local-status"><span className="pulse"/> {configured?'Records available':syncStatus}</span>{configured&&<button className="mini-btn" onClick={logout}>Sign out</button>}<button className="icon-button" title="Open workspace settings" aria-label="Open workspace settings" onClick={()=>setTab('settings')}>⚙</button></div></header>
+      <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {availableNav.find(x=>x[0]===tab)?.[1] || 'Dashboard'}</div><div className="top-actions"><span className="local-status"><span className="pulse"/> {configured?'Records available':syncStatus}</span>{configured&&<button className="mini-btn" onClick={logout}>Sign out</button>}<button className="icon-button" title="Open workspace settings" aria-label="Open workspace settings" onClick={()=>setTab('settings')}>⚙</button></div></header>
       <div className="content">
         <div className="page-intro"><div><div className="eyebrow">ORDER OPERATIONS <span className="eyebrow-line"/></div><h1>{tab==='overview'?'Command overview':NAV.find(x=>x[0]===tab)?.[1]}</h1><p>{({overview:'The ledger at a glance. Manage your roster, ranks and records.',roster:'Search and administer every character in the ledger.',sheet:'Character details, attributes and tabletop dice checks.',settings:'Review and preserve the Order’s records.',members:'Manage command hierarchy, handlers, and member account roles.',scenes:'Run D&D-style encounters, initiative, combat and shared dice.',profile:'Control your OOC content preferences, kink lists and what other members can see.',directory:'Browse members who have chosen to share their RP profiles.',transitions:'Request and approve voluntary changes between free and magically bound status.'})[tab]}</p></div><div className="intro-actions">{actions}</div></div>
         {saveError && <div className="alert" role="alert">{saveError}</div>}
