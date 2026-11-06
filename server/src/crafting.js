@@ -46,15 +46,72 @@ async function checkCharacter(conn,user,characterId,{wilderness=false}={}){
  if(!c||c.player_account_id!==user.id)return false;
  return !wilderness||wildernessEligible(c);
 }
+async function characterLevel(conn,user,characterId){
+ const [rows]=await conn.execute(
+  "SELECT COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(sheet_json,'$.level')) AS UNSIGNED),1) AS level FROM characters WHERE id=? AND player_account_id=? LIMIT 1",
+  [characterId,user.id]);
+ return rows.length?Math.max(1,Number(rows[0].level)||1):null;
+}
+const zonePayload=b=>{
+ if(!b||!validId(b.id)||!label(b.name,110)||typeof b.description!=='string'||b.description.length>900||
+ !Number.isInteger(b.minimum_level)||b.minimum_level<1||b.minimum_level>100||
+ !['low','moderate','high','extreme'].includes(b.danger)||
+ !Number.isInteger(b.sort_order)||b.sort_order<0||b.sort_order>999||
+ typeof b.enabled!=='boolean'||!Array.isArray(b.materials)||b.materials.length<1||b.materials.length>60||
+ new Set(b.materials.map(x=>x.material_id)).size!==b.materials.length||
+ b.materials.some(x=>!validId(x.material_id)||!Number.isInteger(x.minimum_level)||x.minimum_level<b.minimum_level||x.minimum_level>100))return null;
+ return b;
+};
 export async function craftingRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
  const user=await resolveSession(pool,req);
  if(!user)return fail(401,'not_authenticated');
  const command=isCommand(user);
+ if(path==='/workshop/zones'&&req.method==='GET'){
+  const [zones]=await pool.query('SELECT id,name,description,minimum_level,danger,enabled,sort_order FROM fc_expedition_zones ORDER BY sort_order,name');
+  const [resources]=await pool.query('SELECT zone_id,material_id,minimum_level FROM fc_expedition_zone_materials ORDER BY zone_id,material_id');
+  return ok({zones:zones.filter(z=>command||z.enabled).map(z=>({...z,enabled:!!z.enabled,materials:resources.filter(m=>m.zone_id===z.id)}))});
+ }
+ if(path==='/workshop/zones'&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const b=zonePayload(await read(req));if(!b)return fail(400,'invalid_zone');
+  return withTransaction(pool,async conn=>{
+   const [found]=await conn.execute('SELECT id FROM fc_materials WHERE id IN ('+b.materials.map(()=>'?').join(',')+')',b.materials.map(m=>m.material_id));
+   if(found.length!==b.materials.length)return fail(400,'unknown_material');
+   try{await conn.execute('INSERT INTO fc_expedition_zones(id,name,description,minimum_level,danger,enabled,sort_order) VALUES(?,?,?,?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.minimum_level,b.danger,b.enabled?1:0,b.sort_order])}
+   catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'zone_exists');throw e}
+   for(const material of b.materials)await conn.execute('INSERT INTO fc_expedition_zone_materials(zone_id,material_id,minimum_level) VALUES(?,?,?)',[b.id,material.material_id,material.minimum_level]);
+   return ok({status:'created'});
+  });
+ }
+ const zoneEdit=/^\/workshop\/zones\/([a-z0-9-]+)$/.exec(path);
+ if(zoneEdit&&req.method==='PUT'){
+  if(!command)return fail(403,'command_required');
+  const b=zonePayload({...await read(req),id:zoneEdit[1]});
+  if(!b)return fail(400,'invalid_zone');
+  return withTransaction(pool,async conn=>{
+   const [existing]=await conn.execute('SELECT id FROM fc_expedition_zones WHERE id=? FOR UPDATE',[zoneEdit[1]]);
+   if(!existing.length)return fail(404,'zone_not_found');
+   const [materials]=await conn.execute('SELECT id FROM fc_materials WHERE id IN ('+b.materials.map(()=>'?').join(',')+')',b.materials.map(m=>m.material_id));
+   if(materials.length!==b.materials.length)return fail(400,'unknown_material');
+   await conn.execute('UPDATE fc_expedition_zones SET name=?,description=?,minimum_level=?,danger=?,enabled=?,sort_order=? WHERE id=?',[b.name.trim(),b.description.trim(),b.minimum_level,b.danger,b.enabled?1:0,b.sort_order,zoneEdit[1]]);
+   await conn.execute('DELETE FROM fc_expedition_zone_materials WHERE zone_id=?',[zoneEdit[1]]);
+   for(const material of b.materials)await conn.execute('INSERT INTO fc_expedition_zone_materials(zone_id,material_id,minimum_level) VALUES(?,?,?)',[zoneEdit[1],material.material_id,material.minimum_level]);
+   return ok({status:'saved'});
+  });
+ }
+ const recipeLevel=/^\/workshop\/catalog\/recipes\/([a-z0-9-]+)\/level$/.exec(path);
+ if(recipeLevel&&req.method==='PUT'){
+  if(!command)return fail(403,'command_required');
+  const b=await read(req);
+  if(!Number.isInteger(b?.minimum_level)||b.minimum_level<1||b.minimum_level>100)return fail(400,'invalid_level');
+  const [update]=await pool.execute('UPDATE fc_recipes SET minimum_level=? WHERE id=?',[b.minimum_level,recipeLevel[1]]);
+  return update.affectedRows?ok({status:'saved'}):fail(404,'recipe_not_found');
+ }
  if(path==='/workshop/encounters'&&req.method==='GET'){
   const [active]=await pool.execute(
-   'SELECT e.id,e.status,e.player_health,e.enemy_health,e.turn_number,s.name,s.kind,s.description,s.outcome_text,s.enemy_defense,s.enemy_health AS enemy_max_health,r.material_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.account_id=? AND e.status="active" ORDER BY e.id DESC LIMIT 1',[user.id]);
-  const [scenarios]=command?await pool.query('SELECT id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense,enabled FROM fc_expedition_scenarios ORDER BY kind,name'):[[]];
+   'SELECT e.id,e.status,e.player_health,e.enemy_health,e.turn_number,s.name,s.kind,s.description,s.outcome_text,s.failure_text,s.retreat_text,s.decline_text,s.enemy_defense,s.enemy_health AS enemy_max_health,r.material_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.account_id=? AND e.status="active" ORDER BY e.id DESC LIMIT 1',[user.id]);
+  const [scenarios]=command?await pool.query('SELECT id,name,kind,description,outcome_text,failure_text,retreat_text,decline_text,weight,enemy_health,enemy_defense,enabled FROM fc_expedition_scenarios ORDER BY kind,name'):[[]];
   return ok({active:active[0]||null,scenarios:command?scenarios:[]});
  }
  if(path==='/workshop/encounters/scenarios'&&req.method==='POST'){
@@ -62,12 +119,13 @@ export async function craftingRoute(pool,req,path){
   const b=await read(req);
   if(!validId(b?.id)||!label(b?.name,110)||!['wildlife','bandits','mystery','mature'].includes(b?.kind)||
     !label(b?.description,1800)||typeof b?.outcome_text!=='string'||b.outcome_text.length>600||
+    !label(b?.failure_text,900)||!label(b?.retreat_text,900)||!label(b?.decline_text,900)||
     !Number.isInteger(b.weight)||b.weight<1||b.weight>100||
     !Number.isInteger(b.enemy_health)||b.enemy_health<1||b.enemy_health>100||
     !Number.isInteger(b.enemy_defense)||b.enemy_defense<1||b.enemy_defense>20)return fail(400,'invalid_scenario');
   try{
-   await pool.execute('INSERT INTO fc_expedition_scenarios(id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense,enabled) VALUES(?,?,?,?,?,?,?,?,1)',
-    [b.id,b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.weight,b.enemy_health,b.enemy_defense]);
+   await pool.execute('INSERT INTO fc_expedition_scenarios(id,name,kind,description,outcome_text,failure_text,retreat_text,decline_text,weight,enemy_health,enemy_defense,enabled) VALUES(?,?,?,?,?,?,?,?,?,?,?,1)',
+    [b.id,b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.failure_text.trim(),b.retreat_text.trim(),b.decline_text.trim(),b.weight,b.enemy_health,b.enemy_defense]);
    return ok({status:'created'});
   }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'scenario_exists');throw e}
  }
@@ -77,10 +135,11 @@ export async function craftingRoute(pool,req,path){
   const b=await read(req);
   if(!label(b?.name,110)||!['wildlife','bandits','mystery','mature'].includes(b?.kind)||
    !label(b?.description,1800)||typeof b.outcome_text!=='string'||b.outcome_text.length>600||
+   !label(b?.failure_text,900)||!label(b?.retreat_text,900)||!label(b?.decline_text,900)||
    !Number.isInteger(b.weight)||b.weight<1||b.weight>100||!Number.isInteger(b.enemy_health)||b.enemy_health<1||b.enemy_health>100||
    !Number.isInteger(b.enemy_defense)||b.enemy_defense<1||b.enemy_defense>20||typeof b.enabled!=='boolean')return fail(400,'invalid_scenario');
-  const [changed]=await pool.execute('UPDATE fc_expedition_scenarios SET name=?,kind=?,description=?,outcome_text=?,weight=?,enemy_health=?,enemy_defense=?,enabled=? WHERE id=?',
-   [b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.weight,b.enemy_health,b.enemy_defense,b.enabled?1:0,scenarioEdit[1]]);
+  const [changed]=await pool.execute('UPDATE fc_expedition_scenarios SET name=?,kind=?,description=?,outcome_text=?,failure_text=?,retreat_text=?,decline_text=?,weight=?,enemy_health=?,enemy_defense=?,enabled=? WHERE id=?',
+   [b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.failure_text.trim(),b.retreat_text.trim(),b.decline_text.trim(),b.weight,b.enemy_health,b.enemy_defense,b.enabled?1:0,scenarioEdit[1]]);
   return changed.affectedRows?ok({status:'saved'}):fail(404,'scenario_not_found');
  }
  const encounterAction=/^\/workshop\/encounters\/(\d+)\/action$/.exec(path);
@@ -89,7 +148,7 @@ export async function craftingRoute(pool,req,path){
   if(!['attack','retreat','continue','decline'].includes(b?.action))return fail(400,'invalid_encounter_action');
   return withTransaction(pool,async conn=>{
    const [rows]=await conn.execute(
-    'SELECT e.*,s.kind,s.name,s.description,s.outcome_text,s.enemy_defense,r.material_id,r.character_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.id=? AND e.account_id=? FOR UPDATE',
+    'SELECT e.*,s.kind,s.name,s.description,s.outcome_text,s.failure_text,s.retreat_text,s.decline_text,s.enemy_defense,r.material_id,r.character_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.id=? AND e.account_id=? FOR UPDATE',
     [Number(encounterAction[1]),user.id]);
    const encounter=rows[0];
    if(!encounter)return fail(404,'encounter_not_found');
@@ -100,9 +159,9 @@ export async function craftingRoute(pool,req,path){
    if(!battle){
     status=b.action==='decline'?'declined':'resolved';
     quantity=randomInt(1,4);
-    message=b.action==='decline'?'You continue safely without taking part in the encounter.':encounter.outcome_text;
+    message=b.action==='decline'?encounter.decline_text:encounter.outcome_text;
    }else if(b.action==='retreat'){
-    status='retreated';quantity=0;message='You withdraw safely, leaving the gathered supplies behind.';
+    status='retreated';quantity=0;message=encounter.retreat_text;
    }else{
     round++;
     const attackRoll=randomInt(1,21);
@@ -114,7 +173,7 @@ export async function craftingRoute(pool,req,path){
      const enemyRoll=randomInt(1,21);
      if(enemyRoll+2>=11){hp=Math.max(0,hp-randomInt(1,5));message+=' The opponent strikes back.'}
      else message+=' You evade the counterattack.';
-     if(hp===0||round>=6){status='defeat';quantity=0;message+=' You retreat and recover at the estate.'}
+     if(hp===0||round>=6){status='defeat';quantity=0;message+=' '+encounter.failure_text}
     }
    }
    if(status==='active'){
@@ -132,24 +191,30 @@ export async function craftingRoute(pool,req,path){
  if(path==='/workshop'&&req.method==='GET'){
   const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions]] = await Promise.all([
    pool.query('SELECT m.id,m.name,m.category,m.description,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY FIELD(m.category,"ore","herb","botanical","refined","supply"),m.name'),
-   pool.query('SELECT id,name,description,output_material,output_quantity FROM fc_recipes ORDER BY name'),
+   pool.query('SELECT id,name,description,output_material,output_quantity,minimum_level FROM fc_recipes ORDER BY name'),
    pool.query('SELECT recipe_id,material_id,quantity FROM fc_recipe_inputs ORDER BY recipe_id,material_id'),
    pool.query('SELECT id,crop_material,growth,health,harvests FROM fc_garden_plots ORDER BY id'),
    pool.query('SELECT level FROM fc_garden WHERE id=1'),
    pool.query('SELECT l.id,l.material_id,m.name,l.delta,l.activity,l.note,l.created_at,a.display_name FROM fc_material_ledger l JOIN fc_materials m ON m.id=l.material_id JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 30'),
-   pool.execute('SELECT id,material_id,quantity,created_at FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE() ORDER BY id DESC',[user.id])
+   pool.execute('SELECT id,zone_id,material_id,quantity,created_at FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE() ORDER BY id DESC',[user.id])
   ]);
   return ok({materials,recipes:recipes.map(r=>({...r,inputs:inputs.filter(i=>i.recipe_id===r.id)})),plots,garden:garden[0]||{level:1},ledger,expeditions,expedition_limit:5});
  }
  if(path==='/workshop/gather'&&req.method==='POST'){
   const body=await read(req);
-  if(!validId(body?.material_id)||!validUuid(body?.character_id)||!['steady','daring'].includes(body?.approach||'steady'))return fail(400,'invalid_gathering');
+  if(!validId(body?.material_id)||!validId(body?.zone_id)||!validUuid(body?.character_id)||!['steady','daring'].includes(body?.approach||'steady'))return fail(400,'invalid_gathering');
   return withTransaction(pool,async conn=>{
    if(!await checkCharacter(conn,user,body.character_id,{wilderness:true}))return fail(403,'character_not_eligible_for_wilderness');
    const [alreadyActive]=await conn.execute('SELECT id FROM fc_expedition_encounters WHERE account_id=? AND status="active" LIMIT 1',[user.id]);
    if(alreadyActive.length)return fail(409,'finish_previous_expedition');
-   const [materials]=await conn.execute("SELECT id FROM fc_materials WHERE id=? AND category IN ('ore','herb')",[body.material_id]);
-   if(!materials.length)return fail(400,'not_gatherable');
+   const level=await characterLevel(conn,user,body.character_id);
+   const [zoneMaterials]=await conn.execute(
+    'SELECT z.minimum_level AS zone_level,zm.minimum_level AS material_level FROM fc_expedition_zones z JOIN fc_expedition_zone_materials zm ON zm.zone_id=z.id JOIN fc_materials m ON m.id=zm.material_id WHERE z.id=? AND z.enabled=1 AND zm.material_id=? AND m.category IN ("ore","herb")',
+    [body.zone_id,body.material_id]);
+   if(!zoneMaterials.length)return fail(400,'resource_not_in_zone');
+   if(level===null||level<Math.max(Number(zoneMaterials[0].zone_level),Number(zoneMaterials[0].material_level)))return fail(403,'expedition_level_too_low');
+
+
    // Lock member account to serialize daily attempt checks across concurrent requests.
    await conn.execute('SELECT id FROM accounts WHERE id=? FOR UPDATE',[user.id]);
    const [[used]]=await conn.execute('SELECT COUNT(*) AS total FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE()',[user.id]);
@@ -160,18 +225,18 @@ export async function craftingRoute(pool,req,path){
    const triggered=randomInt(1,101)<=encounterChance;
    let scenario=null;
    if(triggered){
-    const [available]=await conn.execute('SELECT id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense FROM fc_expedition_scenarios WHERE enabled=1 AND (kind<>"mature" OR ?=1)',[body.allow_mature===true?1:0]);
+    const [available]=await conn.execute('SELECT id,name,kind,description,outcome_text,failure_text,retreat_text,decline_text,weight,enemy_health,enemy_defense FROM fc_expedition_scenarios WHERE enabled=1 AND (kind<>"mature" OR ?=1)',[body.allow_mature===true?1:0]);
     const total=available.reduce((sum,row)=>sum+Number(row.weight),0);
     if(total>0){let roll=randomInt(1,total+1);for(const row of available){roll-=Number(row.weight);if(roll<=0){scenario=row;break}}}
    }
    if(scenario){
-    const [run]=await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,0,UTC_DATE())',[user.id,body.character_id,body.material_id]);
+    const [run]=await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,zone_id,quantity,expedition_day) VALUES(?,?,?,?,0,UTC_DATE())',[user.id,body.character_id,body.material_id,body.zone_id]);
     const [created]=await conn.execute('INSERT INTO fc_expedition_encounters(gathering_run_id,scenario_id,account_id,player_health,enemy_health) VALUES(?,?,?,?,?)',[run.insertId,scenario.id,user.id,12,scenario.enemy_health]);
-    return ok({status:'encounter',encounter:{id:created.insertId,name:scenario.name,kind:scenario.kind,description:scenario.description,outcome_text:scenario.outcome_text,enemy_health:scenario.enemy_health,player_health:12,turn_number:0},remaining:4-Number(used.total)});
+    return ok({status:'encounter',encounter:{id:created.insertId,name:scenario.name,kind:scenario.kind,description:scenario.description,outcome_text:scenario.outcome_text,failure_text:scenario.failure_text,retreat_text:scenario.retreat_text,decline_text:scenario.decline_text,enemy_health:scenario.enemy_health,player_health:12,turn_number:0},remaining:4-Number(used.total)});
    }
    const qty=approach==='daring'?randomInt(0,8):randomInt(1,4);
    if(qty>0&&!await stockChange(conn,body.material_id,qty,'gather',user.id,body.character_id,approach==='daring'?'Deep wilderness expedition':'Careful wilderness expedition'))return fail(409,'stock_limit');
-   await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,quantity,expedition_day) VALUES(?,?,?,?,UTC_DATE())',[user.id,body.character_id,body.material_id,qty]);
+   await conn.execute('INSERT INTO fc_gathering_runs(account_id,character_id,material_id,zone_id,quantity,expedition_day) VALUES(?,?,?,?,?,UTC_DATE())',[user.id,body.character_id,body.material_id,body.zone_id,qty]);
    return ok({status:'recorded',quantity:qty,approach,remaining:4-Number(used.total)});
   });
  }
@@ -187,7 +252,7 @@ export async function craftingRoute(pool,req,path){
  if(path==='/workshop/catalog/recipes'&&req.method==='POST'){
   if(!command)return fail(403,'command_required');
   const b=await read(req);
-  if(!validId(b?.id)||!label(b?.name,110)||typeof b?.description!=='string'||b.description.length>450||!validId(b?.output_material)||!amount(b?.output_quantity)||
+  if(!validId(b?.id)||!label(b?.name,110)||typeof b?.description!=='string'||b.description.length>450||!validId(b?.output_material)||!amount(b?.output_quantity)||!Number.isInteger(b?.minimum_level)||b.minimum_level<1||b.minimum_level>100||
     !Array.isArray(b?.inputs)||b.inputs.length<1||b.inputs.length>12||
     b.inputs.some(i=>!validId(i.material_id)||!amount(i.quantity))||
     new Set(b.inputs.map(i=>i.material_id)).size!==b.inputs.length||
@@ -195,7 +260,7 @@ export async function craftingRoute(pool,req,path){
   return withTransaction(pool,async conn=>{
    const [existing]=await conn.execute('SELECT id FROM fc_materials WHERE id IN ('+Array(b.inputs.length+1).fill('?').join(',')+')',[b.output_material,...b.inputs.map(i=>i.material_id)]);
    if(existing.length!==b.inputs.length+1)return fail(400,'unknown_material');
-   try{await conn.execute('INSERT INTO fc_recipes(id,name,description,output_material,output_quantity) VALUES(?,?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.output_material,b.output_quantity])}
+   try{await conn.execute('INSERT INTO fc_recipes(id,name,description,output_material,output_quantity,minimum_level) VALUES(?,?,?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.output_material,b.output_quantity,b.minimum_level])}
    catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'recipe_exists');throw e}
    for(const i of b.inputs)await conn.execute('INSERT INTO fc_recipe_inputs(recipe_id,material_id,quantity) VALUES(?,?,?)',[b.id,i.material_id,i.quantity]);
    return ok({status:'created'});
@@ -222,8 +287,10 @@ export async function craftingRoute(pool,req,path){
   if(!validId(body?.recipe_id)||!qty||!validUuid(body?.character_id))return fail(400,'invalid_craft');
   return withTransaction(pool,async conn=>{
    if(!await checkCharacter(conn,user,body.character_id))return fail(403,'character_not_owned');
-   const [recipes]=await conn.execute('SELECT output_material,output_quantity FROM fc_recipes WHERE id=?',[body.recipe_id]);
+   const [recipes]=await conn.execute('SELECT output_material,output_quantity,minimum_level FROM fc_recipes WHERE id=?',[body.recipe_id]);
    if(!recipes.length)return fail(404,'recipe_not_found');
+   const characterCraftLevel=await characterLevel(conn,user,body.character_id);
+   if(characterCraftLevel===null||characterCraftLevel<Number(recipes[0].minimum_level))return fail(403,'crafting_level_too_low');
    const [inputs]=await conn.execute('SELECT material_id,quantity FROM fc_recipe_inputs WHERE recipe_id=? ORDER BY material_id',[body.recipe_id]);
    for(const i of inputs){
     await conn.execute('INSERT IGNORE INTO fc_material_stock(material_id,quantity) VALUES(?,0)',[i.material_id]);
