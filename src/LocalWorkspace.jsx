@@ -9,6 +9,7 @@ import InlineSheetEditor from './InlineSheetEditor.jsx';
 import CharacterProgression from './CharacterProgression.jsx';
 import HomebrewClasses from './HomebrewClasses.jsx';
 import ClassSpellbook from './ClassSpellbook.jsx';
+import GovernancePreview from './GovernancePreview.jsx';
 import {SYNDICATE_RANKS,syndicateRankLabel} from './syndicateRanks.js';
 import './dashboard.css';
 import './local-accounts.css';
@@ -49,7 +50,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['roster','Character roster','▦'],
   ['sheet','Character sheets','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
-  ...(!playerPreview&&canManage(profile.role)?[['classes','Homebrew classes','✧']]:[]),
+  ...(!playerPreview&&canManage(profile.role)?[['governance','Governance Preview','♛'],['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['profile','My RP profile','♡'],
@@ -115,6 +116,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<><div className="eo-sheet-head"><h2>{character.name}</h2>{!playerPreview&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))?<button className="btn secondary" onClick={()=>{if(character.view_mode==='full')setDraft({...character})}}>Edit sheet</button>:null}</div>{character.collar_bound&&(playerPreview||character.view_mode==='bound')?<LimitedSheet character={character}/>:<><FullDndSheet character={character}/><CharacterProgression character={character} canCommand={admin} readOnly={playerPreview} request={request} onRefresh={load}/><ClassSpellbook character={character} klass={classCatalog[character.class_id]} request={request} onRefresh={load} userId={profile.id} readOnly={playerPreview}/></>}</>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
+    {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {(tab==='encounters'||tab==='events')&&<Encounters classCatalog={classCatalog} key={playerPreview?'player':'staff'} role={playerPreview?'member':profile.role} previewOnly={playerPreview} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>}
     {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
