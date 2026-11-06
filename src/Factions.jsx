@@ -17,7 +17,6 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
  const [repDraft,setRepDraft]=useState(null);
  const [accounts,setAccounts]=useState([]);
  const [encounters,setEncounters]=useState([]);
- const [scope,setScope]=useState('all');
  const [editing,setEditing]=useState(null);
  const [newFaction,setNewFaction]=useState(false);
  const [eventDraft,setEventDraft]=useState(null);
@@ -40,8 +39,8 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
   request('/factions/'+current+'/history').then(data=>{if(active)setRepHistory(data.changes||[])}).catch(e=>{if(active)setError(e.message)});
   return()=>{active=false}
  },[current]);
- const shown=useMemo(()=>factions.filter(x=>(scope==='all'||x.faction_scope===scope)&&(filter==='all'||x.relationship===filter)&&
-  [x.name,x.leader,x.description].join(' ').toLowerCase().includes(query.toLowerCase())),[factions,query,filter,scope]);
+ const shown=useMemo(()=>factions.filter(x=>(filter==='all'||x.relationship===filter)&&
+  [x.name,x.leader,x.description].join(' ').toLowerCase().includes(query.toLowerCase())),[factions,query,filter]);
  const chosen=factions.find(x=>x.id===current);
  async function save(){
   if(!editing)return;
@@ -82,20 +81,29 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
   {error&&<p className="alert" role="alert">{error}</p>}{notice&&<p className="faction-notice" role="status">{notice}</p>}
   <div className="faction-controls">
    <input aria-label="Search factions" placeholder="Search factions or leaders…" value={query} onChange={e=>setQuery(e.target.value)}/>
-   <select aria-label="Faction category" value={scope} onChange={e=>setScope(e.target.value)}><option value="all">All factions</option><option value="order_story">Factions connected to the Order</option><option value="world">Independent world factions</option></select>
    <select aria-label="Filter faction relationships" value={filter} onChange={e=>setFilter(e.target.value)}>
     <option value="all">All relationships</option>{Object.entries(RELATIONS).map(([id,[name]])=><option value={id} key={id}>{name}</option>)}
    </select>
   </div>
   <div className="faction-layout">
-   <div className="faction-list" aria-label="Faction list">{shown.map(f=><button type="button" key={f.id} className={'faction-list-item '+(current===f.id?'selected':'')} onClick={()=>{setCurrent(f.id);setEditing(null);setEventDraft(null);setNotice('')}} aria-pressed={current===f.id}>
-    <span className="faction-symbol">{f.faction_scope==='world'?'◇':'✦'}</span><span className="faction-list-copy"><strong>{f.name}</strong><small>{f.leader}</small></span>
-    <span className={'faction-relation '+relation(f.relationship)[1]}>{relation(f.relationship)[0]}</span>
-   </button>)}{!shown.length&&<p className="faction-empty">No factions match your search.</p>}</div>
+   <div className="faction-list" aria-label="Faction list">
+    {[
+     {id:'order_story',title:'Factions connected to the Order',description:'Allies, enemies and rivals in the Order’s story'},
+     {id:'world',title:'Other factions',description:'Guilds, organizations and independent groups'},
+     {id:'settlement',title:'Settlements',description:'Towns and communities across the realm'}
+    ].map(section=><section className="faction-list-section" key={section.id} aria-label={section.title}>
+     <div className="faction-section-heading"><h3>{section.title}</h3><span className="faction-section-count">{shown.filter(f=>f.faction_scope===section.id).length}</span></div>
+     {shown.filter(f=>f.faction_scope===section.id).map(f=><button type="button" key={f.id} className={'faction-list-item '+(current===f.id?'selected':'')} onClick={()=>{setCurrent(f.id);setEditing(null);setEventDraft(null);setNotice('')}} aria-pressed={current===f.id}>
+      <span className="faction-symbol">{section.id==='settlement'?'⌂':section.id==='world'?'◇':'✦'}</span><span className="faction-list-copy"><strong>{f.name}</strong><small>{f.leader}</small></span>
+      <span className={'faction-relation '+relation(f.relationship)[1]}>{relation(f.relationship)[0]}</span>
+     </button>)}
+     {!shown.some(f=>f.faction_scope===section.id)&&<p className="faction-section-empty">{query||filter!=='all'?'No matching entries.':'No entries yet.'}</p>}
+    </section>)}
+   </div>
    <div className="faction-detail">
     {!chosen?<div className="faction-empty">Choose a faction to read its dossier.</div>:<>
      <div className="faction-dossier-top">
-      <span className="faction-eyebrow">{chosen.faction_scope==='world'?'INDEPENDENT FACTION':'ORDER-CONNECTED FACTION'} · {String(chosen.sort_order).padStart(2,'0')}</span>
+      <span className="faction-eyebrow">{chosen.faction_scope==='settlement'?'SETTLEMENT':chosen.faction_scope==='world'?'OTHER FACTION':'ORDER-CONNECTED FACTION'} · {String(chosen.sort_order).padStart(2,'0')}</span>
       <span className={'faction-relation '+relation(chosen.relationship)[1]}>{relation(chosen.relationship)[0]}</span>
      </div>
      <h3>{chosen.name}</h3><p className="faction-leader"><span>Led by</span> {chosen.leader}</p>
@@ -120,7 +128,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
    <div className="faction-fields">
     <label>Name<input value={editing.name} maxLength={100} onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
     <label>Leader<input value={editing.leader} maxLength={100} onChange={e=>setEditing({...editing,leader:e.target.value})}/></label>
-    <label>Faction category<select value={editing.faction_scope||'order_story'} onChange={e=>setEditing({...editing,faction_scope:e.target.value})}><option value="order_story">Connected to the Order</option><option value="world">Independent world faction</option></select></label>
+    <label>Faction category<select value={editing.faction_scope||'order_story'} onChange={e=>setEditing({...editing,faction_scope:e.target.value})}><option value="order_story">Connected to the Order</option><option value="world">Other faction</option><option value="settlement">Settlement</option></select></label>
     <label>Relationship<select value={editing.relationship} onChange={e=>setEditing({...editing,relationship:e.target.value})}>{Object.entries(RELATIONS).map(([id,[name]])=><option key={id} value={id}>{name}</option>)}</select></label>
     <label>Display order<input type="number" min="0" max="999" value={editing.sort_order} onChange={e=>setEditing({...editing,sort_order:e.target.value})}/></label>
     <label className="wide">Faction description<textarea rows="4" maxLength={4500} value={editing.description} onChange={e=>setEditing({...editing,description:e.target.value})}/></label>
