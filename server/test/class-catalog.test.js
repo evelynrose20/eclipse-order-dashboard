@@ -6,8 +6,10 @@ test('starter classes and unlock paths are editable foundations',()=>{
  assert.equal(Object.keys(classes).length,29);
  assert.equal(classes['viper'].name,'Viper');
  assert.equal(classes['pictomancer'].name,'Pictomancer');
- assert.equal(classes['beastmaster'].name,'Beastmaster');
- assert.equal(classes['blue-mage'].name,'Blue Mage');
+ assert.equal(classes['bastion'].name,'Bastion');
+ assert.equal(classes['zephyr'].name,'Zephyr');
+ assert.equal(classes['beastmaster'],undefined);
+ assert.equal(classes['blue-mage'],undefined);
  assert.equal(classes['warrior-job'].name,'Warrior');
  assert.equal(classes.warrior.name,'Warrior');
  assert.equal(classes.mage.spells[0].level,1);
@@ -48,4 +50,24 @@ test('existing legacy templates are not overwritten or deleted',()=>{
  for(const legacy of ['warrior','rogue','mage','healer','ranger','bard'])assert.ok(classes[legacy],legacy);
  assert.notEqual(classes['warrior-job'].id,classes.warrior.id);
  assert.notEqual(classes['bard-job'].id,classes.bard.id);
+});
+
+test('Evercold Bastion and Zephyr have accurate themes and complete progression',()=>{
+ const jobs=builtinClassCatalog();
+ const tank=jobs.bastion, ranged=jobs.zephyr;
+ assert.equal(tank.job_role,'tank');
+ assert.equal(ranged.job_role,'ranged');
+ assert.match(tank.description,/greatshields/i);
+ assert.match(ranged.description,/crossbow/i);
+ assert.match(ranged.description,/avian familiar/i);
+ for(const job of [tank,ranged]){
+  assert.deepEqual(job.features.map(f=>f.level),[1,3,5,7,10,13,16,20]);
+  assert.deepEqual(job.spells.map(f=>f.level),[1,3,5,7,10,13,16,20]);
+  assert.ok(validateClass(job.id,job));
+ }
+});
+test('removed limited jobs cannot return through admin class edits',()=>{
+ const example=builtinClassCatalog().bastion;
+ assert.equal(validateClass('blue-mage',example),null);
+ assert.equal(validateClass('beastmaster',example),null);
 });
