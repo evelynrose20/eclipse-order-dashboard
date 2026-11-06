@@ -53,7 +53,7 @@ export async function craftingRoute(pool,req,path){
  const command=isCommand(user);
  if(path==='/workshop/encounters'&&req.method==='GET'){
   const [active]=await pool.execute(
-   'SELECT e.id,e.status,e.player_health,e.enemy_health,e.turn_number,s.name,s.kind,s.description,s.outcome_text,s.enemy_defense,r.material_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.account_id=? AND e.status="active" ORDER BY e.id DESC LIMIT 1',[user.id]);
+   'SELECT e.id,e.status,e.player_health,e.enemy_health,e.turn_number,s.name,s.kind,s.description,s.outcome_text,s.enemy_defense,s.enemy_health AS enemy_max_health,r.material_id FROM fc_expedition_encounters e JOIN fc_expedition_scenarios s ON s.id=e.scenario_id JOIN fc_gathering_runs r ON r.id=e.gathering_run_id WHERE e.account_id=? AND e.status="active" ORDER BY e.id DESC LIMIT 1',[user.id]);
   const [scenarios]=command?await pool.query('SELECT id,name,kind,description,outcome_text,weight,enemy_health,enemy_defense,enabled FROM fc_expedition_scenarios ORDER BY kind,name'):[[]];
   return ok({active:active[0]||null,scenarios:command?scenarios:[]});
  }
