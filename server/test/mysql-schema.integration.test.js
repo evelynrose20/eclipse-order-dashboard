@@ -16,7 +16,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -179,9 +179,17 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(oreStock.quantity,gatheredTotal-3);
   const noStock=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:100,character_id:char.body.id}),'/workshop/craft');
   assert.equal(noStock.status,409,'insufficient stock must roll back atomically');
-  const care=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'water'}),'/workshop/garden/1/care');
+  const care=await craftingRoute(admin,request('POST',{action:'water'}),'/workshop/garden/1/care');
   assert.equal(care.status,200,JSON.stringify(care.body));
-  const repeatCare=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'tend'}),'/workshop/garden/1/care');
+  const gardenState=await craftingRoute(admin,request('GET'),'/workshop');
+  assert.equal(gardenState.status,200);
+  assert.equal(gardenState.body.plots.find(p=>p.id===1).cared_today,true);
+  assert.equal(Number(gardenState.body.plots.find(p=>p.id===1).helpers_today),1);
+  const [[hellshade]]=await admin.query("SELECT category FROM fc_materials WHERE id='hellshade-bloom'");
+  assert.equal(hellshade.category,'botanical');
+  const [[dustRecipe]]=await admin.query("SELECT minimum_level FROM fc_recipes WHERE id='demon-dust'");
+  assert.equal(dustRecipe.minimum_level,12);
+  const repeatCare=await craftingRoute(admin,request('POST',{action:'tend'}),'/workshop/garden/1/care');
   assert.equal(repeatCare.status,409,'a member may care once per plot each day');
   const [ledgerRows]=await admin.query('SELECT activity,delta FROM fc_material_ledger ORDER BY id');
   assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,5);
