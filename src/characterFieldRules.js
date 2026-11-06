@@ -56,5 +56,6 @@ export function classArmor(classId,definition,character){
  const dex=Number(character?.dex??10);
  const dexMod=Math.floor((dex-10)/2);
  const tank=['paladin','warrior-job','dark-knight','gunbreaker','bastion','warrior'].includes(classId)||definition?.job_role==='tank';
- return Math.max(5,10+dexMod+(tank?2:0));
+ const level=Math.min(20,Math.max(1,Number(character?.level)||1));
+ return Math.max(5,10+dexMod+(tank?2:0)+Math.floor((level-1)/5));
 }
