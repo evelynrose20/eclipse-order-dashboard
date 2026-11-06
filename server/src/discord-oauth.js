@@ -127,19 +127,24 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   if(target&&linked.length&&linked[0].account_id!==target)return redirect(config,{discord_error:'discord_identity_taken'});
   let account=target||linked[0]?.account_id||null;
   if(!account){
-   // New Discord members request access in the pending queue. Do not grant portal permissions.
-   account=randomUUID();
+   // Provision the pending account and Discord link atomically; a failed link cannot orphan an account.
+   const newAccountId=randomUUID();
    const secret=await hashPassword(generateToken());
+   const connection=await pool.getConnection();
    try{
-    await pool.execute("INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,syndicate_rank,is_active,approval_status) VALUES(?,?,?,?, 'member','initiate','kumi_in',0,'pending')",
-     [account,'discord-'+identity.id+'@members.eclipse.invalid',secret,identity.username.slice(0,80)]);
-    await pool.execute('INSERT INTO account_discord_links(account_id,discord_user_id,discord_username) VALUES(?,?,?)',[account,identity.id,identity.username]);
+    await connection.beginTransaction();
+    await connection.execute("INSERT INTO accounts(id,email,password_hash,display_name,account_role,standing,syndicate_rank,is_active,approval_status) VALUES(?,?,?,?, 'member','initiate','kumi_in',0,'pending')",
+     [newAccountId,'discord-'+identity.id+'@members.eclipse.invalid',secret,identity.username.slice(0,80)]);
+    await connection.execute('INSERT INTO account_discord_links(account_id,discord_user_id,discord_username) VALUES(?,?,?)',[newAccountId,identity.id,identity.username]);
+    await connection.commit();
+    account=newAccountId;
    }catch(error){
+    await connection.rollback();
     if(error.code!=='ER_DUP_ENTRY')throw error;
     const [already]=await pool.execute('SELECT account_id FROM account_discord_links WHERE discord_user_id=? LIMIT 1',[identity.id]);
     if(!already.length)return redirect(config,{discord_error:'discord_account_conflict'});
     account=already[0].account_id;
-   }
+   }finally{connection.release()}
   }
   const ticket=generateToken();
   await pool.execute("INSERT INTO discord_oauth_tickets(ticket_hash,account_id,discord_user_id,discord_username,intent,expires_at) VALUES(?,?,?,?, 'login',DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE))",
