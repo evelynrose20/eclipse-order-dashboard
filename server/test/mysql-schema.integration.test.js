@@ -15,7 +15,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -51,6 +51,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(reputation.find(r=>r.faction_id==='iron-remnant')?.faction_view,-95);
   const [[scope]]=await admin.query("SELECT faction_scope FROM order_factions WHERE id='ashen-veil'");
   assert.equal(scope.faction_scope,'order_story');
+  const [[settlementColumn]]=await admin.query("SHOW COLUMNS FROM order_factions LIKE 'faction_scope'");
+  assert.match(settlementColumn.Type,/settlement/);
+  await admin.execute("INSERT INTO order_factions(id,name,leader,relationship,description,notes,faction_scope) VALUES(?,?,?,?,?,?,?)",
+   ['test-hamlet','Test Hamlet','Village Council','neutral','An independent settlement.','','settlement']);
+  const [[testHamlet]]=await admin.execute("SELECT faction_scope FROM order_factions WHERE id='test-hamlet'");
+  assert.equal(testHamlet.faction_scope,'settlement');
+
   const [seedFactions]=await admin.query('SELECT id,leader,relationship,image_reference_url FROM order_factions ORDER BY sort_order');
   assert.equal(seedFactions.length,5);
   assert.equal(seedFactions.find(f=>f.id==='house-kurogane')?.leader,'Lady Reika Kurogane');
