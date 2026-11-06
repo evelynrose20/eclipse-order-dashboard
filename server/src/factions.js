@@ -2,7 +2,7 @@ import {resolveSession} from './auth.js';
 
 const relationships=new Set(['friendly','rival','watchful_rival','hostile','neutral']);
 const factionId=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const factionScopes=new Set(['order_story','world']);
+const factionScopes=new Set(['order_story','world','settlement']);
 const repTargets=new Set(['order_view','faction_view','player']);
 export const reputationLabel=score=>score<=-75?'Nemesis':score<=-40?'Hostile':score<=-10?'Unfriendly':score<10?'Neutral':score<40?'Cordial':score<75?'Friendly':'Exalted';
 const clampScore=value=>Math.min(100,Math.max(-100,value));
