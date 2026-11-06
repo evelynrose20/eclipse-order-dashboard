@@ -71,7 +71,7 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'created'});
   }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'scenario_exists');throw e}
  }
- const scenarioEdit=/^\\/workshop\\/encounters\\/scenarios\\/([a-z0-9-]+)$/.exec(path);
+ const scenarioEdit=/^\/workshop\/encounters\/scenarios\/([a-z0-9-]+)$/.exec(path);
  if(scenarioEdit&&req.method==='PUT'){
   if(!command)return fail(403,'command_required');
   const b=await read(req);
@@ -83,7 +83,7 @@ export async function craftingRoute(pool,req,path){
    [b.name.trim(),b.kind,b.description.trim(),b.outcome_text.trim(),b.weight,b.enemy_health,b.enemy_defense,b.enabled?1:0,scenarioEdit[1]]);
   return changed.affectedRows?ok({status:'saved'}):fail(404,'scenario_not_found');
  }
- const encounterAction=/^\\/workshop\\/encounters\\/(\\d+)\\/action$/.exec(path);
+ const encounterAction=/^\/workshop\/encounters\/(\d+)\/action$/.exec(path);
  if(encounterAction&&req.method==='POST'){
   const b=await read(req);
   if(!['attack','retreat','continue','decline'].includes(b?.action))return fail(400,'invalid_encounter_action');
