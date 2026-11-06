@@ -23,6 +23,10 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const [editingMonsterId,setEditingMonsterId]=useState(null);
  const [libraryOpen,setLibraryOpen]=useState(false);
  const [section,setSection]=useState('map');
+ const [focusMode,setFocusMode]=useState(false);
+ const [railMode,setRailMode]=useState('turns');
+ const [railOpen,setRailOpen]=useState(true);
+ const [scenesOpen,setScenesOpen]=useState(true);
  const [creating,setCreating]=useState(false);
  const selected=data.find(x=>x.id===chosenId)||null;
  const canDirect=Boolean(!playerFacing&&selected&&(role==='domina'||role==='high_command'||(role==='handler'&&selected.created_by===userId)));
@@ -74,17 +78,17 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   catch(e){setError(e.message)}finally{setWorking(false)}
  }
 
- return <div className="encounter-layout encounter-studio encounter-dm-view">
-  <aside className="panel encounter-sidebar"><div className="encounter-studio-aside-header"><span className="encounter-eyebrow">THE ECLIPSE ORDER</span><h2>DM Studio</h2><p>Run stories and command the battlefield.</p>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New encounter</button>}</div><div className="encounter-studio-list-label">ENCOUNTERS <span>{data.length}</span></div>
+ return <div className={'encounter-layout encounter-studio encounter-dm-view'+(focusMode?' scene-focus':'')+(railOpen?'':' rail-collapsed')}>
+  <aside className="panel encounter-sidebar"><div className="encounter-studio-aside-header"><span className="encounter-eyebrow">THE ECLIPSE ORDER</span><h2>DM Studio</h2><p>Run stories and command the battlefield.</p><button type="button" className="mini-btn encounter-scenes-toggle" aria-expanded={scenesOpen} onClick={()=>setScenesOpen(v=>!v)}>{scenesOpen?'Hide scenes':'Scenes'}</button>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New encounter</button>}</div>{scenesOpen&&<><div className="encounter-studio-list-label">ENCOUNTERS <span>{data.length}</span></div>
    <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('map');setError('')}}>
-    <span className="encounter-choice-state">{e.status==='active'?'LIVE':e.status==='draft'?'PREPARING':e.status.toUpperCase()}</span><strong>{e.name}</strong><small>{e.combatants.length} combatants · {e.signup_count||0}/{e.capacity||8} party</small></button>)}</div>
+    <span className="encounter-choice-state">{e.status==='active'?'LIVE':e.status==='draft'?'PREPARING':e.status.toUpperCase()}</span><strong>{e.name}</strong><small>{e.combatants.length} combatants · {e.signup_count||0}/{e.capacity||8} party</small></button>)}</div></>}
   </aside>
   <main className="encounter-main">
    {creating&&directorRole?<section className="panel"><div className="panel-heading"><div><h2>Plan a new FC event</h2><p>Build the event privately, schedule it, open sign-ups, then prepare monsters and party members.</p></div><button className="mini-btn" onClick={()=>setCreating(false)}>Cancel</button></div><EventEditor key="new-event" event={null} save={createEvent} working={working}/></section>:
    !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
     <header className="encounter-studio-header">
      <div><span className="encounter-eyebrow">DM WORKSPACE · {selected.status.toUpperCase()}</span><h2>{selected.name}</h2><p>{selected.location||'Location unassigned'} · {selected.combatants.length} combatants · Round {selected.round_number||1}</p></div>
-     <div className="encounter-studio-header-actions"><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
+     <div className="encounter-studio-header-actions"><button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
       {canDirect&&selected.status==='draft'&&<button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start the encounter now?'))action(()=>encounterTurn(chosenId,'start'))}}>Start encounter</button>}
       {canDirect&&selected.status==='active'&&<button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button>}
      </div>
@@ -108,7 +112,8 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     {canDirect&&<div className="encounter-actions">{selected.status==='draft'&&<><button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button><button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start combat now? Event preparation will be locked.'))action(()=>encounterTurn(chosenId,'start'))}}>Start combat</button></>}</div>}
     <div className="event-setup-stats"><span>{selected.combatants.filter(c=>c.kind==='player').length} players assigned</span><span>{selected.combatants.filter(c=>c.kind==='npc').length} enemies / NPCs</span></div></section>}
     {section==='map'&&<div className="encounter-studio-map-layout"><BattleMap key={selected.id} encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>
-     <aside className="encounter-studio-battle-rail"><div className="encounter-studio-rail-heading"><span className="encounter-eyebrow">TURN ORDER</span><strong>Round {selected.round_number||1}</strong></div>
+     <aside className="encounter-studio-battle-rail"><div className="encounter-rail-tabs"><button type="button" className={railMode==='turns'?'active':''} aria-pressed={railMode==='turns'} onClick={()=>{setRailMode('turns');setRailOpen(true)}}>Initiative</button><button type="button" className={railMode==='dice'?'active':''} aria-pressed={railMode==='dice'} onClick={()=>{setRailMode('dice');setRailOpen(true)}}>Dice</button><button type="button" onClick={()=>setRailOpen(v=>!v)} aria-label={railOpen?'Collapse sidebar':'Expand sidebar'}>{railOpen?'‹':'›'}</button></div>
+      {railOpen&&railMode==='turns'&&<><div className="encounter-studio-rail-heading"><span className="encounter-eyebrow">TURN ORDER</span><strong>Round {selected.round_number||1}</strong></div>
       {selected.combatants.length?<div className="encounter-studio-turn-list">{selected.combatants.map((c,i)=><div key={c.id} className={'encounter-studio-turn '+(selected.status==='active'&&i===selected.turn_index%selected.combatants.length?'current':'')}>
        <span className="encounter-studio-initiative">{c.initiative}</span><div><strong>{c.name}</strong><small>{c.kind==='player'?'Player character':'NPC / enemy'}</small><div className="encounter-studio-mini-hp"><span style={{width:Math.max(0,Math.min(100,c.hp/Math.max(1,c.max_hp)*100))+'%'}}/></div><small>{c.hp}/{c.max_hp} HP · AC {c.ac}</small></div>
       </div>)}</div>:<p className="muted">Add combatants to prepare the battlefield.</p>}
@@ -116,7 +121,8 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
        <button type="button" className="btn secondary" onClick={()=>setSection('setup')}>Manage combatants</button>
        <button type="button" className="btn secondary" onClick={()=>setSection('dice')}>Dice & checks</button>
        {selected.status==='active'&&<button type="button" className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button>}
-      </div>}
+      </div>}</>}
+      {railOpen&&railMode==='dice'&&<div className="encounter-rail-dice">{(isParticipant||canDirect)&&!(previewOnly&&!isParticipant)&&<DicePanel classCatalog={classCatalog} key={selected.id+'-rail'} previewOnly={previewOnly} isDirector={isDirector} encounter={selected} characters={characters} canDirect={canDirect} userId={userId} check={check} working={working} action={action}/>}</div>}
      </aside></div>}
     {section==='combat'&&<section className="panel encounter-header"><div className="encounter-topline"><div><small>LIVE ENCOUNTER</small><h2>{selected.name}</h2><p className="muted">Status: {selected.status} · Round {selected.round_number}</p></div>{canDirect&&selected.status==='active'&&<div className="encounter-actions"><button className="btn primary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'next'))}>Next turn →</button><button className="btn secondary" disabled={working} onClick={()=>action(()=>encounterTurn(chosenId,'finish'))}>Finish combat</button></div>}</div>
     {activeCombatant&&selected.status==='active'&&<div className="current-turn"><span>NOW ACTING</span><strong>{activeCombatant.name}</strong><small>Round {selected.round_number} · Initiative {activeCombatant.initiative}</small></div>}
