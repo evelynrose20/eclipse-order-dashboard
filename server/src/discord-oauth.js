@@ -4,6 +4,18 @@ import {resolveSession} from './auth.js';
 const SESSION_HOURS=12;
 const STATE_MINUTES=10;
 const TICKET_MINUTES=3;
+const startAttempts=new Map();
+const WINDOW_MS=15*60*1000;
+function throttleStart(request,env,now=Date.now()){
+ const publicRequest=env.API_PUBLIC_ENABLED==='true'&&request.headers.host===env.API_PUBLIC_HOST;
+ const forwarded=String(request.headers['cf-connecting-ip']||'');
+ const source=publicRequest&&/^[0-9a-fA-F:.]{3,45}$/.test(forwarded)?forwarded:request.socket?.remoteAddress||'local';
+ const previous=startAttempts.get(source);
+ const count=previous&&now-previous.since<WINDOW_MS?previous.count+1:1;
+ startAttempts.set(source,{count,since:count===1?now:previous.since});
+ if(startAttempts.size>3000)for(const [key,item] of startAttempts){if(now-item.since>WINDOW_MS||startAttempts.size>3000)startAttempts.delete(key)}
+ return count>15;
+}
 const fail=(status,error)=>({status,body:{error}});
 const good=body=>({status:200,body});
 const discordUserId=id=>typeof id==='string'&&/^\d{15,25}$/.test(id);
@@ -71,6 +83,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
  const config=discordOAuthConfig(env);
  if(!config)return fail(503,'discord_login_not_configured');
  if(path==='/auth/discord/start'&&request.method==='POST'){
+  if(throttleStart(request,env))return fail(429,'too_many_attempts');
   const session=await resolveSession(pool,request);
   if(request.headers.authorization&&!session)return fail(401,'not_authenticated');
   const target=session?.id||null;
@@ -78,6 +91,9 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
    const [linked]=await pool.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=? LIMIT 1',[target]);
    if(linked.length)return fail(409,'discord_already_linked');
   }
+  // Expired handoffs are safe to remove; limit cleanup work per request.
+  await pool.execute('DELETE FROM discord_oauth_states WHERE expires_at<UTC_TIMESTAMP() LIMIT 100');
+  await pool.execute('DELETE FROM discord_oauth_tickets WHERE expires_at<UTC_TIMESTAMP() LIMIT 100');
   const state=generateToken();
   await pool.execute('INSERT INTO discord_oauth_states(state_hash,target_account_id,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE))',[hash(state),target,STATE_MINUTES]);
   return good({authorization_url:discordAuthorizationUrl(config,state)});
