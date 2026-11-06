@@ -90,3 +90,25 @@ test('a character cannot save four trained skills by bypassing the editor',async
  assert.equal(valid.status,200);
  assert.equal(JSON.parse(m.writes[0].values[1]).skills.Stealth,undefined);
 });
+
+test('new character is automatically owned by its creator even when another owner is submitted',async()=>{
+ const m=mock('domina',Bob,[]);
+ const data={name:'New Wisp',class_id:'warrior',str:10,dex:10,con:10,int:10,wis:10,cha:10,player_user_id:Alice,collar_bound:false};
+ const response=await characterRoute(m.pool,req('POST',data),'/characters');
+ assert.equal(response.status,201,JSON.stringify(response.body));
+ const insertion=m.writes.find(w=>w.sql.startsWith('INSERT INTO characters'));
+ assert.ok(insertion);
+ assert.equal(insertion.values[2],Bob,'the authenticated creator must be the owner');
+ assert.equal(insertion.values[4],0,'new characters must begin RP-unbound');
+ const sheet=JSON.parse(insertion.values[6]);
+ assert.equal(sheet.player_user_id,undefined,'submitted owner IDs cannot persist in the character sheet');
+});
+test('new character cannot bypass RP binding consent during creation',async()=>{
+ const m=mock('domina',Bob,[]);
+ const response=await characterRoute(m.pool,req('POST',{
+  name:'Bound Wisp',class_id:'warrior',str:10,dex:10,con:10,int:10,wis:10,cha:10,collar_bound:true
+ }),'/characters');
+ assert.equal(response.status,403);
+ assert.equal(response.body.error,'player_approval_required');
+ assert.equal(m.writes.length,0);
+});
