@@ -47,11 +47,12 @@ export async function characterRoute(pool,req,path){
   const data=await payload(req);
   const name=limit(data?.name,120);
   if(!name||!data||typeof data!=='object'||Array.isArray(data))return err(400,'invalid_character');
-  const owner=typeof data.player_user_id==='string'&&U.test(data.player_user_id)?data.player_user_id:null;
+  // The account that creates a character owns it. Never trust a submitted owner ID.
+  const owner=actor.id;
   const handler=typeof data.handler_user_id==='string'&&U.test(data.handler_user_id)?data.handler_user_id:null;
-  // Linked players cannot be bound by a direct write; an OOC approval workflow is required.
-  const bound=Boolean(data.collar_bound);
-  if(bound&&owner)return err(403,'player_approval_required');
+  // Character creation is always unbound; IC binding requires player approval later.
+  if(data.collar_bound)return err(403,'player_approval_required');
+  const bound=false;
   if(name.split(/\s+/).filter(Boolean).length<2)return err(400,'first_and_last_name_required');
   const rank=bound?ranks.get(data.rank)||'rank_i':null;
   const id=randomUUID();
