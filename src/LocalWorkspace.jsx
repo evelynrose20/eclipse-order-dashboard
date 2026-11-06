@@ -1,14 +1,14 @@
 import React,{useEffect,useState} from 'react';
-import {FullDndSheet,LimitedSheet,ACCOUNT_ROLES} from './OrderSheets.jsx';
+import {ACCOUNT_ROLES} from './OrderSheets.jsx';
 import Encounters from './Encounters.jsx';
 import {CharacterTransitions} from './RPPlatform.jsx';
 import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
-import CharacterProgression from './CharacterProgression.jsx';
+
 import HomebrewClasses from './HomebrewClasses.jsx';
-import ClassSpellbook from './ClassSpellbook.jsx';
+
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
@@ -51,12 +51,12 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const navigation=[
   ['overview','Overview','◈'],
   ['roster','Character roster','▦'],
-  ['sheet','Character sheets','◇'],
+  ['sheet','Character dossiers','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
   ...(!playerPreview&&canManage(profile.role)?[['governance','Governance Preview','♛'],['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
-  ['profile','My RP profile','♡'],
+  ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
   ['transitions','Binding requests','◇'],
   ['settings','Order rules','⚙']
