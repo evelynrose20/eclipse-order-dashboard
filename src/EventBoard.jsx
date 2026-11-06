@@ -36,6 +36,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
  const [check,setCheck]=useState(null);
  const selected=events.find(e=>e.id===selectedId)||null;
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
+ const unlinkedCharacters=useMemo(()=>canLinkCharacters?characters.filter(c=>!c.player_user_id&&!c.collar_bound):[],[characters,canLinkCharacters]);
  async function refresh(){
   const all=await listEncounters();
   const visible=all.filter(e=>e.published&&!e.archived_at);
