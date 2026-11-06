@@ -18,6 +18,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const [expeditionApproach,setExpeditionApproach]=useState('steady');
  const [selectedRecipe,setSelectedRecipe]=useState('');
  const [craftQty,setCraftQty]=useState(1);
+ const [staged,setStaged]=useState([]);
  const [reveal,setReveal]=useState(null);
  const [catalog,setCatalog]=useState(null);
  const [materialDraft,setMaterialDraft]=useState(initialMaterial);
@@ -50,8 +51,8 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const doGather=()=>run('/workshop/gather',{material_id:selected?.id,character_id:characterId,approach:expeditionApproach},
   'The expedition returned to the Order.',r=>setReveal({type:'gather',name:selected.name,quantity:r.quantity}));
  const doCraft=()=>run('/workshop/craft',{recipe_id:recipe.id,quantity:Number(craftQty),character_id:characterId},
-  'The workshop has delivered its finished goods to the shared stores.',r=>setReveal({type:'craft',name:name(recipe.output_material),quantity:r.quantity*recipe.output_quantity}));
- const canCraft=recipe&&recipe.inputs.every(i=>stock(i.material_id)>=i.quantity*craftQty)&&canAct;
+  'The workshop has delivered its finished goods to the shared stores.',r=>{setStaged([]);setReveal({type:'craft',name:name(recipe.output_material),quantity:r.quantity*recipe.output_quantity})});
+ const canCraft=recipe&&recipe.inputs.every(i=>stock(i.material_id)>=i.quantity*craftQty&&staged.includes(i.material_id))&&canAct;
  const createMaterial=()=>{const id=slug(materialDraft.name);run('/workshop/catalog/materials',{id,...materialDraft},'New material added to the Order catalog.',()=>{setMaterialDraft(initialMaterial);setCatalog(null)})};
  const createRecipe=()=>{const id=slug(recipeDraft.name);run('/workshop/catalog/recipes',{id,...recipeDraft,output_quantity:Number(recipeDraft.output_quantity),inputs:recipeDraft.inputs.map(i=>({...i,quantity:Number(i.quantity)}))},'New recipe added to the Order workshop.',()=>{setRecipeDraft(initialRecipe);setCatalog(null)})};
  const createPlot=()=>run('/workshop/catalog/plots',{crop_material:crop},'A new garden plot has been planted.',()=>setCatalog(null));
@@ -97,11 +98,12 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
     <p className="fc-scene-hint">Five expeditions per member per UTC day. Finds are recorded for the whole FC, never in a private inventory.</p>
    </div>}
    {tab==='craft'&&<div className="fc-scene"><div className="fc-scene-title"><div><span>THE ALCHEMIST'S TABLE</span><h3>Turn common stores into something new</h3><p>Choose a blueprint and prepare its ingredients. Finished goods are returned to the FC's stores.</p></div></div>
-    <div className="fc-craft-layout"><div className="fc-recipe-index">{recipes.map(r=><button key={r.id} type="button" className={recipe?.id===r.id?'chosen':''} onClick={()=>{setSelectedRecipe(r.id);setReveal(null)}}><span>⚒</span><strong>{r.name}</strong><small>{name(r.output_material)}</small></button>)}</div>
+    <div className="fc-craft-layout"><div className="fc-recipe-index">{recipes.map(r=><button key={r.id} type="button" className={recipe?.id===r.id?'chosen':''} onClick={()=>{setSelectedRecipe(r.id);setReveal(null);setStaged([])}}><span>⚒</span><strong>{r.name}</strong><small>{name(r.output_material)}</small></button>)}</div>
      {recipe&&<div className="fc-craft-bench"><span>RECIPE BLUEPRINT</span><h4>{recipe.name}</h4><p>{recipe.description}</p>
-      <div className="fc-craft-chain">{recipe.inputs.map(i=><div key={i.material_id} className={'fc-craft-ingredient '+(stock(i.material_id)>=i.quantity*craftQty?'available':'missing')}><span>{ICON[materials.find(m=>m.id===i.material_id)?.category]||'◆'}</span><strong>{name(i.material_id)}</strong><small>{stock(i.material_id)} / {i.quantity*craftQty}</small></div>)}<div className="fc-craft-arrow">➜</div><div className="fc-craft-product"><span>✦</span><strong>{name(recipe.output_material)}</strong><small>× {recipe.output_quantity*craftQty}</small></div></div>
-      <div className="fc-craft-footer"><label>Batch size <input type="number" min="1" max="25" value={craftQty} onChange={e=>setCraftQty(Math.max(1,Math.min(25,Number(e.target.value)||1)))}/></label><button className="fc-start-button" type="button" disabled={!canCraft||busy} onClick={doCraft}>{busy?'Working…':'Begin crafting'}</button></div>
-      {!canCraft&&<p className="fc-scene-hint">Choose a character and ensure the FC has enough ingredients.</p>}
+      <p className="fc-staging-hint">Prepare your materials: select or drag each ingredient into the workbench.</p>
+      <div className="fc-craft-chain">{recipe.inputs.map(i=><button type="button" key={i.material_id} draggable={stock(i.material_id)>=i.quantity*craftQty} onDragStart={e=>e.dataTransfer.setData('text/plain',i.material_id)} onClick={()=>setStaged(prev=>prev.includes(i.material_id)?prev.filter(k=>k!==i.material_id):stock(i.material_id)>=i.quantity*craftQty?[...prev,i.material_id]:prev)} className={'fc-craft-ingredient '+(stock(i.material_id)>=i.quantity*craftQty?'available':'missing')+' '+(staged.includes(i.material_id)?'staged':'')} aria-pressed={staged.includes(i.material_id)}><span>{ICON[materials.find(m=>m.id===i.material_id)?.category]||'◆'}</span><strong>{name(i.material_id)}</strong><small>{stock(i.material_id)} / {i.quantity*craftQty}</small><em>{staged.includes(i.material_id)?'✓ Prepared':'Select ingredient'}</em></button>)}<div className="fc-craft-arrow">➜</div><div className="fc-craft-product" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(recipe.inputs.some(i=>i.material_id===id&&stock(id)>=i.quantity*craftQty))setStaged(prev=>prev.includes(id)?prev:[...prev,id])}}><span>✦</span><strong>{name(recipe.output_material)}</strong><small>× {recipe.output_quantity*craftQty}</small><em>{recipe.inputs.every(i=>staged.includes(i.material_id))?'Ready to create':'Awaiting ingredients'}</em></div></div>
+      <div className="fc-craft-footer"><label>Batch size <input type="number" min="1" max="25" value={craftQty} onChange={e=>{setCraftQty(Math.max(1,Math.min(25,Number(e.target.value)||1)));setStaged([])}}/></label><button className="fc-start-button" type="button" disabled={!canCraft||busy} onClick={doCraft}>{busy?'Working…':'Begin crafting'}</button></div>
+      {!canCraft&&<p className="fc-scene-hint">Choose a character, make sure the stores have enough, and prepare each ingredient.</p>}
      </div>}</div>
    </div>}
    {tab==='stores'&&<div className="fc-scene"><div className="fc-scene-title"><div><span>THE ORDER'S VAULT</span><h3>One treasury, many contributors</h3><p>Every ore, herb, and finished item belongs to the Free Company.</p></div></div>
