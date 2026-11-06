@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {resolveSession} from './auth.js';
-import {createProgression,classArmor} from './progression.js';
+import {createProgression,classArmor,skillProficiencyCount,MAX_SKILL_PROFICIENCIES} from './progression.js';
 import {loadClassCatalog,schoolSlots} from './class-catalog.js';
 
 const commands=new Set(['domina','high_command']);
@@ -187,6 +187,7 @@ export async function characterRoute(pool,req,path){
    // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
    for(const key of ['str','dex','con','int','wis','cha'])blocked.add(key);
   }
+  if(body.skills!==undefined&&skillProficiencyCount(body.skills)>MAX_SKILL_PROFICIENCIES)return err(400,'max_three_skill_proficiencies');
   const fields=Object.fromEntries(Object.entries(body).filter(([key])=>!blocked.has(key)));
   const next={...old,...fields};
   const name=limit(next.name,120);
