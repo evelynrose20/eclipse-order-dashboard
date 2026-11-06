@@ -31,7 +31,13 @@ export function discordOAuthConfig(env=process.env){
  const defaultSite=env.API_ALLOWED_ORIGIN==='https://evelynrose20.github.io'
   ?env.API_ALLOWED_ORIGIN+'/eclipse-order-dashboard/'
   :env.API_ALLOWED_ORIGIN+'/';
- const site=env.DISCORD_FRONTEND_URL||defaultSite;
+ const configuredSite=env.DISCORD_FRONTEND_URL||'';
+ // A configured account-root URL is also wrong for this GitHub Pages project.
+ // Normalize only that exact known mistake; retain explicit custom subpaths.
+ const site=env.API_ALLOWED_ORIGIN==='https://evelynrose20.github.io'&&
+  (configuredSite==='https://evelynrose20.github.io'||configuredSite==='https://evelynrose20.github.io/')
+   ?defaultSite
+   :(configuredSite||defaultSite);
  let siteUrl;
  try{siteUrl=new URL(site)}catch{return null}
  if(siteUrl.origin!==env.API_ALLOWED_ORIGIN||siteUrl.protocol!=='https:'||siteUrl.username||siteUrl.password||siteUrl.hash)return null;
