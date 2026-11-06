@@ -26,7 +26,7 @@ const statusLabel=event=>{
 };
 const statusClass=event=>event.status==='active'?'live':event.status==='finished'?'closed':'open';
 
-export default function EventBoard({userId,characters,onOpenProfile,previewOnly=false,canLinkCharacters=false,onLinkCharacter,linking=false,isStaff=false}){
+export default function EventBoard({userId,characters,onOpenProfile,previewOnly=false,isStaff=false}){
  const [events,setEvents]=useState([]);
  const [selectedId,setSelectedId]=useState('');
  const [loading,setLoading]=useState(true);
@@ -36,7 +36,6 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
  const [check,setCheck]=useState(null);
  const selected=events.find(e=>e.id===selectedId)||null;
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
- const unlinkedCharacters=useMemo(()=>canLinkCharacters?characters.filter(c=>!c.player_user_id&&!c.collar_bound):[],[characters,canLinkCharacters]);
  async function refresh(){
   const all=await listEncounters();
   const visible=all.filter(e=>e.published&&!e.archived_at);
@@ -104,7 +103,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
        {selected.status==='draft'&&<button type="button" className="order-event-join-button" aria-expanded={showSignups} onClick={()=>setShowSignups(p=>!p)}>{showSignups?'Hide sign-ups':'View sign-ups'} <span aria-hidden="true">{showSignups?'−':'+'}</span></button>}
        {selected.status!=='draft'&&<button type="button" className="order-event-join-button" aria-expanded={showSignups} onClick={()=>setShowSignups(p=>!p)}>My registration <span aria-hidden="true">{showSignups?'−':'+'}</span></button>}
       </section>
-      {showSignups&&<div className="order-event-signups"><EventSignups key={selected.id} event={selected} characters={characters} userId={userId} canDirect={false} ownOnly previewOnly={previewOnly} working={working||linking} action={action} refresh={refresh} unlinkedCharacters={unlinkedCharacters} onLinkCharacter={onLinkCharacter} isEventDirector={isStaff&&selected.created_by===userId}/></div>}
+      {showSignups&&<div className="order-event-signups"><EventSignups key={selected.id} event={selected} characters={characters} userId={userId} canDirect={false} ownOnly previewOnly={previewOnly} working={working} action={action} refresh={refresh} isEventDirector={isStaff&&selected.created_by===userId}/></div>}
      </>}
     {error&&<div role="alert" className="alert">{error}</div>}
    </main>
