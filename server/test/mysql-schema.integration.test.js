@@ -34,6 +34,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(storyCols.length,1);
   const [archiveCols]=await admin.query("SHOW COLUMNS FROM order_encounters LIKE 'archived_at'");
   assert.equal(archiveCols.length,1);
+  const [authColumns]=await admin.query("SHOW COLUMNS FROM account_sessions LIKE 'auth_method'");
+  assert.equal(authColumns.length,1);
   const [[combatantType]]=await admin.query("SHOW COLUMNS FROM order_combatants LIKE 'kind'");
   assert.match(combatantType.Type,/ally/);
   await admin.query(await readFile(new URL('../sql/013_npc_allies.sql',import.meta.url),'utf8')); // migration is repeatable
