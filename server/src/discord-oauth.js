@@ -72,6 +72,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
  if(!config)return fail(503,'discord_login_not_configured');
  if(path==='/auth/discord/start'&&request.method==='POST'){
   const session=await resolveSession(pool,request);
+  if(request.headers.authorization&&!session)return fail(401,'not_authenticated');
   const target=session?.id||null;
   if(target){
    const [linked]=await pool.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=? LIMIT 1',[target]);
