@@ -15,6 +15,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [selectedMaterial,setSelectedMaterial]=useState('');
+ const [expeditionApproach,setExpeditionApproach]=useState('steady');
  const [selectedRecipe,setSelectedRecipe]=useState('');
  const [craftQty,setCraftQty]=useState(1);
  const [reveal,setReveal]=useState(null);
@@ -46,7 +47,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
   }catch(e){setError(String(e.message||e))}
   finally{setBusy(false)}
  }
- const doGather=()=>run('/workshop/gather',{material_id:selected?.id,character_id:characterId},
+ const doGather=()=>run('/workshop/gather',{material_id:selected?.id,character_id:characterId,approach:expeditionApproach},
   'The expedition returned to the Order.',r=>setReveal({type:'gather',name:selected.name,quantity:r.quantity}));
  const doCraft=()=>run('/workshop/craft',{recipe_id:recipe.id,quantity:Number(craftQty),character_id:characterId},
   'The workshop has delivered its finished goods to the shared stores.',r=>setReveal({type:'craft',name:name(recipe.output_material),quantity:r.quantity*recipe.output_quantity}));
@@ -88,6 +89,10 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
    </div>}
    {tab==='gather'&&<div className="fc-scene"><div className="fc-scene-title"><div><span>BEYOND THE ESTATE</span><h3>Choose an expedition</h3><p>Set out to gather herbs or minerals. Each expedition returns a small, server-rolled find. Bound characters require Eclipse Attendant standing or higher.</p></div><strong className="fc-expedition-counter">{gatherLeft} trips left</strong></div>
     <div className="fc-expedition-grid">{gatherables.map(m=><button key={m.id} type="button" className={'fc-expedition-node '+(selected?.id===m.id?'chosen':'')} onClick={()=>{setSelectedMaterial(m.id);setReveal(null)}}><span className="fc-expedition-art">{ICON[m.category]}</span><strong>{m.name}</strong><small>{m.category==='ore'?'Mineral deposits':'Foraging grounds'}</small><span className="fc-expedition-stock">{stock(m.id)} in FC stores</span></button>)}</div>
+    <div className="fc-expedition-approaches" aria-label="Choose expedition approach">
+      <button type="button" className={expeditionApproach==='steady'?'chosen':''} aria-pressed={expeditionApproach==='steady'} onClick={()=>setExpeditionApproach('steady')}><span>❧</span><strong>Careful trail</strong><small>A reliable find: 1–3 materials</small></button>
+      <button type="button" className={expeditionApproach==='daring'?'chosen':''} aria-pressed={expeditionApproach==='daring'} onClick={()=>setExpeditionApproach('daring')}><span>⚡</span><strong>Deep wilderness</strong><small>Risk coming back empty for a chance at 7</small></button>
+    </div>
     <div className="fc-expedition-footer"><div><strong>{selected?.name||'Choose a resource'}</strong><p>{selected?.description||'Select a gathering location above.'}</p></div><button type="button" className="fc-start-button" disabled={!canAct||busy||!selected||gatherLeft===0} onClick={doGather}>{busy?'Exploring…':'Set out on expedition'}</button></div>
     <p className="fc-scene-hint">Five expeditions per member per UTC day. Finds are recorded for the whole FC, never in a private inventory.</p>
    </div>}
@@ -105,7 +110,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
     <h4 className="fc-ledger-title">Recent contributions</h4><div className="fc-ledger">{data.ledger.map(l=><div key={l.id}><span><strong>{l.name}</strong><small>{l.display_name} · {l.activity.replace('_',' ')} · {new Date(l.created_at).toLocaleDateString()}</small></span><strong className={Number(l.delta)>=0?'gain':'loss'}>{Number(l.delta)>0?'+':''}{l.delta}</strong></div>)}{!data.ledger.length&&<p>The ledger is ready for its first contribution.</p>}</div>
    </div>}
   </>}
-  {reveal&&<div className="fc-reveal-backdrop" role="presentation"><section className="fc-reveal" role="dialog" aria-modal="true" aria-label="Activity complete"><span>✦</span><p>{reveal.type==='gather'?'EXPEDITION COMPLETE':reveal.type==='craft'?'CRAFTING COMPLETE':'HARVEST COMPLETE'}</p><h3>+{reveal.quantity} {reveal.name}</h3><small>Added to the shared Order stores</small><button type="button" onClick={()=>setReveal(null)}>Continue</button></section></div>}
+  {reveal&&<div className="fc-reveal-backdrop" role="presentation"><section className="fc-reveal" role="dialog" aria-modal="true" aria-label="Activity complete"><span>✦</span><p>{reveal.type==='gather'?'EXPEDITION COMPLETE':reveal.type==='craft'?'CRAFTING COMPLETE':'HARVEST COMPLETE'}</p><h3>{reveal.quantity>0?'+ '+reveal.quantity+' '+reveal.name:'An empty-handed return'}</h3><small>{reveal.quantity>0?'Added to the shared Order stores':'The expedition was recorded; try another route next time.'}</small><button type="button" onClick={()=>setReveal(null)}>Continue</button></section></div>}
   {catalog&&command&&data&&<div className="fc-reveal-backdrop"><section className="fc-catalog-dialog" role="dialog" aria-modal="true" aria-label="Expand workshop catalog">
    <header><div><span>ORDER COMMAND</span><h3>Expand the workshop</h3></div><button type="button" aria-label="Close" onClick={()=>setCatalog(null)}>×</button></header>
    <div className="fc-catalog-switch">{[['material','Material'],['recipe','Recipe'],['plot','Garden crop']].map(([id,label])=><button type="button" key={id} className={catalog===id?'selected':''} onClick={()=>setCatalog(id)}>{label}</button>)}</div>
