@@ -42,7 +42,7 @@ export function createProgression(sheet,definition){
  const hp=Math.max(1,klass.hit_die+con);
  const skills=sheet.skills&&typeof sheet.skills==='object'&&!Array.isArray(sheet.skills)?sheet.skills:{};
  return {...sheet,class_id:sheet.class_id,class_name:klass.name,progression_version:1,level:1,experience:0,
-  hp,max_hp:hp,armor_class:classArmor(sheet,klass),hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:unlockedClassFeatures(sheet.class_id,1,klass).join(', '),
+  hp,max_hp:hp,armor_class:classArmor({...sheet,level:1},klass),hit_dice:'1d'+klass.hit_die,proficiency_bonus:2,features:unlockedClassFeatures(sheet.class_id,1,klass).join(', '),
   ability_points:0,class_features:unlockedClassFeatures(sheet.class_id,1,klass),
   spell_points:klass.casting==='full'?4:0,max_spell_points:klass.casting==='full'?4:0,
   saving_throws:Object.fromEntries(ABILITIES.map(a=>[a,klass.saves.includes(a)])),skills};
