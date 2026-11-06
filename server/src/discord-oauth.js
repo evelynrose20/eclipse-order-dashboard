@@ -173,7 +173,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   if(accounts[0].approval_status==='pending')return good({status:'pending',message:'Your Discord membership is verified. Order command must approve your portal access.'});
   if(!accounts[0].is_active||accounts[0].approval_status!=='approved')return fail(403,'account_not_approved');
   const token=generateToken();
-  await pool.execute('INSERT INTO account_sessions(account_id,token_hash,expires_at) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? HOUR))',[item.account_id,hash(token),SESSION_HOURS]);
+  await pool.execute("INSERT INTO account_sessions(account_id,token_hash,expires_at,auth_method) VALUES(?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? HOUR),'discord')",[item.account_id,hash(token),SESSION_HOURS]);
   return good({access_token:token,token_type:'Bearer',expires_in:SESSION_HOURS*3600});
  }
  if(path==='/auth/discord/unlink'&&request.method==='POST'){
