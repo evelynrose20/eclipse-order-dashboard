@@ -149,3 +149,19 @@
 @media(max-width:1250px){.encounter-dm-view .encounter-studio-map-layout:has(.encounter-rail-dice){grid-template-columns:minmax(0,1fr) 290px}}
 @media(max-width:930px){.encounter-dm-view .encounter-studio-map-layout:has(.encounter-rail-dice){grid-template-columns:1fr}.encounter-studio-map-layout .encounter-studio-battle-rail{position:static;max-height:none}}
 @media(max-width:650px){.eo-local .content.encounter-content{padding:10px 9px 28px}}
+
+/* Recoverable scene lifecycle and accessible encounter notices. */
+.encounter-scene-filters{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:4px 0}
+.encounter-scene-filters button{border:1px solid #624556;background:#29212b;color:#cdb7c4;padding:8px 12px;border-radius:7px;font-size:11px;font-weight:650}
+.encounter-scene-filters button.active{border-color:#c18b9f;background:#543247;color:#f7dfe8}
+.encounter-scene-filters button:focus-visible{outline:2px solid #e9b2c3;outline-offset:2px}
+.encounter-studio-header-actions .encounter-danger{border-color:#9c5562;color:#ffc8d2}
+.encounter-studio-header-actions .encounter-danger:hover{border-color:#d37d90;background:#5d2d3c}
+.encounter-feedback{display:flex;gap:13px;align-items:center;flex-wrap:wrap;border:1px solid #916477;background:#3c2633;border-radius:9px;padding:12px 15px;color:#f4d5e2;font-size:12px;line-height:1.5}
+.encounter-feedback.error{border-left:3px solid #d58a96}
+.encounter-feedback.success{border-color:#748f78;background:#24342d;color:#d6ead9}
+.encounter-feedback>span{flex:1;min-width:180px}
+.encounter-feedback>strong{font-size:12px}
+.encounter-feedback>.mini-btn{margin-left:auto}
+.encounter-feedback:focus-within{outline:1px solid #d6acc2}
+@media(max-width:700px){.encounter-feedback{align-items:start}.encounter-feedback>.mini-btn{margin-left:0}}
