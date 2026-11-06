@@ -13,7 +13,7 @@ test('Events & signups uses its own member noticeboard, not the GM encounter wor
 test('event board displays real published events and preserves member-only registrations',()=>{
  assert.match(board,/listEncounters\(\)/);
  assert.match(board,/\.filter\(e=>e\.published\)/);
- assert.match(board,/event\.description/);
+ assert.match(board,/selected\.description/);
  assert.match(board,/event\.location/);
  assert.match(board,/event\.signup_count/);
  assert.match(board,/EventSignups/);
