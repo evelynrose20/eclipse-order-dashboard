@@ -4,9 +4,11 @@ import {createPool} from 'mysql2/promise';
 import {validSnowflake} from './discord-guild.js';
 
 const [operation,identifier,discordId]=process.argv.slice(2);
-const valid=operation==='link'||operation==='owner';
-if(!valid||!validSnowflake(operation==='owner'?identifier:discordId)||operation==='link'&&(!identifier||identifier.length>254)){
+const valid=['link','owner','inspect','restore-domina'].includes(operation);
+if(!valid||!validSnowflake(['owner','inspect'].includes(operation)?identifier:discordId)||(['link','restore-domina'].includes(operation)&&(!identifier||identifier.length>254))){
  console.error('Usage: npm run discord:account -- link account-email discord-user-id');
+ console.error('   or: npm run discord:account -- inspect discord-user-id (read only)');
+ console.error('   or: npm run discord:account -- restore-domina original-account-email discord-user-id');
  console.error('   or: npm run discord:account -- owner discord-user-id (only if there is no active Domina)');
  process.exitCode=2;
 }else if(!process.env.DB_USER||!process.env.DB_PASSWORD){
@@ -16,7 +18,40 @@ if(!valid||!validSnowflake(operation==='owner'?identifier:discordId)||operation=
  const conn=await pool.getConnection();
  try{
   await conn.beginTransaction();
-  if(operation==='link'){
+  if(operation==='inspect'){
+   const [rows]=await conn.execute(
+    'SELECT a.id,a.email,a.display_name,a.account_role,a.is_active,a.approval_status,l.discord_user_id FROM account_discord_links l JOIN accounts a ON a.id=l.account_id WHERE l.discord_user_id=? LIMIT 1',
+    [identifier]);
+   if(!rows.length)console.log('No Order account is linked to this Discord ID in this database.');
+   else{
+    const row=rows[0];
+    console.log('Linked account:',row.id);
+    console.log('Email:',row.email);
+    console.log('Display name:',row.display_name);
+    console.log('Role:',row.account_role);
+    console.log('Active:',Number(row.is_active)===1?'yes':'no');
+    console.log('Approval:',row.approval_status);
+   }
+   const [owners]=await conn.execute("SELECT id,email,is_active,approval_status FROM accounts WHERE account_role='domina' ORDER BY created_at LIMIT 10");
+   console.log('Existing Domina records:',owners.map(o=>({id:o.id,email:o.email,active:Number(o.is_active)===1,approval:o.approval_status})));
+  }else if(operation==='restore-domina'){
+   // Local-only recovery. Require both existing Domina account and exact pre-linked Discord ID.
+   // Never elevate an applicant/member or choose a Domina from a supplied Discord ID alone.
+   const [accounts]=await conn.execute('SELECT id,account_role,is_active,approval_status FROM accounts WHERE email=? LIMIT 1 FOR UPDATE',[identifier.trim().toLowerCase()]);
+   if(accounts.length!==1||accounts[0].account_role!=='domina')
+    throw Error('This email is not an existing Domina account in this database. Nothing was changed.');
+   const [links]=await conn.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=? LIMIT 1 FOR UPDATE',[accounts[0].id]);
+   if(links.length!==1||links[0].discord_user_id!==discordId)
+    throw Error('This Domina is not linked to that Discord ID. Nothing was changed.');
+   const [otherOwners]=await conn.execute("SELECT id FROM accounts WHERE account_role='domina' AND id<>? AND is_active=1 AND approval_status='approved' LIMIT 1 FOR UPDATE",[accounts[0].id]);
+   if(otherOwners.length)throw Error('Another active approved Domina exists. Nothing was changed.');
+   if(Number(accounts[0].is_active)===1&&accounts[0].approval_status==='approved')
+    console.log('The existing Domina is already active and approved. Nothing was changed. If the website still shows pending, verify it uses this same database and the updated API.');
+   else{
+    await conn.execute("UPDATE accounts SET is_active=1,approval_status='approved' WHERE id=? AND account_role='domina'",[accounts[0].id]);
+    console.log('Restored the existing Domina account to active and approved. No roles or characters were changed.');
+   }
+  }else if(operation==='link'){
    const [accounts]=await conn.execute('SELECT id,display_name FROM accounts WHERE email=? LIMIT 1 FOR UPDATE',[identifier.trim().toLowerCase()]);
    if(!accounts.length)throw Error('No existing account has that email.');
    const target=accounts[0].id;
