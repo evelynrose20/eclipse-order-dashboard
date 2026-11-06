@@ -26,7 +26,7 @@ test('DM encounters open on the map and preserve live combat and dice tools',()=
  assert.match(dm,/useState\('map'\)/);
  assert.match(dm,/encounter-studio-map-layout/);
  assert.match(dm,/encounter-studio-turn-list/);
- for(const value of ['BattleMap','DicePanel','EventEditor','EventSignups','rollAllInitiative','encounterTurn','QuickHP','EventXPRewards'])
+ for(const value of ['BattleMap','DicePanel','EventEditor','EventSignups','rollAllInitiative','encounterTurn','CombatantWorkspace','EventXPRewards'])
   assert.ok(dm.includes(value),value);
 });
 test('studio retains responsive layouts and focus-visible map interactions',()=>{
@@ -67,4 +67,17 @@ test('encounter page prioritizes the battlefield without redundant global page i
  assert.match(workspace,/encounter-content/);
  assert.match(read('encounter-studio.css'),/encounter-studio-map-layout:has\(\.encounter-rail-dice\)/);
  assert.match(read('encounter-dice.css'),/dice-preset-row/);
+});
+
+test('Combatants workspace is a dedicated DM roster instead of a packed form',()=>{
+ const roster=read('CombatantWorkspace.jsx');
+ assert.match(dm,/<CombatantWorkspace key=\{selected\.id\}/);
+ assert.match(roster,/combat-roster-summary/);
+ assert.match(roster,/combat-roster-main/);
+ assert.match(roster,/combat-side-picker/);
+ assert.match(roster,/combat-library-panel/);
+ assert.match(roster,/combat-roster-details/);
+ assert.match(roster,/combat-condition-chip/);
+ assert.doesNotMatch(dm,/<select multiple/);
+ assert.match(read('combatant-workspace.css'),/@media\(max-width:760px\)/);
 });
