@@ -48,7 +48,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false}={}
   if(url.includes('/guilds/')){
    if(options.method==='PUT'){joinCount++;guildMember=true;return {ok:true,status:201,json:async()=>({pending:memberPending})}}
    lookups++;if(unavailable)return {ok:false,status:503};
-   if(!guildMember)return {ok:false,status:404};
+   if(!guildMember)return {ok:false,status:404,json:async()=>({code:10007,message:'Unknown Member'})};
    return {ok:true,status:200,json:async()=>({pending:memberPending})};
   }
   throw Error('Unexpected request: '+url);
