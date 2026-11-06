@@ -41,6 +41,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false}={}
   if(sql.startsWith('INSERT INTO account_sessions')){sessions.set(args[1],args[0]);return [{affectedRows:1}]}
   throw Error('Unexpected SQL: '+sql);
  }};
+ pool.getConnection=async()=>({execute:(sql,args)=>pool.execute(sql,args),beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{}});
  const httpFetch=async(url,options={})=>{
   if(url.includes('/oauth2/token'))return {ok:true,status:200,json:async()=>({access_token:'discord-access-token',scope:'identify guilds.join'})};
   if(url.includes('/users/@me'))return {ok:true,status:200,json:async()=>({id:discordId,username:'Tester'})};
