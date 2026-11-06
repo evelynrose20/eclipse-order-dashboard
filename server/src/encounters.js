@@ -166,7 +166,7 @@ export async function encounterRoute(pool,req,path){
   if(!e||!gm(u,e))return err(403,'director_required');
   if(e.archived_at)return err(409,'encounter_archived');
   const name=text(b?.name,120),hp=int(b?.hp,1,999999),ac=int(b?.ac,0,99),initiative=int(b?.initiative,-100,100);
-  if(!name||hp===null||ac===null||initiative===null||!['npc','player'].includes(b?.kind))return err(400,'invalid_combatant');
+  if(!name||hp===null||ac===null||initiative===null||!['npc','player','ally'].includes(b?.kind))return err(400,'invalid_combatant');
   let charId=null;
   if(b.kind==='player'){
    const [characters]=await pool.execute('SELECT id,player_account_id FROM characters WHERE id=?',[b.character_id]);
@@ -244,11 +244,14 @@ export async function encounterRoute(pool,req,path){
   const e=await getEvent(pool,addMonster[1]);
   if(!e||!gm(u,e))return err(403,'director_required');
   if(e.archived_at)return err(409,'encounter_archived');
+  const b=await read(req);
+  const kind=b?.kind==='ally'?'ally':b?.kind===undefined?'npc':null;
+  if(!kind)return err(400,'invalid_combatant');
   const [monsters]=await pool.execute('SELECT * FROM order_monster_templates WHERE id=?',[addMonster[2]]);
   const m=monsters[0];if(!m)return err(404,'monster_not_found');
   const id=randomUUID();
   await pool.execute('INSERT INTO order_combatants(id,encounter_id,name,kind,initiative,hp,max_hp,ac,conditions,monster_template_id,actions,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-   [id,e.id,m.name,'npc',m.initiative_bonus,m.hit_points,m.hit_points,m.armor_class,'[]',m.id,m.actions,m.notes]);
+   [id,e.id,m.name,kind,m.initiative_bonus,m.hit_points,m.hit_points,m.armor_class,'[]',m.id,m.actions,m.notes]);
   return ok(id,201);
  }
  return err(404,'not_found');
