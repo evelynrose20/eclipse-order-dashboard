@@ -40,8 +40,8 @@ export default function LocalAccounts(){
  const [busy,setBusy]=useState(false);
  const [adult,setAdult]=useState(false);
  const processed=useRef(false);
- async function start(intent='login'){
-  if(!adult){setMessage('Please confirm you are 18 or older and understand the Bad End FC premise.');return}
+ async function start(intent='login',confirmed=adult){
+  if(!confirmed){setMessage('Please confirm you are 18 or older and understand the Bad End FC premise.');return}
   setMessage('');setReason('');setBusy(true);
   try{
    const result=await request('/auth/discord/start',{method:'POST',body:{intent,adult_confirmed:true}});
@@ -76,7 +76,7 @@ export default function LocalAccounts(){
   sessionStorage.removeItem(storageKey);setProfile(null);setToken('');
  }
  if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
- if(['discord_not_in_server','discord_membership_screening','discord_guild_configuration_error','discord_server_check_unavailable','pending'].includes(reason))return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('')}}/>;
+ if(['discord_not_in_server','discord_membership_screening','discord_guild_configuration_error','discord_server_check_unavailable','pending'].includes(reason))return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login',true)} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('')}}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
