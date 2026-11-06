@@ -74,14 +74,14 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  }
 
  return <div className="encounter-layout">
-  <section className="panel encounter-sidebar"><div className="event-library-top"><div><h2>FC events</h2><p className="muted">Plan stories and sign up for upcoming events.</p></div>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New event</button>}</div>
+  <section className="panel encounter-sidebar"><div className="event-library-top"><div><h2>{playerFacing?'Upcoming Order events':'FC events'}</h2><p className="muted">{playerFacing?'Browse published events, see dates and locations, and request a place with your character.':'Plan stories and manage events and encounters.'}</p></div>{directorRole&&<button className="btn primary" onClick={()=>{setCreating(true);setSection('planning')}}>+ New event</button>}</div>
    <div className="encounter-list">{data.map(e=><button key={e.id} className={'encounter-choice '+(!creating&&chosenId===e.id?'active':'')} onClick={()=>{setCreating(false);setChosenId(e.id);setSection('overview');setError('')}}>
     <strong>{e.name}</strong><small>{e.starts_at?new Date(e.starts_at).toLocaleDateString():'Date TBD'} · {e.status==='draft'?(e.published?'Sign-ups open':'Preparing'):e.status}</small><small>{e.signup_count||0}/{e.capacity||8} approved{!playerFacing?' · '+e.combatants.length+' combatants':''}</small></button>)}</div>
   </section>
   <section className="encounter-main">
    {creating&&directorRole?<section className="panel"><div className="panel-heading"><div><h2>Plan a new FC event</h2><p>Build the event privately, schedule it, open sign-ups, then prepare monsters and party members.</p></div><button className="mini-btn" onClick={()=>setCreating(false)}>Cancel</button></div><EventEditor key="new-event" event={null} save={createEvent} working={working}/></section>:
    !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
-    <header className="event-workspace-header"><div><small>{playerFacing?'MEMBER EVENTS':previewOnly?'FC EVENT':'EVENT MANAGEMENT'}</small><h2>{selected.name}</h2><p>{selected.starts_at?new Date(selected.starts_at).toLocaleString():'Unscheduled'} · {selected.location||'Location TBD'} · {selected.status}</p></div></header>
+    <header className="event-workspace-header"><div><small>{playerFacing?'ORDER EVENT':previewOnly?'FC EVENT':'EVENT MANAGEMENT'}</small><h2>{selected.name}</h2><p>{selected.starts_at?new Date(selected.starts_at).toLocaleString():'Unscheduled'} · {selected.location||'Location TBD'} · {selected.status==='draft'&&selected.published?'Open for sign-ups':selected.status}</p></div></header>
     <nav className="event-tabs" aria-label="Event workspace">
     {(playerFacing?[['overview','Event details'],['signups','My sign-ups']]:[
       ['overview','Overview'],['planning','Event details'],['signups','Sign-ups'],
