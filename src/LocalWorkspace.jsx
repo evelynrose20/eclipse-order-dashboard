@@ -10,6 +10,7 @@ import CharacterProgression from './CharacterProgression.jsx';
 import HomebrewClasses from './HomebrewClasses.jsx';
 import ClassSpellbook from './ClassSpellbook.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
+import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
 import {SYNDICATE_RANKS,syndicateRankLabel} from './syndicateRanks.js';
 import './dashboard.css';
 import './local-accounts.css';
@@ -21,6 +22,7 @@ const newSheet=()=>({name:'',player:'',owner:'',specialty:'',notes:'',rank:'Unbo
  hp:10,max_hp:10,armor_class:10,level:1,experience:0,class_id:'',class_name:'',species:'',str:8,dex:8,con:8,int:8,wis:8,cha:8});
 export default function LocalWorkspace({profile,request,onLogout}){
  const [tab,setTab]=useState('overview');
+ const [menuOpen,setMenuOpen]=useState(false);
  const [members,setMembers]=useState([]);
  const [characters,setCharacters]=useState([]);
  const [selected,setSelected]=useState('');
@@ -32,7 +34,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const reloadClasses=async()=>{const result=await request('/classes');setClassCatalog(result.classes||{})};
  const staff=['domina','high_command','handler'].includes(profile.role);
  const [playerPreview,setPlayerPreview]=useState(false);
- const changeView=()=>{setPlayerPreview(v=>!v);setTab('overview');setDraft(null);setSelected('');setFilter('');setMessage('')};
+ const changeView=()=>{setMenuOpen(false);setPlayerPreview(v=>!v);setTab('overview');setDraft(null);setSelected('');setFilter('');setMessage('')};
  const load=async()=>{
   const roster=await request('/characters');
   setCharacters(roster);
@@ -81,15 +83,9 @@ export default function LocalWorkspace({profile,request,onLogout}){
   finally{setBusy(false)}
  };
  return <div className="app-shell eo-local">
-  <aside className="sidebar">
-   <div className="brand"><span className="brand-sigil">✦</span><div><strong>ECLIPSE ORDER</strong><small>THE UNDERWORLD LEDGER</small></div></div>
-   <div className="workspace-chip"><span className="pulse"/> The Order<small>Private members' ledger</small></div>
-   <p className="nav-label">{playerPreview?'MEMBER PORTAL':'COMMAND CENTER'}</p>
-   <nav aria-label="Primary navigation">{navigation.map(([id,label,mark])=><button key={id} className={'nav-link '+(tab===id?'active':'')} onClick={()=>{setTab(id);setDraft(null);setMessage('')}}><span className="nav-symbol">{mark}</span>{label}{id==='members'&&pending.length>0?<em className="eo-nav-count">{pending.length}</em>:null}</button>)}</nav>
-   <div className="side-bottom"><div className="monogram">EO</div><div><strong>{syndicateRankLabel(profile.syndicate_rank)}</strong><small>{profile.email}</small></div></div>
-  </aside>
+  <OrderNavigation items={navigation} active={tab} mode={playerPreview?'member':'staff'} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={id=>{setTab(id);setDraft(null);setMessage('')}} footer={<div className="side-bottom"><div className="monogram">EO</div><div><strong>{syndicateRankLabel(profile.syndicate_rank)}</strong><small>{profile.email}</small></div></div>}/>
   <main className="main">
-   <header className="topbar"><div className="breadcrumb">ECLIPSE ORDER <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
+   <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className="content">
     {playerPreview&&<div className="player-preview-banner" role="status"><strong>Player View · Read-only preview</strong><span>Showing member navigation and your own linked characters. Your staff login and server permissions are unchanged; use a separate member account to verify real access restrictions.</span></div>}
     <div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'ORDER OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Order at a glance.'):tab==='members'?'Approve membership requests; manage syndicate ranks and separate account permissions.':'Manage the Order’s records and activities.'}</p></div></div>
