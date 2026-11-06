@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {defaultEventStory,readEventStory,MAX_CHAPTERS} from '../server/src/event-story.js';
+import {readEventStory,MAX_CHAPTERS,eventTypeLabel} from '../server/src/event-story.js';
 import {CONTENT_THEMES} from './ProfileConsent.jsx';
 import {
  editPlannedEvent,signupForEvent,listEventSignups,decideEventSignup,
@@ -81,7 +81,8 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
 }
 export function EventSummary({event,canDirect,onPlan,onSignups,onPrepare,onCombat,playerFacing=false}){
  return <section className="panel event-summary">
-  <div className="event-summary-top"><div><span className="event-kicker">FC STORY EVENT</span><h2>{event.name}</h2><p>{event.description||'No public story description yet.'}</p></div><span className={'event-status '+(event.status==='active'?'live':'')}>{event.status==='draft'?(event.published?'Open for sign-ups':'Private draft'):event.status}</span></div>
+  <div className="event-summary-top"><div><span className="event-kicker">{eventTypeLabel(readEventStory(event.event_story).type)} · D{readEventStory(event.event_story).difficulty} · I{readEventStory(event.event_story).impact}</span><h2>{event.name}</h2><p>{event.description||'No public story description yet.'}</p></div><span className={'event-status '+(event.status==='active'?'live':'')}>{event.status==='draft'?(event.published?'Open for sign-ups':'Private draft'):event.status}</span></div>
+  {readEventStory(event.event_story).chapters.length>0&&<div className="event-chapter-summary"><strong>Chapters</strong>{readEventStory(event.event_story).chapters.map((chapter,i)=><div key={i}>{i+1}. {chapter.title} · D{chapter.difficulty}</div>)}</div>}
   <div className="event-facts"><div><small>DATE & TIME</small><strong>{displayDate(event.starts_at)}</strong></div><div><small>LOCATION</small><strong>{event.location||'Not assigned'}</strong></div><div><small>PARTY</small><strong>{event.signup_count||0}/{event.capacity||8} approved</strong></div>{!playerFacing&&<div><small>ENEMIES / COMBATANTS</small><strong>{event.combatants.length} prepared</strong></div>}</div>
   <div className="event-summary-actions">{canDirect&&event.status==='draft'&&<button className="btn secondary" onClick={onPlan}>Edit event</button>}<button className="btn secondary" onClick={onSignups}>{canDirect?'Manage sign-ups':'My sign-ups'}</button>{canDirect&&<button className="btn secondary" onClick={onPrepare}>Prepare encounters</button>}{!playerFacing&&event.status==='active'&&<button className="btn primary" onClick={onCombat}>Open live combat</button>}</div>
  </section>;
