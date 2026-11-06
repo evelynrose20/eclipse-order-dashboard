@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import './local-accounts.css';
 import LocalWorkspace from './LocalWorkspace.jsx';
 
@@ -34,6 +34,37 @@ export default function LocalAccounts(){
  const [rows,setRows]=useState([]);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
+ const discordCallbackHandled=useRef(false);
+ async function beginDiscord(){
+  setMessage('');setBusy(true);
+  try{const result=await request('/auth/discord/start',{method:'POST'});window.location.assign(result.authorization_url)}
+  catch(e){setMessage(e.message);setBusy(false)}
+ }
+ useEffect(()=>{
+  if(discordCallbackHandled.current)return;
+  const fragment=new URLSearchParams(window.location.hash.slice(1));
+  if(!fragment.has('discord_ticket')&&!fragment.has('discord_error'))return;
+  discordCallbackHandled.current=true;
+  const ticket=fragment.get('discord_ticket'),problem=fragment.get('discord_error');
+  window.history.replaceState(null,'',window.location.pathname+window.location.search);
+  if(problem){setMessage(({
+   discord_denied:'Discord authorization was cancelled.',
+   discord_account_not_linked:'This Discord account is not linked yet. Sign in with your Eclipse Order account first, then connect Discord from your dashboard.',
+   discord_identity_taken:'That Discord identity is already connected to a different Order account.',
+   discord_already_linked:'Discord is already connected to this account.',
+   discord_expired_request:'Discord sign-in expired. Start again.',
+   discord_unavailable:'Discord could not verify your identity. Please retry.'
+  })[problem]||'Discord sign-in could not be completed. Please retry.');return}
+  if(!ticket)return;
+  let alive=true;
+  setBusy(true);
+  request('/auth/discord/complete',{method:'POST',token:sessionStorage.getItem(storageKey)||undefined,body:{ticket}}).then(async result=>{
+   if(!alive)return;
+   if(result.status==='linked'){setMessage('Discord connected successfully. You can now sign in with Discord.');return}
+   if(result.access_token){sessionStorage.setItem(storageKey,result.access_token);setToken(result.access_token);setPassword('')}
+  }).catch(e=>{if(alive)setMessage(e.message)}).finally(()=>{if(alive)setBusy(false)});
+  return()=>{alive=false};
+ },[]);
  useEffect(()=>{
   // Initial Domina bootstrap is intentionally local-only; the public API returns 404.
   // Do not call it from the deployed website or show a false setup error on sign-in.
@@ -102,6 +133,7 @@ export default function LocalAccounts(){
     </>}
     {message&&<p className="eo-message" role="status">{message}</p>}
     <button className="eo-primary" type="submit" disabled={busy||checkingSetup}>{busy?'Working…':mode==='setup'?'Create Domina account':mode==='register'?'Submit membership request':'Sign in'}</button>
+   {mode==='sign-in'&&<div className="eo-discord-login"><span>OR SIGN IN WITH</span><button type="button" className="eo-discord-button" disabled={busy||checkingSetup} onClick={beginDiscord}><svg aria-hidden="true" width="22" height="18" viewBox="0 0 127.14 96.36" fill="currentColor"><path d="M104.4 8.19A99.83 99.83 0 0 0 79.56.5a69.4 69.4 0 0 0-3.18 6.57 92.9 92.9 0 0 0-27.68 0A69.4 69.4 0 0 0 45.52.5a99.84 99.84 0 0 0-24.84 7.69C5.02 31.55.77 54.32 2.9 76.77a100.2 100.2 0 0 0 30.48 15.41 73.82 73.82 0 0 0 6.53-10.62 64.87 64.87 0 0 1-10.28-4.95c.86-.62 1.7-1.26 2.52-1.92a71.15 71.15 0 0 0 61.16 0c.82.66 1.66 1.3 2.52 1.92a64.87 64.87 0 0 1-10.28 4.95 73.82 73.82 0 0 0 6.53 10.62 100.2 100.2 0 0 0 30.48-15.41c2.53-26.01-4.33-48.57-18.16-68.58ZM42.45 63.05c-5.81 0-10.56-5.29-10.56-11.78s4.66-11.78 10.56-11.78 10.65 5.29 10.56 11.78c0 6.49-4.66 11.78-10.56 11.78Zm42.24 0c-5.81 0-10.56-5.29-10.56-11.78s4.66-11.78 10.56-11.78 10.65 5.29 10.56 11.78c0 6.49-4.66 11.78-10.56 11.78Z"/></svg> Continue with Discord</button><small>First time? Sign in with your Order account and link Discord from your dashboard.</small></div>}
    </form>
    {mode!=='setup'&&<button className="eo-link" onClick={()=>{setMessage('');setMode(mode==='register'?'sign-in':'register')}}>{mode==='register'?'Already have an account? Sign in':'Need an account? Request membership'}</button>}
   </main>:<main className="eo-members">
