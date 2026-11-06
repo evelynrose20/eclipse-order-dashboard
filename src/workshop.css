@@ -106,3 +106,11 @@
 @media(max-width:780px){.fc-craft-layout{grid-template-columns:1fr}.fc-recipe-index{grid-template-columns:repeat(2,minmax(0,1fr))}.fc-play-seal{display:none}}
 @media(max-width:550px){.fc-play-banner{padding:24px}.fc-play-overview{grid-template-columns:1fr}.fc-scene-title,.fc-garden-upgrade,.fc-expedition-footer{flex-direction:column;align-items:stretch}.fc-play-actor{flex-direction:column;align-items:stretch}.fc-play-actor select{min-width:0}.fc-play-nav button{min-width:calc(50% - 6px)}.fc-craft-chain{flex-direction:column}.fc-craft-arrow{transform:rotate(90deg)}}
 @media(prefers-reduced-motion:reduce){.fc-bed-plant,.fc-reveal>span{animation:none}}
+
+.fc-expedition-approaches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc-expedition-approaches button{display:grid;grid-template-columns:35px 1fr;gap:3px 12px;align-items:center;text-align:left;padding:17px;background:#302538;border:1px solid #675166;color:#e6c9db;border-radius:11px;cursor:pointer}
+.fc-expedition-approaches button.chosen{background:#49344b;border-color:#e3aac6;box-shadow:inset 0 0 0 1px #e3aac644}
+.fc-expedition-approaches button>span{grid-row:span 2;display:grid;place-items:center;font-size:27px;color:#e6b9cb}
+.fc-expedition-approaches button strong{font-size:13px;color:#f3dbe6}
+.fc-expedition-approaches button small{font-size:11px;color:#baa2b2}
+@media(max-width:550px){.fc-expedition-approaches{grid-template-columns:1fr}}
