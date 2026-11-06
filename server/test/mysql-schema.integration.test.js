@@ -8,6 +8,7 @@ import {eventXpRoute} from '../src/event-xp.js';
 import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
+import {craftingRoute} from '../src/crafting.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
  const admin=createPool({
@@ -132,6 +133,24 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(myProfile.body.user.syndicate_rank,'domina');
   const char=await characterRoute(admin,request('POST',{name:'CI Hero',class_id:'warrior',str:15,dex:14,con:13,int:12,wis:10,cha:8}),'/characters');
   assert.equal(char.status,201,JSON.stringify(char.body));
+  const gathered=await craftingRoute(admin,request('POST',{material_id:'iron-ore',quantity:6,character_id:char.body.id}),'/workshop/gather');
+  assert.equal(gathered.status,200,JSON.stringify(gathered.body));
+  const crafted=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:2,character_id:char.body.id}),'/workshop/craft');
+  assert.equal(crafted.status,200,JSON.stringify(crafted.body));
+  const [[ironStock]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
+  assert.equal(ironStock.quantity,2);
+  const [[oreStock]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
+  assert.equal(oreStock.quantity,0);
+  const noStock=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id}),'/workshop/craft');
+  assert.equal(noStock.status,409,'insufficient stock must roll back atomically');
+  const care=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'water'}),'/workshop/garden/1/care');
+  assert.equal(care.status,200,JSON.stringify(care.body));
+  const repeatCare=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'tend'}),'/workshop/garden/1/care');
+  assert.equal(repeatCare.status,409,'a member may care once per plot each day');
+  const [ledgerRows]=await admin.query('SELECT activity,delta FROM fc_material_ledger ORDER BY id');
+  assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,1);
+  assert.equal(ledgerRows.filter(l=>l.activity==='craft_input').length,1);
+  assert.equal(ledgerRows.filter(l=>l.activity==='craft_output').length,1);
   const eventId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   await admin.execute('INSERT INTO order_encounters(id,name,notes,themes,created_by,status,description) VALUES(?,?,?,?,?,?,?)',
    [eventId,'CI Adventure','',JSON.stringify([]),id,'completed','']);
