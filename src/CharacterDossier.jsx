@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {FullDndSheet,LimitedSheet} from './OrderSheets.jsx';
 import CharacterProgression from './CharacterProgression.jsx';
 import ClassSpellbook from './ClassSpellbook.jsx';
-import {DOSSIER_TABS,dossierTabs,dossierSummary,isDossierRestricted} from './characterDossierRules.js';
+import {DOSSIER_TABS,dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab} from './characterDossierRules.js';
 import './character-dossier.css';
 
 function ReadField({title,children,wide=false}){
@@ -21,11 +21,11 @@ export default function CharacterDossier({
  const restricted=isDossierRestricted(character,playerPreview);
  const summary=dossierSummary(character,playerPreview);
  const allowed=dossierTabs(character,playerPreview);
- const [section,setSection]=useState('identity');
- useEffect(()=>setSection('identity'),[character?.id,restricted]);
- useEffect(()=>{if(!allowed.some(x=>x.id===section))setSection('identity')},[section,restricted]);
+ const [section,setSection]=useState(()=>defaultDossierTab(character,playerPreview));
+ useEffect(()=>setSection(defaultDossierTab(character,playerPreview)),[character?.id,restricted]);
+ useEffect(()=>{if(!allowed.some(x=>x.id===section))setSection(defaultDossierTab(character,playerPreview))},[section,restricted]);
  if(!summary)return null;
- const active=allowed.some(x=>x.id===section)?section:'identity';
+ const active=allowed.some(x=>x.id===section)?section:defaultDossierTab(character,playerPreview);
  const klass=classCatalog[character.class_id];
  return <div className="dossier-root">
   <header className="dossier-hero">
@@ -52,7 +52,7 @@ export default function CharacterDossier({
     {active==='spells'&&!restricted&&<Chapter eyebrow="04 / ARCANUM" title="Spellbook & abilities" description="Class spells and abilities are shown from the current catalog. Custom spell approval is not yet active."><div className="dossier-integrated"><ClassSpellbook key={character.id} character={character} klass={klass} request={request} onRefresh={onRefresh} userId={userId} readOnly={playerPreview}/></div><div className="dossier-fields"><ReadField title="Additional spell notes" wide>{summary.spells}</ReadField></div></Chapter>}
     {active==='possessions'&&!restricted&&<Chapter eyebrow="05 / BELONGINGS" title="Possessions" description="Items and equipment recorded on the existing sheet. The living economy and inventory ledger are planned separately."><div className="dossier-fields"><ReadField title="Equipment & belongings" wide>{summary.equipment}</ReadField><ReadField title="Proficiencies & languages" wide>{summary.proficiencies}</ReadField></div></Chapter>}
     {active==='progression'&&!restricted&&<Chapter eyebrow="06 / JOURNEY" title="Progression" description="Levels and event-earned experience remain on the current system until the original RPG design replaces it."><div className="dossier-stats"><div><span>Current level</span><strong>{summary.level}</strong></div><div><span>Event XP</span><strong>{Number(summary.experience||0).toLocaleString()}</strong></div><div><span>Ability points</span><strong>{character.ability_points??0}</strong></div></div><div className="dossier-integrated"><CharacterProgression key={character.id} character={character} canCommand={canCommand} readOnly={playerPreview} request={request} onRefresh={onRefresh}/></div></Chapter>}
-    {active==='legacy'&&!restricted&&<Chapter eyebrow="ARCHIVE / LEGACY" title="Classic character sheet" description="The existing complete sheet remains accessible while we validate the redesigned dossier."><FullDndSheet character={character}/></Chapter>}
+    {active==='legacy'&&!restricted&&<Chapter eyebrow="PRIMARY / CHARACTER SHEET" title="Classic character sheet" description="Your complete character sheet, with all existing details and mechanics. Explore the other dossier tabs whenever you like."><FullDndSheet character={character}/></Chapter>}
    </div>
   </div>
  </div>;
