@@ -127,7 +127,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
    <h3>{encounterData.active.name}</h3><p>{encounterData.active.description}</p>
    {['wildlife','bandits'].includes(encounterData.active.kind)&&<div className="fc-encounter-health">
     <label>Your stamina <strong>{encounterData.active.player_health}/12</strong></label><div className="fc-healthbar"><span style={{width:Math.max(0,Number(encounterData.active.player_health)/12*100)+'%'}}/></div>
-    <label>Opponent <strong>{encounterData.active.enemy_health}</strong></label><div className="fc-healthbar hostile"><span style={{width:Math.min(100,Number(encounterData.active.enemy_health)/(encounterData.active.kind==='wildlife'?9:12)*100)+'%'}}/></div>
+    <label>Opponent <strong>{encounterData.active.enemy_health}</strong></label><div className="fc-healthbar hostile"><span style={{width:Math.min(100,Number(encounterData.active.enemy_health)/Math.max(1,Number(encounterData.active.enemy_max_health)||8)*100)+'%'}}/></div>
     <small>Turn {encounterData.active.turn_number} of 6 · Attack uses a d20 roll</small>
    </div>}
    {encounterMessage&&<p className="fc-encounter-feedback" role="status">{encounterMessage}</p>}
