@@ -20,6 +20,9 @@ export const addCombatant=(...args)=>(useLocal?local:original).addCombatant(...a
 export const editCombatant=(...args)=>(useLocal?local:original).editCombatant(...args);
 export const deleteCombatant=(...args)=>(useLocal?local:original).deleteCombatant(...args);
 export const encounterTurn=(...args)=>(useLocal?local:original).encounterTurn(...args);
+export const archiveEncounter=(id)=>useLocal?local.archiveEncounter(id):Promise.reject(new Error('Scene archives are only available in the Order member portal.'));
+export const restoreEncounter=(id)=>useLocal?local.restoreEncounter(id):Promise.reject(new Error('Scene restoration is only available in the Order member portal.'));
+export const deleteEncounter=(id)=>useLocal?local.deleteEncounter(id):Promise.reject(new Error('Scene deletion is only available in the Order member portal.'));
 export const encounterCheck=(...args)=>(useLocal?local:original).encounterCheck(...args);
 export const pauseEncounter=(...args)=>(useLocal?local:original).pauseEncounter(...args);
 export const encounterRoll=(...args)=>(useLocal?local:original).encounterRoll(...args);
