@@ -10,6 +10,14 @@ The codebase also retains the older Supabase/browser-ledger route when `VITE_ECL
 
 A successful frontend deployment only verifies static assets. It does not run MySQL migrations or prove the Windows API, Cloudflare Tunnel, or member permissions are working.
 
+## Public website and member portal
+
+The site now opens on a **public landing page** describing The Eclipse Order's lore, hierarchy, roleplay, expectations, and membership request process. Visitors do not need to sign in to read it. The existing member dashboard and account registration/login are still available via the **Member sign-in** / **Request membership** links.
+
+Because GitHub Pages does not automatically rewrite arbitrary deep URLs to the app shell, public links use the safe **`?portal`** query route (for example `https://<deployed-site>/?portal`). Hosting environments with SPA fallback also accept `/portal`. Both paths preserve the existing Windows/MySQL authentication and dashboard; the query path is the reliable option for static GitHub Pages deployments. The public homepage itself requires no API response or database access.
+
+The new public site has original Eclipse Order copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
+
 ## Member experience
 
 - Request membership; a Domina approves or rejects the application before access is granted.
