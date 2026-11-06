@@ -54,8 +54,8 @@ export function EventEditor({event,save,working}){
   <button className="btn primary" disabled={working} type="submit">Save event details</button>
  </form>;
 }
-export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false,ownOnly=false}){
- const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState('');
+export function EventSignups({event,characters,userId,canDirect,working,action,refresh,previewOnly=false,ownOnly=false,unlinkedCharacters=[],onLinkCharacter,isEventDirector=false}){
+ const [signups,setSignups]=useState([]),[selectedCharacter,setSelectedCharacter]=useState(''),[linkCandidate,setLinkCandidate]=useState('');
  const [error,setError]=useState('');
  const own=characters.filter(c=>c.player_user_id===userId);
  async function load(){try{setSignups(await listEventSignups(event.id));setError('')}catch(e){setError(e.message)}}
@@ -65,7 +65,13 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
  const approve=signups.filter(s=>s.status==='approved');
  return <section className="panel event-signups">
   <div className="panel-heading"><div><h2>{ownOnly?'My event registration':'Registration & party approvals'}</h2><p>{ownOnly?'Choose one of your characters to request a place, or review and withdraw your own signups.':'Members apply with their own character. The GM approves applicants, then chooses when to add them to the party.'}</p></div><span className="event-count">{approve.length} / {event.capacity||8} approved</span></div>
-  {!canDirect&&event.published&&event.status==='draft'&&<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={previewOnly||!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>}
+  {!canDirect&&event.published&&event.status==='draft'&&<>
+   {isEventDirector?<div className="signup-eligibility-note" role="note"><strong>You're directing this event.</strong><p>The DM manages the party from Encounters & dice → Combatants, rather than sending a player signup to their own event.</p></div>:<>
+    {own.length>0?<div className="signup-form"><label className="field"><span>SIGN UP WITH CHARACTER</span><select value={selectedCharacter} onChange={e=>setSelectedCharacter(e.target.value)}><option value="">Select your character</option>{own.map(c=><option key={c.id} value={c.id}>{c.name} · {c.collar_bound?'Bound':'Free'}</option>)}</select></label><button className="btn primary" disabled={previewOnly||!selectedCharacter||working} onClick={()=>apply(()=>signupForEvent(event.id,selectedCharacter))}>Request a place</button></div>:
+     <div className="signup-eligibility-note" role="status"><strong>No characters linked to your account</strong><p>A character can be unbound and still need a linked player account before appearing in this list.</p></div>}
+    {unlinkedCharacters.length>0&&onLinkCharacter&&!previewOnly&&<div className="signup-account-link"><label className="field"><span>LINK AN UNASSIGNED CHARACTER</span><select value={linkCandidate} onChange={e=>setLinkCandidate(e.target.value)}><option value="">Choose a character</option>{unlinkedCharacters.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><button type="button" className="btn secondary" disabled={!unlinkedCharacters.some(c=>c.id===linkCandidate)||working} onClick={async()=>{await onLinkCharacter(linkCandidate);setLinkCandidate('')}}>Link to my account</button></div>}
+   </>}
+  </>}
   {!canDirect&&!event.published&&<p className="muted">This event isn't accepting sign-ups yet.</p>}
   <div className="signup-list">{visibleSignups.length?visibleSignups.map(s=><div key={s.id} className="signup-row">
     <div><strong>{s.character_name}</strong><small>{s.status} · applied {new Date(s.created_at).toLocaleDateString()}</small></div>
@@ -75,7 +81,7 @@ export function EventSignups({event,characters,userId,canDirect,working,action,r
       {canDirect&&s.status==='approved'&&event.combatants.some(c=>c.character_id===s.character_id)&&<span className="event-added">In party</span>}
       {!previewOnly&&s.mine&&['requested','approved'].includes(s.status)&&<button className="mini-btn danger" disabled={working} onClick={()=>apply(()=>withdrawEventSignup(s.id))}>Withdraw</button>}
     </div>
-  </div>):<p className="muted">No applications yet. Publish the event to open registration.</p>}</div>
+  </div>):<p className="muted">{event.published?'No applications yet.':'Registration opens when the event is published.'}</p>}</div>
   {error&&<div className="alert" role="alert">{error}</div>}
  </section>;
 }

@@ -26,7 +26,7 @@ const statusLabel=event=>{
 };
 const statusClass=event=>event.status==='active'?'live':event.status==='finished'?'closed':'open';
 
-export default function EventBoard({userId,characters,onOpenProfile,previewOnly=false}){
+export default function EventBoard({userId,characters,onOpenProfile,previewOnly=false,canLinkCharacters=false,onLinkCharacter,linking=false,isStaff=false}){
  const [events,setEvents]=useState([]);
  const [selectedId,setSelectedId]=useState('');
  const [loading,setLoading]=useState(true);
@@ -36,6 +36,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
  const [check,setCheck]=useState(null);
  const selected=events.find(e=>e.id===selectedId)||null;
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
+ const unlinkedCharacters=useMemo(()=>canLinkCharacters?characters.filter(c=>!c.player_user_id&&!c.collar_bound):[],[characters,canLinkCharacters]);
  async function refresh(){
   const all=await listEncounters();
   const visible=all.filter(e=>e.published&&!e.archived_at);
@@ -99,11 +100,11 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
       {Array.isArray(selected.themes)&&selected.themes.length>0&&<section className="order-event-themes"><h4>Event themes</h4><div>{selected.themes.map(id=><span key={id}>{themeName(id)}</span>)}</div></section>}
       {check?.missing_themes?.length>0&&<div className="order-event-guidance"><p>This event includes themes outside your current RP preferences.</p><button className="btn secondary" onClick={onOpenProfile} type="button">Review my RP preferences</button></div>}
       <section className="order-event-join">
-       <div className="order-event-join-info"><span>JOIN THE EVENT</span><strong>{selected.status==='draft'?(previewOnly?'Preview event registration':ownCharacters.length?'Choose a character to sign up':'A character is required to sign up'):statusLabel(selected)}</strong></div>
+       <div className="order-event-join-info"><span>JOIN THE EVENT</span><strong>{selected.status==='draft'?(previewOnly?'Preview event registration':selected.created_by===userId&&isStaff?'DM registration is managed from Combatants':ownCharacters.length?'Choose a character to sign up':'No characters linked to your account'):statusLabel(selected)}</strong></div>
        {selected.status==='draft'&&<button type="button" className="order-event-join-button" aria-expanded={showSignups} onClick={()=>setShowSignups(p=>!p)}>{showSignups?'Hide sign-ups':'View sign-ups'} <span aria-hidden="true">{showSignups?'−':'+'}</span></button>}
        {selected.status!=='draft'&&<button type="button" className="order-event-join-button" aria-expanded={showSignups} onClick={()=>setShowSignups(p=>!p)}>My registration <span aria-hidden="true">{showSignups?'−':'+'}</span></button>}
       </section>
-      {showSignups&&<div className="order-event-signups"><EventSignups key={selected.id} event={selected} characters={characters} userId={userId} canDirect={false} ownOnly previewOnly={previewOnly} working={working} action={action} refresh={refresh}/></div>}
+      {showSignups&&<div className="order-event-signups"><EventSignups key={selected.id} event={selected} characters={characters} userId={userId} canDirect={false} ownOnly previewOnly={previewOnly} working={working||linking} action={action} refresh={refresh} unlinkedCharacters={unlinkedCharacters} onLinkCharacter={onLinkCharacter} isEventDirector={isStaff&&selected.created_by===userId}/></div>}
      </>}
     {error&&<div role="alert" className="alert">{error}</div>}
    </main>
