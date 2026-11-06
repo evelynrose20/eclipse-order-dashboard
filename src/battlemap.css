@@ -34,3 +34,31 @@
 .map-image-form{display:flex;align-items:end;flex-wrap:wrap;gap:8px;padding:12px;background:#211c25;border:1px solid #4b3947;border-radius:9px}
 .map-image-form .field{flex:1;min-width:220px;margin:0}.map-image-form .muted{font-size:10px;flex-basis:100%;margin:0}.map-image-form .mini-btn{margin-bottom:2px}
 @media(max-width:650px){.battlemap-panel{padding:13px}.map-legend-hint{margin-left:0}.waymark-actions{width:100%}.map-token{width:28px;height:28px}.token-hp{font-size:8px}}
+
+/* Compact tabletop canvas toolbar and viewport. */
+.battlemap-panel .map-command-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#17151c;border:1px solid #59424f;border-radius:9px}
+.map-tools-primary,.map-zoom-tools{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.battlemap-panel .map-tool,.battlemap-panel .map-zoom-tools button{font-size:12px;color:#d5bdc9;background:#30232e;border:1px solid transparent;border-radius:6px;padding:9px 11px;min-height:36px;cursor:pointer}
+.battlemap-panel .map-tool.active{background:#674054;border-color:#c591a8;color:#fff0f2}
+.battlemap-panel .map-tool:hover,.battlemap-panel .map-zoom-tools button:hover:not(:disabled){background:#503247;border-color:#a67a91}
+.battlemap-panel .map-tool:focus-visible,.battlemap-panel .map-zoom-tools button:focus-visible{outline:2px solid #f0c7ad;outline-offset:2px}
+.battlemap-panel .map-zoom-tools output{font-variant-numeric:tabular-nums;font-size:11px;color:#f0d8e0;min-width:43px;text-align:center}
+.battlemap-panel .map-zoom-tools button:disabled{opacity:.4;cursor:not-allowed}
+.battlemap-panel .map-settings-panel{display:grid;gap:12px;padding:13px;margin-top:8px;border:1px solid #594052;background:#221c26;border-radius:9px}
+.battlemap-panel .map-settings-header{display:flex;align-items:end;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.battlemap-panel .map-settings-header strong{font:normal 18px Georgia,serif;color:#f1d5e3}
+.battlemap-panel .map-settings-panel .waymark-tools{margin:0}
+.battlemap-panel .map-settings-panel .map-image-form{padding:8px}
+.battlemap-panel .map-viewport{position:relative;overflow:hidden;margin:10px 0 0;border:1px solid #906d7d;border-radius:9px;background:#141219}
+.battlemap-panel .map-viewport.panning{cursor:grab;touch-action:none}
+.battlemap-panel .map-viewport.panning:active{cursor:grabbing}
+.battlemap-panel .map-viewport .tactical-board{width:100%;max-width:none;margin:0!important;border:none;border-radius:0;transform-origin:50% 50%;box-shadow:none;transition:transform .12s ease-out}
+.battlemap-panel .map-viewport.panning .tactical-board{pointer-events:none}
+.battlemap-panel .map-measurement{position:absolute;inset:0;z-index:4;width:100%;height:100%;pointer-events:none;overflow:visible}
+.battlemap-panel .map-measure-label{font-size:12px;display:flex;gap:12px;align-items:center;color:#f2d6a4;background:#30262b;border:1px solid #6d554b;border-radius:7px;margin-top:9px;padding:7px 10px}
+.battlemap-panel .map-measure-label .mini-btn{margin-left:auto}
+.battlemap-player .map-viewport{min-height:250px}
+.battlemap-player .map-token,.battlemap-player .waymark-onboard{pointer-events:none}
+.battlemap-panel .map-tools-primary .map-tool{white-space:nowrap}
+@media(max-width:650px){.battlemap-panel .map-command-bar{padding:6px}.battlemap-panel .map-tool,.battlemap-panel .map-zoom-tools button{padding:8px}.battlemap-panel .map-tools-primary .map-tool span{display:none}}
+@media(prefers-reduced-motion:reduce){.battlemap-panel .map-viewport .tactical-board{transition:none}}
