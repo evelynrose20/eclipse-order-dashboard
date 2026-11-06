@@ -1,15 +1,17 @@
 // Local Windows/MySQL equivalents of the legacy Supabase RPC adapter.
+import {contextualApiError} from './apiErrors.js';
 // Authenticated requests use only the current browser session; no service credentials.
 const BASE=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 export async function localRequest(path,{method='GET',body}={}){
  const token=sessionStorage.getItem('eclipse-order-local-session');
  if(!token)throw new Error('Sign in to your Eclipse Order account.');
- const response=await fetch(BASE+path,{
+ let response;
+ try{response=await fetch(BASE+path,{
   method,headers:{Authorization:'Bearer '+token,...(body!==undefined?{'Content-Type':'application/json'}:{})},
   ...(body!==undefined?{body:JSON.stringify(body)}:{}),cache:'no-store'
- });
+ });}catch{throw contextualApiError('database_unavailable',{path,method,status:0})}
  const data=response.status===204?{}:await response.json().catch(()=>null);
- if(!response.ok)throw new Error(data?.error||'Request failed ('+response.status+')');
+ if(!response.ok)throw contextualApiError(data?.error||'request_failed',{status:response.status,path,method});
  return data;
 }
 const get=p=>localRequest(p);
@@ -39,6 +41,9 @@ export const addCombatant=(id,name,kind,characterId,initiative,hp,ac)=>post('/co
 export const editCombatant=(id,hp,initiative,ac,conditions)=>post('/combatants/'+id,{hp,initiative,ac,conditions});
 export const deleteCombatant=id=>del('/combatants/'+id);
 export const encounterTurn=(id,action)=>post('/encounters/'+id+'/turn',{action});
+export const archiveEncounter=id=>post('/encounters/'+id+'/archive');
+export const restoreEncounter=id=>post('/encounters/'+id+'/restore');
+export const deleteEncounter=id=>del('/encounters/'+id);
 export const encounterCheck=id=>get('/encounters/'+id+'/check');
 export const pauseEncounter=(id,paused)=>post('/encounters/'+id+'/pause',{paused});
 export const encounterRoll=(id,formula,visibility)=>post('/encounters/'+id+'/rolls',{formula,visibility});
