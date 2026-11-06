@@ -57,7 +57,8 @@ export function builtinClassCatalog(){
  }])),...ffxivJobCatalog()};
 }
 const asText=(v,n)=>typeof v==='string'?v.trim().slice(0,n):'';
-const validId=s=>typeof s==='string'&&/^[a-z][a-z0-9_-]{1,39}$/.test(s);
+const RETIRED_JOB_IDS=new Set(['blue-mage','beastmaster']);
+const validId=s=>typeof s==='string'&&/^[a-z][a-z0-9_-]{1,39}$/.test(s)&&!RETIRED_JOB_IDS.has(s);
 export function validateClass(id,body){
  if(!validId(id)||!body||typeof body!=='object'||Array.isArray(body))return null;
  const name=asText(body.name,80),description=asText(body.description,900);
@@ -75,6 +76,7 @@ export async function loadClassCatalog(db){
  const catalog=builtinClassCatalog();
  const [rows]=await db.query('SELECT id,definition_json FROM order_homebrew_classes ORDER BY id');
  for(const row of rows){
+  if(RETIRED_JOB_IDS.has(row.id))continue; // Preserve stored rows for rollback but never offer retired jobs.
   const data=typeof row.definition_json==='string'?JSON.parse(row.definition_json):row.definition_json;
   const valid=validateClass(row.id,data);
   if(valid)catalog[row.id]=valid;
@@ -88,6 +90,7 @@ export async function classRoute(pool,req,path){
  if(path==='/classes'&&req.method==='GET')return {status:200,body:{classes:await loadClassCatalog(pool)}};
  const id=/^\/classes\/([a-z][a-z0-9_-]{1,39})$/.exec(path)?.[1];
  if(!id)return {status:404,body:{error:'not_found'}};
+ if(RETIRED_JOB_IDS.has(id))return {status:404,body:{error:'job_not_available'}};
  if(!['domina','high_command'].includes(actor.account_role))return {status:403,body:{error:'command_required'}};
  if(req.method!=='PUT')return {status:405,body:{error:'method_not_allowed'}};
  let length=0;const chunks=[];
