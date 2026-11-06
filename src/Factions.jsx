@@ -101,7 +101,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
      <div className="faction-rule"/>
      <p className="faction-description">{chosen.description}</p>
      <section className="faction-reputations"><div className="faction-reputations-title"><span className="faction-eyebrow">RELATIONSHIPS</span><h4>Reputation & standing</h4></div>
-      {chosen.faction_scope==='order_story'&&<>{repBar('The Order’s view of this faction',Number(chosen.order_view)||0)}{repBar('This faction’s view of the Order',Number(chosen.faction_view)||0)}</>}
+      {repBar('The Order’s view of this faction',Number(chosen.order_view)||0)}{repBar('This faction’s view of the Order',Number(chosen.faction_view)||0)}
       {repBar('Your personal reputation',Number(chosen.personal_reputation)||0)}
       {editable&&<button type="button" className="btn secondary" onClick={()=>setRepDraft({target:chosen.faction_scope==='world'?'player':'order_view',account_id:'',delta:5,event_title:'',event_details:''})}>Record reputation change</button>}
      </section>
