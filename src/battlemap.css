@@ -62,3 +62,8 @@
 .battlemap-panel .map-tools-primary .map-tool{white-space:nowrap}
 @media(max-width:650px){.battlemap-panel .map-command-bar{padding:6px}.battlemap-panel .map-tool,.battlemap-panel .map-zoom-tools button{padding:8px}.battlemap-panel .map-tools-primary .map-tool span{display:none}}
 @media(prefers-reduced-motion:reduce){.battlemap-panel .map-viewport .tactical-board{transition:none}}
+
+/* Friendly NPCs share the allied side but retain a distinct identity from player tokens. */
+.battlemap-panel .map-token.npc-ally{background:linear-gradient(145deg,#437f78,#254f57);border-color:#8bc7b4;box-shadow:0 3px 12px #0009,0 0 0 1px #7cb5a1}
+.battlemap-panel .map-token.npc-ally.selected{outline:2px solid #a7e1ce;outline-offset:2px}
+.map-legend-npc-ally{display:inline-block;width:10px;height:10px;border-radius:50%;background:#4b9284;border:1px solid #9ec9bc;vertical-align:middle}
