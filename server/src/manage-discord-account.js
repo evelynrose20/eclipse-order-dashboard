@@ -19,10 +19,34 @@ if(!valid||!validSnowflake(operation==='owner'?identifier:discordId)||operation=
   if(operation==='link'){
    const [accounts]=await conn.execute('SELECT id,display_name FROM accounts WHERE email=? LIMIT 1 FOR UPDATE',[identifier.trim().toLowerCase()]);
    if(!accounts.length)throw Error('No existing account has that email.');
-   const [other]=await conn.execute('SELECT account_id FROM account_discord_links WHERE discord_user_id=? OR account_id=? LIMIT 1',[discordId,accounts[0].id]);
-   if(other.length)throw Error('This Discord identity or Order account is already linked. Nothing was changed.');
-   await conn.execute('INSERT INTO account_discord_links(account_id,discord_user_id,discord_username) VALUES(?,?,?)',[accounts[0].id,discordId,'Linked by local administrator']);
-   console.log('Linked the existing account to its Discord identity. No characters or permissions were modified.');
+   const target=accounts[0].id;
+   const [targetLinks]=await conn.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=? LIMIT 1 FOR UPDATE',[target]);
+   if(targetLinks.length){
+    if(targetLinks[0].discord_user_id===discordId){
+     console.log('This Discord identity already belongs to the selected existing account. Nothing was changed.');
+    }else throw Error('The selected existing account is linked to a different Discord identity. Nothing was changed.');
+   }else{
+    const [linked]=await conn.execute('SELECT account_id FROM account_discord_links WHERE discord_user_id=? LIMIT 1 FOR UPDATE',[discordId]);
+    if(!linked.length){
+     await conn.execute('INSERT INTO account_discord_links(account_id,discord_user_id,discord_username) VALUES(?,?,?)',[target,discordId,'Linked by local administrator']);
+    }else{
+     // OAuth may have created a fresh pending applicant for this exact Discord identity.
+     // Only that disposable application may be reattached; never steal an established account.
+     const source=linked[0].account_id;
+     const [applicants]=await conn.execute('SELECT id,email,account_role,is_active,approval_status FROM accounts WHERE id=? LIMIT 1 FOR UPDATE',[source]);
+     const applicant=applicants[0];
+     if(!applicant||applicant.account_role!=='member'||Number(applicant.is_active)!==0||
+        applicant.approval_status!=='pending'||applicant.email!=='discord-'+discordId+'@members.eclipse.invalid')
+      throw Error('Discord is linked to an established account. Nothing was changed.');
+     const [characterRows]=await conn.execute('SELECT id FROM characters WHERE account_id=? LIMIT 1',[source]);
+     if(characterRows.length)throw Error('The pending account has characters; manual reconciliation is required. Nothing was changed.');
+     await conn.execute('UPDATE account_discord_links SET account_id=?,discord_username=? WHERE account_id=? AND discord_user_id=?',
+      [target,'Recovered by local administrator',source,discordId]);
+     await conn.execute('DELETE FROM discord_oauth_tickets WHERE account_id=?',[source]);
+     await conn.execute('UPDATE account_sessions SET revoked_at=UTC_TIMESTAMP() WHERE account_id=? AND revoked_at IS NULL',[source]);
+    }
+    console.log('Discord is now connected to the existing Order account. Existing characters and account privileges were preserved.');
+   }
   }else{
    const [owners]=await conn.execute("SELECT id FROM accounts WHERE account_role='domina' AND is_active=1 AND approval_status='approved' LIMIT 1 FOR UPDATE");
    if(owners.length)throw Error('An active Domina already exists. Promotion was refused.');
