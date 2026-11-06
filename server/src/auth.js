@@ -77,7 +77,9 @@ export async function authRoute(pool,request,path){
  if(path==='/auth/me'&&request.method==='GET'){
   const session=await resolveSession(pool,request);
   if(!session)return {status:401,body:{error:'not_authenticated'}};
-  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,discord_username:session.discord_username||null,role:session.account_role,standing:session.standing,syndicate_rank:session.syndicate_rank}}};
+  const [rows]=await pool.execute('SELECT track,rank_code FROM account_order_ranks WHERE account_id=?',[session.id]);
+  const order_ranks=Object.fromEntries(rows.map(row=>[row.track,row.rank_code]));
+  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,discord_username:session.discord_username||null,role:session.account_role,standing:session.standing,syndicate_rank:session.syndicate_rank,order_ranks}}};
  }
  if(path==='/auth/logout'&&request.method==='POST'){
   const token=authHeader(request);
