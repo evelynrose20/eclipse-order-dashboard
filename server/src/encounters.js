@@ -245,7 +245,7 @@ export async function encounterRoute(pool,req,path){
   if(!e||!gm(u,e))return err(403,'director_required');
   if(e.archived_at)return err(409,'encounter_archived');
   const b=await read(req);
-  const kind=b?.kind==='ally'?'ally':b?.kind===undefined?'npc':null;
+  const kind=b?.kind==='ally'?'ally':b?.kind==='npc'||b?.kind===undefined?'npc':null;
   if(!kind)return err(400,'invalid_combatant');
   const [monsters]=await pool.execute('SELECT * FROM order_monster_templates WHERE id=?',[addMonster[2]]);
   const m=monsters[0];if(!m)return err(404,'monster_not_found');
