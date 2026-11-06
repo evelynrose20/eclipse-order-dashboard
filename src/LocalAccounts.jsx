@@ -60,7 +60,7 @@ export default function LocalAccounts(){
   setBusy(true);
   request('/auth/discord/complete',{method:'POST',token:sessionStorage.getItem(storageKey)||undefined,body:{ticket}}).then(async result=>{
    if(!alive)return;
-   if(result.status==='linked'){setMessage('Discord connected successfully. You can now sign in with Discord.');return}
+   if(result.status==='linked'){setMessage('Discord connected successfully. You can now sign in with Discord.');window.dispatchEvent(new Event('eclipse-discord-linked'));return}
    if(result.access_token){sessionStorage.setItem(storageKey,result.access_token);setToken(result.access_token);setPassword('')}
   }).catch(e=>{if(alive)setMessage(e.message)}).finally(()=>{if(alive)setBusy(false)});
   return()=>{alive=false};
