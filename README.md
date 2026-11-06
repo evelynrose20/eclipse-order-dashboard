@@ -18,6 +18,19 @@ Because GitHub Pages does not automatically rewrite arbitrary deep URLs to the a
 
 The new public site has original Eclipse Order copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
 
+## Discord callback and membership troubleshooting
+
+GitHub Pages project deployment uses `https://evelynrose20.github.io/eclipse-order-dashboard/?portal`, **not** `https://evelynrose20.github.io/?portal`. OAuth now corrects an empty or legacy root `DISCORD_FRONTEND_URL` to the project path when the configured origin is `evelynrose20.github.io`. For other hosts, set `DISCORD_FRONTEND_URL` to the precise HTTPS published page. Restart the Windows API after changing `server/.env`.
+
+A failed Discord guild lookup is not always evidence that the account is outside the server. Discord distinguishes **Unknown Guild** (10004), **Unknown Member** (10007), and bot access errors. The portal has a full-screen membership/access page with separate actions for genuine nonmembers, screening, guild misconfiguration, and temporary outages.
+
+When a known server owner is wrongly marked as absent, run the local backend diagnostic (never upload `.env`):
+```powershell
+cd server
+npm run discord:check -- YOUR_DISCORD_USER_ID
+```
+Check the returned `guild_name` and `guild_id` against your actual Discord server's copied ID. If it reports `guild_configuration_error`, confirm that `DISCORD_GUILD_ID` references the correct server and `DISCORD_BOT_TOKEN` belongs to the bot actually installed there. No bot token or personal OAuth access token is logged. A confirmed `not_member` refers to the authenticated Discord user ID, which may differ from the one used in another Discord browser session.
+
 ## Discord-only sign-in and membership verification
 
 The member portal uses **Discord exclusively**: there are no email/password sign-in or registration routes. A member must be in The Eclipse Order's configured Discord guild, pass membership screening, and have an **approved** Order account. A Discord identity by itself cannot grant moderator access or change character ownership, syndicate ranks, or RP roles.
