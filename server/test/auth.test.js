@@ -1,60 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {authRoute,loginThrottle} from '../src/auth.js';
-import {hashPassword,hashToken} from '../src/credentials.js';
+import {authRoute,resolveSession} from '../src/auth.js';
+import {generateToken,hashToken} from '../src/credentials.js';
 
-function request({method='GET',authorization,body}={}){
- const req={method,headers:authorization?{authorization:'Bearer '+authorization}:{}};
- if(body!==undefined){
-  req[Symbol.asyncIterator]=async function*(){yield Buffer.from(JSON.stringify(body))};
- }
- return req;
-}
-test('auth refuses login without DB and supports no anonymous profile',async()=>{
- const noDb=await authRoute(null,request({method:'POST',body:{email:'a@example.com',password:'secret'}}),'/auth/login');
- assert.equal(noDb.status,503);
+const token=generateToken();
+const request=(method='GET',authorization)=>({method,headers:authorization?{authorization:'Bearer '+authorization}:{}});
+test('email/password sign-in is disabled even for previously approved accounts',async()=>{
+ const pool={execute:async()=>{throw Error('Password credentials must never be read')}};
+ const result=await authRoute(pool,request('POST'),'/auth/login');
+ assert.equal(result.status,403);
+ assert.equal(result.body.error,'discord_only_login');
 });
-test('valid login creates opaque database session and logout revokes it',async()=>{
- const password='locally-generated-long-password';
- const hash=await hashPassword(password);
- const tokenStore=new Map();
+test('Discord-created sessions remain opaque and logout revokes a session',async()=>{
+ let revoked=false;
  const pool={execute:async(sql,args)=>{
-   if(sql.startsWith('SELECT id,password_hash'))return [[{id:'account-uuid',password_hash:hash,approval_status:'approved'}]];
-   if(sql.startsWith('INSERT INTO account_sessions')){
-    tokenStore.set(args[1],{account_id:args[0],revoked:false});
-    return [{}];
-   }
-   if(sql.startsWith('SELECT a.id,a.email')){
-    const row=tokenStore.get(args[0]);
-    return [row&&!row.revoked?[{id:'account-uuid',email:'test@example.com',display_name:'Domina',account_role:'domina',standing:'veteran'}]:[]];
-   }
-   if(sql.startsWith('UPDATE account_sessions')){
-    const row=tokenStore.get(args[0]);if(row)row.revoked=true;return [{}];
-   }
-   throw new Error('Unexpected query: '+sql);
+  if(sql.startsWith('SELECT a.id,a.email'))return [revoked?[]:[{id:'account-id',email:'discord@members.eclipse.invalid',display_name:'Order Member',account_role:'member',standing:'initiate',discord_user_id:'123456789012345678'}]];
+  if(sql.startsWith('UPDATE account_sessions')){assert.equal(args[0],hashToken(token));revoked=true;return [{affectedRows:1}]}
+  throw Error('Unexpected query: '+sql);
  }};
- const login=await authRoute(pool,request({method:'POST',body:{email:'test@example.com',password}}),'/auth/login');
- assert.equal(login.status,200);
- assert.equal(login.body.token_type,'Bearer');
- assert.ok(login.body.access_token.length>=30);
- assert.ok(tokenStore.has(hashToken(login.body.access_token)));
- const me=await authRoute(pool,request({authorization:login.body.access_token}),'/auth/me');
- assert.equal(me.status,200);assert.equal(me.body.user.role,'domina');
- assert.equal('password_hash' in me.body.user,false);
- const logout=await authRoute(pool,request({method:'POST',authorization:login.body.access_token}),'/auth/logout');
+ const current=await authRoute(pool,request('GET',token),'/auth/me');
+ assert.equal(current.status,200);
+ assert.equal(current.body.user.role,'member');
+ assert.equal('discord_user_id' in current.body.user,false);
+ const logout=await authRoute(pool,request('POST',token),'/auth/logout');
  assert.equal(logout.status,204);
- const expired=await authRoute(pool,request({authorization:login.body.access_token}),'/auth/me');
- assert.equal(expired.status,401);
+ assert.equal(await resolveSession(pool,request('GET',token)),null);
 });
-test('bad logins receive generic failure and are throttled',async()=>{
- const email='test-failed-login@example.com';
- const pool={execute:async()=>[[]]};
- for(let i=0;i<6;i++){
-  const result=await authRoute(pool,request({method:'POST',body:{email,password:'a long wrong password'}}),'/auth/login');
-  assert.equal(result.status,401);
-  assert.equal(result.body.error,'invalid_credentials');
- }
- assert.equal(loginThrottle(email),true);
- const blocked=await authRoute(pool,request({method:'POST',body:{email,password:'a long wrong password'}}),'/auth/login');
- assert.equal(blocked.status,429);
+test('anonymous requests never see a member profile',async()=>{
+ const pool={execute:async()=>{throw Error('Unexpected DB access')}};
+ const result=await authRoute(pool,request(),'/auth/me');
+ assert.equal(result.status,401);
 });
