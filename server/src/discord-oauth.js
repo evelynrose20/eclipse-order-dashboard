@@ -32,9 +32,8 @@ export function discordOAuthConfig(env=process.env){
  const projectSite=new URL('/eclipse-order-dashboard/',root).href;
  const pagesOrigin=new URL(root).hostname==='evelynrose20.github.io';
  const configuredSite=env.DISCORD_FRONTEND_URL?.trim()||root;
- const site=pagesOrigin&&new URL(configuredSite).pathname==='/'?projectSite:configuredSite;
  let siteUrl;
- try{siteUrl=new URL(site)}catch{return null}
+ try{const candidate=new URL(configuredSite);siteUrl=new URL(pagesOrigin&&candidate.pathname==='/'?projectSite:configuredSite)}catch{return null}
  if(siteUrl.origin!==env.API_ALLOWED_ORIGIN||siteUrl.protocol!=='https:'||siteUrl.username||siteUrl.password||siteUrl.hash)return null;
  return {clientId:env.DISCORD_CLIENT_ID,secret:env.DISCORD_CLIENT_SECRET,redirectUri:env.DISCORD_REDIRECT_URI,frontendOrigin:env.API_ALLOWED_ORIGIN,frontendUrl:siteUrl.href};
 }
