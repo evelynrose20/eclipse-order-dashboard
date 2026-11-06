@@ -119,3 +119,11 @@
 @media(max-width:1280px){.encounter-studio-map-layout{grid-template-columns:minmax(0,1fr) 215px}.encounter-studio-map-layout .encounter-studio-battle-rail{position:relative;top:auto;max-height:none}}
 @media(max-width:930px){.encounter-studio-map-layout{grid-template-columns:1fr}.encounter-studio-map-layout .encounter-studio-battle-rail{max-height:400px}.encounter-rail-dice{max-height:none}.encounter-dm-view .encounter-studio-aside-header{flex-wrap:wrap}}
 @media(max-width:600px){.encounter-dm-view .encounter-studio-aside-header h2{font-size:19px}.encounter-dm-view .encounter-studio-tabs{overflow-x:auto}.encounter-dm-view .encounter-studio-tabs .event-tab{flex:none}.encounter-studio-float-tools{justify-content:flex-start}}
+
+/* Compact the initiative rail when dismissed, returning room to the battlefield. */
+.encounter-dm-view.rail-collapsed .encounter-studio-map-layout{grid-template-columns:minmax(0,1fr) 50px}
+.encounter-dm-view.rail-collapsed .encounter-studio-battle-rail{padding:5px;min-width:0}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs{display:flex;flex-direction:column}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:not(:last-child){display:none}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{padding:10px 5px}
+@media(max-width:930px){.encounter-dm-view.rail-collapsed .encounter-studio-map-layout{grid-template-columns:minmax(0,1fr)}.encounter-dm-view.rail-collapsed .encounter-studio-battle-rail{width:100%;min-height:46px}.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{width:100%}}
