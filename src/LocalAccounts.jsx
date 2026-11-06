@@ -17,7 +17,13 @@ async function request(path,{method='GET',token,body}={}){
   account_pending_approval:'Your request is awaiting Domina approval.',
   account_not_approved:'This account is not approved.',
   invalid_credentials:'That email or password was not accepted.',
-  too_many_attempts:'Too many attempts. Try again later.'
+  too_many_attempts:'Too many attempts. Try again later.',
+  discord_login_not_configured:'Discord sign-in is not available yet. The Order administrator must finish the Discord application setup.',
+  discord_identity_taken:'This Discord identity is already linked to another account.',
+  discord_account_not_linked:'Please sign in with your existing Order account and connect Discord before using Discord sign-in.',
+  discord_link_session_required:'Your Order session expired. Sign in again, then connect Discord.',
+  discord_ticket_expired:'Discord authentication expired. Please try again.',
+  discord_already_linked:'Discord is already linked to your Order account.'
  })[data.error]||data.message||data.error||'Request failed ('+response.status+')');
  return data;
 }
