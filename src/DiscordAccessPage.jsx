@@ -42,13 +42,12 @@ export default function DiscordAccessPage({reason,onRetry,onJoin,busy,adult,onAd
    <h1>{detail.title}</h1>
    <p className="eo-discord-access-lead">{detail.text}</p>
    <div className="eo-discord-access-detail"><strong>What happens next</strong><p>{detail.detail}</p></div>
-   {reason==='discord_not_in_server'&&<div className="eo-discord-access-choice">
+   {reason!=='pending'&&<div className="eo-discord-access-choice">
     <label><input type="checkbox" checked={adult} onChange={e=>onAdultChange(e.target.checked)}/> I confirm that I am 18 or older and understand this is a Bad End RP community.</label>
-    <button type="button" className="eo-discord-access-join" disabled={busy||!adult} onClick={onJoin}>Request to join the Order’s Discord</button>
-    <small>Discord will ask for your permission before the bot attempts to add you. This does not grant immediate website approval.</small>
+    {reason==='discord_not_in_server'&&<><button type="button" className="eo-discord-access-join" disabled={busy||!adult} onClick={onJoin}>Request to join the Order’s Discord</button><small>Discord will ask your permission before the bot attempts to add you. This does not grant website approval.</small></>}
    </div>}
    <div className="eo-discord-access-actions">
-    {reason!=='pending'&&<button type="button" disabled={busy} onClick={onRetry}>Verify with Discord again</button>}
+    {reason!=='pending'&&<button type="button" disabled={busy||!adult} onClick={onRetry}>Verify with Discord again</button>}
     <button type="button" onClick={onBack}>Back to sign-in</button>
     <a href="./">Return to public site</a>
    </div>
