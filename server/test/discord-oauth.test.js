@@ -33,6 +33,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false}={}
   if(sql.startsWith('SELECT account_id FROM account_discord_links WHERE discord_user_id=? AND account_id=?')){const row=links.get(args[0]);return [row&&row.account_id===args[1]?[row]:[]]}
   if(sql.startsWith('SELECT account_id FROM account_discord_links WHERE discord_user_id')){const row=links.get(args[0]);return [row?[row]:[]]}
   if(sql.startsWith('INSERT INTO accounts')){accounts.set(args[0],{id:args[0],is_active:0,approval_status:'pending'});return [{affectedRows:1}]}
+  if(sql.startsWith('INSERT INTO account_order_ranks'))return [{affectedRows:1}];
   if(sql.startsWith('INSERT INTO account_discord_links')){if(links.has(args[1]))throw Object.assign(Error('duplicate'),{code:'ER_DUP_ENTRY'});links.set(args[1],{account_id:args[0],discord_user_id:args[1],discord_username:args[2]});return [{affectedRows:1}]}
   if(sql.startsWith('INSERT INTO discord_oauth_tickets')){tickets.set(args[0],{account_id:args[1],discord_user_id:args[2],discord_username:args[3],intent:'login',used:false});return [{affectedRows:1}]}
   if(sql.startsWith('UPDATE discord_oauth_tickets')){const t=tickets.get(args[0]);if(!t||t.used)return [{affectedRows:0}];t.used=true;return [{affectedRows:1}]}
