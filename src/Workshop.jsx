@@ -110,7 +110,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
    {tab==='garden'&&<div className="fc-scene">
     <div className="fc-scene-title"><div><span>THE GLASSHOUSE</span><h3>Every hand helps it flourish</h3><p>Every Order member can water or tend each plot once per day, even without a character sheet. Growth is shared; mature harvests go straight to FC stores.</p></div><div className="fc-garden-badge">✿ <strong>Garden {data.garden.level}</strong></div></div>
     <div className="fc-garden-world">{data.plots.map(plot=><article className="fc-garden-bed" key={plot.id}>
-      <div className="fc-bed-sky"><div className="fc-bed-glow"/><div className={'fc-bed-plant stage-'+(plot.growth>=100?'grown':plot.growth>=50?'growing':'seedling')} aria-hidden="true">{plot.growth>=100?'✿':plot.growth>=50?'❀':'♧'}</div><div className="fc-bed-earth"/></div>
+      <div className="fc-bed-sky"><div className="fc-bed-glow"/><div className={'fc-bed-plant '+(plot.crop_material==='hellshade-bloom'?'hellshade ':'')+'stage-'+(plot.growth>=100?'grown':plot.growth>=50?'growing':'seedling')} aria-hidden="true">{plot.growth>=100?'✿':plot.growth>=50?'❀':'♧'}</div><div className="fc-bed-earth"/></div>
       <div className="fc-bed-content"><span>GARDEN BED {plot.id}</span><h4>{name(plot.crop_material)}</h4>
        <div className="fc-bed-meter"><label>Growth <strong>{plot.growth}%</strong></label><div><span style={{width:plot.growth+'%'}}/></div></div>
        <div className="fc-bed-meter healthy"><label>Health <strong>{plot.health}%</strong></label><div><span style={{width:plot.health+'%'}}/></div></div>
