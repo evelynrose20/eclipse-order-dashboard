@@ -189,16 +189,18 @@ export async function craftingRoute(pool,req,path){
   });
  }
  if(path==='/workshop'&&req.method==='GET'){
-  const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions]] = await Promise.all([
+  const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions],[todayCare],[teamCare]] = await Promise.all([
    pool.query('SELECT m.id,m.name,m.category,m.description,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY FIELD(m.category,"ore","herb","botanical","refined","supply"),m.name'),
    pool.query('SELECT id,name,description,output_material,output_quantity,minimum_level FROM fc_recipes ORDER BY name'),
    pool.query('SELECT recipe_id,material_id,quantity FROM fc_recipe_inputs ORDER BY recipe_id,material_id'),
    pool.query('SELECT id,crop_material,growth,health,harvests FROM fc_garden_plots ORDER BY id'),
    pool.query('SELECT level FROM fc_garden WHERE id=1'),
    pool.query('SELECT l.id,l.material_id,m.name,l.delta,l.activity,l.note,l.created_at,a.display_name FROM fc_material_ledger l JOIN fc_materials m ON m.id=l.material_id JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 30'),
-   pool.execute('SELECT id,zone_id,material_id,quantity,created_at FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE() ORDER BY id DESC',[user.id])
+   pool.execute('SELECT id,zone_id,material_id,quantity,created_at FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE() ORDER BY id DESC',[user.id]),
+   pool.execute('SELECT plot_id,action FROM fc_garden_care WHERE account_id=? AND care_date=UTC_DATE()',[user.id]),
+   pool.query('SELECT plot_id,COUNT(*) AS helpers FROM fc_garden_care WHERE care_date=UTC_DATE() GROUP BY plot_id')
   ]);
-  return ok({materials,recipes:recipes.map(r=>({...r,inputs:inputs.filter(i=>i.recipe_id===r.id)})),plots,garden:garden[0]||{level:1},ledger,expeditions,expedition_limit:5});
+  return ok({materials,recipes:recipes.map(r=>({...r,inputs:inputs.filter(i=>i.recipe_id===r.id)})),plots:plots.map(plot=>({...plot,cared_today:todayCare.some(c=>Number(c.plot_id)===Number(plot.id)),helpers_today:Number(teamCare.find(c=>Number(c.plot_id)===Number(plot.id))?.helpers||0)})),garden:garden[0]||{level:1},ledger,expeditions,expedition_limit:5});
  }
  if(path==='/workshop/gather'&&req.method==='POST'){
   const body=await read(req);
@@ -305,9 +307,10 @@ export async function craftingRoute(pool,req,path){
  const plotPath=/^\/workshop\/garden\/(\d+)\/(care|harvest)$/.exec(path);
  if(plotPath&&req.method==='POST'){
   const plotId=Number(plotPath[1]),action=plotPath[2],body=await read(req);
-  if(!Number.isInteger(plotId)||plotId<1||plotId>255||!validUuid(body?.character_id))return fail(400,'invalid_garden_action');
+  if(!Number.isInteger(plotId)||plotId<1||plotId>255)return fail(400,'invalid_garden_action');
   return withTransaction(pool,async conn=>{
-   if(!await checkCharacter(conn,user,body.character_id))return fail(403,'character_not_owned');
+   // Garden activities belong to the authenticated member, not an owned character.
+   // This allows command staff and members without a character sheet to contribute.
    const [plots]=await conn.execute('SELECT id,crop_material,growth,health FROM fc_garden_plots WHERE id=? FOR UPDATE',[plotId]);
    if(!plots.length)return fail(404,'plot_not_found');
    const plot=plots[0];
@@ -324,7 +327,7 @@ export async function craftingRoute(pool,req,path){
    if(Number(plot.growth)<100||Number(plot.health)<40)return fail(409,'crop_not_ready');
    const [garden]=await conn.execute('SELECT level FROM fc_garden WHERE id=1');
    const yieldCount=2+Number(garden[0].level)+Math.floor(Number(plot.health)/30);
-   if(!await stockChange(conn,plot.crop_material,yieldCount,'harvest',user.id,body.character_id,'Garden plot '+plotId))return fail(409,'stock_limit');
+   if(!await stockChange(conn,plot.crop_material,yieldCount,'harvest',user.id,null,'Garden plot '+plotId))return fail(409,'stock_limit');
    await conn.execute('UPDATE fc_garden_plots SET growth=0,health=GREATEST(40,health-15),harvests=harvests+1 WHERE id=?',[plotId]);
    return ok({status:'harvested',material_id:plot.crop_material,quantity:yieldCount});
   });
