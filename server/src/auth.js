@@ -77,9 +77,10 @@ export async function authRoute(pool,request,path){
  if(path==='/auth/me'&&request.method==='GET'){
   const session=await resolveSession(pool,request);
   if(!session)return {status:401,body:{error:'not_authenticated'}};
-  const [rows]=await pool.execute('SELECT track,rank_code FROM account_order_ranks WHERE account_id=?',[session.id]);
+  const [rows]=await pool.execute('SELECT a.track,a.rank_code,c.title FROM account_order_ranks a JOIN order_rank_catalog c ON c.code=a.rank_code WHERE a.account_id=?',[session.id]);
   const order_ranks=Object.fromEntries(rows.map(row=>[row.track,row.rank_code]));
-  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,discord_username:session.discord_username||null,role:session.account_role,standing:session.standing,syndicate_rank:session.syndicate_rank,order_ranks}}};
+  const order_rank_titles=Object.fromEntries(rows.map(row=>[row.track,row.title]));
+  return {status:200,body:{user:{id:session.id,email:session.email,display_name:session.display_name,discord_username:session.discord_username||null,role:session.account_role,standing:session.standing,syndicate_rank:session.syndicate_rank,order_ranks,order_rank_titles}}};
  }
  if(path==='/auth/logout'&&request.method==='POST'){
   const token=authHeader(request);
