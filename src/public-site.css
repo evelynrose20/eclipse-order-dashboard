@@ -157,3 +157,75 @@
 @media(max-width:760px){.public-header{height:74px;padding:0 18px;gap:10px}.public-brand{min-width:0}.public-brand strong{font-size:20px}.public-brand .public-mark{width:41px;height:41px}.public-brand .public-mark-orbit{width:32px;height:32px}.public-brand .public-mark-core{font-size:20px}.public-brand small{font-size:7px}.public-nav{top:74px}.public-header-actions .public-portal-link{display:none}.public-header-actions .public-top-cta{display:none}.public-mobile-portal{display:block!important}.public-hero{padding:90px 24px 95px;min-height:700px}.public-hero-geometry{width:100%;opacity:.25;transform:translate(28%,0)}.public-hero-ring{width:520px;height:520px}.public-hero-disk{width:350px;height:350px}.public-hero h1{font-size:clamp(52px,12vw,83px)}.public-hero-notes{gap:20px}.public-scroll-cue{left:24px}.public-section{padding:83px 24px}.public-intro-grid,.public-history-grid,.public-conduct-grid,.public-membership-grid{grid-template-columns:1fr;gap:35px}.public-history-art{max-width:520px;width:100%;margin:auto}.public-section h2{font-size:clamp(49px,9vw,75px)}.public-principles{grid-template-columns:1fr;margin-top:50px}.public-section-heading{display:grid;gap:20px;margin-bottom:35px}.public-rank{grid-template-columns:34px 42px minmax(0,1fr);gap:13px;padding:20px 3px}.public-rank-symbol{font-size:29px}.public-rank h3{font-size:29px}.public-rank p{grid-column:3;font-size:11px}.public-play-stage{grid-template-columns:1fr}.public-play-tabs{display:flex;gap:5px;padding:9px;flex-wrap:wrap;border-right:0;border-bottom:1px solid #654656}.public-play-tabs button{padding:11px 13px;gap:9px}.public-play-content{padding:30px}.public-play-symbol{display:none}.public-play-details{grid-template-columns:1fr;gap:22px}.public-footer-upper{grid-template-columns:1fr 1fr;gap:40px}.public-footer-upper>div:first-child{grid-column:1/-1}.public-footer-lower{display:grid;gap:12px}}
 @media(max-width:450px){.public-hero h1{font-size:53px}.public-kicker{font-size:9px;letter-spacing:.14em}.public-hero-notes{font-size:8px}.public-play-tabs button{flex:1;justify-content:center}.public-faq-item button{font-size:23px}.public-history-seal .public-mark{width:110px;height:110px}.public-history-seal .public-mark-orbit{width:82px;height:82px}.public-history-seal .public-mark-core{font-size:50px}}
 @media(prefers-reduced-motion:reduce){.order-public *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Recruitment and residence details: prominent, factual information. */
+.public-recruitment-link{display:inline-flex;align-items:center;gap:9px;font-size:10px;font-weight:800;letter-spacing:.18em;color:#d9b1b5!important;white-space:nowrap;padding:10px 1px}
+.public-recruitment-link:hover{color:#f5e0d4!important}
+.public-status-dot{width:8px;height:8px;flex:none;display:inline-block;border-radius:50%;background:#8dbe9f;box-shadow:0 0 0 3px #91b89a1a,0 0 10px #87c59f72}
+.public-hero-location{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:relative;margin-top:42px;border-top:1px solid #b08d7f4e;padding-top:17px;font-size:10px;font-weight:700;letter-spacing:.15em;color:#dbc6c3;max-width:670px}
+.public-hero-location>a{display:inline-flex;align-items:center;gap:9px;font-size:10px;color:#d5c7ad!important;white-space:nowrap}
+.public-hero-location>a:hover{text-decoration:underline;text-underline-offset:4px}
+.public-hierarchy .public-section-heading{margin-bottom:56px}
+.public-command-tree{display:grid;gap:0;max-width:810px;margin:0 auto 76px;justify-items:stretch;position:relative;text-align:center}
+.public-command-crest{width:64px;height:64px;display:grid;place-items:center;justify-self:center;border:1px solid #aa7890;border-radius:50%;background:radial-gradient(#784457,#2b202d);font-size:28px;color:#efc2c3;box-shadow:0 0 0 9px #51314340}
+.public-command-line{height:34px;border-left:1px solid #9f7884;margin:auto}
+.public-command-tree article{padding:24px 22px 26px;border:1px solid #7d566b;background:linear-gradient(100deg,#392632,#281d2a 50%,#392632);position:relative}
+.public-command-tree article+article{margin-top:21px}
+.public-command-tree article+article:before{content:'';position:absolute;bottom:100%;height:22px;width:1px;background:#b08a96;left:50%}
+.public-command-tree article>span{font-size:9px;letter-spacing:.2em;font-weight:800;color:#d7aaae}
+.public-command-tree article h3{font:500 clamp(32px,3.8vw,52px)/1 'Cormorant Garamond',serif;margin:10px 0;color:#f9e2e6}
+.public-command-tree article p{font-size:12px;max-width:560px;margin:0 auto;color:#c4aeb9}
+.public-command-tree article:first-of-type{border-color:#bd9480;background:linear-gradient(100deg,#4a2a3b,#33202b,#4a2a3b)}
+.public-branch-intro{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.public-branch-intro h3{font:500 clamp(31px,3.8vw,49px)/1 'Cormorant Garamond',serif;color:#f5e1df;margin:0}
+.public-branch-intro p{font-size:12px;max-width:360px;margin:0}
+.public-branch-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.public-branch-card{min-width:0;border:1px solid #765466;background:linear-gradient(160deg,#332432,#211a25);padding:28px 23px 22px}
+.public-branch-symbol{font-size:36px;color:#d0a0aa}
+.public-branch-card h3{font:500 32px/1.05 'Cormorant Garamond',Georgia,serif;color:#f4d9e0;margin:14px 0 8px}
+.public-branch-card>p{font-size:12px;line-height:1.65;min-height:80px;margin:0 0 16px}
+.public-branch-tiers{border-top:1px solid #684e60;padding-top:8px}
+.public-branch-tiers>div{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid #5c44536b;padding:11px 0}
+.public-branch-tiers small{color:#b58797;font-size:10px;font-weight:700}
+.public-branch-tiers span{font-size:12px;color:#ecd0dd;overflow-wrap:anywhere}
+.public-other-standing{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-top:19px}
+.public-other-standing article{padding:27px;border:1px solid #674c59;background:#251c29}
+.public-branch-kicker{font-size:10px;letter-spacing:.17em;color:#c395aa}
+.public-other-standing h3{font:500 29px/1.2 'Cormorant Garamond',Georgia,serif;margin:14px 0 9px;color:#f5dfe4}
+.public-other-standing h3 em{font:normal 22px 'Cormorant Garamond',serif;color:#c793a5}
+.public-other-standing p{font-size:12px;margin:0}
+.public-other-standing ol{columns:2;column-gap:25px;margin:19px 0 0;padding-left:17px}
+.public-other-standing li{break-inside:avoid;font-size:11px;color:#ddbac9;line-height:1.85;padding-left:3px}
+.public-visit{background:radial-gradient(circle at 70% 45%,#4e344247,transparent 52%),linear-gradient(145deg,#15141a,#201923 62%,#16141b)}
+.public-visit-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.8fr);gap:clamp(40px,8vw,130px);align-items:center}
+.public-visit-story>p{font-size:13px;max-width:620px;margin:27px 0 0}
+.public-visit-story>.public-text-link{margin-top:30px}
+.public-visit-mountain{margin-top:55px;display:flex;align-items:center;gap:21px;border-top:1px solid #624b59;padding-top:27px}
+.public-visit-mountain>span{font:normal 50px/1 Georgia,serif;color:#c8a0a5}
+.public-visit-mountain>div{display:grid;gap:6px}
+.public-visit-mountain strong{font-size:11px;letter-spacing:.15em;color:#dfbdc8}
+.public-visit-mountain small{font-size:9px;letter-spacing:.12em;color:#b29aa9}
+.public-estate-card{position:relative;min-height:570px;padding:clamp(30px,4vw,58px);border:1px solid #ab8b67;background:linear-gradient(160deg,#1b252bdb,#141a22ee),radial-gradient(ellipse at 85% 50%,#3c4348,transparent 50%);box-shadow:inset 0 0 0 7px #13151ba8,0 25px 70px #0009;display:grid;align-content:start;gap:24px;overflow:hidden}
+.public-estate-card:after{content:'✦';position:absolute;right:-18px;bottom:-90px;font:normal 290px Georgia,serif;color:#a38d7d12;pointer-events:none}
+.public-estate-eyebrow{color:#d5b589;letter-spacing:.24em;font-size:10px;font-weight:800;position:relative;z-index:1;margin-bottom:10px}
+.public-estate-field{display:grid;gap:5px;position:relative;z-index:1}
+.public-estate-field small{font-size:10px;letter-spacing:.22em;font-weight:750;color:#9bacb1}
+.public-estate-field strong{font:600 25px/1 'Cormorant Garamond',Georgia,serif;color:#f8e9df}
+.public-estate-note{display:inline-flex;align-items:center;gap:11px;color:#e3b4ab;font-size:10px;letter-spacing:.12em;font-weight:800}
+.public-copy-address{position:relative;z-index:1;border:1px solid #987b65!important;border-radius:2px!important;background:#392c31!important;padding:12px 14px!important;color:#f2d5c4!important;text-align:left;font-size:11px!important;justify-self:start;transition:background .2s}
+.public-copy-address:hover{background:#573c42!important}
+.public-copy-address span{margin-left:20px}
+.public-estate-corner{position:absolute;width:32px;height:32px;z-index:2;pointer-events:none}
+.public-estate-corner:after{content:'✦';color:#c8ab72;position:absolute;font-size:12px}
+.public-estate-corner.top-left{top:8px;left:8px;border-top:1px solid #b9996b;border-left:1px solid #b9996b;border-radius:15px 0 0 0}
+.public-estate-corner.top-right{top:8px;right:8px;border-top:1px solid #b9996b;border-right:1px solid #b9996b;border-radius:0 15px 0 0}
+.public-estate-corner.bottom-left{bottom:8px;left:8px;border-bottom:1px solid #b9996b;border-left:1px solid #b9996b;border-radius:0 0 0 15px}
+.public-estate-corner.bottom-right{bottom:8px;right:8px;border-bottom:1px solid #b9996b;border-right:1px solid #b9996b;border-radius:0 0 15px 0}
+.public-estate-corner.top-left:after{top:-9px;left:18px}
+.public-estate-corner.top-right:after{top:-9px;right:18px}
+.public-estate-corner.bottom-left:after{bottom:-9px;left:18px}
+.public-estate-corner.bottom-right:after{bottom:-9px;right:18px}
+@media(max-width:1300px){.public-branch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-branch-card>p{min-height:0}.public-recruitment-link{letter-spacing:.09em}}
+@media(max-width:1100px){.public-visit-grid{grid-template-columns:1fr 1fr;gap:30px}.public-estate-card{padding:35px 30px}.public-recruitment-link{font-size:9px}}
+@media(max-width:760px){.public-hero-location{margin-top:35px}.public-recruitment-link{display:none}.public-visit-grid,.public-other-standing{grid-template-columns:1fr}.public-branch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-estate-card{min-height:auto;padding:36px 30px 45px}.public-visit-mountain{margin-top:35px}}
+@media(max-width:525px){.public-branch-grid{grid-template-columns:1fr}.public-branch-card{padding:23px}.public-other-standing ol{columns:1}.public-hero-location{gap:12px}.public-hero-location>a{font-size:9px}.public-estate-card{gap:18px}}
