@@ -179,7 +179,9 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(oreStock.quantity,gatheredTotal-3);
   const noStock=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:100,character_id:char.body.id}),'/workshop/craft');
   assert.equal(noStock.status,409,'insufficient stock must roll back atomically');
-  const care=await craftingRoute(admin,request('POST',{action:'water'}),'/workshop/garden/1/care');
+  const noCharacterCare=await craftingRoute(admin,request('POST',{action:'water'}),'/workshop/garden/1/care');
+  assert.equal(noCharacterCare.status,400,'garden requires a character sheet');
+  const care=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'water'}),'/workshop/garden/1/care');
   assert.equal(care.status,200,JSON.stringify(care.body));
   const gardenState=await craftingRoute(admin,request('GET'),'/workshop');
   assert.equal(gardenState.status,200);
@@ -189,7 +191,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(hellshade.category,'botanical');
   const [[dustRecipe]]=await admin.query("SELECT minimum_level FROM fc_recipes WHERE id='demon-dust'");
   assert.equal(dustRecipe.minimum_level,12);
-  const repeatCare=await craftingRoute(admin,request('POST',{action:'tend'}),'/workshop/garden/1/care');
+  const repeatCare=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'tend'}),'/workshop/garden/1/care');
   assert.equal(repeatCare.status,409,'a member may care once per plot each day');
   const [ledgerRows]=await admin.query('SELECT activity,delta FROM fc_material_ledger ORDER BY id');
   assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,5);
