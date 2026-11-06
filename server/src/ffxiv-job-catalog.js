@@ -10,7 +10,7 @@ const JOBS=[
  ['paladin','Paladin','tank','str','str,cha',10,'half','Oathbound shield bearer who protects allies.',
   'Oathguard|Shield Intercept|Cleansing Blade|Circle of Shelter|Aegis Counter|Sacred March|Judgment of Light|Unbroken Oath',
   'Radiant Strike|Mending Prayer|Ward of Valor|Sanctified Ground|Blinding Crest|Shared Aegis|Lasting Sanctuary|Crown of Light'],
- ['warrior','Warrior','tank','str','str,con',12,'none','Fierce axe wielder who turns momentum into endurance.',
+ ['warrior-job','Warrior','tank','str','str,con',12,'none','Fierce axe wielder who turns momentum into endurance.',
   'Berserker Focus|Blood Surge|Sweeping Cleave|Iron Tempest|Defiant Roar|Unshaken|Earthshaker|Primal Fury',''],
  ['dark-knight','Dark Knight','tank','str','str,cha',10,'half','Greatsword guardian wielding shadow against oppression.',
   'Shadow Vow|Dark Ward|Vengeful Slash|Living Barrier|Umbral Counter|Nightfall|Soul Fortress|Abyssal Sentinel',
