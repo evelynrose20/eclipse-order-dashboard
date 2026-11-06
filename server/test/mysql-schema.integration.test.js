@@ -70,6 +70,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    [recruitId,'recruit@example.com','not-a-real-hash','Recruit','member','initiate','approved']);
   const [[recruitBefore]]=await admin.execute('SELECT syndicate_rank FROM accounts WHERE id=?',[recruitId]);
   assert.equal(recruitBefore.syndicate_rank,'kumi_in');
+  await admin.query(await readFile(new URL('../sql/016_order_hierarchy.sql',import.meta.url),'utf8')); // re-run backfills accounts created after initial migration
   const [[recruitStanding]]=await admin.execute("SELECT rank_code FROM account_order_ranks WHERE account_id=? AND track='membership'",[recruitId]);
   assert.equal(recruitStanding.rank_code,'freshscales');
   const changeRank=await accountRoute(admin,request('POST',{syndicate_rank:'oyabun'}),'/admin/accounts/'+recruitId+'/syndicate-rank');
