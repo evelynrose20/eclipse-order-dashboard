@@ -58,14 +58,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[testHamlet]]=await admin.execute("SELECT faction_scope FROM order_factions WHERE id='test-hamlet'");
   assert.equal(testHamlet.faction_scope,'settlement');
 
-  const [seedFactions]=await admin.query('SELECT id,leader,relationship,image_reference_url FROM order_factions ORDER BY sort_order');
+  const [seedFactions]=await admin.query('SELECT id,leader,relationship,image_reference_url FROM order_factions WHERE faction_scope='order_story' ORDER BY sort_order');
   assert.equal(seedFactions.length,5);
   assert.equal(seedFactions.find(f=>f.id==='house-kurogane')?.leader,'Lady Reika Kurogane');
   assert.equal(seedFactions.find(f=>f.id==='ashen-veil')?.relationship,'watchful_rival');
   assert.match(seedFactions.find(f=>f.id==='iron-remnant')?.image_reference_url||'',/^https:\/\//);
   await admin.query(await readFile(new URL('../sql/017_factions.sql',import.meta.url),'utf8'));
   const [[seedCount]]=await admin.query('SELECT COUNT(*) AS total FROM order_factions');
-  assert.equal(Number(seedCount.total),5,'re-running migration does not duplicate seeded factions');
+  assert.equal(Number(seedCount.total),6,'re-running migration preserves the five initial factions and the new settlement');
   const [tables]=await admin.query('SHOW TABLES');
   const names=new Set(tables.map(r=>Object.values(r)[0]));
   for(const name of ['accounts','characters','character_status_requests','account_sessions',
