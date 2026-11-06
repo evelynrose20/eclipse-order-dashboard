@@ -26,15 +26,22 @@ async function createRoll(pool,user,encounterId,b,privateAllowed){
   [encounterId,user.id,r.formula,JSON.stringify(r.rolls),r.total,visibility,kind,uuid(b.target_id)?b.target_id:null,dc,outcome]);
  return ok({...r,id:insert.insertId,kind,visibility,target_dc:dc,outcome,rolled_by:user.id});
 }
-async function canRoll(pool,u,e){
- if(!gm(u,e)&&!await canParticipate(pool,u,e))return false;
- if(e.status!=='active')return false;
+export async function rollBlockReason(pool,u,e){
+ if(e.archived_at)return 'encounter_archived';
+ if(e.status!=='active')return 'encounter_not_active';
+ const director=gm(u,e);
+ if(!director&&!await canParticipate(pool,u,e))return 'not_in_encounter_party';
+ // GM controls are independent of player-character enrollment and personal RP declarations.
+ if(director)return null;
  const [prefs]=await pool.execute('SELECT adult_declaration,content_preferences FROM order_profile_preferences WHERE user_id=?',[u.id]);
+ if(!prefs[0]?.adult_declaration)return 'rp_declaration_required';
  const categories=prefs[0]?unpack(prefs[0].content_preferences)||{}:{};
- if(!prefs[0]?.adult_declaration||(unpack(e.themes)||[]).some(t=>categories[t]!==true))return false;
+ if((unpack(e.themes)||[]).some(t=>categories[t]!==true))return 'event_themes_not_enabled';
  const [paused]=await pool.execute('SELECT 1 FROM order_encounter_pauses WHERE encounter_id=? AND paused=1 LIMIT 1',[e.id]);
- return paused.length===0;
+ if(paused.length)return 'encounter_participation_paused';
+ return null;
 }
+async function canRoll(pool,u,e){return (await rollBlockReason(pool,u,e))===null}
 export async function diceRoute(pool,req,path){
  if(!pool)return err(503,'database_unavailable');
  const u=await resolveSession(pool,req);
@@ -49,7 +56,8 @@ export async function diceRoute(pool,req,path){
    return ok(rows.reverse().map(r=>({...r,rolls:unpack(r.rolls)})));
   }
   if(req.method==='POST'){
-   if(!await canRoll(pool,u,e))return err(403,'encounter_not_active_or_paused');
+   const blocked=await rollBlockReason(pool,u,e);
+   if(blocked)return err(blocked==='encounter_not_active'||blocked==='encounter_archived'?409:403,blocked);
    const b=await read(req);
    return createRoll(pool,u,e.id,b,gm(u,e));
   }
