@@ -55,7 +55,7 @@ export function editorJobPreview(job){
 }
 export function creationIssue(form,catalog){
  if(!String(form?.name||'').trim())return 'Enter a character name.';
- if(!catalog||!catalog[form.class_id])return 'Choose a class or job from the catalog.';
+ if(!catalog||!catalog[form.class_id]||['blue-mage','beastmaster'].includes(form.class_id))return 'Choose a class or job from the catalog.';
  const spent=pointsSpent(form);
  if(spent===null)return 'Starting ability scores must be whole numbers from 8 to 15.';
  if(spent>BUDGET)return 'Starting ability scores exceed the 27-point budget.';
