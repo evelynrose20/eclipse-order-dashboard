@@ -16,7 +16,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -73,6 +73,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [fcPlots]=await admin.query('SELECT id,crop_material FROM fc_garden_plots');
   assert.equal(fcPlots.length,2);
   await admin.query(await readFile(new URL('../sql/020_fc_crafting_garden.sql',import.meta.url),'utf8'));
+  const [[expeditionTable]]=await admin.query("SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_gathering_runs'");
+  assert.equal(Number(expeditionTable.n),1);
   const [[plotCount]]=await admin.query('SELECT COUNT(*) AS n FROM fc_garden_plots');
   assert.equal(Number(plotCount.n),2,'setup should not duplicate FC garden plots');
   const [tables]=await admin.query('SHOW TABLES');
@@ -133,22 +135,29 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(myProfile.body.user.syndicate_rank,'domina');
   const char=await characterRoute(admin,request('POST',{name:'CI Hero',class_id:'warrior',str:15,dex:14,con:13,int:12,wis:10,cha:8}),'/characters');
   assert.equal(char.status,201,JSON.stringify(char.body));
-  const gathered=await craftingRoute(admin,request('POST',{material_id:'iron-ore',quantity:6,character_id:char.body.id}),'/workshop/gather');
-  assert.equal(gathered.status,200,JSON.stringify(gathered.body));
-  const crafted=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:2,character_id:char.body.id}),'/workshop/craft');
+  let gatheredTotal=0;
+  for(let attempt=0;attempt<5;attempt++){
+   const gathered=await craftingRoute(admin,request('POST',{material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
+   assert.equal(gathered.status,200,JSON.stringify(gathered.body));
+   assert.ok(gathered.body.quantity>=1&&gathered.body.quantity<=4);
+   gatheredTotal+=gathered.body.quantity;
+  }
+  const exhausted=await craftingRoute(admin,request('POST',{material_id:'iron-ore',character_id:char.body.id}),'/workshop/gather');
+  assert.equal(exhausted.status,409,'daily expedition cap must be enforced');
+  const crafted=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id}),'/workshop/craft');
   assert.equal(crafted.status,200,JSON.stringify(crafted.body));
   const [[ironStock]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
-  assert.equal(ironStock.quantity,2);
+  assert.equal(ironStock.quantity,1);
   const [[oreStock]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
-  assert.equal(oreStock.quantity,0);
-  const noStock=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id}),'/workshop/craft');
+  assert.equal(oreStock.quantity,gatheredTotal-3);
+  const noStock=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:100,character_id:char.body.id}),'/workshop/craft');
   assert.equal(noStock.status,409,'insufficient stock must roll back atomically');
   const care=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'water'}),'/workshop/garden/1/care');
   assert.equal(care.status,200,JSON.stringify(care.body));
   const repeatCare=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'tend'}),'/workshop/garden/1/care');
   assert.equal(repeatCare.status,409,'a member may care once per plot each day');
   const [ledgerRows]=await admin.query('SELECT activity,delta FROM fc_material_ledger ORDER BY id');
-  assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,1);
+  assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,5);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_input').length,1);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_output').length,1);
   const eventId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
