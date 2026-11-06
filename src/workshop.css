@@ -122,3 +122,30 @@ button.fc-craft-ingredient.staged{background:#3a4b41;border-color:#9fd1ad;box-sh
 .fc-craft-ingredient em,.fc-craft-product em{font-size:10px;font-style:normal;color:#ccacc0}
 .fc-craft-ingredient.staged em{color:#b6e5c2}
 .fc-craft-product[ondrop]{border-style:dashed}
+
+.fc-mature-opt{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border:1px solid #78546b;background:#332538;border-radius:10px;font-size:12px;line-height:1.6;color:#ddc0ce}
+.fc-mature-opt input{flex:0 0 auto;min-height:0!important;width:18px;height:18px;margin-top:1px;accent-color:#c78bab}
+.fc-encounter-continue{padding:12px;border-left:3px solid #d6a4b8;background:#5c354450;color:#f5c6d7;font-size:12px}
+.fc-encounter-dialog{width:min(520px,100%);max-height:90vh;overflow:auto;display:grid;gap:16px;justify-items:center;text-align:center;padding:clamp(24px,4vw,38px);border:1px solid #c38ba6;border-radius:17px;background:radial-gradient(circle at 50% 0%,#654458,#251a2b 65%);box-shadow:0 28px 100px #070509}
+.fc-encounter-dialog h3{font-family:Georgia,serif;font-size:30px;font-weight:400;color:#ffe5ef;margin:0}
+.fc-encounter-dialog>p{font-size:14px;line-height:1.8;color:#dcc2d0;margin:0;white-space:pre-wrap}
+.fc-encounter-category{font-size:10px;letter-spacing:.18em;color:#f1b6cd}
+.fc-encounter-emblem{width:84px;height:84px;display:grid;place-items:center;border-radius:50%;border:1px solid #dba9bd;font-size:40px;color:#f2cada;box-shadow:0 0 45px #e3a3ca44}
+.fc-encounter-health{width:100%;display:grid;gap:7px;text-align:left}
+.fc-encounter-health label{display:flex;justify-content:space-between;font-size:12px;color:#ebd4dd}
+.fc-encounter-health small{font-size:11px;color:#c5a0b5}
+.fc-healthbar{height:12px;overflow:hidden;border-radius:10px;background:#493440}
+.fc-healthbar>span{height:100%;display:block;background:linear-gradient(90deg,#669e8f,#b0dbb4);transition:width .25s}
+.fc-healthbar.hostile>span{background:linear-gradient(90deg,#a7465c,#df889a)}
+.fc-encounter-feedback{width:100%;padding:13px;border-left:3px solid #d0a0b8;background:#3c2b3a;color:#f3d3e2!important;text-align:left;font-size:12px!important}
+.fc-encounter-actions{width:100%;display:flex;gap:11px;flex-wrap:wrap}
+.fc-encounter-actions button{flex:1;min-width:160px;padding:13px;border:1px solid #e0a7c3;border-radius:9px;background:#825371;color:#fff0f6;font-weight:700;cursor:pointer}
+.fc-encounter-actions button.secondary{background:#392a3b;border-color:#886b7c}
+.fc-encounter-library{display:flex;gap:7px;overflow-x:auto;padding:3px 0 9px}
+.fc-encounter-library button{flex:0 0 auto;border:1px solid #65495c;border-radius:8px;padding:10px;background:#36283b;color:#e3c6d6;cursor:pointer}
+.fc-encounter-library button.selected{border-color:#e2a8bf;background:#64435a}
+.fc-encounter-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.fc-encounter-enabled{display:flex!important;flex-direction:row;align-items:center}
+.fc-encounter-enabled input{width:18px;height:18px}
+.fc-catalog-error{color:#f0afb6;padding:10px;background:#66394555;border-radius:7px}
+@media(max-width:520px){.fc-encounter-settings{grid-template-columns:1fr}}
