@@ -1,16 +1,19 @@
 // Presentation-only rules for the character dossier.
 // Authoritative visibility decisions still belong to the existing backend.
 export const DOSSIER_TABS=Object.freeze([
+ {id:'legacy',label:'Classic sheet',icon:'▤'},
  {id:'identity',label:'Identity',icon:'◇'},
  {id:'roleplay',label:'Roleplay',icon:'♡'},
  {id:'combat',label:'Combat',icon:'⚔'},
  {id:'spells',label:'Spellbook',icon:'✧'},
  {id:'possessions',label:'Possessions',icon:'▣'},
- {id:'progression',label:'Progression',icon:'◈'},
- {id:'legacy',label:'Classic sheet',icon:'▤'}
+ {id:'progression',label:'Progression',icon:'◈'}
 ]);
 export function isDossierRestricted(character,playerPreview=false){
  return Boolean(character?.collar_bound&&(playerPreview||character?.view_mode==='bound'));
+}
+export function defaultDossierTab(character,playerPreview=false){
+ return isDossierRestricted(character,playerPreview)?'identity':'legacy';
 }
 export function dossierTabs(character,playerPreview=false){
  return isDossierRestricted(character,playerPreview)
