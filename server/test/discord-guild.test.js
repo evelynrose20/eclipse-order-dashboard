@@ -11,7 +11,9 @@ test('guild configuration requires both a valid guild ID and a private bot token
 });
 test('guild verification distinguishes nonmember, screening, full member and Discord outage',async()=>{
  const check=async(response,body)=>checkGuildMember(id,{env,useCache:false,httpFetch:async()=>({status:response,ok:response===200,json:async()=>body})});
- assert.equal(await check(404,null),'not_member');
+ assert.equal(await check(404,{code:10007}),'not_member');
+ assert.equal(await check(404,{code:10004}),'guild_configuration_error');
+ assert.equal(await check(403,{code:50001}),'guild_configuration_error');
  assert.equal(await check(200,{pending:true}),'screening');
  assert.equal(await check(200,{pending:false}),'member');
  assert.equal(await check(503,null),'unavailable');
