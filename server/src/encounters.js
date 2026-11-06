@@ -1,6 +1,6 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {resolveSession} from './auth.js';
-import {defaultEventStory,readEventStory,sanitizeEventStory} from './event-story.js';
+import {readEventStory,sanitizeEventStory} from './event-story.js';
 import {normalizedPosition,validateWaymarks} from './map-state.js';
 
 export const err=(status,error)=>({status,body:{error}});
@@ -35,7 +35,7 @@ async function shape(pool,u,e){
   status:e.status,turn_index:e.turn_index,round_number:e.round_number,
   map_columns:e.map_columns,map_rows:e.map_rows,map_style:e.map_style,map_image_url:e.map_image_url,waymarks:unpack(e.waymarks)||{},
   starts_at:e.starts_at,location:e.location,description:e.description,capacity:e.capacity,published:Boolean(e.published),
-  event_story:readEventStory(e.event_story),
+  event_story:e.event_story?readEventStory(e.event_story):null,
   signup_count:Number(approved[0].n),pending_count:Number(pending[0].n),combatants:combatants.map(c=>({...c,conditions:unpack(c.conditions),notes:gm(u,e)?c.notes:null}))};
 }
 export async function encounterRoute(pool,req,path){
