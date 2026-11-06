@@ -19,7 +19,9 @@ export const int=(x,min,max)=>Number.isInteger(Number(x))&&Number(x)>=min&&Numbe
 export async function getEvent(pool,id){const [rows]=await pool.execute('SELECT * FROM order_encounters WHERE id=?',[id]);return rows[0]||null}
 export async function hasAccess(pool,u,event){
  if(!event)return false;
- if(gm(u,event)||event.published)return true;
+ if(gm(u,event))return true;
+ if(event.archived_at)return false;
+ if(event.published)return true;
  const [party]=await pool.execute('SELECT 1 FROM order_combatants b JOIN characters c ON c.id=b.character_id WHERE b.encounter_id=? AND c.player_account_id=? LIMIT 1',[event.id,u.id]);
  return party.length>0;
 }
@@ -32,7 +34,7 @@ async function shape(pool,u,e){
  const [approved]=await pool.execute('SELECT COUNT(*) AS n FROM order_event_signups WHERE encounter_id=? AND status="approved"',[e.id]);
  const [pending]=gm(u,e)?await pool.execute('SELECT COUNT(*) AS n FROM order_event_signups WHERE encounter_id=? AND status="requested"',[e.id]):[[{n:0}]];
  return {id:e.id,name:e.name,notes:gm(u,e)?e.notes:'',themes:unpack(e.themes),created_by:e.created_by,
-  status:e.status,turn_index:e.turn_index,round_number:e.round_number,
+  status:e.status,archived_at:e.archived_at||null,turn_index:e.turn_index,round_number:e.round_number,
   map_columns:e.map_columns,map_rows:e.map_rows,map_style:e.map_style,map_image_url:e.map_image_url,waymarks:unpack(e.waymarks)||{},
   starts_at:e.starts_at,location:e.location,description:e.description,capacity:e.capacity,published:Boolean(e.published),
   event_story:e.event_story?readEventStory(e.event_story):null,
@@ -58,7 +60,7 @@ export async function encounterRoute(pool,req,path){
    [id,name,text(b.notes,5000),JSON.stringify(b.themes.filter(x=>typeof x==='string').slice(0,30)),u.id,text(b.notes,2400)]);
   return ok(id,201);
  }
- const route=/^\/encounters\/([a-f0-9-]{36})(?:\/(turn|map|image|waymarks|plan|state|check|pause|initiative))?$/.exec(path);
+ const route=/^\/encounters\/([a-f0-9-]{36})(?:\/(turn|map|image|waymarks|plan|state|check|pause|initiative|archive|restore))?$/.exec(path);
  if(route){
   const [,id,action]=route,e=await getEvent(pool,id);
   if(!e||!await hasAccess(pool,u,e))return err(404,'encounter_not_found');
@@ -79,7 +81,24 @@ export async function encounterRoute(pool,req,path){
    return ok({status:'saved'});
   }
   if(!director)return err(403,'director_required');
+  if(!action&&req.method==='DELETE'){
+   if(!e.archived_at)return err(409,'archive_before_delete');
+   const [result]=await pool.execute('DELETE FROM order_encounters WHERE id=? AND archived_at IS NOT NULL',[id]);
+   return result.affectedRows?ok({status:'deleted'}):err(409,'scene_changed_retry');
+  }
   if(req.method!=='POST')return err(405,'method_not_allowed');
+  if(action==='archive'){
+   if(e.archived_at)return err(409,'already_archived');
+   if(['active','paused'].includes(e.status))return err(409,'finish_encounter_before_archive');
+   const [result]=await pool.execute('UPDATE order_encounters SET archived_at=UTC_TIMESTAMP() WHERE id=? AND archived_at IS NULL AND status NOT IN ("active","paused")',[id]);
+   return result.affectedRows?ok({status:'archived'}):err(409,'scene_changed_retry');
+  }
+  if(action==='restore'){
+   if(!e.archived_at)return err(409,'scene_not_archived');
+   await pool.execute('UPDATE order_encounters SET archived_at=NULL WHERE id=? AND archived_at IS NOT NULL',[id]);
+   return ok({status:'restored'});
+  }
+  if(e.archived_at)return err(409,'encounter_archived');
   const b=await read(req);
   if(action==='plan'){
    const name=text(b?.name,140),description=text(b?.description,2400),location=text(b?.location,160);
