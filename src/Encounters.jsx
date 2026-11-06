@@ -37,7 +37,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
  const isParticipant=Boolean(selected?.combatants?.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId)));
  const isDirector=Boolean(!playerFacing&&selected?.created_by===userId);
  const activeCombatant=selected?.combatants?.[selected.turn_index%Math.max(1,selected.combatants.length)];
- async function refresh(){const x=await listEncounters();const visible=playerFacing?x.filter(e=>e.published):previewOnly?x.filter(e=>e.published||e.combatants.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId))):x;setData(visible);setChosenId(old=>visible.some(e=>e.id===old&&!e.archived_at)?old:visible.find(e=>!e.archived_at)?.id||'')}
+ async function refresh(){const x=await listEncounters();const visible=playerFacing?x.filter(e=>e.published):previewOnly?x.filter(e=>e.published||e.combatants.some(c=>characters.some(ch=>ch.id===c.character_id&&ch.player_user_id===userId))):x;setData(visible);setChosenId(old=>visible.some(e=>e.id===old)?old:visible.find(e=>!e.archived_at)?.id||'')}
  useEffect(()=>{
   refresh().catch(e=>setError(e.message));
   if(directorRole)listMonsterTemplates().then(setMonsters).catch(e=>setError(e.message));
@@ -55,7 +55,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   try{
    if(archive)await archiveEncounter(selected.id);else await restoreEncounter(selected.id);
    setNotice(archive?'Scene archived. You can restore it from Archived scenes.':'Scene restored.');
-   setShowArchived(!archive);setChosenId('');await refresh();
+   setShowArchived(false);setChosenId('');await refresh();
   }catch(e){setError(e.message)}finally{setWorking(false)}
  }
  async function removeScene(){
@@ -65,7 +65,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
   setWorking(true);setError('');setNotice('');
   try{
    await deleteEncounter(selected.id);
-   setNotice('Scene permanently deleted.');setChosenId('');await refresh();
+   setNotice('Scene permanently deleted.');setShowArchived(false);setChosenId('');await refresh();
   }catch(e){setError(e.message)}finally{setWorking(false)}
  }
  async function createEvent(details){
@@ -108,10 +108,10 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     <span className="encounter-choice-state">{e.archived_at?'ARCHIVED':e.status==='active'?'LIVE':e.status==='draft'?'PREPARING':e.status.toUpperCase()}</span><strong>{e.name}</strong><small>{e.combatants.length} combatants · {e.signup_count||0}/{e.capacity||8} party</small></button>)}</div></>}
   </aside>
   <main className="encounter-main">
+   {error&&<div className="encounter-feedback error" role="alert"><strong>Action couldn't be completed</strong><span>{error}</span><button className="mini-btn" type="button" onClick={()=>setError('')}>Dismiss</button></div>}
+   {notice&&<div className="encounter-feedback success" role="status"><span>{notice}</span><button className="mini-btn" type="button" onClick={()=>setNotice('')}>Dismiss</button></div>}
    {creating&&directorRole?<section className="panel"><div className="panel-heading"><div><h2>Plan a new FC event</h2><p>Build the event privately, schedule it, open sign-ups, then prepare monsters and party members.</p></div><button className="mini-btn" onClick={()=>setCreating(false)}>Cancel</button></div><EventEditor key="new-event" event={null} save={createEvent} working={working}/></section>:
    !selected?<div className="panel"><h2>No event selected</h2><p className="muted">{directorRole?'Create a planned event using the New event button.':'There are no published FC events to sign up for yet.'}</p>{error.toLowerCase().includes('adult')&&<div className="hint-box"><strong>My RP profile</strong><p>Confirm the 18+ declaration on your profile to see available events.</p><button className="btn primary" onClick={onOpenProfile}>Open My RP profile</button></div>}</div>:<>
-    {error&&<div className="encounter-feedback error" role="alert"><strong>Action couldn't be completed</strong><span>{error}</span><button className="mini-btn" type="button" onClick={()=>setError('')}>Dismiss</button></div>}
-    {notice&&<div className="encounter-feedback success" role="status"><span>{notice}</span><button className="mini-btn" type="button" onClick={()=>setNotice('')}>Dismiss</button></div>}
     <header className="encounter-studio-header">
      <div><span className="encounter-eyebrow">DM WORKSPACE · {selected.status.toUpperCase()}</span><h2>{selected.name}</h2><p>{selected.location||'Location unassigned'} · {selected.combatants.length} combatants · Round {selected.round_number||1}</p></div>
      <div className="encounter-studio-header-actions">{canDirect&&(selected.archived_at?<><button className="btn secondary" disabled={working} onClick={()=>changeArchive(false)}>Restore scene</button><button className="btn secondary encounter-danger" disabled={working} onClick={removeScene}>Delete permanently</button></>:<button className="btn secondary" disabled={working||['active','paused'].includes(selected.status)} onClick={()=>changeArchive(true)} title={['active','paused'].includes(selected.status)?'Finish the encounter before archiving':'Archive scene'}>Archive</button>)}<button type="button" className="btn secondary encounter-studio-focus-action" aria-pressed={focusMode} onClick={()=>{setFocusMode(v=>!v);setSection('map')}}>{focusMode?'Exit focus':'Focus map'}</button><button type="button" className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh</button>
