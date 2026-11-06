@@ -6,7 +6,7 @@ const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
  discord_login_not_configured:'Discord sign-in has not been configured yet. Contact Order command.',
- discord_not_in_server:'You must join The Eclipse Order’s Discord before accessing the member portal.',
+ discord_not_in_server:'Your Discord account was not found in the Order’s configured server. If you are already a member, contact Order command to check the server connection.',
  discord_membership_screening:'Finish the Discord server’s membership screening, then sign in again.',
  discord_server_check_unavailable:'The Order could not verify Discord membership. Please try again later.',
  discord_join_denied:'Discord server access was not authorized. You can try again or contact Order command.',
@@ -34,7 +34,7 @@ export default function LocalAccounts(){
  const [token,setToken]=useState(()=>sessionStorage.getItem(storageKey)||'');
  const [profile,setProfile]=useState(null);
  const [message,setMessage]=useState('');
- const [reason,setReason]=useState('');
+ const [reason,setReason]=useState(()=>new URLSearchParams(window.location.search).get('access')||'');
  const [busy,setBusy]=useState(false);
  const [adult,setAdult]=useState(false);
  const processed=useRef(false);
@@ -53,13 +53,13 @@ export default function LocalAccounts(){
   processed.current=true;
   const ticket=fragment.get('discord_ticket'),error=fragment.get('discord_error');
   window.history.replaceState(null,'',window.location.pathname+window.location.search);
-  if(error){setReason(error);setMessage(ERROR_MESSAGES[error]||'Discord sign-in could not be completed. Try again.');return}
+  if(error){setReason(error);setMessage(ERROR_MESSAGES[error]||'Discord sign-in could not be completed. Try again.');if(['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable'].includes(error)){const url=new URL(window.location.href);url.searchParams.set('portal','');url.searchParams.set('access',error);window.history.replaceState(null,'',url.pathname+url.search)}return}
   if(!ticket)return;
   setBusy(true);
   request('/auth/discord/complete',{method:'POST',body:{ticket}}).then(result=>{
    if(result.status==='pending'){setReason('pending');setMessage(result.message);return}
    if(result.access_token){sessionStorage.setItem(storageKey,result.access_token);setToken(result.access_token)}
-  }).catch(e=>{setMessage(e.message);if(e.message===ERROR_MESSAGES.discord_not_in_server)setReason('discord_not_in_server')}).finally(()=>setBusy(false));
+  }).catch(e=>{setMessage(e.message);const match=Object.keys(ERROR_MESSAGES).find(key=>ERROR_MESSAGES[key]===e.message);if(['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable'].includes(match)){setReason(match);const url=new URL(window.location.href);url.searchParams.set('portal','');url.searchParams.set('access',match);window.history.replaceState(null,'',url.pathname+url.search)}}).finally(()=>setBusy(false));
  },[]);
  useEffect(()=>{
   if(!token)return;
@@ -73,6 +73,21 @@ export default function LocalAccounts(){
   try{await request('/auth/logout',{method:'POST',token})}catch{}
   sessionStorage.removeItem(storageKey);setProfile(null);setToken('');
  }
+ const accessIssue=['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable'].includes(reason);
+ if(!profile&&accessIssue)return <div className="eo-local">
+  <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
+  <main className="eo-auth-card eo-discord-only eo-access-page" aria-labelledby="access-title">
+   <span className="eo-eyebrow">MEMBERSHIP ACCESS</span>
+   <h1 id="access-title">{reason==='discord_not_in_server'?'The Order Cannot Find You':reason==='discord_membership_screening'?'Complete Your Discord Welcome':'Membership Check Unavailable'}</h1>
+   <p role="status">{reason==='discord_not_in_server'?'The Discord account you authorized was not found in the server configured for the Order. If you already belong to our Discord, this can also mean the website is checking the wrong server.':reason==='discord_membership_screening'?'Discord shows that your membership screening is still pending. Open the Order’s Discord and complete its welcome steps before trying again.':'The Order cannot confirm your Discord membership right now. This is a verification problem, not proof that you are outside the server.'}</p>
+   <div className="eo-bad-end-note"><strong>Already a member?</strong><p>Check which Discord account is signed in. If you own or already belong to the server, ask Order command to check the configured Discord server ID, bot token, and bot access. You should not need to leave and rejoin.</p></div>
+   <label className="eo-check eo-discord-consent"><input type="checkbox" checked={adult} onChange={e=>setAdult(e.target.checked)}/><span>I confirm I am 18 or older and understand this is a Bad End RP community with player consent and boundaries.</span></label>
+   {message&&<p className="eo-message" role="status">{message}</p>}
+   <div className="eo-discord-login"><button className="eo-discord-button" type="button" disabled={busy||!adult} onClick={()=>start('login')}>{busy?'Connecting…':'Check membership again with Discord'}</button>
+   {reason==='discord_not_in_server'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Order’s Discord</button>}</div>
+   <a className="eo-link" href="?portal">Back to member sign-in</a>
+   <a className="eo-link" href="./">Return to the public website</a>
+  </main></div>;
  if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
