@@ -160,6 +160,21 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(ledgerRows.filter(l=>l.activity==='gather').length,5);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_input').length,1);
   assert.equal(ledgerRows.filter(l=>l.activity==='craft_output').length,1);
+  const newMaterial=await craftingRoute(admin,request('POST',{id:'gloom-moss',name:'Gloom Moss',category:'botanical',description:'A fictional shade garden crop.'}),'/workshop/catalog/materials');
+  assert.equal(newMaterial.status,200,JSON.stringify(newMaterial.body));
+  const newRecipe=await craftingRoute(admin,request('POST',{id:'moss-balm',name:'Moss Balm',description:'Fantasy medicinal crafting.',output_material:'herbal-tonic',output_quantity:1,inputs:[{material_id:'gloom-moss',quantity:2}]}),'/workshop/catalog/recipes');
+  assert.equal(newRecipe.status,200,JSON.stringify(newRecipe.body));
+  const [[recipeEntry]]=await admin.query("SELECT name FROM fc_recipes WHERE id='moss-balm'");
+  assert.equal(recipeEntry.name,'Moss Balm');
+  const fullGarden=await craftingRoute(admin,request('POST',{crop_material:'gloom-moss'}),'/workshop/catalog/plots');
+  assert.equal(fullGarden.status,409,'garden cannot bypass capacity without upgrades');
+  await admin.execute("UPDATE fc_material_stock SET quantity=5 WHERE material_id='iron-ingot'");
+  const upgraded=await craftingRoute(admin,request('POST',{}),'/workshop/garden/upgrade');
+  assert.equal(upgraded.status,200,JSON.stringify(upgraded.body));
+  const planted=await craftingRoute(admin,request('POST',{crop_material:'gloom-moss'}),'/workshop/catalog/plots');
+  assert.equal(planted.status,200,JSON.stringify(planted.body));
+  const [[newPlot]]=await admin.query("SELECT crop_material FROM fc_garden_plots WHERE id=3");
+  assert.equal(newPlot.crop_material,'gloom-moss');
   const eventId='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   await admin.execute('INSERT INTO order_encounters(id,name,notes,themes,created_by,status,description) VALUES(?,?,?,?,?,?,?)',
    [eventId,'CI Adventure','',JSON.stringify([]),id,'completed','']);
