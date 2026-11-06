@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CLASSES,pointCost,createProgression,applyExperience,xpForLevel,levelForXp} from '../src/progression.js';
+import {CLASSES,pointCost,createProgression,applyExperience,xpForLevel,levelForXp,skillProficiencyCount,MAX_SKILL_PROFICIENCIES} from '../src/progression.js';
 test('six classes define core combat rules',()=>{assert.equal(Object.keys(CLASSES).length,6);assert.equal(CLASSES.warrior.hit_die,10)});
 test('creation costs and min/max enforce 27 points',()=>{
  assert.equal(pointCost({str:8,dex:8,con:8,int:8,wis:8,cha:8}),0);
@@ -20,4 +20,13 @@ test('XP increases levels and HP predictably',()=>{
  const next=applyExperience(c,xpForLevel(3));
  assert.equal(levelForXp(next.experience),3);assert.equal(next.level,3);
  assert.equal(next.proficiency_bonus,2);assert.ok(next.max_hp>c.max_hp);
+});
+
+test('character creation accepts three trained skills and rejects a fourth',()=>{
+ const base={class_id:'warrior',str:10,dex:10,con:10,int:10,wis:10,cha:10};
+ const three={Acrobatics:true,Stealth:true,Perception:true,Arcana:false};
+ assert.equal(MAX_SKILL_PROFICIENCIES,3);
+ assert.equal(skillProficiencyCount(three),3);
+ assert.equal(createProgression({...base,skills:three}).error,undefined);
+ assert.match(createProgression({...base,skills:{...three,Arcana:true}}).error,/3 skill/);
 });
