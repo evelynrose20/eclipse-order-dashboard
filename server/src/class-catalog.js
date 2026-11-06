@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {CLASSES,ABILITIES} from './progression.js';
+import {ffxivJobCatalog} from './ffxiv-job-catalog.js';
 
 const DEFAULT_SPELLS={
  mage:[
@@ -47,13 +48,13 @@ export const schoolSlots=(casting,level)=>{
  return 0;
 };
 export function builtinClassCatalog(){
- return Object.fromEntries(Object.entries(CLASSES).map(([id,c])=>[id,{
+ return {...Object.fromEntries(Object.entries(CLASSES).map(([id,c])=>[id,{
   id,name:c.name,description:c.description,hit_die:c.hit_die,primary:c.primary,saves:c.saves,
   casting:CASTING[id]||'none',
   features:[...c.features.map(name=>({level:1,name,description:''})),...Object.entries(c.unlocks||{}).map(([level,name])=>({level:Number(level),name,description:''}))],
   spells:(DEFAULT_SPELLS[id]||[]).map(([spellId,name,level,cost,description])=>({id:spellId,name,level,cost,description})),
   built_in:true
- }]));
+ }])),...ffxivJobCatalog()};
 }
 const asText=(v,n)=>typeof v==='string'?v.trim().slice(0,n):'';
 const validId=s=>typeof s==='string'&&/^[a-z][a-z0-9_-]{1,39}$/.test(s);

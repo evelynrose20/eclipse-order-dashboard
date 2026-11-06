@@ -10,6 +10,10 @@ export default function HomebrewClasses({classes,onRefresh,request}){
  const [newId,setNewId]=useState('');
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
  const entries=Object.entries(classes||{}).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+ const legacyIds=new Set(['warrior','rogue','mage','healer','ranger','bard']);
+ const ffxivEntries=entries.filter(([key,c])=>c.origin==='ffxiv_tabletop'||c.built_in&&!legacyIds.has(key));
+ const legacyEntries=entries.filter(([key])=>legacyIds.has(key));
+ const customEntries=entries.filter(([key,c])=>!legacyIds.has(key)&&!ffxivEntries.some(([id])=>id===key));
  useEffect(()=>{if(id&&classes?.[id])setDraft({...classes[id],features:(classes[id].features||[]).map(f=>({...f})),spells:(classes[id].spells||[]).map(s=>({...s}))})},[id,classes]);
  function selectClass(next){setId(next);setError('');setMessage('');if(next&&classes[next])setDraft({...classes[next],features:classes[next].features.map(f=>({...f})),spells:classes[next].spells.map(s=>({...s}))})}
  function newClass(){const slug=newId.trim().toLowerCase().replace(/\s+/g,'-');if(!validId(slug)||classes[slug]){setError('Enter a unique class ID using 2–40 lowercase letters, numbers, hyphens or underscores.');return}setId(slug);setDraft({...EMPTY,features:[{level:1,name:'Class Training',description:''}]});setNewId('');setError('');setMessage('')}
@@ -26,12 +30,12 @@ export default function HomebrewClasses({classes,onRefresh,request}){
   }catch(err){setError(err.message)}finally{setBusy(false)}
  }
  return <div className="homebrew-workspace">
-  <section className="panel"><div className="panel-heading"><div><h2>Homebrew class workshop</h2><p>Set the rules for each Order class. Spell and feature unlocks use character levels 1–20. Changes apply to future unlock checks immediately; existing characters keep their current level and XP.</p></div></div>
-   <div className="class-library-toolbar"><label className="field"><span>EDIT CLASS</span><select value={id} onChange={e=>selectClass(e.target.value)}><option value="">Choose a class</option>{entries.map(([key,c])=><option value={key} key={key}>{c.name}</option>)}</select></label>
+  <section className="panel"><div className="panel-heading"><div><h2>Class Workshop · FFXIV Jobs</h2><p>Adapted FFXIV jobs use 20 character levels, with tabletop techniques and spells. Existing legacy classes remain available for older characters. Saving affects future unlock checks; it does not reset character XP or levels.</p></div></div>
+   <div className="class-library-toolbar"><label className="field"><span>EDIT CLASS</span><select value={id} onChange={e=>selectClass(e.target.value)}><option value="">Choose a class</option><optgroup label="FFXIV jobs (levels 1–20)">{ffxivEntries.map(([key,c])=><option value={key} key={key}>{c.name}</option>)}</optgroup><optgroup label="Original legacy classes">{legacyEntries.map(([key,c])=><option value={key} key={key}>{c.name} · Legacy</option>)}</optgroup>{customEntries.length>0&&<optgroup label="Custom classes">{customEntries.map(([key,c])=><option value={key} key={key}>{c.name}</option>)}</optgroup>}</select></label>
     <label className="field"><span>NEW CLASS ID</span><input value={newId} onChange={e=>setNewId(e.target.value)} placeholder="e.g. rune-knight" maxLength={40}/></label>
     <button type="button" className="btn secondary" onClick={newClass}>Create new class</button>
    </div>
-   <p className="muted">The six existing classes are editable starter templates. Their ability names and spell descriptions are proposals, not fixed lore. Save changes before creating characters of a new class.</p>
+   <p className="muted">Includes every standard combat job, including Viper and Pictomancer, plus simplified Blue Mage and Beastmaster options. Each job has its own milestone techniques through level 20. Legacy templates are intentionally preserved for existing characters.</p>
   </section>
   {id&&<form onSubmit={save} className="homebrew-editor">
    <section className="panel"><div className="panel-heading"><div><h2>{draft.name||'New class'} · {id}</h2><p>Define class identity, HP growth, proficiencies and magical resources.</p></div><button className="btn primary" type="submit" disabled={busy}>{busy?'Saving…':'Save class'}</button></div>
