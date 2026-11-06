@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import './local-accounts.css';
 import LocalWorkspace from './LocalWorkspace.jsx';
+import DiscordAccessPage from './DiscordAccessPage.jsx';
 
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
@@ -9,6 +10,7 @@ const ERROR_MESSAGES={
  discord_not_in_server:'You must join The Eclipse Order’s Discord before accessing the member portal.',
  discord_membership_screening:'Finish the Discord server’s membership screening, then sign in again.',
  discord_server_check_unavailable:'The Order could not verify Discord membership. Please try again later.',
+ discord_guild_configuration_error:'Discord server configuration needs attention. This does not mean you have left the server.',
  discord_join_denied:'Discord server access was not authorized. You can try again or contact Order command.',
  discord_denied:'Discord authorization was cancelled.',
  discord_expired_request:'Your Discord sign-in expired. Please try again.',
@@ -74,6 +76,7 @@ export default function LocalAccounts(){
   sessionStorage.removeItem(storageKey);setProfile(null);setToken('');
  }
  if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
+ if(['discord_not_in_server','discord_membership_screening','discord_guild_configuration_error','discord_server_check_unavailable','pending'].includes(reason))return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('')}}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
