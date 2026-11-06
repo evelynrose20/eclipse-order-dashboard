@@ -19,7 +19,7 @@ const locationStyle=p=>({left:(p.x*100)+'%',top:(p.y*100)+'%'});
 function Token({combatant,canDirect,selected,position,playerView=false}){
  const hp=Math.max(0,Math.min(100,combatant.hp/Math.max(1,combatant.max_hp)*100));
  return <button type="button" data-token={combatant.id} disabled={!canDirect}
-  className={'map-token map-floating '+(combatant.kind==='npc'?'enemy':'ally')+(selected?' selected':'')}
+  className={'map-token map-floating '+(combatant.kind==='npc'?'enemy':combatant.kind==='ally'?'npc-ally ally':'ally')+(selected?' selected':'')}
   style={locationStyle(position)}
   title={playerView?combatant.name:combatant.name+' · '+combatant.hp+'/'+combatant.max_hp+' HP · AC '+combatant.ac}
   aria-label={playerView?combatant.name:combatant.name+' '+combatant.hp+' of '+combatant.max_hp+' HP'}>
@@ -159,16 +159,16 @@ export default function BattleMap({encounter,canDirect,onRefresh,onError,playerV
      position={preview?.token===c.id?preview:tokenPoint(c,cols,rows)}/>)}
   </div>
   </div>
-  {!playerView&&<div className="map-legend"><span className="map-legend-ally"/> Players <span className="map-legend-enemy"/> Monsters / NPCs <span className="map-legend-hint">{placingMark?'Tap a location to place waymark '+placingMark+'.':selected?'Tap a location to move the selected combatant.':'Select a combatant or drag a token. Use arrow keys to nudge a selection.'}</span></div>}
+  {!playerView&&<div className="map-legend"><span className="map-legend-ally"/> Players <span className="map-legend-npc-ally"/> NPC allies <span className="map-legend-enemy"/> Enemies <span className="map-legend-hint">{placingMark?'Tap a location to place waymark '+placingMark+'.':selected?'Tap a location to move the selected combatant.':'Select a combatant or drag a token. Use arrow keys to nudge a selection.'}</span></div>}
   {canDirect&&!playerView&&<div className="map-reserve"><div><h3>Off-map combatants <small>({offBoard.length})</small></h3><p className="muted">Choose one below, then tap anywhere on the map to place it.</p></div>
    <div className="map-reserve-items">{offBoard.map(c=><button key={c.id} className={'map-reserve-token '+(selected===c.id?'selected':'')} disabled={!canDirect||saving}
-    onClick={()=>{setTool('move');setSelected(c.id);setPlacingMark(null)}}>{c.kind==='npc'?'◆':'●'} {c.name} · {c.hp}/{c.max_hp} HP</button>)}
+    onClick={()=>{setTool('move');setSelected(c.id);setPlacingMark(null)}}>{c.kind==='npc'?'◆':c.kind==='ally'?'✦':'●'} {c.name} · {c.hp}/{c.max_hp} HP</button>)}
     {!offBoard.length&&<span className="muted">All combatants are on the map.</span>}
    </div>
    {selected&&canDirect&&<button className="mini-btn" disabled={saving} onClick={()=>placeToken(selected,null)}>Remove selected token from map</button>}
   </div>}
   {measurement&&<div className="map-measure-label" role="status">Distance: {measureDistance} grid squares <button type="button" className="mini-btn" onClick={()=>setMeasurement(null)}>Clear</button></div>}
-  {playerView&&<div className="map-player-key"><span><i className="map-legend-ally"/> Allies</span><span><i className="map-legend-enemy"/> Enemies / NPCs</span></div>}
+  {playerView&&<div className="map-player-key"><span><i className="map-legend-ally"/> Players</span><span><i className="map-legend-npc-ally"/> NPC allies</span><span><i className="map-legend-enemy"/> Enemies</span></div>}
 
   {saving&&<p className="muted" role="status">Saving map changes…</p>}
  </section>;
