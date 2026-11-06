@@ -41,9 +41,11 @@ async function main(){
   await pool.query(npcAllies);
   const discord=await readFile(new URL('../sql/014_discord_oauth.sql',import.meta.url),'utf8');
   await pool.query(discord);
+  const guildMembership=await readFile(new URL('../sql/015_discord_membership.sql',import.meta.url),'utf8');
+  await pool.query(guildMembership);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
-  console.log('Database schema ready. Open the local account portal in your browser to create the first Domina account.');
+  console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
  }finally{await pool.end();}
 }
 main().catch(e=>{console.error('Setup failed:',e.message);process.exitCode=1;});
