@@ -77,6 +77,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[recruitAfter]]=await admin.execute('SELECT syndicate_rank,account_role FROM accounts WHERE id=?',[recruitId]);
   assert.equal(recruitAfter.syndicate_rank,'oyabun');
   assert.equal(recruitAfter.account_role,'member','syndicate rank must not grant staff access');
+  const assignNewRank=await accountRoute(admin,request('POST',{track:'snakes',code:'whisper'}),'/admin/accounts/'+recruitId+'/order-rank');
+  assert.equal(assignNewRank.status,200,JSON.stringify(assignNewRank.body));
+  const [[newRank]]=await admin.execute("SELECT rank_code FROM account_order_ranks WHERE account_id=? AND track='snakes'",[recruitId]);
+  assert.equal(newRank.rank_code,'whisper');
+  const invalidRank=await accountRoute(admin,request('POST',{track:'snakes',code:'high_fang'}),'/admin/accounts/'+recruitId+'/order-rank');
+  assert.equal(invalidRank.status,400,'rank must belong to chosen branch');
+  const invalidDomina=await accountRoute(admin,request('POST',{track:'leadership',code:'domina'}),'/admin/accounts/'+recruitId+'/order-rank');
+  assert.equal(invalidDomina.status,403,'cannot assign Domina to a regular account');
   const memberList=await accountRoute(admin,request('GET'),'/admin/accounts');
   assert.equal(memberList.body.find(a=>a.user_id===recruitId)?.syndicate_rank,'oyabun');
   const myProfile=await authRoute(admin,request('GET'),'/auth/me');
