@@ -83,6 +83,8 @@ export async function accountRoute(pool,req,path){
     if(!Number(others.count))return error(409,'cannot_remove_last_domina');
    }
    await pool.execute("UPDATE accounts SET account_role=?,syndicate_rank=CASE WHEN ?='domina' THEN 'domina' WHEN syndicate_rank='domina' THEN 'kumi_in' ELSE syndicate_rank END WHERE id=?",[body.role,body.role,id]);
+   if(body.role==='domina')await pool.execute("INSERT INTO account_order_ranks(account_id,track,rank_code) VALUES(?,'leadership','domina') ON DUPLICATE KEY UPDATE rank_code='domina'",[id]);
+   else if(accounts[0].account_role==='domina')await pool.execute("DELETE FROM account_order_ranks WHERE account_id=? AND track='leadership' AND rank_code='domina'",[id]);
   }else if(action==='syndicate-rank'){
    if(accounts[0].approval_status!=='approved')return error(409,'Approve the account first.');
    if(!syndicateRanks.has(body.syndicate_rank))return error(400,'invalid_syndicate_rank');
