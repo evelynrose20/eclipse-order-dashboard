@@ -20,7 +20,7 @@ const ROLE_OPTIONS=['member','handler','high_command','domina'];
 const field=(label,value,update)=> <label className="field"><span>{label}</span><input value={value??''} onChange={e=>update(e.target.value)}/></label>;
 const canManage=role=>role==='domina'||role==='high_command';
 const newSheet=()=>({name:'',player:'',owner:'',specialty:'',notes:'',rank:'Unbound: Free',collar_bound:false,
- hp:10,max_hp:10,armor_class:10,level:1,experience:0,class_id:'',class_name:'',species:'',str:8,dex:8,con:8,int:8,wis:8,cha:8});
+ hp:10,max_hp:10,armor_class:10,level:1,experience:0,class_id:'',class_name:'',species:'',str:10,dex:10,con:10,int:10,wis:10,cha:10});
 export default function LocalWorkspace({profile,request,onLogout}){
  const [tab,setTab]=useState('overview');
  const [menuOpen,setMenuOpen]=useState(false);
