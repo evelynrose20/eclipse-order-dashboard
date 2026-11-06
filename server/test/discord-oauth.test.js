@@ -48,7 +48,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false}={}
   if(url.includes('/guilds/')){
    if(options.method==='PUT'){joinCount++;guildMember=true;return {ok:true,status:201,json:async()=>({pending:memberPending})}}
    lookups++;if(unavailable)return {ok:false,status:503};
-   if(!guildMember)return {ok:false,status:404};
+   if(!guildMember)return {ok:false,status:404,json:async()=>({code:10007,message:'Unknown Member'})};
    return {ok:true,status:200,json:async()=>({pending:memberPending})};
   }
   throw Error('Unexpected request: '+url);
@@ -75,6 +75,8 @@ test('Discord login uses secure fixed redirects and opt-in join scope only',asyn
  assert.equal(join.searchParams.get('scope'),'identify guilds.join');
  assert.equal(discordOAuthConfig({...env,DISCORD_FRONTEND_URL:'https://bad.example/'}),null);
  assert.equal(discordOAuthConfig({...env,DISCORD_GUILD_ID:''}),null);
+ assert.equal(discordOAuthConfig({...env,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/'}).frontendUrl,'https://evelynrose20.github.io/eclipse-order-dashboard/');
+ assert.equal(discordOAuthConfig({...env,DISCORD_FRONTEND_URL:''}).frontendUrl,'https://evelynrose20.github.io/eclipse-order-dashboard/');
 });
 test('adult acknowledgement is mandatory before beginning Discord OAuth',async()=>{
  const m=setup();
