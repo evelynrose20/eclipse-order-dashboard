@@ -60,7 +60,7 @@ export function applyExperience(sheet,amount,definition){
  const oldLimit=Number.isInteger(sheet.max_spell_points)?sheet.max_spell_points:pool(klass?.casting,prevLevel);
  const oldCurrent=Number.isInteger(sheet.spell_points)?sheet.spell_points:oldLimit;
  const newLimit=pool(klass?.casting,level);
- return {...sheet,experience,level,armor_class:classArmor(sheet,klass),class_features:unlockedClassFeatures(sheet.class_id,level,klass),
+ return {...sheet,experience,level,armor_class:classArmor({...sheet,level},klass),class_features:unlockedClassFeatures(sheet.class_id,level,klass),
   max_spell_points:newLimit,spell_points:Math.min(newLimit,oldCurrent+Math.max(0,newLimit-oldLimit)),ability_points:(Number(sheet.ability_points)||0)+pointsGained,max_hp:maxHp,hp:Math.min(maxHp,Math.max(0,Number(sheet.hp)||0)+levelsGained*(maxHp-(Number(sheet.max_hp)||1))),
   hit_dice:klass?level+'d'+klass.hit_die:sheet.hit_dice,proficiency_bonus:proficiencyForLevel(level)};
 }
