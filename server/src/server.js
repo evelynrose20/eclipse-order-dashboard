@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
+import {discordRoute} from './discord-oauth.js';
 import {accountRoute} from './accounts.js';
 import {firstDominaRoute} from './first-domina.js';
 import {characterRoute} from './characters.js';
@@ -104,6 +105,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname.startsWith('/roll-requests/')||pathname.startsWith('/rolls/')||/\/encounters\/[a-f0-9-]{36}\/(rolls|roll-requests)$/.test(pathname))result=await diceRoute(pool,req,pathname);
   else if(pathname==='/encounters'||pathname.startsWith('/encounters/'))result=await encounterRoute(pool,req,pathname);
   else if(pathname==='/auth/register'||pathname.startsWith('/admin/'))result=await accountRoute(pool,req,pathname);
+  else if(pathname.startsWith('/auth/discord/'))result=await discordRoute(pool,req,pathname,{query:(req.url||'').split('?').slice(1).join('?')});
   else if(pathname.startsWith('/auth/'))result=await authRoute(pool,req,pathname);
   else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
   else result=buildResponse(pathname,req.method,()=>({status:503,body:{status:'not_ready'}}));
@@ -113,6 +115,10 @@ const server=http.createServer(async(req,res)=>{
    console.error('[Eclipse Order API] Request failed:',error?.code||'internal_error');
    result={status:500,body:{error:'internal_error'}};
   }
+ }
+ if(result.redirect){
+  res.writeHead(302,{'Location':result.redirect,'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'});
+  res.end();return;
  }
  res.writeHead(result.status,{
   ...cors,

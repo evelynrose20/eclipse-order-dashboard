@@ -7,6 +7,7 @@ import {CharacterTransitions} from './RPPlatform.jsx';
 import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
+import DiscordAccountConnection from './DiscordAccountConnection.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
 
 import HomebrewClasses from './HomebrewClasses.jsx';
@@ -100,6 +101,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {message&&<div className="alert" role="status">{message}</div>}
     {tab==='overview'&&<>
      <div className="eo-summary"><div><strong>{visibleCharacters.length}</strong><span>Visible characters</span></div>{!playerPreview&&profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}{!playerPreview&&<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div>}</div>
+     {!playerPreview&&<DiscordAccountConnection request={request}/>}
      <section className="panel"><h2>Welcome, {profile.display_name}</h2><p><strong>Syndicate rank:</strong> {syndicateRankLabel(profile.syndicate_rank)} · <strong>Account access:</strong> {ACCOUNT_ROLES[profile.role]?.label||profile.role}</p><p>The Order’s records, events, and character dossiers are available to you here.</p></section>
     </>}
     {tab==='members'&&!playerPreview&&profile.role==='domina'&&<>
@@ -124,7 +126,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} isStaff={staff}/>}
     {tab==='encounters'&&(playerPreview||!staff?<PlayerBattleView key={playerPreview?'preview-battle':'member-battle'}/>:<Encounters classCatalog={classCatalog} key="dm-studio" role={profile.role} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>)}
-    {tab==='profile'&&<ProfileConsent readOnly={playerPreview}/>}
+    {tab==='profile'&&<><DiscordAccountConnection request={request} readOnly={playerPreview}/><ProfileConsent readOnly={playerPreview}/></>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}
     {tab==='settings'&&<FCSettings role={playerPreview?'member':profile.role}/>}

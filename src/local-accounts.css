@@ -65,3 +65,13 @@
 .preview-fieldset{border:0;padding:0;margin:0;min-width:0;width:100%}
 .preview-fieldset :disabled{cursor:not-allowed}
 @media(max-width:700px){.top-actions{flex-wrap:wrap}.view-switch{font-size:11px}}
+
+/* Existing member credentials remain available alongside Discord sign-in. */
+.eo-local .eo-discord-login{display:grid;gap:11px;margin-top:20px;text-align:center}
+.eo-local .eo-discord-login>span{font-size:10px;color:#bea9b7;letter-spacing:.13em;display:flex;align-items:center;gap:13px}
+.eo-local .eo-discord-login>span:before,.eo-local .eo-discord-login>span:after{content:'';height:1px;background:#6a4d5f;flex:1}
+.eo-local .eo-discord-button{display:flex;align-items:center;justify-content:center;gap:12px;min-height:48px;width:100%;background:#5865f2;border:1px solid #7b85ff;color:#fff;border-radius:8px;font-size:13px;font-weight:800;padding:12px;cursor:pointer}
+.eo-local .eo-discord-button:hover{background:#4752c4}
+.eo-local .eo-discord-button:disabled{opacity:.5;cursor:not-allowed}
+.eo-local .eo-discord-button:focus-visible{outline:2px solid #edced8;outline-offset:3px}
+.eo-local .eo-discord-login small{font-size:11px;line-height:1.6;color:#bda8b8}
