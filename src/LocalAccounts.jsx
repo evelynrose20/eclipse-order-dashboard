@@ -101,7 +101,7 @@ export default function LocalAccounts(){
    <div className="eo-discord-login">
     <button className="eo-discord-button" type="button" disabled={busy||!adult} onClick={()=>start('login')}>{busy?'Connecting…':'Continue with Discord'}</button>
     {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Order’s Discord</button>}
-    {reason==='pending'&&<p className="eo-membership-wait">Already have an Order account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New applicants will be contacted after their request is reviewed.</p>}
+    {reason==='pending'&&<p className="eo-membership-wait">Already have an Order account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New membership requests require approval from Order leadership.</p>}
     <small>Members of the Order can enter using their connected Discord account.</small>
    </div>
    <a className="eo-link" href="./">Return to the public website</a>
