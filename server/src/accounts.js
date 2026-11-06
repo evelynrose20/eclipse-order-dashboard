@@ -39,7 +39,7 @@ export async function accountRoute(pool,req,path){
   const [ranks]=await pool.query('SELECT code,track,title,sort_order FROM order_rank_catalog ORDER BY FIELD(track,"leadership","membership","snakes","fangs","golden_claws","household","servitude"),sort_order');
   return {status:200,body:{ranks}};
  }
- const rankChange=/^\\/admin\\/accounts\\/([0-9a-f-]{36})\\/order-rank$/.exec(path);
+ const rankChange=/^\/admin\/accounts\/([0-9a-f-]{36})\/order-rank$/.exec(path);
  if(rankChange&&req.method==='POST'){
   const id=rankChange[1];
   const body=await bodyJSON(req);
