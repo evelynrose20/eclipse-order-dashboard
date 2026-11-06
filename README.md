@@ -18,6 +18,21 @@ Because GitHub Pages does not automatically rewrite arbitrary deep URLs to the a
 
 The new public site has original Eclipse Order copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
 
+## Discord member verification diagnostics
+
+The callback now returns to the actual repository Pages site at `https://evelynrose20.github.io/eclipse-order-dashboard/?portal` instead of the account-root 404. If configuring a different host, `DISCORD_FRONTEND_URL` in private `server/.env` must be the exact deployed frontend location.
+
+Discord's HTTP 404 is ambiguous: error code `10007` means **Unknown Member**, while `10004` means **Unknown Guild**. Incorrect bot access also causes membership checks to fail. The dedicated Discord access screen distinguishes real missing membership from configuration errors and Discord outages.
+
+When a known member (especially a server owner) is rejected, run locally on the Windows backend:
+
+```powershell
+cd server
+npm run discord:check -- YOUR_DISCORD_USER_ID
+```
+
+This returns the configured `guild_name` and `guild_id`, membership status, and safe Discord HTTP/error codes. Compare these against **Copy Server ID** in Discord and verify that `DISCORD_BOT_TOKEN` belongs to the bot actually inside that guild. No secrets are logged. A successful verification should show `"status": "member"`. Restart the backend after editing `.env`.
+
 ## Discord-only sign-in and membership verification
 
 The member portal uses **Discord exclusively**: there are no email/password sign-in or registration routes. A member must be in The Eclipse Order's configured Discord guild, pass membership screening, and have an **approved** Order account. A Discord identity by itself cannot grant moderator access or change character ownership, syndicate ranks, or RP roles.
