@@ -91,3 +91,11 @@ Event directors can set **Difficulty (D1–D10)**, **Impact (I1–I5)**, mark a 
 **Windows/MySQL database upgrade required:** After backing up the database and pulling this update on the Windows host, run `npm run setup:local` from `server/` and restart the Node API. This applies the repeatable, additive `011_event_story.sql` migration. Publishing only the frontend without migrating MySQL is not sufficient.
 
 Character creation and sheet updates now allow at most **three** trained skill proficiencies. Existing selections are not silently removed; characters with more than three must uncheck extras before saving the sheet.
+
+## Encounter scene archives
+
+DMs can archive a draft or completed encounter, restore an archived encounter, or permanently delete it after archiving. Active and paused encounters must be finished before archiving. Archiving retains the map, signups, dice history and combatant records; permanent deletion removes the scene and its linked records.
+
+**Database upgrade:** Back up MySQL, then run `npm run setup:local` in `server/` to apply the additive, rerunnable `012_encounter_archives.sql` migration. Restart the API afterward. Deploy the matching frontend and backend together so scene actions use the new API endpoints.
+
+Dice roll errors now distinguish inactive encounters, paused participation, missing player characters, and unconfirmed RP declarations/themes. An authorized encounter DM can make DM rolls without adding their own player character.

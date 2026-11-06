@@ -35,7 +35,7 @@ export function DicePanel({encounter,characters,canDirect,userId,check,working,a
  async function applyLastHP(){if(!last?.id||!hpTarget)return;const result=await run(()=>applyRolledHP(last.id,hpTarget));if(result!==undefined){setAppliedRollIds(old=>[...old,last.id]);setLast(old=>({...old,appliedHP:result}))}}
  async function resolve(id){const result=await run(()=>resolveGMRoll(id));if(result)setLast({...result.roll,success:result.success,dc:result.dc})}
  const linked=encounter.combatants.filter(c=>c.kind==='player'&&c.character_id).map(c=>({...c,record:characters.find(x=>x.id===c.character_id)})).filter(c=>c.record?.player_user_id);
- const canRoll=eligible&&encounter.status==='active';
+ const canRoll=encounter.status==='active'&&(canDirect||eligible);
  const classCharacters=characters.filter(c=>!previewOnly&&c.progression_version===1&&c.view_mode==='full'&&availableClasses[c.class_id]&&encounter.combatants.some(e=>e.character_id===c.id)&&c.player_user_id===userId&&!isDirector);
  const currentClassCharacter=classCharacters.find(c=>c.id===classCharacter)||classCharacters[0];
  async function rollSkillCheck(){

@@ -25,7 +25,7 @@ export default function DiceTray({encounter,canDirect,working,action,onOpenFull}
  const [rolling,setRolling]=useState(false);
  const selected=ROLLS.find(r=>r.id===kind)||ROLLS[0];
  const parsed=parseDiceFormula(formula);
- const enabled=encounter.status==='active'&&canDirect&&!working&&!rolling&&parsed.ok&&(!selected.target||target);
+ const enabled=encounter.status==='active'&&!encounter.archived_at&&canDirect&&!working&&!rolling&&parsed.ok&&(!selected.target||target);
  useEffect(()=>{
   let mounted=true;
   const refresh=async()=>{

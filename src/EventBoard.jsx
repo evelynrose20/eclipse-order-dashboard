@@ -38,13 +38,13 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
  async function refresh(){
   const all=await listEncounters();
-  const visible=all.filter(e=>e.published);
+  const visible=all.filter(e=>e.published&&!e.archived_at);
   setEvents(visible);
   setSelectedId(previous=>visible.some(e=>e.id===previous)?previous:visible[0]?.id||'');
  }
  useEffect(()=>{
   let alive=true;
-  const reload=async()=>{try{const all=await listEncounters();if(!alive)return;const visible=all.filter(e=>e.published);setEvents(visible);setSelectedId(previous=>visible.some(e=>e.id===previous)?previous:visible[0]?.id||'');setError('')}catch(e){if(alive)setError(e.message)}finally{if(alive)setLoading(false)}};
+  const reload=async()=>{try{const all=await listEncounters();if(!alive)return;const visible=all.filter(e=>e.published&&!e.archived_at);setEvents(visible);setSelectedId(previous=>visible.some(e=>e.id===previous)?previous:visible[0]?.id||'');setError('')}catch(e){if(alive)setError(e.message)}finally{if(alive)setLoading(false)}};
   reload();const timer=setInterval(reload,30000);
   return()=>{alive=false;clearInterval(timer)};
  },[]);
