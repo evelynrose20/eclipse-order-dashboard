@@ -21,9 +21,9 @@ import './local-accounts.css';
 
 const memberIdentity=member=>{
  const label=String(member?.discord_username||member?.display_name||'').trim();
- return label&&!/^discord-\\d+@members\\.eclipse\\.invalid$/i.test(label)?label:'Order member';
+ return label&&!/^discord-\d+@members\.eclipse\.invalid$/i.test(label)?label:'Order member';
 };
-const memberMonogram=memberIdentityValue=>memberIdentityValue.trim().split(/\\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('')||'EO';
+const memberMonogram=memberIdentityValue=>memberIdentityValue.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('')||'EO';
 const ROLE_OPTIONS=['member','handler','high_command','domina'];
 const field=(label,value,update)=> <label className="field"><span>{label}</span><input value={value??''} onChange={e=>update(e.target.value)}/></label>;
 const canManage=role=>role==='domina'||role==='high_command';
