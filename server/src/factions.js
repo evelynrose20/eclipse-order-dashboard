@@ -34,6 +34,11 @@ export async function factionRoute(pool,req,path){
  const user=await resolveSession(pool,req);
  if(!user)return fail(401,'not_authenticated');
  const command=['domina','high_command'].includes(user.account_role);
+ if(path==='/factions/accounts'&&req.method==='GET'){
+  if(!command)return fail(403,'forbidden');
+  const [rows]=await pool.query('SELECT a.id,a.display_name,l.discord_username FROM accounts a LEFT JOIN account_discord_links l ON l.account_id=a.id WHERE a.is_active=1 AND a.approval_status="approved" ORDER BY a.display_name LIMIT 1000');
+  return result(200,{accounts:rows});
+ }
  if(path==='/factions'&&req.method==='GET'){
   const [rows]=await pool.query(
    'SELECT f.id,f.name,f.leader,f.relationship,f.description,f.notes,f.image_reference_url,f.public_visible,f.sort_order,f.faction_scope,f.updated_at,COALESCE(r.order_view,0) AS order_view,COALESCE(r.faction_view,0) AS faction_view,COALESCE(p.reputation,0) AS personal_reputation FROM order_factions f LEFT JOIN order_faction_reputation r ON r.faction_id=f.id LEFT JOIN player_faction_reputation p ON p.faction_id=f.id AND p.account_id=? '+
