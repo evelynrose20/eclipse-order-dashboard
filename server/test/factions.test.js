@@ -20,7 +20,7 @@ function setup(role='member'){
   },
   query:async(sql)=>{
    queries.push(sql);
-   if(sql.startsWith('SELECT id,name,leader'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10}]];
+   if(sql.startsWith('SELECT f.id,f.name'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10,faction_scope:'order_story',order_view:45,faction_view:40,personal_reputation:0}]];
    throw Error('Unexpected query: '+sql);
   }
  };
@@ -40,7 +40,7 @@ test('public member directory omits private command notes',async()=>{
 });
 test('ordinary members cannot edit faction diplomacy or post history',async()=>{
  const {pool}=setup();
- const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10};
+ const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,403);
  assert.equal((await factionRoute(pool,request('POST',{title:'Test',details:'Test',occurred_on:null}),'/factions/house-kurogane/events')).status,403);
 });
