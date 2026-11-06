@@ -52,7 +52,7 @@ export const listMonsterTemplates=()=>get('/monsters');
 export const createMonsterTemplate=monster=>post('/monsters',monster);
 export const updateMonsterTemplate=(id,monster)=>put('/monsters/'+id,monster);
 export const deleteMonsterTemplate=id=>del('/monsters/'+id);
-export const addMonsterToEncounter=(id,monsterId)=>post('/encounters/'+id+'/monsters/'+monsterId);
+export const addMonsterToEncounter=(id,monsterId,kind='npc')=>post('/encounters/'+id+'/monsters/'+monsterId,{kind});
 export const rollAllInitiative=id=>post('/encounters/'+id+'/initiative');
 export const setEncounterMap=(id,columns,rows,style)=>post('/encounters/'+id+'/map',{columns,rows,style});
 export const moveEncounterToken=(id,x,y)=>post('/combatants/'+id+'/move',{x,y});
