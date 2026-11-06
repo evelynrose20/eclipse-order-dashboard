@@ -165,3 +165,8 @@ button.fc-craft-ingredient.staged{background:#3a4b41;border-color:#9fd1ad;box-sh
 .fc-expedition-node:disabled{opacity:.42;cursor:not-allowed}
 .fc-craft-level{color:#e7bad1!important}
 @media(max-width:520px){.fc-zone-material-edit{grid-template-columns:minmax(0,1fr) 65px 32px}}
+
+/* The Hellshade Bloom has a distinct occult garden appearance. */
+.fc-bed-plant.hellshade{color:#af87d6;text-shadow:0 0 18px #b572e6,0 0 44px #a62f5c,0 0 3px #ffd0d8}
+.fc-bed-plant.hellshade.stage-grown{color:#c49ae7;text-shadow:0 0 20px #bd7de9,0 0 52px #b52862}
+.fc-garden-helpers{color:#bfa6d0;font-size:11px;letter-spacing:.02em}
