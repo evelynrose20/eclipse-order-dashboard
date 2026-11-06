@@ -77,3 +77,53 @@
 @media(max-width:1100px){.encounter-dm-view{grid-template-columns:1fr}.encounter-dm-view .encounter-sidebar{position:static;max-height:none}.encounter-dm-view .encounter-list{display:flex;overflow-x:auto;gap:9px}.encounter-dm-view .encounter-choice{min-width:205px}.encounter-studio-aside-header{grid-template-columns:1fr auto;align-items:center}.encounter-studio-aside-header p{grid-column:1}.encounter-studio-aside-header .btn{grid-column:2;grid-row:1/4;max-width:170px}}
 @media(max-width:760px){.encounter-studio-header,.encounter-studio-hero{padding:17px}.encounter-studio-tabs{overflow-x:auto;flex-wrap:nowrap}.encounter-studio-tabs .event-tab{flex:none}.encounter-studio .battlemap-panel{padding:10px}.encounter-studio .map-token{width:29px;height:29px}.encounter-studio-aside-header{display:grid;grid-template-columns:1fr}.encounter-studio-aside-header .btn{grid-column:1;grid-row:auto;max-width:none}.encounter-hero-row{align-items:start}.encounter-studio-rail-heading{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.encounter-studio .btn,.encounter-dm-view .encounter-choice{transition:none}}
+
+/* Immersive VTT workspace: keep the canvas dominant and tools contextual. */
+.encounter-dm-view{grid-template-columns:minmax(0,1fr);gap:0}
+.encounter-dm-view .encounter-main{gap:10px}
+.encounter-dm-view .encounter-sidebar{position:relative;top:auto;max-height:none;overflow:visible;padding:12px}
+.encounter-dm-view .encounter-sidebar .encounter-list{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+.encounter-dm-view .encounter-sidebar .encounter-choice{min-width:180px;max-width:260px;padding:10px;flex:1}
+.encounter-dm-view .encounter-studio-aside-header{display:flex;align-items:center;gap:12px;padding:0 0 10px;border-bottom:0}
+.encounter-dm-view .encounter-studio-aside-header h2{font-size:20px;margin:0;white-space:nowrap}
+.encounter-dm-view .encounter-studio-aside-header p{display:none}
+.encounter-dm-view .encounter-studio-aside-header .btn{width:auto;margin-left:auto}
+.encounter-dm-view .encounter-studio-list-label{display:none}
+.encounter-dm-view .encounter-studio-header{padding:12px 18px;border-radius:10px}
+.encounter-dm-view .encounter-studio-header h2{font-size:clamp(20px,2.2vw,28px);margin:5px 0 3px}
+.encounter-dm-view .encounter-studio-tabs{padding:5px;gap:3px;border-radius:9px}
+.encounter-dm-view .encounter-studio-tabs .event-tab{padding:9px 11px;font-size:11px}
+.encounter-studio-map-layout{grid-template-columns:minmax(0,1fr) minmax(215px,250px);gap:10px}
+.encounter-studio-map-layout .battlemap-panel{padding:10px}
+.encounter-studio-map-layout .encounter-studio-battle-rail{padding:12px;max-height:calc(100vh - 130px);overflow-y:auto;position:sticky;top:12px}
+.encounter-dm-view.scene-focus .encounter-sidebar{display:none}
+.encounter-dm-view.scene-focus .encounter-studio-header{padding:8px 13px}
+.encounter-dm-view.scene-focus .encounter-studio-header p{display:none}
+.encounter-dm-view.scene-focus .encounter-studio-tabs{display:none}
+.encounter-studio-focus-action{font-size:12px}
+.encounter-studio-battle-rail .encounter-rail-tabs{display:flex;gap:5px;margin-bottom:2px}
+.encounter-rail-tabs button{flex:1;font-size:11px;padding:9px 6px;border:1px solid #66495b;border-radius:6px;background:#2c202d;color:#bda5b6}
+.encounter-rail-tabs button.active{background:#58364a;color:#fce1e9;border-color:#c08fa5}
+.encounter-rail-dice{min-width:0;max-height:min(68vh,680px);overflow-y:auto}
+.encounter-rail-dice .dice-panel{padding:0!important;background:transparent;border:0}
+.encounter-rail-dice .gm-check-grid{grid-template-columns:1fr}
+.encounter-rail-dice .dice-preset-row{gap:4px}
+.encounter-rail-dice .dice-preset-row .mini-btn{font-size:10px;padding:6px}
+.encounter-rail-dice .dice-result strong{font-size:32px}
+.encounter-rail-dice .field{min-width:0}
+.encounter-rail-dice .field input,.encounter-rail-dice .field select{max-width:100%;min-width:0}
+.encounter-rail-dice .gm-request-row{display:block}
+.encounter-studio-float-tools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.encounter-studio-float-tools .btn{padding:8px 10px}
+.encounter-studio-map-layout:has(.encounter-rail-dice) .encounter-studio-battle-rail{max-height:calc(100vh - 110px)}
+@media(max-width:1280px){.encounter-studio-map-layout{grid-template-columns:minmax(0,1fr) 215px}.encounter-studio-map-layout .encounter-studio-battle-rail{position:relative;top:auto;max-height:none}}
+@media(max-width:930px){.encounter-studio-map-layout{grid-template-columns:1fr}.encounter-studio-map-layout .encounter-studio-battle-rail{max-height:400px}.encounter-rail-dice{max-height:none}.encounter-dm-view .encounter-studio-aside-header{flex-wrap:wrap}}
+@media(max-width:600px){.encounter-dm-view .encounter-studio-aside-header h2{font-size:19px}.encounter-dm-view .encounter-studio-tabs{overflow-x:auto}.encounter-dm-view .encounter-studio-tabs .event-tab{flex:none}.encounter-studio-float-tools{justify-content:flex-start}}
+
+/* Compact the initiative rail when dismissed, returning room to the battlefield. */
+.encounter-dm-view.rail-collapsed .encounter-studio-map-layout{grid-template-columns:minmax(0,1fr) 50px}
+.encounter-dm-view.rail-collapsed .encounter-studio-battle-rail{padding:5px;min-width:0}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs{display:flex;flex-direction:column}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:not(:last-child){display:none}
+.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{padding:10px 5px}
+@media(max-width:930px){.encounter-dm-view.rail-collapsed .encounter-studio-map-layout{grid-template-columns:minmax(0,1fr)}.encounter-dm-view.rail-collapsed .encounter-studio-battle-rail{width:100%;min-height:46px}.encounter-dm-view.rail-collapsed .encounter-rail-tabs button:last-child{width:100%}}
