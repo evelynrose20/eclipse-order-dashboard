@@ -176,8 +176,7 @@ export async function craftingRoute(pool,req,path){
    const cost=level*5;
    if(!await stockChange(conn,'iron-ingot',-cost,'upgrade',user.id,null,'Garden upgrade to '+(level+1)))return fail(409,'insufficient_materials');
    await conn.execute('UPDATE fc_garden SET level=? WHERE id=1',[level+1]);
-   if(level===1)await conn.execute("INSERT IGNORE INTO fc_garden_plots(id,crop_material) VALUES(3,'duskbloom')");
-   if(level===2)await conn.execute("INSERT IGNORE INTO fc_garden_plots(id,crop_material) VALUES(4,'silverleaf')");
+   // Each upgrade opens another plot slot. Command decides which crop to plant.
    return ok({level:level+1,cost});
   });
  }
