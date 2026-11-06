@@ -15,9 +15,10 @@ test('player-facing encounter UI is a separate map-only scene',()=>{
  assert.doesNotMatch(player,/DicePanel|EventEditor|EventXPRewards|MonsterTemplate|EventSignups|QuickHP/);
 });
 test('read-only map conceals GM configuration, reserves and exact enemy HP',()=>{
- assert.match(map,/\{!playerView&&<div className="waymark-tools"/);
+ assert.match(map,/canDirect&&settingsOpen&&<div className="map-settings-panel"/);
+ assert.match(map,/canDirect&&<button type="button" className=\{'map-tool '/);
  assert.match(map,/\{canDirect&&!playerView&&<div className="map-reserve"/);
- assert.match(map,/\{canDirect&&!playerView&&<form className="map-image-form"/);
+ assert.match(map,/className="map-image-form"/);
  assert.match(map,/\{!playerView&&<><span className="token-health"/);
  assert.match(map,/playerView\?combatant\.name/);
 });
@@ -32,4 +33,20 @@ test('studio retains responsive layouts and focus-visible map interactions',()=>
  assert.match(css,/@media\(max-width:760px\)/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(read('battlemap.css'),/focus-visible/);
+});
+
+test('Foundry-inspired map has usable controls, not inert toolbar decoration',()=>{
+ for(const name of ['setMapZoom','beginPan','movingPan','startMeasurement','moveMeasurement','setGridVisible','setSettingsOpen'])
+  assert.ok(map.includes(name),name+' should be implemented');
+ assert.match(map,/onPointerDown=\{beginPan\}/);
+ assert.match(map,/onPointerDown=\{e=>\{if\(tool==='measure'\)/);
+ assert.match(map,/Distance: \{measureDistance\} grid squares/);
+ assert.match(map,/aria-label="Reset map view"/);
+ assert.match(map,/map-viewport/);
+});
+test('DM focus, scenes and contextual dice rail are interactive',()=>{
+ for(const marker of ['setFocusMode','setScenesOpen','setRailMode','setRailOpen','encounter-rail-dice','aria-pressed={focusMode}'])
+  assert.ok(dm.includes(marker),marker+' is missing');
+ assert.match(css,/rail-collapsed/);
+ assert.match(css,/scene-focus/);
 });
