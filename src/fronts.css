@@ -13,3 +13,16 @@
 .eo-fronts-status.rejected{border-color:#ae7485;color:#e9b4bc}
 .eo-fronts-restricted{display:flex!important;align-items:center;gap:9px;font-size:11px;color:#e3c5d4}
 .eo-fronts-restricted input{width:18px!important;height:18px!important;min-height:18px!important;accent-color:#c08ba9}
+
+.eo-fronts-cost-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.eo-fronts-cost-summary>div{display:grid;gap:7px;border:1px solid #73566c;border-radius:8px;padding:12px;background:#322637}
+.eo-fronts-cost-summary span{font-size:11px;color:#d4b6c8}
+.eo-fronts-cost-summary strong{font-size:17px;color:#f3dbe6}
+.eo-fronts-cost-summary .total{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:#594157;border-color:#b58ba5}
+.eo-fronts-cost-history{display:grid;gap:8px}
+.eo-fronts-cost-history h5{margin:4px 0;color:#f2d9e5;font-size:13px}
+.eo-fronts-cost-history>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:9px;border-bottom:1px solid #685167;padding:9px 0}
+.eo-fronts-cost-history span{color:#cab2c0;font-size:11px}
+.eo-fronts-cost-history strong{color:#f0c0c9;font-size:12px}
+.eo-fronts-cost-history small{color:#e1bda8;font-size:10px}
+@media(max-width:540px){.eo-fronts-cost-summary{grid-template-columns:1fr}}
