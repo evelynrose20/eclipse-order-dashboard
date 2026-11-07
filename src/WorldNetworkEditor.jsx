@@ -6,6 +6,8 @@ const percent=v=>Math.max(0,Math.min(100,Math.round(v*100)/100));
 const coordinate=(e,ref)=>{const r=ref.current?.getBoundingClientRect();return r&&r.width&&r.height?{x:percent((e.clientX-r.left)*100/r.width),y:percent((e.clientY-r.top)*100/r.height)}:null};
 const format=t=>ROUTE_OPTIONS.find(r=>r[0]===t)?.[1]||'Road';
 const point=n=>({x:Number(n.map_x),y:Number(n.map_y)});
+const project=(p,a,b)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));return {x:a.x+dx*t,y:a.y+dy*t,d:Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t)}};
+const nearestPart=(p,points)=>points.slice(1).map((b,i)=>({...project(p,points[i],b),i})).sort((a,b)=>a.d-b.d)[0];
 export function graphPoints(segment,nodeMap,siteMap){
  const start=nodeMap.get(Number(segment.from_node_id)),end=nodeMap.get(Number(segment.to_node_id));
  if(!start||!end)return [];
@@ -14,7 +16,7 @@ export function graphPoints(segment,nodeMap,siteMap){
 }
 export function NetworkPaths({nodes=[],segments=[],settlements=[],onSegment,activeId}){
  const nodeMap=new Map(nodes.map(n=>[Number(n.id),n])),siteMap=new Map(settlements.map(s=>[Number(s.id),s]));
- return <>{segments.map(edge=>{const pts=graphPoints(edge,nodeMap,siteMap);if(pts.length<2)return null;const d=smoothRoadPath(pts);return <g key={'graph-'+edge.id} className={'wtm-road wa-route-'+edge.route_type+(activeId===Number(edge.id)?' selected':'')}>
+ return <>{segments.map(edge=>{const pts=graphPoints(edge,nodeMap,siteMap);if(pts.length<2)return null;const d=smoothRoadPath(pts);return <g key={'graph-'+edge.id} className={'wtm-road wtm-road-'+edge.route_type+' wa-route-'+edge.route_type+(activeId===Number(edge.id)?' selected':'')}>
    <path d={d} className="wtm-road-base"/><path d={d} className="wtm-road-top"/>
    {edge.route_type==='rail'&&<><path d={d} className="wtm-rail-ties"/><path d={d} className="wtm-rail-center"/></>}
    {onSegment&&<path d={d} className="wtm-road-hit" onClick={e=>{e.stopPropagation();onSegment(edge,e)}}/>}
@@ -46,9 +48,17 @@ export default function WorldNetworkEditor({region,settlements=[],nodes=[],segme
  async function createNode(p,kind){
   const existing=nodeNear(p);if(existing)return existing;
   const site=siteNear(p);
+  if(!site){
+   const snap=segments.map(edge=>({edge,part:nearestPart(p,graphPoints(edge,nodeMap,siteMap))})).filter(hit=>hit.part&&hit.part.d<2.3).sort((a,b)=>a.part.d-b.part.d)[0];
+   if(snap){
+    const result=await invoke('/world-admin/network/segments/'+snap.edge.id+'/split','POST',p,'Junction snapped directly onto an existing connection.');
+    return result?.id?{id:result.id,map_x:p.x,map_y:p.y,node_kind:kind}:null;
+   }
+  }
   const result=await invoke('/world-admin/network/nodes','POST',site?{region_id:Number(region.id),settlement_id:Number(site.id)}:{region_id:Number(region.id),...p,node_kind:kind,name:''},'Junction saved.');
   return result?.id?{id:result.id,map_x:p.x,map_y:p.y,node_kind:kind}:null;
  }
+ function chooseEdge(s){setSelected(s.id);setStart(null);setEnd(null);setRouteType(s.route_type);setRouteName(s.route_name||'');setBends((s.waypoints||[]).map(p=>({...p})));setTool('edit')}
  function endpoint(id){
   if(!start||end){setStart(id);setEnd(null);setBends([]);setSelected(null);return}
   if(!isSame(start,id))setEnd(id);
@@ -69,7 +79,7 @@ export default function WorldNetworkEditor({region,settlements=[],nodes=[],segme
   const p=coordinate(e,map);if(!p)return;
   if(tool==='place')void createNode(p,routeType==='rail'?'rail_switch':'junction');
   else if(tool==='connect'&&start&&end)setBends(old=>old.length<16?[...old,p]:old);
-  else if(tool==='edit'&&edge)setBends(old=>old.length<16?[...old,p]:old);
+  else if(tool==='edit'&&edge)setBends(old=>{if(old.length>=16)return old;const near=nearestPart(p,graphPoints({...edge,waypoints:old},nodeMap,siteMap));const next=[...old];next.splice(near?.i??old.length,0,p);return next});
  }
  async function clickEdge(s,e){
   if(!canEdit)return;
@@ -78,7 +88,7 @@ export default function WorldNetworkEditor({region,settlements=[],nodes=[],segme
    const r=await invoke('/world-admin/network/segments/'+s.id+'/split','POST',p,'Route split at a shared junction.');
    if(r?.id){setSelectedNode(r.id);setTool('connect');setStart(r.id);setEnd(null);setBends([])}
   }else{
-   setSelected(s.id);setStart(null);setEnd(null);setRouteType(s.route_type);setRouteName(s.route_name||'');setBends((s.waypoints||[]).map(p=>({...p})));setTool('edit');
+   chooseEdge(s);
   }
  }
  function startDrag(e,n){
@@ -138,7 +148,7 @@ export default function WorldNetworkEditor({region,settlements=[],nodes=[],segme
    <div className="wn-form">
     <label>Transport type<select disabled={!canEdit||busy} value={routeType} onChange={e=>setRouteType(e.target.value)}>{ROUTE_OPTIONS.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
     <label>Connection name<input disabled={!canEdit||busy} value={routeName} maxLength={120} placeholder="Optional route name" onChange={e=>setRouteName(e.target.value)}/></label>
-    <label>Existing segments<select disabled={!canEdit||busy} value={selected||''} onChange={e=>{const s=segments.find(s=>String(s.id)===e.target.value);if(s)void clickEdge(s,{stopPropagation(){},clientX:0,clientY:0});else reset()}}><option value="">Select existing connection</option>{segments.map(s=><option key={s.id} value={s.id}>{s.route_name||format(s.route_type)} #{s.id}</option>)}</select></label>
+    <label>Existing segments<select disabled={!canEdit||busy} value={selected||''} onChange={e=>{const s=segments.find(s=>String(s.id)===e.target.value);if(s)chooseEdge(s);else reset()}}><option value="">Select existing connection</option>{segments.map(s=><option key={s.id} value={s.id}>{s.route_name||format(s.route_type)} #{s.id}</option>)}</select></label>
    </div>
    <div className="wn-actions">
     {(tool==='connect'||tool==='edit')&&<button disabled={!canEdit||busy||(tool==='connect'?!(start&&end):!edge)} onClick={save}><i className="fa-solid fa-floppy-disk"/> Save {tool==='edit'?'changes':'connection'}</button>}
