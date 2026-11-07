@@ -29,22 +29,30 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,settlements,routes=[],mountains=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,settlements,routes=[],nodes=[],mountains=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
+ const [nodeId,setNodeId]=useState(''),[nodeDraft,setNodeDraft]=useState(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setError('');setNotice('')},[region?.id]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setNodeId('');setNodeDraft(null);setError('');setNotice('')},[region?.id]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
+ const nodeById=useMemo(()=>new Map(nodes.map(n=>[Number(n.id),n])),[nodes]);
+ const siteNode=useMemo(()=>new Map(nodes.filter(n=>n.settlement_id!==null).map(n=>[Number(n.settlement_id),n])),[nodes]);
+ const nodeName=id=>nodeById.get(Number(id))?.name||'Junction '+id;
  const currentRoute=routes.find(r=>Number(r.id)===Number(selectedRoute));
- const editableRoute= currentRoute ? {region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:null;
- const previewRoute=routeStart&&routeEnd?{from_settlement_id:routeStart,to_settlement_id:routeEnd,route_type:routeType,waypoints:newRoutePoints}:null;
+ const editableRoute= currentRoute ? {region_id:Number(region.id),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:null;
+ const previewRoute=routeStart&&routeEnd?{from_node_id:routeStart,to_node_id:routeEnd,route_type:routeType,waypoints:newRoutePoints}:null;
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
- const segmentPts=r=>polyline(r,byId);
- const activePoints=currentRoute? [byId.get(Number(currentRoute.from_settlement_id)),...draftWaypoints.map(p=>({x:p.x,y:p.y})),byId.get(Number(currentRoute.to_settlement_id))].filter(Boolean).map(p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)})) : [];
+ const segmentPts=r=>{
+  const from=nodeById.get(Number(r.from_node_id)),to=nodeById.get(Number(r.to_node_id));
+  if(!from||!to)return [];
+  return [from,...normalizeWaypoints(r),to].map(p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)}));
+ };
+ const activePoints=currentRoute?segmentPts({...currentRoute,waypoints:draftWaypoints}):[];
  const coords=e=>{const rect=mapRef.current?.getBoundingClientRect();if(!rect||!rect.width||!rect.height)return null;return {x:pct((e.clientX-rect.left)*100/rect.width),y:pct((e.clientY-rect.top)*100/rect.height)}};
  const reload=async()=>{await onSaved?.();setPositions({})};
  async function persistMarker(s,p){
@@ -106,20 +114,52 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
   try{await request('/world-admin/mountains/'+mountainId,{method:'DELETE'});await reload();selectMountain('');setNotice('Mountain range removed.')}
   catch(e){setError(e.message||'Mountain range could not be deleted.')}finally{setBusy(false)}
  }
+ function chooseNodeEndpoint(id){
+  if(!canEdit||mode!=='link'||!id)return;
+  if(!routeStart){setRouteStart(Number(id));setRouteEnd(null);setNewRoutePoints([]);setNotice('Choose the destination settlement or junction.');return}
+  if(Number(routeStart)===Number(id)){setRouteStart(null);setRouteEnd(null);return}
+  setRouteEnd(Number(id));setNotice('Endpoints connected in the draft. Add bends and save.');
+ }
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
   onSelect(String(s.id));
-  if(canEdit&&mode==='link'){
-   if(!routeStart){setRouteStart(Number(s.id));setRouteEnd(null);setNewRoutePoints([]);setNotice('Select the second station; then draw bends and save the route.');return}
-   if(Number(routeStart)===Number(s.id)){setRouteStart(null);setRouteEnd(null);return}
-   setRouteEnd(Number(s.id));setNotice('Route endpoints selected. Click the map to add bends, then save.');
-  }
+  chooseNodeEndpoint(siteNode.get(Number(s.id))?.id);
+ }
+ async function splitAtRoute(r,e){
+  if(!canEdit||mode!=='junction'||busy)return;
+  const point=coords(e);if(!point)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   const response=await request('/world-admin/transport/segments/'+r.id+'/split',{method:'POST',body:point});
+   await reload();setNodeId(String(response.junction_id));setNodeDraft(null);
+   setNotice('Junction inserted. Use Plan a route to branch from it.');
+  }catch(error){setError(error.message||'Click on the interior of the road or rail track to split it.')}
+  finally{setBusy(false)}
+ }
+ function editNode(id){
+  const n=nodes.find(n=>String(n.id)===String(id)&&n.settlement_id===null);
+  setNodeId(n?String(n.id):'');setNodeDraft(n?{...n}:null);
+ }
+ async function saveNode(){
+  if(!nodeDraft||!canEdit||busy)return;
+  setBusy(true);setError('');setNotice('');
+  const b={region_id:Number(region.id),settlement_id:null,name:nodeDraft.name||'',node_kind:nodeDraft.node_kind,map_x:Number(nodeDraft.map_x),map_y:Number(nodeDraft.map_y)};
+  try{
+   const r=await request('/world-admin/transport/nodes'+(nodeDraft.id?'/'+nodeDraft.id:''),{method:nodeDraft.id?'PUT':'POST',body:b});
+   await reload();setNodeId(String(nodeDraft.id||r.id));setNodeDraft(null);setNotice('Junction saved.');
+  }catch(error){setError(error.message||'Junction could not be saved.')}finally{setBusy(false)}
+ }
+ async function deleteNode(){
+  if(!nodeDraft?.id||!canEdit||busy)return;
+  setBusy(true);setError('');
+  try{await request('/world-admin/transport/nodes/'+nodeDraft.id,{method:'DELETE'});await reload();setNodeId('');setNodeDraft(null);setNotice('Unused junction deleted.')}
+  catch(error){setError(error.message||'Remove connected routes before deleting a junction.')}finally{setBusy(false)}
  }
  async function saveRoute(payload,id=null){
   if(!canEdit||busy)return;
   setBusy(true);setError('');setNotice('');
   try{
-   await request('/world-admin/routes'+(id?'/'+id:''),{method:id?'PUT':'POST',body:payload});
+   await request('/world-admin/transport/segments'+(id?'/'+id:''),{method:id?'PUT':'POST',body:payload});
    await reload();
    setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);
    setSelectedRoute(null);setDraftWaypoints([]);setNotice(id?'Route changes saved.':'New route created.');
@@ -128,16 +168,17 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
  async function deleteRoute(){
   if(!currentRoute||!canEdit||busy)return;
   setBusy(true);setError('');
-  try{await request('/world-admin/routes/'+currentRoute.id,{method:'DELETE'});await reload();setSelectedRoute(null);setDraftWaypoints([]);setNotice('Route deleted.')}
+  try{await request('/world-admin/transport/segments/'+currentRoute.id,{method:'DELETE'});await reload();setSelectedRoute(null);setDraftWaypoints([]);setNotice('Route deleted.')}
   catch(e){setError(e.message||'Unable to delete route.')}finally{setBusy(false)}
  }
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
+  if(mode==='junction'&&nodeDraft&&!nodeDraft.id){setNodeDraft(n=>({...n,map_x:p.x,map_y:p.y}));return}
   if(mode==='link'&&routeStart&&routeEnd)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
-   const line=polyline({...currentRoute,waypoints:old},byId);
+   const line=segmentPts({...currentRoute,waypoints:old});
    const dist=(pt,a,b)=>{const vx=b.x-a.x,vy=b.y-a.y,t=Math.max(0,Math.min(1,((pt.x-a.x)*vx+(pt.y-a.y)*vy)/(vx*vx+vy*vy||1)));return Math.hypot(pt.x-a.x-t*vx,pt.y-a.y-t*vy)};
    const segments=line.slice(1).map((point,i)=>({i,d:dist(p,line[i],point)}));
    const nearest=segments.sort((a,b)=>a.d-b.d)[0];
@@ -145,7 +186,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
   });
  }
  function selectRoad(r){
-  if(mode==='move')return;
+  if(mode==='move'||mode==='junction')return;
   setSelectedRoute(r.id);setDraftWaypoints(normalizeWaypoints(r).map(p=>({...p})));
   setRouteType(r.route_type);setRouteName(r.route_name||'');setRouteDirty(false);
   if(mode!=='bend'&&canEdit)setMode('bend');
@@ -167,7 +208,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('');if(id==='mountains')selectMountain('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['junction','Junctions'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('');if(id==='mountains')selectMountain('');if(id==='junction')editNode('')}}>{name}</button>)}
    </div>
 
   </div>}
@@ -215,12 +256,14 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
       <path d={p} className="wtm-road-base"/>
       <path d={p} className="wtm-road-top"/>
       {route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}
-      <path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();selectRoad(route)}}/>
+      <path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(mode==='junction')void splitAtRoute(route,e);else selectRoad(route)}}/>
      </g>;
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
     {previewRoute&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(segmentPts(previewRoute))}/>}
    </svg>
+   {nodes.filter(n=>n.settlement_id===null).map(n=><button type="button" key={'node-'+n.id} className={'wtm-junction '+(String(n.id)===nodeId?'selected':'')} style={{left:n.map_x+'%',top:n.map_y+'%'}} onClick={e=>{e.stopPropagation();if(mode==='junction')editNode(n.id);else chooseNodeEndpoint(n.id)}} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Road junction')+' '+(n.name||n.id)} title={(n.name||'Junction')+' · '+n.node_kind}><i className={'fa-solid '+(n.node_kind==='rail_switch'?'fa-train':'fa-code-branch')}/></button>)}
+   {nodeDraft&&!nodeDraft.id&&mode==='junction'&&<span className="wtm-junction wtm-junction-draft" style={{left:nodeDraft.map_x+'%',top:nodeDraft.map_y+'%'}}><i className="fa-solid fa-code-branch"/></span>}
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
    {canEdit&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart&&routeEnd))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
@@ -232,21 +275,21 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart&&routeEnd?'Click the map for bends, then save. Nothing is created until you save.':routeStart?'Select the destination location.':'Select a starting location.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
+   <span>{mode==='mountains'?'Click to add mountain ridge points.':mode==='move'?'Drag a settlement marker to reposition it.':mode==='link'?(routeStart&&routeEnd?'Click for bends and save the connection.':routeStart?'Pick a destination settlement or junction.':'Choose a settlement or junction to begin.'):mode==='bend'?'Select a route, click to insert bends or drag handles.':mode==='junction'?'Click a road/rail line to insert a shared junction, or create one at any map location.':'Select a site or route to inspect.'}</span>
 
   </div>}
   {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{mode==='link'?'PLAN A NEW CONNECTION':'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
-    <div className="wtm-route-field"><label>Existing connections<select value={selectedRoute||''} onChange={e=>{const chosen=routes.find(r=>String(r.id)===e.target.value);if(chosen)selectRoad(chosen);else setSelectedRoute(null)}}><option value="">Choose a route to edit</option>{routes.map(r=><option value={r.id} key={r.id}>{r.route_name||ROUTE_OPTIONS.find(t=>t[0]===r.route_type)?.[1]||'Route'} · {byId.get(Number(r.from_settlement_id))?.name||'?'} → {byId.get(Number(r.to_settlement_id))?.name||'?'}</option>)}</select></label></div>
+    <div className="wtm-route-field"><label>Existing connections<select value={selectedRoute||''} onChange={e=>{const chosen=routes.find(r=>String(r.id)===e.target.value);if(chosen)selectRoad(chosen);else setSelectedRoute(null)}}><option value="">Choose a route to edit</option>{routes.map(r=><option value={r.id} key={r.id}>{r.route_name||ROUTE_OPTIONS.find(t=>t[0]===r.route_type)?.[1]||'Route'} · {nodeName(r.from_node_id)} → {nodeName(r.to_node_id)}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route type<select value={routeType} onChange={e=>{setRouteType(e.target.value);setRouteDirty(true)}}>{ROUTE_OPTIONS.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
-    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?(routeStart?(byId.get(Number(routeStart))?.name||'?'):'Select origin')+' → '+(routeEnd?(byId.get(Number(routeEnd))?.name||'?'):'Select destination'):(currentRoute?(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?'):'Choose existing route')}</span></label></div>
+    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?(routeStart?(nodeName(routeStart)):'Select origin')+' → '+(routeEnd?(nodeName(routeEnd)):'Select destination'):(currentRoute?(nodeName(currentRoute.from_node_id))+' → '+(nodeName(currentRoute.to_node_id)):'Choose existing route')}</span></label></div>
    </div>
    <p className="wtm-route-help">{mode==='link'?'Click two locations, then add optional bends by clicking along the intended path. The preview is unsaved until you confirm.': 'Choose an existing road or railway from the list. Click to insert a bend at the nearest segment, then drag its square handles. Existing routes are unchanged until saved.'}</p>
    <div className="wtm-route-actions">
     {mode==='link'?<>
-      <button disabled={busy||!routeStart||!routeEnd} onClick={()=>saveRoute({region_id:Number(region.id),from_settlement_id:Number(routeStart),to_settlement_id:Number(routeEnd),route_type:routeType,route_name:routeName,waypoints:newRoutePoints})}>Save new route</button>
+      <button disabled={busy||!routeStart||!routeEnd} onClick={()=>saveRoute({region_id:Number(region.id),from_node_id:Number(routeStart),to_node_id:Number(routeEnd),route_type:routeType,route_name:routeName,waypoints:newRoutePoints})}>Save new route</button>
       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}>Undo bend</button>
       <button disabled={busy} onClick={()=>{setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route draft discarded.')}}>Cancel draft</button>
     </>:<>
@@ -256,6 +299,22 @@ export default function WorldTerritoryMap({region,settlements,routes=[],mountain
       <button disabled={busy||!currentRoute} className="wtm-delete-route" onClick={deleteRoute}>Delete route</button>
     </>}
    </div>
+  </section>}
+  {canEdit&&mode==='junction'&&<section className="wtm-junction-editor">
+   <div className="wtm-route-heading"><strong>ROAD JUNCTIONS & RAIL SWITCHES</strong><span>CONNECTED TRANSPORT NETWORK</span></div>
+   <p>Click a saved road or railway at the desired intersection to split it into two connected segments. Existing bends are retained. New roads and railway spurs can then start or end at that junction.</p>
+   <div className="wtm-junction-tools"><label>Existing junction<select value={nodeId} onChange={e=>editNode(e.target.value)}><option value="">Choose junction</option>{nodes.filter(n=>n.settlement_id===null).map(n=><option key={n.id} value={n.id}>{n.name||'Junction '+n.id} · {n.node_kind}</option>)}</select></label>
+    <button type="button" onClick={()=>{setNodeId('');setNodeDraft({name:'',node_kind:'junction',map_x:50,map_y:50})}}>+ Place new junction</button>
+   </div>
+   {nodeDraft&&<div className="wtm-junction-fields">
+    <label>Name<input maxLength={120} value={nodeDraft.name||''} onChange={e=>setNodeDraft({...nodeDraft,name:e.target.value})}/></label>
+    <label>Connection type<select value={nodeDraft.node_kind} onChange={e=>setNodeDraft({...nodeDraft,node_kind:e.target.value})}><option value="junction">Road junction</option><option value="rail_switch">Rail switch</option><option value="terminal">Multimodal terminal</option></select></label>
+    <label>Map X<input type="number" min="0" max="100" step=".1" value={nodeDraft.map_x} onChange={e=>setNodeDraft({...nodeDraft,map_x:e.target.value})}/></label>
+    <label>Map Y<input type="number" min="0" max="100" step=".1" value={nodeDraft.map_y} onChange={e=>setNodeDraft({...nodeDraft,map_y:e.target.value})}/></label>
+    <button type="button" disabled={busy} onClick={saveNode}>Save junction</button>
+    {nodeDraft.id&&<button type="button" disabled={busy} onClick={deleteNode}>Delete unused junction</button>}
+    {!nodeDraft.id&&<small>Click the map to position the new junction, then save it.</small>}
+   </div>}
   </section>}
   {canEdit&&mode==='mountains'&&<div className="wtm-mountain-editor">
    <label>Mountain range<select value={mountainId} onChange={e=>selectMountain(e.target.value)}><option value="">+ New mountain range</option>{mountains.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
