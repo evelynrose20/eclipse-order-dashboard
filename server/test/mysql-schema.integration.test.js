@@ -505,14 +505,28 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    ]}),'/construction');
   assert.equal(plan.status,200,JSON.stringify(plan.body));
   const projectId=plan.body.id;
-  const projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  let projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
   assert.equal(projectBefore.body.project.state,'draft');
+  const revised=await constructionRoute(admin,request('PUT',{
+   name:'Rebuild the Star Observatory',description:'A construction plot planned before a multi-session event.',location:'Goblet',
+   event_id:eventId,stages:[
+    {name:'Clear the ruins',description:'Clear debris and recover foundations',requirements:[{material_id:'iron-ingot',quantity:2}]},
+    {name:'Raise the observatory',description:'Fit the beams and roof',requirements:[{material_id:'iron-ingot',quantity:1}]}
+   ]}),'/construction/'+projectId);
+  assert.equal(revised.status,200,'director can revise a private plan before publication');
+  projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.match(projectBefore.body.project.description,/multi-session/);
   const hidden=await constructionRoute(admin,recruitRequest('GET'),'/construction/'+projectId);
   assert.equal(hidden.status,404,'private storyline stays hidden until published');
   const premature=await constructionRoute(admin,request('POST',{requirement_id:projectBefore.body.project.stages[0].requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
   assert.equal(premature.status,409,'draft projects cannot receive materials');
   const activated=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/activate');
   assert.equal(activated.body.state,'open');
+  const rewriteLive=await constructionRoute(admin,request('PUT',{
+   name:'Attempted rewrite',description:'',location:'',event_id:null,
+   stages:[{name:'Skip phase',description:'',requirements:[{material_id:'iron-ingot',quantity:1}]}]
+  }),'/construction/'+projectId);
+  assert.equal(rewriteLive.status,409,'published construction phases cannot be rewritten after contributions become possible');
   const first=projectBefore.body.project.stages[0],second=projectBefore.body.project.stages[1];
   const locked=await constructionRoute(admin,request('POST',{requirement_id:second.requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
   assert.equal(locked.status,409,'future story phases cannot accept stock early');
