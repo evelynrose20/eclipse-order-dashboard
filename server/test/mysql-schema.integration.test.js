@@ -20,7 +20,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -29,6 +29,16 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
+  const [faqSeed]=await admin.query('SELECT id,question FROM order_public_faq ORDER BY sort_order,id');
+  assert.equal(faqSeed.length,7,'initial public FAQ is imported');
+  const [[garleanChapter]]=await admin.query("SELECT summary FROM order_lore_entries WHERE id='yanxia-order'");
+  assert.match(garleanChapter.summary,/Garlean/);
+  await admin.query("UPDATE order_public_faq SET answer='Custom written reply' WHERE id=?",[faqSeed[0].id]);
+  await admin.query(await readFile(new URL('../sql/038_garlean_origin_and_faq.sql',import.meta.url),'utf8'));
+  const [[savedFaq]]=await admin.query('SELECT answer FROM order_public_faq WHERE id=?',[faqSeed[0].id]);
+  assert.equal(savedFaq.answer,'Custom written reply','setup does not erase FAQ edits');
+  const [[stillGarlean]]=await admin.query("SELECT summary FROM order_lore_entries WHERE id='yanxia-order'");
+  assert.equal(stillGarlean.summary,garleanChapter.summary,'repeat setup retains the revised origin');
   const [chronicles]=await admin.query('SELECT id,published FROM order_lore_entries ORDER BY id');
   assert.ok(chronicles.some(x=>x.id==='new-cassia'&&Number(x.published)===1));
   assert.ok(chronicles.some(x=>x.id==='early-journeys'&&Number(x.published)===0));
