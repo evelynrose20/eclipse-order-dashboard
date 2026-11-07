@@ -123,13 +123,14 @@ export async function frontsRoute(pool,req,path){
   const [isStaff]=await pool.execute('SELECT fs.staff_role FROM order_front_staff fs JOIN characters c ON c.id=fs.character_id WHERE fs.front_id=? AND c.player_account_id=? LIMIT 1',[frontId,actor.id]);
   const manage=isCommand||front.owner_account_id===actor.id||isStaff.some(s=>s.staff_role==='manager');
   if(front.status!=='active'&&!manage)return fail(404,'front_not_found');
-  const [[offers],[staff],[stocks],[ledger]] = await Promise.all([
-   pool.execute('SELECT o.id,o.offer_type,o.material_id,o.name,o.description,o.posted_price,o.is_active FROM order_front_offerings o WHERE o.front_id=? ORDER BY o.id DESC',[frontId]),
+  const [[offers],[staff],[stocks],[ledger],[changes]] = await Promise.all([
+   pool.execute('SELECT o.id,o.offer_type,o.material_id,o.name,o.description,o.posted_price,o.restricted,o.is_active FROM order_front_offerings o WHERE o.front_id=? ORDER BY o.id DESC',[frontId]),
    manage?pool.execute('SELECT s.character_id,c.character_name,s.staff_role FROM order_front_staff s JOIN characters c ON c.id=s.character_id WHERE s.front_id=? ORDER BY s.staff_role,c.character_name',[frontId]):Promise.resolve([[]]),
    manage?pool.execute('SELECT s.material_id,m.name,s.quantity FROM order_front_stock s JOIN fc_materials m ON m.id=s.material_id WHERE s.front_id=? ORDER BY m.name',[frontId]):Promise.resolve([[]]),
-   manage?pool.execute('SELECT kind,gross_amount,amount,balance_after,description,created_at FROM order_front_ledger WHERE front_id=? ORDER BY id DESC LIMIT 60',[frontId]):Promise.resolve([[]])
+   manage?pool.execute('SELECT kind,gross_amount,amount,balance_after,description,created_at FROM order_front_ledger WHERE front_id=? ORDER BY id DESC LIMIT 60',[frontId]):Promise.resolve([[]]),
+   manage?pool.execute('SELECT id,request_type,requested_value,justification,state,created_at,reviewed_at FROM order_front_change_requests WHERE front_id=? ORDER BY id DESC LIMIT 50',[frontId]):Promise.resolve([[]])
   ]);
-  return ok({front:{...front,balance:manage?Number(front.balance):null,order_share_percent:manage?Number(front.order_share_percent):null,license_terms:manage?front.license_terms:null,can_manage:manage,ic_approved:!!front.ic_approved,site_approved:!!front.site_approved},offers:offers.filter(o=>manage||o.is_active),staff,stocks,ledger});
+  return ok({front:{...front,balance:manage?Number(front.balance):null,order_share_percent:manage?Number(front.order_share_percent):null,license_terms:manage?front.license_terms:null,can_manage:manage,ic_approved:!!front.ic_approved,site_approved:!!front.site_approved},offers:offers.filter(o=>manage||o.is_active),staff,stocks,ledger,change_requests:changes});
  }
  if(action==='approve'&&req.method==='POST'){
   if(!isCommand)return fail(403,'command_required');
@@ -166,6 +167,47 @@ export async function frontsRoute(pool,req,path){
    [b.category,b.location.trim(),b.license_terms,b.order_share_percent,frontId]);
   return ok({status:'saved'});
  }
+ if(action==='changes'&&req.method==='POST'){
+  const b=await read(req);
+  if(!['location','category','expansion','restricted_service'].includes(b?.request_type)||
+   !str(b.requested_value,400)||!optional(b.justification,900)||
+   (b.request_type==='category'&&!categories.includes(b.requested_value))||
+   (b.request_type==='location'&&b.requested_value.length>150))return fail(400,'invalid_change_request');
+  return atomic(pool,async conn=>{
+   const front=await managedFront(conn,frontId,actor,{lock:true});
+   if(!front||front.status==='closed')return fail(403,'front_not_authorized');
+   const [created]=await conn.execute('INSERT INTO order_front_change_requests(front_id,request_type,requested_value,justification,requested_by) VALUES(?,?,?,?,?)',
+    [frontId,b.request_type,b.requested_value.trim(),b.justification.trim(),actor.id]);
+   return ok({status:'pending',id:created.insertId});
+  });
+ }
+ const review=/^changes\/(\d+)\/review$/.exec(action);
+ if(review&&req.method==='POST'){
+  if(!isCommand)return fail(403,'command_required');
+  const b=await read(req);
+  if(!['approved','rejected'].includes(b?.decision))return fail(400,'invalid_change_decision');
+  return atomic(pool,async conn=>{
+   const [fronts]=await conn.execute('SELECT status,license_terms FROM order_fronts WHERE id=? FOR UPDATE',[frontId]);
+   if(!fronts.length||fronts[0].status==='closed')return fail(409,'front_closed');
+   const [changes]=await conn.execute('SELECT * FROM order_front_change_requests WHERE id=? AND front_id=? FOR UPDATE',[Number(review[1]),frontId]);
+   const change=changes[0];
+   if(!change)return fail(404,'change_request_not_found');
+   if(change.state!=='pending')return fail(409,'change_already_reviewed');
+   if(b.decision==='approved'){
+    if(change.request_type==='location')await conn.execute('UPDATE order_fronts SET location=? WHERE id=?',[change.requested_value,frontId]);
+    if(change.request_type==='category')await conn.execute('UPDATE order_fronts SET category=? WHERE id=?',[change.requested_value,frontId]);
+    if(change.request_type==='expansion'){
+     const note='Approved expansion: '+change.requested_value;
+     const terms=[fronts[0].license_terms,note].filter(Boolean).join(' | ');
+     if(terms.length>900)return fail(409,'license_terms_full');
+     await conn.execute('UPDATE order_fronts SET license_terms=? WHERE id=?',[terms,frontId]);
+    }
+   }
+   await conn.execute('UPDATE order_front_change_requests SET state=?,reviewed_by=?,reviewed_at=UTC_TIMESTAMP() WHERE id=?',
+    [b.decision,actor.id,change.id]);
+   return ok({status:b.decision});
+  });
+ }
  if(action==='staff'&&req.method==='POST'){
   const b=await read(req);
   if(!uuid(b?.character_id)||!['manager','employee'].includes(b.staff_role))return fail(400,'invalid_staff');
@@ -191,7 +233,7 @@ export async function frontsRoute(pool,req,path){
  if(action==='offerings'&&req.method==='POST'){
   const b=await read(req);
   if(!['goods','service'].includes(b?.offer_type)||!str(b.name,120)||!optional(b.description,500)||
-   !Number.isInteger(b.posted_price)||b.posted_price<0||b.posted_price>100000||
+   (b.restricted!==undefined&&typeof b.restricted!=='boolean')||!Number.isInteger(b.posted_price)||b.posted_price<0||b.posted_price>100000||
    (b.offer_type==='goods'&&!(typeof b.material_id==='string'&&b.material_id.length<=48)))return fail(400,'invalid_front_offering');
   return atomic(pool,async conn=>{
    const front=await managedFront(conn,frontId,actor,{lock:true});
@@ -200,8 +242,13 @@ export async function frontsRoute(pool,req,path){
     const [materials]=await conn.execute('SELECT id FROM fc_materials WHERE id=?',[b.material_id]);
     if(!materials.length)return fail(404,'material_not_found');
    }
-   const [created]=await conn.execute('INSERT INTO order_front_offerings(front_id,offer_type,material_id,name,description,posted_price) VALUES(?,?,?,?,?,?)',
-    [frontId,b.offer_type,b.offer_type==='goods'?b.material_id:null,b.name.trim(),b.description.trim(),b.posted_price]);
+   if(b.restricted){
+    if(b.offer_type!=='service')return fail(400,'restricted_service_only');
+    const [permission]=await conn.execute('SELECT id FROM order_front_change_requests WHERE front_id=? AND request_type="restricted_service" AND requested_value=? AND state="approved" LIMIT 1',[frontId,b.name.trim()]);
+    if(!permission.length)return fail(403,'restricted_service_approval_required');
+   }
+   const [created]=await conn.execute('INSERT INTO order_front_offerings(front_id,offer_type,material_id,name,description,posted_price,restricted) VALUES(?,?,?,?,?,?,?)',
+    [frontId,b.offer_type,b.offer_type==='goods'?b.material_id:null,b.name.trim(),b.description.trim(),b.posted_price,b.restricted?1:0]);
    return ok({status:'posted',id:created.insertId});
   });
  }
