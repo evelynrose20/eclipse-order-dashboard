@@ -109,3 +109,41 @@
  .wtm-legend>div:last-child{grid-column:1/-1}
 }
 @media(prefers-reduced-motion:reduce){.wtm-stage{transition:none}}
+
+/* Always-visible state colors; selection adds a halo without hiding status. */
+.wtm-pin[data-state="peaceful"] .wtm-pin-icon{background:linear-gradient(145deg,#367960,#20443c);border-color:#92d8b1}
+.wtm-pin[data-state="contested"] .wtm-pin-icon{background:linear-gradient(145deg,#ba853b,#79501e);border-color:#ffe4a4}
+.wtm-pin[data-state="occupied"] .wtm-pin-icon{background:linear-gradient(145deg,#b7434e,#6e202b);border-color:#ffc0c6}
+.wtm-pin[data-state="liberated"] .wtm-pin-icon{background:linear-gradient(145deg,#3d9e8d,#216356);border-color:#bbffe1}
+.wtm-pin[data-state="rebuilding"] .wtm-pin-icon{background:linear-gradient(145deg,#4e91ba,#2b5676);border-color:#c7edff}
+.wtm-pin-state{font-size:9px!important;line-height:1.2;text-transform:uppercase;letter-spacing:.09em;font-weight:900;background:#18242bef;border:1px solid #91a69e;padding:4px 7px;color:#b9dfcb;white-space:nowrap;pointer-events:none}
+.wtm-pin[data-state="occupied"] .wtm-pin-state{color:#ffd4d5;border-color:#cb606b;background:#54252be8}
+.wtm-pin[data-state="contested"] .wtm-pin-state{color:#ffdfa1;border-color:#c19a58;background:#523f29e8}
+.wtm-pin[data-state="liberated"] .wtm-pin-state{color:#baf5db;border-color:#5ab79e;background:#174e48e8}
+.wtm-pin[data-state="rebuilding"] .wtm-pin-state{color:#c4eaff;border-color:#6daecf;background:#24475ee8}
+.wtm-pin.selected .wtm-pin-icon,.wtm-pin.origin .wtm-pin-icon{outline:3px solid #e8c58a;outline-offset:4px;box-shadow:0 0 0 5px #0c151f,0 0 13px #e0af5999}
+.wtm-state-key{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.wtm-state-key>span{display:inline-flex;align-items:center;gap:4px;font-size:9px;text-transform:uppercase;letter-spacing:.02em}
+.wtm-state-key i{display:block;width:10px;height:10px;background:#388164;border:1px solid #badbc8}
+.wtm-state-key [data-state="contested"] i{background:#bd8b42;border-color:#fbd79b}
+.wtm-state-key [data-state="occupied"] i{background:#b94350;border-color:#f9b4c0}
+.wtm-state-key [data-state="liberated"] i{background:#419e8a;border-color:#b9f4da}
+.wtm-state-key [data-state="rebuilding"] i{background:#538fb8;border-color:#c5e6ff}
+/* Saved mountains sit between terrain and roads, and remain readable without
+   being mistaken for the trade routes. */
+.wtm-mountains{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+.wtm-range-shadow{fill:none;stroke:#0a1018;stroke-width:10;opacity:.6;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.wtm-range-ridge{fill:none;stroke:#b7b7ac;stroke-width:5;opacity:.76;vector-effect:non-scaling-stroke;stroke-dasharray:2 6;stroke-linecap:round}
+.wtm-range-peak{fill:none;stroke:#e0dcc6;stroke-width:.75;opacity:.94;vector-effect:non-scaling-stroke}
+.wtm-range-label{fill:#e3e5d8;font-size:2.2px;font-weight:900;letter-spacing:.07em;paint-order:stroke;stroke:#0c1b25;stroke-width:.75}
+.wtm-range-draft-path{fill:none;stroke:#f2cd8b;stroke-width:2.5;stroke-dasharray:5 3;vector-effect:non-scaling-stroke}
+.wtm-mountain-draw{position:absolute;inset:0;z-index:5;cursor:crosshair;background:transparent}
+.wtm-mountain-editor{background:#202e3b;border-top:1px solid #5d6d75;padding:13px;display:flex;align-items:end;flex-wrap:wrap;gap:10px}
+.wtm-mountain-editor label{display:grid;gap:5px;color:#d5c5a9;font-size:11px;min-width:175px}
+.wtm-mountain-editor select,.wtm-mountain-editor input{width:100%;min-width:0}
+.wtm-mountain-editor>span{color:#b3c0c5;font-size:11px;align-self:center}
+.wtm-mountain-editor button{background:#263541;border:1px solid #b19769;color:#e9d6b5;padding:9px 12px;font-size:11px;font-weight:800}
+.wtm-mountain-editor button:disabled{opacity:.45;cursor:not-allowed}
+.wtm-mountain-editor button:last-child:not(:first-child){border-color:#a86267}
+.wtm-symbol{gap:16px}
+.wtm-symbol label{min-width:160px}
