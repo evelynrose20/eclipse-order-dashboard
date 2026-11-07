@@ -214,6 +214,15 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
  const cannotRemove=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/network/nodes/'+junctionId);assert.equal(cannotRemove.status,409);
  const movedJunction=await worldAdministrationRoute(admin,request('PUT',{x:56,y:46,node_kind:'rail_switch',name:'Main switch'}),'/world-admin/network/nodes/'+junctionId);assert.equal(movedJunction.status,200);
  const [joined]=await admin.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=?',[junctionId,junctionId]);assert.equal(joined.length,3);
+  const noConsent=await worldAdministrationRoute(admin,request('POST',{delete_connected_segments:false}),'/world-admin/network/nodes/'+junctionId+'/remove');
+  assert.equal(noConsent.status,400,'explicit confirmation is needed to delete attached route segments');
+  const deleteConnected=await worldAdministrationRoute(admin,request('POST',{delete_connected_segments:true}),'/world-admin/network/nodes/'+junctionId+'/remove');
+  assert.equal(deleteConnected.status,200,JSON.stringify(deleteConnected.body));
+  assert.equal(deleteConnected.body.deleted_segments,3);
+  const [removedNodes]=await admin.execute('SELECT id FROM world_route_nodes WHERE id=?',[junctionId]);
+  assert.equal(removedNodes.length,0,'junction is deleted');
+  const [otherNodes]=await admin.execute('SELECT id FROM world_route_nodes WHERE id=?',[branchNode.body.id]);
+  assert.equal(otherNodes.length,1,'unrelated nodes are preserved');
  const oldRoute=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:mineId,to_settlement_id:portId,route_type:'trail',route_name:'Old trail',waypoints:[{x:40,y:65}]}),'/world-admin/routes');assert.equal(oldRoute.status,200);
  const importedRoute=await worldAdministrationRoute(admin,request('POST',{region_id:wrid}),'/world-admin/network/import');assert.equal(importedRoute.status,200,JSON.stringify(importedRoute.body));assert.equal(importedRoute.body.imported,1);
  const [imported]=await admin.execute("SELECT route_name,waypoints FROM world_route_segments WHERE route_name='Old trail'");assert.equal(imported.length,1);
