@@ -48,6 +48,15 @@ UPDATE order_lore_entries
  AND body='Elira crossed into the Source through a voidrift near Carteneau and took a Miqo’te vessel. In this period she formed a partnership with Vy’lana. The survivors were connected by old household obligations and personal loyalties; the Order’s later formal ranks did not yet exist.';
 
 UPDATE order_lore_entries
+ SET title='An Order Forged in Garlemald',
+ summary='A private chapter reserved for the Eclipse Order’s Garlean founding and earliest operations.',
+ body='The Eclipse Order was established in Garlemald under Elira’s authority. This unpublished chapter awaits the details of its earliest campaigns, political interests and underworld alliances.'
+ WHERE id='early-journeys'
+ AND title='The Years Between'
+ AND summary='The household’s story between Carteneau and the formal Order has yet to be fully recorded.'
+ AND body='This chapter is awaiting the Order’s account of its movements, relationships and conflicts. Add only events that have been established in roleplay.';
+
+UPDATE order_lore_entries
  SET title='The Garlean Order in Yanxia',
  summary='Already Garlean in origin, the Order established its formal ranks and a Yanxia base during Stormblood.',
  body='The Eclipse Order was founded in Garlemald and remained Garlean in identity even as its operations expanded beyond Ilsabard. During Stormblood the syndicate established a base in Yanxia and formalized its hierarchy and branches. Yanxia was a chapter of its operations, not its birthplace.'
