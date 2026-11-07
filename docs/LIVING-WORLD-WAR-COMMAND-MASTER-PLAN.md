@@ -60,3 +60,11 @@ Read this file first; also inspect latest schema and src/WorldAdministration.jsx
 - World Administration's selectors use the rest of the portal's shared dropdown theme.
 - Migration: `server/sql/042_world_routes_garlean_weather.sql`; UI: `src/WorldTerritoryMap.jsx`; climate model: `server/src/garlean-climate.js`.
 - **Still planned:** real territory polygon drawing, multi-layer political borders, weather-adjusted logistics, route graph/pathfinding, transport scheduling, industrial production, monthly diet diversity based on actual food-group deliveries, simulation ticks and DM approvals.
+
+## Update — Territory state, mountain ranges and Order authority (2026-11-07)
+- All sites now display an always-visible state-colored badge: peaceful (green), contested (amber), occupied (red), liberated (teal) and rebuilding (blue). The selection halo does not hide the actual status. Command can set a site state directly from map controls.
+- Create named mountain ranges by placing a sequence of ridge points on the map. Existing ranges can be selected, redrawn and renamed or deleted. They are geographic overlays, not actual changes of territory ownership, and do not automatically block roads.
+- The first-party `eclipse-order` entry is inserted idempotently into the existing `order_factions` registry by migration 043. It can be chosen as a Government, Control, or Supporting faction without special-case fake IDs. Existing settlement ownership is not modified by migration.
+- Residents replaces NPC residents in the settlement editor, inspector and registry. Storage remains `population` for existing compatibility.
+- New schema: `043_world_mountain_ranges_order_faction.sql`; full setup requires a backup, `npm run setup:local` from `server/`, and a Windows API restart.
+- Still to implement: true territory ownership polygons, terrain elevation and impassable mountain ranges with pathfinding, new site types and proper simulated settlement population/industry/war flows.
