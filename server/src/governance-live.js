@@ -39,6 +39,11 @@ export async function governanceRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
  const actor=await resolveSession(pool,req);if(!actor)return fail(401,'not_authenticated');
  const domina=actor.account_role==='domina';
+ const [[senateMode]]=await pool.execute('SELECT enabled FROM order_senate_settings WHERE id=1');
+ if(senateMode?.enabled){
+  if(path==='/governance/council'&&req.method==='GET')return ok({replaced_by_senate:true});
+  return fail(409,'senate_is_governing_chamber');
+ }
  if(path==='/governance/council'&&req.method==='GET')return ok(await getState(pool,actor));
  if(path==='/governance/council/charter'&&req.method==='PUT'){
   if(!domina)return fail(403,'domina_required');
