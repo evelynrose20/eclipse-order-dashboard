@@ -42,6 +42,8 @@ async function worldAdministrationRouteCore(pool,req,path){
   const effective=regions.map(r=>({...r,effective_weather:effectiveWeather(r,now)}));
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
   const [routes]=await pool.execute('SELECT id,region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
+  const [networkNodes]=await pool.execute('SELECT id,region_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
+  const [networkSegments]=await pool.execute('SELECT id,region_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,name,points FROM world_map_mountain_ranges ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
@@ -49,6 +51,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
+ if(path.startsWith('/world-admin/network/'))return await handleTransportGraph(pool,req,path,actor);
  let match;
  // Map-only state changes never rewrite the settlement's civilian records.
  if((match=/^\/world-admin\/settlements\/(\d+)\/state$/.exec(path))&&req.method==='POST'){
