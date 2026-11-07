@@ -25,6 +25,13 @@ async function stockChange(conn,materialId,delta,activity,actor,characterId=null
   [materialId,delta,next,activity,actor,characterId,note.slice(0,250)]);
  return true;
 }
+// Growth advances in durable six-hour UTC intervals, never on the browser clock.
+// A single atomic UPDATE prevents refreshes or concurrent gardeners from doubling growth.
+export async function advanceGardenGrowth(conn,plotId=null){
+ const where=plotId===null?'':' WHERE id=?';
+ const sql='UPDATE fc_garden_plots SET growth=LEAST(100,growth+LEAST(100,GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP()) DIV 360)*5)),last_growth_at=DATE_ADD(last_growth_at,INTERVAL ((GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP())) DIV 360)*360) MINUTE)'+where;
+ await conn.execute(sql,plotId===null?[]:[plotId]);
+}
 const withTransaction=async(pool,fn)=>{
  const conn=await pool.getConnection();
  try{await conn.beginTransaction();const out=await fn(conn);if(out.status!==200){await conn.rollback();return out}await conn.commit();return out}
@@ -199,6 +206,7 @@ export async function craftingRoute(pool,req,path){
   });
  }
  if(path==='/workshop'&&req.method==='GET'){
+  await advanceGardenGrowth(pool);
   const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions],[todayCare],[teamCare],[categories]] = await Promise.all([
    pool.query('SELECT m.id,m.name,m.category,m.description,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY FIELD(m.category,"ore","herb","botanical","refined","supply"),m.name'),
    pool.query('SELECT id,name,description,output_material,output_quantity,minimum_level,category_id FROM fc_recipes ORDER BY name'),
@@ -303,7 +311,7 @@ export async function craftingRoute(pool,req,path){
    const capacity=Number(garden[0].level)+1;
    if(plots.length>=capacity)return fail(409,'garden_capacity_reached');
    const newId=plots.length?Math.max(...plots.map(p=>Number(p.id)))+1:1;
-   await conn.execute('INSERT INTO fc_garden_plots(id,crop_material) VALUES(?,?)',[newId,b.crop_material]);
+   await conn.execute('INSERT INTO fc_garden_plots(id,crop_material,last_growth_at) VALUES(?,?,UTC_TIMESTAMP())',[newId,b.crop_material]);
    return ok({status:'planted',plot_id:newId});
   });
  }
@@ -353,6 +361,22 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'crafted',quantity:qty,produced,destination:body.destination||'shared'});
   });
  }
+ const replantPath=/^\/workshop\/garden\/(\d+)\/replant$/.exec(path);
+ if(replantPath&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const plotId=Number(replantPath[1]),b=await read(req);
+  if(!Number.isInteger(plotId)||plotId<1||plotId>255||!validId(b?.crop_material)||typeof b?.discard_growth!=='boolean')return fail(400,'invalid_garden_replant');
+  return withTransaction(pool,async conn=>{
+   const [plots]=await conn.execute('SELECT crop_material,growth FROM fc_garden_plots WHERE id=? FOR UPDATE',[plotId]);
+   if(!plots.length)return fail(404,'plot_not_found');
+   const [materials]=await conn.execute("SELECT id FROM fc_materials WHERE id=? AND category IN ('herb','botanical')",[b.crop_material]);
+   if(!materials.length)return fail(400,'not_a_garden_crop');
+   if(plots[0].crop_material===b.crop_material)return fail(409,'already_planted');
+   if(Number(plots[0].growth)>0&&!b.discard_growth)return fail(409,'crop_still_growing');
+   await conn.execute('UPDATE fc_garden_plots SET crop_material=?,growth=0,health=80,last_growth_at=UTC_TIMESTAMP() WHERE id=?',[b.crop_material,plotId]);
+   return ok({status:'replanted',plot_id:plotId,crop_material:b.crop_material});
+  });
+ }
  const plotPath=/^\/workshop\/garden\/(\d+)\/(care|harvest)$/.exec(path);
  if(plotPath&&req.method==='POST'){
   const plotId=Number(plotPath[1]),action=plotPath[2],body=await read(req);
@@ -360,6 +384,7 @@ export async function craftingRoute(pool,req,path){
   return withTransaction(pool,async conn=>{
    if(!validUuid(body?.character_id))return fail(400,'character_required');
    if(!await checkCharacter(conn,user,body.character_id))return fail(403,'character_not_owned');
+   await advanceGardenGrowth(conn,plotId);
    const [plots]=await conn.execute('SELECT id,crop_material,growth,health FROM fc_garden_plots WHERE id=? FOR UPDATE',[plotId]);
    if(!plots.length)return fail(404,'plot_not_found');
    const plot=plots[0];
@@ -377,7 +402,7 @@ export async function craftingRoute(pool,req,path){
    const [garden]=await conn.execute('SELECT level FROM fc_garden WHERE id=1');
    const yieldCount=2+Number(garden[0].level)+Math.floor(Number(plot.health)/30);
    if(!await stockChange(conn,plot.crop_material,yieldCount,'harvest',user.id,body.character_id,'Garden plot '+plotId))return fail(409,'stock_limit');
-   await conn.execute('UPDATE fc_garden_plots SET growth=0,health=GREATEST(40,health-15),harvests=harvests+1 WHERE id=?',[plotId]);
+   await conn.execute('UPDATE fc_garden_plots SET growth=0,health=GREATEST(40,health-15),harvests=harvests+1,last_growth_at=UTC_TIMESTAMP() WHERE id=?',[plotId]);
    return ok({status:'harvested',material_id:plot.crop_material,quantity:yieldCount});
   });
  }
