@@ -134,7 +134,7 @@ updated: 2026-11-07
 - [ ] Pull latest matching frontend and Windows API code.
 - [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–045, including 045_world_transport_graph.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
-- [ ] Browser test all edit operations, including Network & junctions: split a rail line, attach a branch, move the shared switch, save and reload.
+- [ ] Browser test all edit operations, including Plan a route / Edit routes: split a rail line, attach a branch, move the shared switch, save and reload.
 - [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
 - [ ] Confirm master plan and this checklist are readable in Obsidian.
 
