@@ -10,7 +10,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  const [projects,setProjects]=useState([]),[projectId,setProjectId]=useState('');
  const [project,setProject]=useState(null),[materials,setMaterials]=useState([]);
  const [reserved,setReserved]=useState([]),[events,setEvents]=useState([]);
- const [draft,setDraft]=useState(null),[activeStage,setActiveStage]=useState('');
+ const [draft,setDraft]=useState(null),[editingId,setEditingId]=useState(null),[activeStage,setActiveStage]=useState('');
  const [characterId,setCharacterId]=useState('');
  const [delivery,setDelivery]=useState({requirement_id:'',quantity:1,source:'reserved'});
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -46,7 +46,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  },[ownCharacters.length,characterId]);
  const mayCreate=canCreate;
  async function beginDraft(){
-  setDraft(blankProject());setError('');setNotice('');
+  setEditingId(null);setDraft(blankProject());setError('');setNotice('');
   try{const result=await request('/construction/events');setEvents(result.events||[])}catch{setEvents([])}
  }
  async function execute(path,body,message,method='POST',select=projectId){
@@ -59,10 +59,16 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
   }catch(e){setError(e.message||String(e));return null}
   finally{setBusy(false)}
  }
+ async function editDraft(){
+  if(!project||project.state!=='draft'||!project.can_edit)return;
+  setEditingId(project.id);
+  setDraft({name:project.name,description:project.description,location:project.location,event_id:project.event_id||'',stages:project.stages.map(stage=>({name:stage.name,description:stage.description,requirements:stage.requirements.map(r=>({material_id:r.material_id,quantity:r.required_quantity}))}))});
+  try{const result=await request('/construction/events');setEvents(result.events||[])}catch{setEvents([])}
+ }
  async function create(){
   const body={...draft,event_id:draft.event_id||null,stages:draft.stages.map(s=>({...s,requirements:s.requirements.map(r=>({material_id:r.material_id,quantity:Number(r.quantity)}))}))};
-  const result=await execute('/construction',body,'Construction storyline saved as a private draft.','POST','created');
-  if(result){setDraft(null);setActiveStage('')}
+  const result=await execute(editingId?'/construction/'+editingId:'/construction',body,editingId?'Draft construction plan updated.':'Construction storyline saved as a private draft.',editingId?'PUT':'POST',editingId||'created');
+  if(result){setDraft(null);setEditingId(null);setActiveStage('')}
  }
  const stageAction=(action)=>execute('/construction/'+project.id+'/'+action,null,{
   activate:'Construction drive published; the first stage now accepts contributions.',
@@ -89,7 +95,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
      <header className="eo-construction-main-head"><span>OFFICIAL ORDER COMMISSION · {project.state.toUpperCase()}</span><h3>{project.name}</h3><p>{project.description||'An ongoing material and construction undertaking of the Eclipse Order.'}</p><div className="eo-construction-meta"><span>{project.location||'Location to be announced'}</span>{project.event_name&&<span>Linked event: {project.event_name}</span>}</div></header>
      <div className="eo-construction-progress"><div><span>PROJECT SUPPLIES</span><strong>{num(done)} / {num(total)} delivered</strong></div><div className="eo-construction-bar"><span style={{width:percent(done,total)+'%'}}/></div><small>{percent(done,total)}% of all material targets met · storyline stages advance separately</small></div>
      {project.can_edit&&!readOnly&&<div className="eo-construction-command">
-      {project.state==='draft'&&<button type="button" disabled={busy} onClick={()=>stageAction('activate')}>Open the drive to members</button>}
+      {project.state==='draft'&&<button type="button" disabled={busy} onClick={editDraft}>Edit private plan</button>}{project.state==='draft'&&<button type="button" disabled={busy} onClick={()=>stageAction('activate')}>Open the drive to members</button>}
       {project.state==='open'&&<button type="button" disabled={busy} onClick={()=>stageAction('pause')}>Pause deliveries</button>}
       {project.state==='paused'&&<button type="button" disabled={busy} onClick={()=>stageAction('resume')}>Resume the drive</button>}
       {!['archived'].includes(project.state)&&<button type="button" className="subtle" disabled={busy} onClick={()=>{if(window.confirm('Archive this construction project? It will leave the public project board but keep the records.'))stageAction('archive')}}>Archive</button>}
@@ -112,7 +118,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
     </>:<div className="eo-construction-empty"><strong>Choose a construction commission</strong><p>Projects remain available between events, so the Order can build towards a large RP milestone over weeks or months.</p></div>}
    </main>
   </div>
-  {draft&&<div className="eo-construction-overlay"><section className="eo-construction-builder" role="dialog" aria-modal="true" aria-label="Plan construction project"><header><div><span>ORDER COMMAND · CAMPAIGN PLANNING</span><h3>Commission a major undertaking</h3><p>Write the full construction arc in advance. Only the first stage can receive supplies when the project opens.</p></div><button type="button" aria-label="Close project builder" onClick={()=>setDraft(null)}>×</button></header>
+  {draft&&<div className="eo-construction-overlay"><section className="eo-construction-builder" role="dialog" aria-modal="true" aria-label="Plan construction project"><header><div><span>ORDER COMMAND · CAMPAIGN PLANNING</span><h3>{editingId?'Revise the private plan':'Commission a major undertaking'}</h3><p>Write the full construction arc in advance. Only the first stage can receive supplies when the project opens.</p></div><button type="button" aria-label="Close project builder" onClick={()=>setDraft(null)}>×</button></header>
    <div className="eo-construction-fields"><label>Project title<input maxLength={150} value={draft.name} placeholder="Rebuild the old observatory…" onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label>Location<input maxLength={160} value={draft.location} placeholder="Where the work will happen" onChange={e=>setDraft({...draft,location:e.target.value})}/></label></div>
    <label className="eo-construction-label">Story premise<textarea value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})} rows={3} placeholder="Why the Order is taking on this project…"/></label>
    <label className="eo-construction-label">Related event (optional)<select value={draft.event_id} onChange={e=>setDraft({...draft,event_id:e.target.value})}><option value="">Standalone storyline · no event linked yet</option>{events.map(e=><option key={e.id} value={e.id}>{e.name}{e.published?' · published':' · draft'}</option>)}</select></label>
@@ -124,7 +130,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
     </article>)}
     <button type="button" className="eo-construction-add-stage" disabled={draft.stages.length>=20} onClick={()=>setDraft({...draft,stages:[...draft.stages,blankStage()]})}>+ Add another story phase</button>
    </div>
-   <footer><button type="button" onClick={()=>setDraft(null)}>Cancel</button><button type="button" disabled={busy||!draft.name.trim()||draft.stages.some(s=>!s.name.trim()||s.requirements.some(r=>!r.material_id||!Number.isInteger(Number(r.quantity))||Number(r.quantity)<1||new Set(s.requirements.map(r=>r.material_id)).size!==s.requirements.length))} onClick={create}>{busy?'Saving…':'Save private project plan'}</button></footer>
+   <footer><button type="button" onClick={()=>setDraft(null)}>Cancel</button><button type="button" disabled={busy||!draft.name.trim()||draft.stages.some(s=>!s.name.trim()||s.requirements.some(r=>!r.material_id||!Number.isInteger(Number(r.quantity))||Number(r.quantity)<1||new Set(s.requirements.map(r=>r.material_id)).size!==s.requirements.length))} onClick={create}>{busy?'Saving…':editingId?'Update private plan':'Save private project plan'}</button></footer>
   </section></div>}
  </section>;
 }
