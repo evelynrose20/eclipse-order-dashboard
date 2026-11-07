@@ -7,7 +7,7 @@ const cToF=c=>Math.round((Number(c)*9/5+32)*10)/10;
 const fToC=f=>Math.round((Number(f)-32)*5/9*100)/100;
 const settlementBlank=regionId=>({region_id:regionId||0,name:'',description:'',directory_faction_id:null,governing_faction_id:null,controlling_faction_id:null,supporting_faction_id:null,map_x:50,map_y:50,map_icon:'settlement',strategic_state:'peaceful',population:0,workforce:0,food_days:0,food_variety:50,heating_coverage:50,insulation:50,housing:50,medical_access:50,food_access:50,security_score:50,civil_stability:70,unrest:0,weather_exposure:50,simulation_enabled:false});
 const civicFields=[['population','Residents',10000000],['workforce','Employed / available workers',10000000],['food_days','Food reserves (days)',99999],['food_variety','Food diversity',100],['heating_coverage','Heating coverage',100],['insulation','Insulation quality',100],['housing','Housing adequacy',100],['medical_access','Medical access',100],['food_access','Food access',100],['security_score','Public safety',100],['civil_stability','Civic stability',100],['unrest','Current unrest',100],['weather_exposure','Weather exposure',100]];
-const states=['peaceful','contested','occupied','liberated','rebuilding'];
+const states=['peaceful','secure','contested','occupied','liberated','rebuilding','abandoned','destroyed'];
 const pretty=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());
 export default function WorldAdministration({request,readOnly=false}){
  const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[selected,setSelected]=useState('');
