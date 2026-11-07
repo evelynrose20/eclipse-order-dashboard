@@ -463,7 +463,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(missingSupplyCycle.unitsConsumed,0);
   assert.equal(missingSupplyCycle.unitsMissing,2,'missing crafted goods are recorded, never replaced by gil');
   const [[frontAfterMigration]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
-  assert.equal(Number(frontAfterMigration.balance),24,'rerunning setup preserves front profits');
+  assert.equal(Number(frontAfterMigration.balance),20,'migration rerun preserves the balance after the second real daily rent and upkeep deduction');
 
 
 
