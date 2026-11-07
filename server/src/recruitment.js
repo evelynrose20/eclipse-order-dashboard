@@ -33,7 +33,7 @@ export async function recruitmentRoute(pool,req,path){
  const reason=status==='closed'?body.reason.trim():'';
  const reopens=status==='closed'?body.reopens_on||'':'';
  const reopeningNote=status==='closed'?body.reopening_note.trim():'';
- // Commit all three fields together so the public announcement can never be half-updated.
+ // Commit all recruitment fields together so the public announcement can never be half-updated.
  const conn=await pool.getConnection();
  try{
   await conn.beginTransaction();
@@ -43,5 +43,5 @@ export async function recruitmentRoute(pool,req,path){
   await conn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',[actor.id,'recruitment_status_changed','order_settings','recruitment_status',JSON.stringify({status,reason,reopens_on:reopens||null,reopening_note:reopeningNote})]);
   await conn.commit();
  }catch(error){await conn.rollback();throw error}finally{conn.release()}
- return {status:200,body:{status,reason,reopens_on:reopens||null}};
+ return {status:200,body:{status,reason,reopens_on:reopens||null,reopening_note:reopeningNote}};
 }
