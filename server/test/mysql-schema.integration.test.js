@@ -516,6 +516,16 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(revised.status,200,'director can revise a private plan before publication');
   projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
   assert.match(projectBefore.body.project.description,/multi-session/);
+  const secondEpisodeId='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  await admin.execute('INSERT INTO order_encounters(id,name,notes,themes,created_by,description) VALUES(?,?,?,JSON_ARRAY(),?,?)',
+   [secondEpisodeId,'Observatory: The Raising','',id,'Later chapter of the reconstruction plot']);
+  const linkedEpisode=await constructionRoute(admin,request('POST',{event_id:secondEpisodeId}),'/construction/'+projectId+'/events');
+  assert.equal(linkedEpisode.status,200,'later RP sessions can join an established construction arc');
+  const twoEpisodeProject=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.equal(twoEpisodeProject.body.project.linked_events.length,2);
+  const projectDirectory=await constructionRoute(admin,request('GET'),'/construction');
+  assert.ok(projectDirectory.body.projects.find(p=>Number(p.id)===Number(projectId)).event_ids.includes(secondEpisodeId));
+
   const hidden=await constructionRoute(admin,recruitRequest('GET'),'/construction/'+projectId);
   assert.equal(hidden.status,404,'private storyline stays hidden until published');
   const premature=await constructionRoute(admin,request('POST',{requirement_id:projectBefore.body.project.stages[0].requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
@@ -555,6 +565,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(finalProject.body.project.history.length,3);
   assert.equal(finalProject.body.project.state,'completed');
   assert.equal(finalProject.body.project.event_id,eventId);
+  const unlinked=await constructionRoute(admin,request('DELETE'),'/construction/'+projectId+'/events/'+secondEpisodeId);
+  assert.equal(unlinked.status,200);
+  const afterUnlink=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.equal(afterUnlink.body.project.linked_events.length,1,'unlinking an event does not remove the construction project');
+  assert.equal(afterUnlink.body.project.history.length,3,'event link changes do not affect material contributions');
   await admin.query(await readFile(new URL('../sql/032_construction_projects.sql',import.meta.url),'utf8'));
   const [[persisted]]=await admin.execute('SELECT COUNT(*) AS n FROM order_construction_contributions WHERE project_id=?',[projectId]);
   assert.equal(Number(persisted.n),3,'repeat setup preserves long-running construction history');
