@@ -1,0 +1,31 @@
+.imperial-chronicles{background:linear-gradient(145deg,#13171d,#1c1d24 52%,#17171c);border-top:1px solid #754646;border-bottom:1px solid #754646}
+.imperial-chronicles-head{display:grid;grid-template-columns:1.4fr .7fr;gap:38px;align-items:end;margin-bottom:46px}
+.imperial-chronicles-head>p{max-width:400px;margin:0 0 6px;font-size:13px!important;line-height:1.85!important;color:#c2b5b5!important}
+.imperial-chronicles-frame{display:grid;grid-template-columns:minmax(220px,345px) minmax(0,1fr);min-height:620px;border:1px solid #73545b;background:linear-gradient(145deg,#212026,#16181d);box-shadow:0 28px 70px #0005;position:relative}
+.imperial-chronicles-frame:before{content:'';position:absolute;top:10px;left:10px;right:10px;bottom:10px;border:1px solid #bcb0ad0d;pointer-events:none}
+.imperial-chronicles-timeline{border-right:1px solid #6b4c52;padding:30px 24px;display:grid;align-content:start;gap:1px;background:linear-gradient(160deg,#252329,#191a20)}
+.imperial-timeline-title{font-size:9px;letter-spacing:.19em;font-weight:800;color:#d3b3ab;padding:0 0 23px}
+.imperial-era{display:flex;gap:15px;padding:15px 0;border-top:1px solid #77626a50;min-width:0}
+.imperial-era-index{font:600 18px/1 'Cormorant Garamond',Georgia,serif;color:#b37e84;min-width:25px}
+.imperial-era>div{display:grid;gap:6px;min-width:0}
+.imperial-era strong{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#ebd6d0}
+.imperial-era small{font-size:10px;color:#8e858c;line-height:1.5}
+.order-public .imperial-chapter{border:0;border-left:2px solid transparent;background:transparent;padding:7px 8px;text-align:left;font:500 17px/1.2 'Cormorant Garamond',Georgia,serif;color:#bcaaaa;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.order-public .imperial-chapter:hover,.order-public .imperial-chapter.active{color:#f6e4dd;background:#58303967;border-left-color:#c18b8b}
+.imperial-chronicles-reading{padding:clamp(30px,5vw,65px);display:flex;flex-direction:column;gap:25px;min-width:0}
+.imperial-record-kicker,.imperial-cassia-feature>span{font-size:10px;letter-spacing:.18em;color:#d0a19c;font-weight:800}
+.imperial-chronicles-reading h3{font:500 clamp(38px,4vw,60px)/1.06 'Cormorant Garamond',Georgia,serif;color:#f5e4dd;letter-spacing:-.025em;margin:17px 0 22px}
+.imperial-record-lead{font:italic 23px/1.45 'Cormorant Garamond',Georgia,serif!important;color:#ddbcc0!important;max-width:720px}
+.imperial-record-text{max-height:360px;overflow:auto;padding-right:8px;scrollbar-color:#835156 transparent}
+.imperial-record-text p{font-size:13px!important;line-height:1.85!important;white-space:pre-wrap;overflow-wrap:anywhere;color:#cdbfc0!important}
+.imperial-cassia-feature{margin-top:auto;padding:23px 25px;border:1px solid #8f555b;background:linear-gradient(100deg,#54292f7a,#282028);position:relative}
+.imperial-cassia-feature:after{content:'✦';font:120px/1 Georgia,serif;color:#bd9e9b10;position:absolute;right:4px;top:-19px;pointer-events:none}
+.imperial-cassia-feature h4{font:500 30px/1 'Cormorant Garamond',Georgia,serif;color:#f3d9d3;margin:11px 0}
+.imperial-cassia-feature p{font-size:12px!important;color:#cbb2b3!important;max-width:630px;line-height:1.7!important;margin:0 0 15px}
+.order-public .imperial-cassia-feature button{position:relative;border:0;border-bottom:1px solid #bc8f88;background:transparent;color:#ecc4b7;font-size:11px;font-weight:700;padding:0 0 7px;cursor:pointer}
+.imperial-cassia-feature button span{margin-left:9px}
+.imperial-chronicles-message{color:#cdb8b8!important}
+.imperial-chronicles-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-top:20px;font-size:10px;letter-spacing:.16em;color:#9e8785}
+.imperial-chronicles-footer a{color:#dfb6ab!important;border-bottom:1px solid #95696b;padding-bottom:7px;font-size:11px;letter-spacing:normal}
+@media(max-width:900px){.imperial-chronicles-head{grid-template-columns:1fr}.imperial-chronicles-frame{grid-template-columns:1fr}.imperial-chronicles-timeline{border-right:0;border-bottom:1px solid #6b4c52;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}.imperial-timeline-title{grid-column:1/-1}.imperial-chronicles-reading{padding:30px}}
+@media(max-width:520px){.imperial-chronicles-timeline{grid-template-columns:1fr;padding:22px}.imperial-chronicles-reading{padding:23px}.imperial-cassia-feature{padding:20px}.imperial-chronicles-head{margin-bottom:28px}}
