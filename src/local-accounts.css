@@ -87,3 +87,12 @@
 .eo-local .eo-discord-login small{line-height:1.65}
 .eo-local .eo-discord-only .eo-link{display:block;margin-top:20px;text-align:center}
 .eo-local .eo-membership-wait{font-size:12px;line-height:1.7;color:#cdb3bf}
+
+
+.eo-recruitment-settings .panel-heading{align-items:center;gap:16px;flex-wrap:wrap}
+.eo-recruitment-settings .field{max-width:500px}
+.eo-recruitment-status{display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:.13em;font-weight:800;border:1px solid #8a7482;border-radius:20px;padding:8px 12px;color:#c7b5c1;background:#362832}
+.eo-recruitment-status-open{border-color:#6e987e;color:#b4dabc;background:#263a30}
+.eo-recruitment-status-limited{border-color:#b18b51;color:#e7c58f;background:#3a3025}
+.eo-recruitment-status-closed{border-color:#ac626b;color:#e8a9b4;background:#462931}
+.eo-recruitment-saved{color:#c0e4cb;font-size:12px}
