@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
+import OrderEmblem from './OrderEmblem.jsx';
 
 const SECTION_MAP={
  overview:'home',
@@ -49,7 +50,7 @@ export default function OrderNavigation({
   {open&&<button type="button" className="order-nav-backdrop" aria-label="Close navigation" onClick={onClose}/>}
   <aside className={'sidebar order-nav '+(open?'order-nav-open':'')} aria-label="Workspace sidebar">
    <div className="order-nav-brand">
-    <span className="order-nav-brand-icon" aria-hidden="true">✦</span>
+    <span className="order-nav-brand-icon" aria-hidden="true"><OrderEmblem className="order-nav-emblem"/></span>
     <div><strong>THE ECLIPSE ORDER</strong><small>SYNDICATE PORTAL</small></div>
     <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}>×</button>
    </div>
