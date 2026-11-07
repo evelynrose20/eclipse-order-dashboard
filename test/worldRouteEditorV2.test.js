@@ -46,3 +46,19 @@ test('railways render track/sleeper symbols distinct from road and trail',async(
  assert.match(css,/wtm-road-rail \.wtm-rail-ties/);
  assert.match(css,/wtm-road-rail \.wtm-rail-center/);
 });
+
+test('map uses Font Awesome web-font icons and accepts production and civic markers',async()=>{
+ const [map,form,server,html,css]=await Promise.all([
+  load('src/WorldTerritoryMap.jsx'),load('src/WorldAdministration.jsx'),
+  load('server/src/garlean-climate.js'),load('index.html'),load('src/world-territory-map.css')
+ ]);
+ assert.match(html,/font-awesome\/6\.7\.2\/css\/all\.min\.css/);
+ assert.match(map,/fa-solid fa-/);
+ assert.match(map,/<i className=\{iconFor\(s\.map_icon\)\}\/>/);
+ for(const marker of ['lumber_yard','logging_camp','sawmill','quarry','workshop','warehouse','rail_station']){
+  assert.ok(map.includes("'"+marker+"'"),'frontend: '+marker);
+  assert.ok(server.includes("'"+marker+"'"),'server: '+marker);
+ }
+ assert.match(form,/ICON_OPTIONS\.map/);
+ assert.match(css,/Font Awesome 6 Free/);
+});
