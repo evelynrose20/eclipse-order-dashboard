@@ -21,7 +21,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -209,6 +209,18 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[occupiedMine]]=await admin.execute('SELECT strategic_state,population FROM world_settlements WHERE id=?',[mineId]);
   assert.equal(occupiedMine.strategic_state,'occupied');
   assert.equal(Number(occupiedMine.population),150,'quick state change must preserve residents');
+  for(const state of ['secure','abandoned','destroyed']){
+   const change=await worldAdministrationRoute(admin,request('POST',{strategic_state:state}),'/world-admin/settlements/'+mineId+'/state');
+   assert.equal(change.status,200,'state '+state+' should save: '+JSON.stringify(change.body));
+   const [[saved]]=await admin.execute('SELECT strategic_state,controlling_faction_id,population FROM world_settlements WHERE id=?',[mineId]);
+   assert.equal(saved.strategic_state,state);
+   assert.equal(saved.controlling_faction_id,'eclipse-order','condition must never rewrite controller');
+   assert.equal(Number(saved.population),150,'condition must preserve residents');
+  }
+  await admin.query(await readFile(new URL('../sql/044_world_site_conditions.sql',import.meta.url),'utf8'));
+  const [[persistedStatus]]=await admin.execute('SELECT strategic_state FROM world_settlements WHERE id=?',[mineId]);
+  assert.equal(persistedStatus.strategic_state,'destroyed','rerunning migration must not reset state');
+
   const mountainsResult=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,name:'CI Mountain Ridge',points:[{x:10,y:20},{x:30,y:40},{x:70,y:20}]}),'/world-admin/mountains');
   assert.equal(mountainsResult.status,200,JSON.stringify(mountainsResult.body));
   const mountainId=Number(mountainsResult.body.id);

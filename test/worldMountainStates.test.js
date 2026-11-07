@@ -13,7 +13,7 @@ test('World map visibly labels occupied and other site states without selecting 
 });
 test('World map authoring supports saved, named mountain ranges without replacing road tools',async()=>{
  const jsx=await read('src/WorldTerritoryMap.jsx');
- for(const tool of ["['move','Move places']","['link','Draw roads']","['bend','Edit roads']","['mountains','Mountains']"])assert.ok(jsx.includes(tool),tool);
+ for(const tool of ["['move','Move places']","['link','Plan a route']","['bend','Edit routes']","['mountains','Mountains']"])assert.ok(jsx.includes(tool),tool);
  assert.match(jsx,/\/world-admin\/mountains/);
  assert.match(jsx,/Save range/);
  assert.match(jsx,/Delete range/);
