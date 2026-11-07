@@ -18,7 +18,7 @@ const GROUPS=[
 ];
 const DESCRIPTIONS={
  overview:'Your starting point',roster:'Browse the Order',sheet:'Details and progression',
- scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction trade contracts and crafted equipment',
+ scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'Council and approval demo',classes:'Classes and spellbooks',
