@@ -83,24 +83,13 @@ export async function loadClassCatalog(db){
  }
  return catalog;
 }
+// Class definitions are read-only. Retained database overrides remain available to
+// existing characters, but the retired Homebrew Classes editor cannot modify them.
 export async function classRoute(pool,req,path){
  if(!pool)return {status:503,body:{error:'database_unavailable'}};
  const actor=await resolveSession(pool,req);
  if(!actor)return {status:401,body:{error:'not_authenticated'}};
- if(path==='/classes'&&req.method==='GET')return {status:200,body:{classes:await loadClassCatalog(pool)}};
- const id=/^\/classes\/([a-z][a-z0-9_-]{1,39})$/.exec(path)?.[1];
- if(!id)return {status:404,body:{error:'not_found'}};
- if(RETIRED_JOB_IDS.has(id))return {status:404,body:{error:'job_not_available'}};
- if(!['domina','high_command'].includes(actor.account_role))return {status:403,body:{error:'command_required'}};
- if(req.method!=='PUT')return {status:405,body:{error:'method_not_allowed'}};
- let length=0;const chunks=[];
- for await(const chunk of req){length+=chunk.length;if(length>32000)return {status:413,body:{error:'class_too_large'}};chunks.push(chunk)}
- let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return {status:400,body:{error:'invalid_json'}}}
- const data=validateClass(id,body);
- if(!data)return {status:400,body:{error:'invalid_class_definition'}};
- const catalog=await loadClassCatalog(pool);
- if(!catalog[id]&&Object.keys(catalog).length>=40)return {status:409,body:{error:'class_limit_reached'}};
- await pool.execute('INSERT INTO order_homebrew_classes(id,definition_json,updated_by) VALUES(?,?,?) ON DUPLICATE KEY UPDATE definition_json=VALUES(definition_json),updated_by=VALUES(updated_by)',
-  [id,JSON.stringify(data),actor.id]);
- return {status:200,body:{class:data}};
+ if(path==='/classes'&&req.method==='GET')
+  return {status:200,body:{classes:await loadClassCatalog(pool)}};
+ return {status:404,body:{error:'not_found'}};
 }

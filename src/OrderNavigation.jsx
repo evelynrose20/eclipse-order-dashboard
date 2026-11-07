@@ -7,7 +7,7 @@ const SECTION_MAP={
  roster:'characters',sheet:'characters',
  scenes:'activities',encounters:'activities',events:'activities',construction:'activities',factions:'activities',workshop:'activities',trade:'activities',fronts:'activities',treasury:'activities',
  profile:'community',directory:'community',transitions:'community',
- members:'administration',governance:'administration',classes:'administration',lore:'administration',
+ members:'administration',governance:'administration',lore:'administration',
  settings:'administration'
 };
 const GROUPS=[
@@ -22,7 +22,7 @@ const DESCRIPTIONS={
  scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
- governance:'The Order’s governing chamber and charter',classes:'Classes and spellbooks',
+ governance:'The Order’s governing chamber and charter',
  settings:'Rules and records',lore:'The Order’s history, figures and places'
 };
 

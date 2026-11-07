@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-import './homebrew-classes.css';
+import './class-spellbook.css';
 const spellPoints=(style,level)=>style==='full'?2+2*level:style==='half'?(level<2?0:1+Math.floor(level/2)):0;
 export default function ClassSpellbook({character,klass,request,onRefresh,userId,readOnly=false}){
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState('');

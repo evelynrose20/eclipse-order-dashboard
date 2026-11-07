@@ -305,7 +305,7 @@
 .app-shell.eo-local :where(button,input,select,textarea):focus-visible{outline:2px solid #ef777b;outline-offset:2px}
 .app-shell.eo-local :where(input[type="checkbox"],input[type="radio"],input[type="range"]){accent-color:#c24450}
 .app-shell.eo-local :where(select option,select optgroup){background:#1b232c;color:#e9eced}
-.app-shell.eo-local :where(.gov-panel,.sen-root,.eo-construction,.eo-fronts,.eo-exchange,.fc-play,.homebrew-workspace,.encounter-studio){border-color:#59686f}
+.app-shell.eo-local :where(.gov-panel,.sen-root,.eo-construction,.eo-fronts,.eo-exchange,.fc-play,.encounter-studio){border-color:#59686f}
 .app-shell.eo-local :where(.gov-tabs button,.gov-button,.sen-voting button,.sen-bill-actions button){border-radius:0}
 .eo-local .eo-auth-card{border:2px solid #7d4c52;border-top:5px solid #b13743;border-radius:0;background:linear-gradient(150deg,#253039,#101820);box-shadow:0 25px 80px #0009}
 .eo-local .eo-auth-card h1{font:800 50px var(--imperial-heading);text-transform:uppercase;color:#f0e9e1}
@@ -397,7 +397,7 @@
  .eo-treasury-hero h2,.eo-trade-hero h2,.fc-workshop-heading h2,
  .fc-scene-title,.order-event-heading h2,.encounter-studio-aside-header h2,
  .encounter-studio-header h2,.faction-header h2,.gov-heading h2,
- .dossier-person h2,.inline-sheet-top h2,.homebrew-workspace h2,
+ .dossier-person h2,.inline-sheet-top h2,
  .eo-fronts-section-head h3,.eo-construction-section-heading h3,
  .eo-equipment-heading h2
 ){
@@ -435,7 +435,7 @@
  .fc-recipe-index,.fc-craft-bench,.faction-list-item,.faction-detail,
  .order-event-board-frame,.order-event-posting,.order-event-detail,
  .encounter-sidebar,.encounter-choice,.dossier-frame,.dossier-story-card,
- .inline-sheet-nav,.inline-job-preview,.homebrew-editor,.gov-panel,
+ .inline-sheet-nav,.inline-job-preview,.gov-panel,
  .sen-stats div,.sen-roster>div
 ){
  background:linear-gradient(145deg,#242d35,#161e26);
