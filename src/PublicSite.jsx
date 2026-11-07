@@ -39,7 +39,7 @@ const MODES=[
  {name:'Events',mark:'II',heading:'Every assignment has stakes.',body:'Posted events can carry a difficulty rating, an impact rating, and a sequence of chapters. FC MSQ marks the stories that advance the Order’s central narrative.'},
  {name:'Combat',mark:'III',heading:'A tabletop beneath the tale.',body:'The companion portal brings together level-based jobs, character sheets, dice checks, initiative, and tactical encounters. DMs can direct enemies and allied NPCs.'}
 ];
-function Mark({className=''}){return <span className={'public-mark '+className} aria-hidden="true"><span className="public-mark-orbit"/><span className="public-mark-core">✦</span></span>}
+function Mark({className=''}){return <span className={'public-mark '+className} aria-hidden="true"><svg viewBox="0 0 64 72" fill="none" className="public-mark-emblem"><path d="M32 2 59 15V49L32 69 5 49V15Z" stroke="currentColor" strokeWidth="2"/><path d="M32 9 52 19V45L32 60 12 45V19Z" stroke="currentColor" strokeWidth=".8" opacity=".45"/><path d="M41 20A17 17 0 1 0 45 43 16 16 0 0 1 41 20Z" fill="currentColor"/><path d="m35 26 4 7 8 2-8 3-4 7-3-7-8-3 8-2Z" fill="#aa343c"/><path d="M13 53 32 65 51 53" stroke="#aa343c" strokeWidth="2"/></svg></span>}
 function SectionTag({number,children}){return <div className="public-section-tag"><span>{number}</span><i/><span>{children}</span></div>}
 export default function PublicSite(){
  const [menuOpen,setMenuOpen]=useState(false);
@@ -77,29 +77,32 @@ export default function PublicSite(){
  return <div className="order-public">
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
-   <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>The Eclipse Order</strong><small>FINAL FANTASY XIV · ROLEPLAY</small></span></a>
+   <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>THE ECLIPSE ORDER</strong><small>NEW CASSIA · ILSABARD</small></span></a>
    <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
    <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
   <main id="content">
    <section className="public-hero" id="home">
-    <div className="public-hero-geometry" aria-hidden="true"><div className="public-hero-ring"/><div className="public-hero-disk"/><div className="public-hero-stars">✦</div></div>
+    <div className="public-hero-geometry" aria-hidden="true">
+     <div className="imperial-architecture"><span className="imperial-structure imperial-structure-left"/><span className="imperial-structure imperial-structure-center"/><span className="imperial-structure imperial-structure-right"/><span className="imperial-crown"/><span className="imperial-spire"/><span className="imperial-gate"/><span className="imperial-citadel-crest">✦</span><span className="imperial-cityline"/></div>
+     <span className="imperial-vertical-copy">ILSABARD · NEW CASSIA · THE ECLIPSE ORDER</span>
+    </div>
     <div className="public-hero-content">
-     <span className="public-kicker"><span className="public-kicker-line"/> FROM THE SHADOW OF ILSABARD</span>
-     <h1>Some loyalties<br/>are forged <em>in darkness.</em></h1>
-     <p className="public-hero-subtitle">An adult, Bad End-focused FFXIV roleplay syndicate rooted in the shadows of Ilsabard, where imperial remnants, criminal alliances, and the old household of the Thirteenth find a new purpose.</p>
+     <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
+     <h1>AN ORDER<br/><span className="imperial-headline-line">WITHOUT <em>EMPIRE.</em></span></h1>
+     <p className="public-hero-subtitle">From the ruins of the Thirteenth to New Cassia in Ilsabard. A Garlean-facing criminal syndicate of imperial remnants, dangerous alliances, and loyalties forged beyond any throne.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
-     <div className="public-hero-bad-end"><span aria-hidden="true">✦</span> BAD END FC · 18+ · CONSEQUENCE-DRIVEN RP</div>
-     <div className="public-hero-notes"><span>GARLEAN & UNDERWORLD ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
+     <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
+     <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · THE UNDERWORLD</span><span>03 · NEW CASSIA</span></div>
      <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership" className={'public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a></div>
     </div>
-    <div className="public-scroll-cue" aria-hidden="true"><span>DESCEND INTO THE ORDER</span><i/></div>
+    <div className="public-scroll-cue" aria-hidden="true"><span>ENTER THE DOSSIER</span><i/></div>
    </section>
    <section className="public-section public-introduction" id="about">
     <div className="public-section-inner">
      <SectionTag number="01">THE ORDER</SectionTag>
-     <div className="public-intro-grid"><div><h2>Not heroes.<br/><em>Not quite monsters.</em></h2></div><div className="public-intro-copy"><p className="public-lead">The Eclipse Order is a clandestine syndicate within the world of Final Fantasy XIV. Its members live by uneasy loyalties, quiet ambition, and the belief that power is rarely handed to those who deserve it.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
+     <div className="public-intro-grid"><div><h2>NO BANNERS.<br/><em>NO SAVIORS.</em></h2></div><div className="public-intro-copy"><p className="public-lead">The Eclipse Order is a clandestine syndicate within the world of Final Fantasy XIV. Its members live by uneasy loyalties, quiet ambition, and the belief that power is rarely handed to those who deserve it.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
      <div className="public-principles">
       <article><span>Ⅰ</span><h3>Consequences matter</h3><p>The decisions characters make leave an impression on the people and stories around them.</p></article>
       <article><span>Ⅱ</span><h3>Every role has weight</h3><p>Not everyone commands an army. Intelligence, diplomacy, artistry, and quiet loyalty all have their place.</p></article>
@@ -111,7 +114,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="02">A HISTORY WRITTEN IN SHADOW</SectionTag>
      <div className="public-history-grid"><div className="public-history-art" aria-hidden="true"><div className="public-history-seal"><Mark/><span>THE ECLIPSE<br/>ENDURES</span></div><span className="public-art-caption">THE SERPENT · THE ECLIPSE · THE OATH</span></div>
-      <div><h2>Before the Order,<br/><em>there was a household.</em></h2><p className="public-lead">Its roots reach back to the Thirteenth, where the remnants of Elira’s noble household endured the Flood of Darkness.</p><p>Traditions survived when so much else did not. What began as a circle of scattered loyalties eventually took shape as a syndicate in Yanxia, where formal ranks emerged during the Stormblood era.</p><p>The Final Days broke more than kingdoms. The Order itself fell silent for a time, its leader absent and its remaining bonds scattered. But some stories are not so easily laid to rest.</p><div className="public-history-quote">“An eclipse is not an ending. It is the moment before the light returns.”</div></div>
+      <div><h2>BEFORE THE ORDER,<br/><em>THERE WAS A HOUSE.</em></h2><p className="public-lead">Its roots reach back to the Thirteenth, where the remnants of Elira’s noble household endured the Flood of Darkness.</p><p>Traditions survived when so much else did not. What began as a circle of scattered loyalties eventually took shape as a syndicate in Yanxia, where formal ranks emerged during the Stormblood era.</p><p>The Final Days broke more than kingdoms. The Order itself fell silent for a time, its leader absent and its remaining bonds scattered. But some stories are not so easily laid to rest.</p><div className="public-history-quote">THE THIRTEENTH / THE SOURCE / ILSABARD</div></div>
      </div>
     </div>
    </section>
