@@ -100,7 +100,7 @@ export default function PublicSite(){
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
      <h1>AN ORDER<br/><span className="imperial-headline-line">WITHOUT <em>EMPIRE.</em></span></h1>
-     <p className="public-hero-subtitle">Founded in Garlemald. Ruled by Elira from her own throne. The Eclipse Order is a criminal syndicate of imperial ambition, dangerous alliances and loyalties sworn to the Domina.</p>
+     <p className="public-hero-subtitle">A Garlean-born syndicate of intelligence, criminal enterprise and hard-won loyalties. From the shadows of the Empire to the streets of New Cassia, the Eclipse Order builds its own power.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
      <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · THE UNDERWORLD</span><span>03 · NEW CASSIA</span></div>
@@ -123,7 +123,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="02">A HISTORY WRITTEN IN SHADOW</SectionTag>
      <div className="public-history-grid"><div className="public-history-art" aria-hidden="true"><div className="public-history-seal"><Mark/><span>THE ECLIPSE<br/>ENDURES</span></div><span className="public-art-caption">THE SERPENT · THE ECLIPSE · THE OATH</span></div>
-      <div><h2>FOUNDED IN GARLEMALD.<br/><em>RULED BY ELIRA.</em></h2><p className="public-lead">The Eclipse Order was Garlean from its founding, created under Elira’s authority—not formed from a household in Yanxia.</p><p>Elira’s personal history reaches back to the Thirteenth, but the Order belongs to Garlemald. During Stormblood, it expanded its operations into Yanxia and established its formal ranks. Its identity and allegiance to its ruler predate that chapter.</p><p>The Final Days broke more than kingdoms. The Order itself fell silent for a time, its leader absent and its remaining bonds scattered. But some stories are not so easily laid to rest.</p><div className="public-history-quote">GARLEMALD / YANXIA / NEW CASSIA</div></div>
+      <div><h2>AN ORDER<br/><em>BUILT IN SHADOW.</em></h2><p className="public-lead">Born in Garlemald, the Eclipse Order grew where imperial influence and the criminal underworld met. Information, trade, coercion and carefully chosen alliances became its instruments of power.</p><p>Its reach eventually extended into Yanxia, where the syndicate organized its branches and formal ranks during Stormblood. Those eastern operations were one chapter of a Garlean organization, never its origin.</p><p>The Final Days shattered much of what the Order had built. After years of silence and scattered loyalties, its return to New Cassia marks a new struggle for influence in Ilsabard.</p><div className="public-history-quote">GARLEMALD / YANXIA / NEW CASSIA</div></div>
      </div>
     </div>
    </section>
@@ -189,7 +189,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="08">FIND THE ORDER</SectionTag>
      <div className="public-visit-grid">
-      <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is Elira’s home and the heart of the Order’s renewed ambitions.</p><p>Here, Garlean remnants, criminal families and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
+      <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is the Order’s renewed seat of power and the center of its growing ambitions.</p><p>Here, Garlean remnants, criminal families and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
        <a href="?lore" className="public-text-link">Explore the Order’s chronicles <span aria-hidden="true">↗</span></a>
        <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>NEW CASSIA · ILSABARD</strong><small>THE ORDER’S IN-CHARACTER HOME</small></div></div>
       </div>
