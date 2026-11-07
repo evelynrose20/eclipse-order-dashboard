@@ -68,7 +68,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
  return <div className="order-event-board">
   <header className="order-event-board-intro">
    <span className="order-event-eyebrow">THE ECLIPSE ORDER / GATHERINGS</span>
-   <div className="order-event-heading"><span className="order-event-sigil" aria-hidden="true">✦</span><div><h2>The Event Board</h2><p>Discover upcoming stories, join an event, and follow the Order's activities.</p></div></div>
+   <div className="order-event-heading"><span className="order-event-sigil" aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><div><h2>The Event Board</h2><p>Discover upcoming stories, join an event, and follow the Order's activities.</p></div></div>
   </header>
   <div className="order-event-board-frame">
    <aside className="order-event-postings" aria-label="Published events">
@@ -83,7 +83,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
      </button>)}</div>}
    </aside>
    <main className="order-event-detail" aria-live="polite">
-    {!selected?<div className="order-event-no-selection"><span aria-hidden="true">✦</span><h3>{loading?'Gathering the postings':'No events posted'}</h3><p>{loading?'':"When the Order announces its next event, you'll find its details here."}</p></div>:
+    {!selected?<div className="order-event-no-selection"><span aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><h3>{loading?'Gathering the postings':'No events posted'}</h3><p>{loading?'':"When the Order announces its next event, you'll find its details here."}</p></div>:
      <>
       <div className="order-event-detail-top">
        <div><span className="order-event-eyebrow">{eventTypeLabel(readEventStory(selected.event_story).type)}{readEventStory(selected.event_story).type==='fc_msq'?' · MAIN STORY':''}</span><h3>{selected.name}</h3></div>
