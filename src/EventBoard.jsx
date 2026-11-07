@@ -36,7 +36,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
  const [showSignups,setShowSignups]=useState(false);
  const [check,setCheck]=useState(null);
  const selected=events.find(e=>e.id===selectedId)||null;
- const linkedConstruction=constructionProjects.filter(p=>p.event_id===selectedId&&p.state!=='draft'&&p.state!=='archived');
+ const linkedConstruction=constructionProjects.filter(p=>(p.event_ids||[p.event_id]).includes(selectedId)&&p.state!=='draft'&&p.state!=='archived');
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
  async function refresh(){
   const all=await listEncounters();
