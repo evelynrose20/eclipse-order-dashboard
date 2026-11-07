@@ -10,6 +10,7 @@ import FCSettings from './FCSettings.jsx';
 import Factions from './Factions.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
+import Treasury from './Treasury.jsx';
 import DiscordAccountConnection from './DiscordAccountConnection.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
 
@@ -75,6 +76,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['factions','Factions & diplomacy','✧'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
+  ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
   ['transitions','Binding requests','◇'],
@@ -140,6 +142,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     </>}
     {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
+    {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
