@@ -2,6 +2,8 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
+const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',fronts:'store',treasury:'coins',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears'};
+const navIcon=id=>'fa-solid fa-'+(FA_NAV[id]||'circle');
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
@@ -54,10 +56,10 @@ export default function OrderNavigation({
    <div className="order-nav-brand">
     <span className="order-nav-brand-icon" aria-hidden="true"><OrderEmblem className="order-nav-emblem"/></span>
     <div><strong>THE ECLIPSE ORDER</strong><small>SYNDICATE PORTAL</small></div>
-    <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}>×</button>
+    <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}><i className="fa-solid fa-xmark"/></button>
    </div>
    <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Order command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
-   <label className="order-nav-search"><span className="order-nav-search-mark" aria-hidden="true">⌕</span><input type="search" aria-label="Find a page" placeholder="Find a page…" value={filter} onChange={e=>setFilter(e.target.value)}/>{filter&&<button type="button" onClick={()=>setFilter('')} aria-label="Clear navigation search">×</button>}</label>
+   <label className="order-nav-search"><span className="order-nav-search-mark" aria-hidden="true"><i className="fa-solid fa-magnifying-glass"/></span><input type="search" aria-label="Find a page" placeholder="Find a page…" value={filter} onChange={e=>setFilter(e.target.value)}/>{filter&&<button type="button" onClick={()=>setFilter('')} aria-label="Clear navigation search"><i className="fa-solid fa-xmark"/></button>}</label>
    <nav className="order-nav-groups" aria-label="Primary navigation">
     {groups.length===0&&<p className="order-nav-empty">No matching pages.</p>}
     {groups.map(group=><section className="order-nav-group" key={group.id} aria-label={group.name}>
@@ -65,7 +67,7 @@ export default function OrderNavigation({
       <span>{group.name}</span><span aria-hidden="true">{query?'−':closed[group.id]?'+':'−'}</span>
      </button>
      {(query||!closed[group.id])&&<div className="order-nav-items">{group.items.map(([id,label,symbol])=><button type="button" key={id} className={'order-nav-item '+(active===id?'active':'')} aria-current={active===id?'page':undefined} title={label} onClick={()=>visit(id)}>
-      <span className="order-nav-symbol" aria-hidden="true">{symbol}</span>
+      <span className="order-nav-symbol" aria-hidden="true"><i className={navIcon(id)}/></span>
       <span className="order-nav-text"><strong>{label}</strong><small>{DESCRIPTIONS[id]||''}</small></span>
       {active===id&&<span className="order-nav-current" aria-hidden="true"/>}
      </button>)}</div>}
