@@ -34,18 +34,30 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
+ const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setError('');setNotice('')},[region?.id]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setError('');setNotice('')},[region?.id]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
- const currentRoute=routes.find(r=>Number(r.id)===Number(selectedRoute));
- const editableRoute= currentRoute ? {region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:null;
- const previewRoute=routeStart&&routeEnd?{from_settlement_id:routeStart,to_settlement_id:routeEnd,route_type:routeType,waypoints:newRoutePoints}:null;
+ const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
+ const graphSelected=String(selectedRoute||'').startsWith('graph:');
+ const currentRoute=graphSelected?networkSegments.find(r=>String(r.id)===String(selectedRoute).slice(6)):routes.find(r=>String(r.id)===String(selectedRoute).replace('legacy:',''));
+ const graphPoint=node=>{if(!node)return null;const site=byId.get(Number(node.settlement_id));return site?{x:Number(site.map_x),y:Number(site.map_y)}:{x:Number(node.map_x),y:Number(node.map_y)}};
+ const graphPoints=(route,waypoints=normalizeWaypoints(route))=>{
+  const start=graphPoint(graphNodes.get(Number(route.from_node_id))),end=graphPoint(graphNodes.get(Number(route.to_node_id)));
+  return start&&end?[start,...waypoints,end]:[];
+ };
+ const pointsForRoute=(r,waypoints=normalizeWaypoints(r))=>r?.from_node_id?graphPoints(r,waypoints):r?polyline({...r,waypoints},byId):[];
+ const pointForRef=id=>id==null?null:Number(id)<0?graphPoint(graphNodes.get(-Number(id))):(()=>{const site=byId.get(Number(id));return site?{x:Number(site.map_x),y:Number(site.map_y)}:null})();
+ const labelForRef=id=>id==null?'Choose endpoint':Number(id)<0?(graphNodes.get(-Number(id))?.name||'Junction #'+(-Number(id))):(byId.get(Number(id))?.name||'Unknown place');
+ const chooseEndpoint=id=>{if(routeStart==null||routeEnd!=null){setRouteStart(id);setRouteEnd(null);setNewRoutePoints([]);setNotice('Select the destination, then draw bends before saving.');return}if(Number(routeStart)===Number(id)){setRouteStart(null);return}setRouteEnd(id);setNotice('Endpoints selected. Draw bends on the map, then save.')};
+ const editableRoute=currentRoute?(graphSelected?{region_id:Number(region.id),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:{region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}):null;
+ const previewPoints=routeStart!=null&&routeEnd!=null&&pointForRef(routeStart)&&pointForRef(routeEnd)?[pointForRef(routeStart),...newRoutePoints,pointForRef(routeEnd)]:[];
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
  const segmentPts=r=>polyline(r,byId);
- const activePoints=currentRoute? [byId.get(Number(currentRoute.from_settlement_id)),...draftWaypoints.map(p=>({x:p.x,y:p.y})),byId.get(Number(currentRoute.to_settlement_id))].filter(Boolean).map(p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)})) : [];
+ const activePoints=currentRoute?pointsForRoute(currentRoute,draftWaypoints):[];
  const coords=e=>{const rect=mapRef.current?.getBoundingClientRect();if(!rect||!rect.width||!rect.height)return null;return {x:pct((e.clientX-rect.left)*100/rect.width),y:pct((e.clientY-rect.top)*100/rect.height)}};
  const reload=async()=>{await onSaved?.();setPositions({})};
  async function persistMarker(s,p){
@@ -221,7 +233,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
      </g>;
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
-    {previewRoute&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(segmentPts(previewRoute))}/>}
+    {previewPoints.length>=2&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(previewPoints)}/>}
    </svg>
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
    {canEdit&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart&&routeEnd))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
