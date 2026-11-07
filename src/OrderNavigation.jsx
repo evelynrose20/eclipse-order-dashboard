@@ -4,7 +4,7 @@ import './order-navigation.css';
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
- scenes:'activities',encounters:'activities',events:'activities',factions:'activities',workshop:'activities',trade:'activities',treasury:'activities',
+ scenes:'activities',encounters:'activities',events:'activities',factions:'activities',workshop:'activities',trade:'activities',fronts:'activities',treasury:'activities',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',classes:'administration',
  settings:'administration'
@@ -18,7 +18,7 @@ const GROUPS=[
 ];
 const DESCRIPTIONS={
  overview:'Your starting point',roster:'Browse the Order',sheet:'Details and progression',
- scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',treasury:'Trade income, daily wages and completed mission pay',
+ scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'Council and approval demo',classes:'Classes and spellbooks',
