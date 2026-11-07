@@ -19,6 +19,9 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  const [data,setData]=useState(null);
  const [characterId,setCharacterId]=useState('');
  const [gear,setGear]=useState([]);
+ const [fronts,setFronts]=useState([]);
+ const [frontId,setFrontId]=useState('');
+ const [frontStocks,setFrontStocks]=useState([]);
  const [view,setView]=useState('market');
  const [tradeScope,setTradeScope]=useState('all');
  const [search,setSearch]=useState('');
@@ -42,14 +45,24 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  const templates=data?.templates||[];
  const factions=data?.factions||[];
  const transactions=data?.deliveries||[];
- const availableStock=id=>Number(materials.find(m=>m.id===id)?.quantity||0);
+ const centralStock=id=>Number(materials.find(m=>m.id===id)?.quantity||0);
+ const selectedFront=fronts.find(f=>String(f.id)===String(frontId));
+ const availableStock=id=>frontId?Number(frontStocks.find(s=>s.material_id===id)?.quantity||0):centralStock(id);
 
  async function refresh(){
-  const next=await request('/commerce');setData(next);
+  const [next,directory]=await Promise.all([request('/commerce'),request('/fronts')]);setData(next);setFronts((directory.fronts||[]).filter(f=>f.can_ship&&f.status==='active'));
+  if(frontId){const stock=await request('/fronts/'+frontId+'/stocks');setFrontStocks(stock.stocks||[])}
   if(characterId){const inv=await request('/commerce/characters/'+characterId+'/equipment');setGear(inv.items||[])}
  }
  useEffect(()=>{refresh().catch(e=>setError(e.message))},[]);
  useEffect(()=>{if(!characterId&&owner.length)setCharacterId(owner[0].id)},[characters,characterId]);
+ useEffect(()=>{
+  if(!frontId){setFrontStocks([]);return}
+  let active=true;
+  request('/fronts/'+frontId+'/stocks').then(res=>{if(active)setFrontStocks(res.stocks||[])}).catch(e=>{if(active)setError(e.message)});
+  return()=>{active=false}
+ },[frontId]);
+
  useEffect(()=>{
   if(!characterId){setGear([]);return}
   let live=true;
@@ -95,9 +108,9 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   if(!validDeliver||!order)return;
   setBusy(true);setError('');setReview(false);
   try{
-   const result=await request('/commerce/contracts/'+order.id+'/deliver',{method:'POST',body:{character_id:characterId,quantity:desired,...(order.item_kind==='equipment'?{equipment_item_id:Number(equipmentItemId)}:{})}});
+   const result=await request('/commerce/contracts/'+order.id+'/deliver',{method:'POST',body:{character_id:characterId,quantity:desired,...(order.item_kind==='equipment'?{equipment_item_id:Number(equipmentItemId)}:{}),...(frontId?{front_id:Number(frontId)}:{})}});
    const updates=await Promise.allSettled([refresh(),onTradeComplete?.()]);
-   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. The Order earned '+fmt(result.order_income)+' gil and faction standing +'+result.reputation_change+'.'+(updates.some(x=>x.status==='rejected')?' Refresh the exchange to see updated balances.':''));
+   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. The Order earned '+fmt(result.order_income)+' gil'+(result.front_earnings?' and the front retained '+fmt(result.front_earnings)+' gil':'')+'; faction standing +'+result.reputation_change+'.'+(updates.some(x=>x.status==='rejected')?' Refresh the exchange to see updated balances.':''));
    setEquipmentItemId('');setQuantity(1);
   }catch(e){setError(e.message||String(e))}
   finally{setBusy(false)}
@@ -141,7 +154,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
    <button type="button" className={view==='orders'?'current':''} onClick={()=>setView('orders')}>All orders <small>{contracts.length}</small></button>
    <button type="button" className={view==='trades'?'current':''} onClick={()=>setView('trades')}>Trade history</button>
   </nav>
-  <div className="eo-exchange-character"><span>TRADE AS</span><select value={characterId} aria-label="Character to trade as" onChange={e=>{setCharacterId(e.target.value);setEquipmentItemId('')}}><option value="">Select your character</option>{owner.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name} · Level {c.level||1}</option>)}</select><span className="eo-exchange-store"><span className="eo-exchange-dot"/> FC common stores supply material orders; crafted gear comes from your character bag</span></div>
+  <div className="eo-exchange-character"><span>TRADE AS</span><select value={characterId} aria-label="Character to trade as" onChange={e=>{setCharacterId(e.target.value);setEquipmentItemId('')}}><option value="">Select your character</option>{owner.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name} · Level {c.level||1}</option>)}</select><label className="eo-front-trade-source">SHIPMENT SOURCE <select value={frontId} onChange={e=>{setFrontId(e.target.value);setQuantity(1);setNotice('')}}><option value="">FC common stores</option>{fronts.map(front=><option key={front.id} value={front.id}>{front.name} · Licensed front</option>)}</select></label><span className="eo-exchange-store"><span className="eo-exchange-dot"/>{frontId?'Goods must be allocated to '+(selectedFront?.name||'the chosen front')+'; sale proceeds are shared with the Order treasury.':'FC common stores supply material orders; crafted gear comes from your character bag.'}</span></div>
   {view==='market'&&<>
    <div className="eo-exchange-toolbar"><label className="eo-exchange-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Search goods, buyers or orders…" value={search} onChange={e=>setSearch(e.target.value)} aria-label="Search exchange"/></label>
     <select aria-label="Buyer type" value={marketScope} onChange={e=>{setMarketScope(e.target.value);setSelectedItem('')}}><option value="all">All buyers</option><option value="order_story">Order connections</option><option value="world">Independent factions</option><option value="settlement">Settlements</option></select>
@@ -167,7 +180,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
       </div>
       {order&&<div className="eo-exchange-ticket"><div className="eo-exchange-ticket-heading"><strong>Sell to this buyer</strong><small>ORDER #{order.id}</small></div>
        <p>{order.description||'Deliver the requested goods to improve this partner’s standing toward the Order.'}</p>
-       {order.item_kind==='material'?<div className="eo-exchange-ticket-amount"><label>Quantity to deliver<input type="number" min="1" max={Math.min(100,remain(order))} value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><div><span>Available in FC stores</span><strong>{fmt(availableStock(order.material_id))}</strong><small>Up to {fmt(maxDeliverable)} can be sent now</small></div><button type="button" disabled={!maxDeliverable} onClick={()=>setQuantity(maxDeliverable)}>Max</button></div>:
+       {order.item_kind==='material'?<div className="eo-exchange-ticket-amount"><label>Quantity to deliver<input type="number" min="1" max={Math.min(100,remain(order))} value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><div><span>Available at {frontId?selectedFront?.name||"front":"FC stores"}</span><strong>{fmt(availableStock(order.material_id))}</strong><small>Up to {fmt(maxDeliverable)} can be sent now</small></div><button type="button" disabled={!maxDeliverable} onClick={()=>setQuantity(maxDeliverable)}>Max</button></div>:
         <label className="eo-exchange-equipment-picker">Crafted item<select value={equipmentItemId} onChange={e=>setEquipmentItemId(e.target.value)}><option value="">Select unequipped equipment</option>{eligible.map(i=><option key={i.id} value={i.id}>{i.name} · Item #{i.id}</option>)}</select><small>{eligible.length} eligible item{eligible.length===1?'':'s'} in this character's bag</small></label>}
        <div className="eo-exchange-ticket-summary"><div><span>Offer</span><strong>+{order.rep_per_unit} standing / item</strong></div><div><span>Shipment</span><strong>{desired} item{desired===1?'':'s'}</strong></div><div><span>Estimated standing gain</span><strong className="positive">+{reward}*</strong></div><div><span>Gil paid to the Order treasury</span><strong className="positive">+{fmt(saleIncome)} gil</strong></div></div>
        {Number(order.sale_value_per_unit||0)===0&&<small className="eo-exchange-reward-note">This older trade agreement has no gil sale value yet. Order command can set one below. Reputation still applies.</small>}<small className="eo-exchange-reward-note">*Reputation is capped at +100 for each partner. Actual gain may be lower near that cap.</small>
