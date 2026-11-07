@@ -5,7 +5,7 @@ import OrderEmblem from './OrderEmblem.jsx';
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
- scenes:'activities',encounters:'activities',events:'activities',construction:'activities',factions:'activities',workshop:'activities',trade:'activities',fronts:'activities',treasury:'activities',
+ scenes:'activities',encounters:'activities',events:'activities',construction:'world',factions:'world',world:'world',workshop:'economy',trade:'economy',fronts:'economy',treasury:'economy',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',lore:'administration',
  settings:'administration'
