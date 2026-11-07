@@ -1,9 +1,11 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
+import SiteIcon,{SITE_MARKER_OPTIONS,markerIconName} from './SiteIcon.jsx';
+import SiteMarkerPicker from './SiteMarkerPicker.jsx';
 import './world-territory-map.css';
-export const ICON_OPTIONS=[['settlement','Settlement','⌂'],['capital','Capital','♛'],['village','Village','⌂'],['mine','Mine','⛏'],['factory','Factory','⚙'],['refinery','Refinery','⚗'],['fortress','Fortress','⬟'],['outpost','Outpost','⚑'],['farm','Farm','♧'],['port','Port','⚓'],['depot','Depot','▣'],['ruins','Ruins','⌁'],['landmark','Landmark','✦']];
+export const ICON_OPTIONS=SITE_MARKER_OPTIONS;
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
-const iconFor=name=>ICON_OPTIONS.find(x=>x[0]===name)?.[2]||'⌂';
+const iconFor=name=>markerIconName(name);
 const pct=n=>Math.min(100,Math.max(0,Math.round(Number(n)*100)/100));
 const routeClass=type=>'wa-route-'+(type||'road');
 // Draw a smooth mapped road through optional manual bend points. Roads remain
@@ -171,6 +173,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],junction
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
+  if(mode==='junction'&&junctionDraft&&!junctionDraft.id){setJunctionDraft(d=>({...d,map_x:p.x,map_y:p.y}));return}
   if(mode==='link'&&routeStart&&routeEnd)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
@@ -258,8 +261,9 @@ export default function WorldTerritoryMap({region,settlements,routes=[],junction
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
     {previewRoute&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(segmentPts(previewRoute))}/>}
    </svg>
-   {junctions.map(j=><button type="button" key={'junction-'+j.id} className={'wtm-junction '+(String(j.id)===String(activeJunction)?'selected':'')} style={{left:j.map_x+'%',top:j.map_y+'%'}} title={(j.name||'Unnamed junction')+' · '+j.junction_type} onClick={e=>{e.stopPropagation();setActiveJunction(String(j.id));if(mode==='junction')setJunctionDraft({...j});chooseEndpoint({kind:'junction',id:j.id})}} aria-label={'Route junction '+(j.name||j.id)}>✣</button>)}
-   {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true">{iconFor(s.map_icon)}</span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
+   {junctions.map(j=><button type="button" key={'junction-'+j.id} className={'wtm-junction '+(String(j.id)===String(activeJunction)?'selected':'')} style={{left:j.map_x+'%',top:j.map_y+'%'}} title={(j.name||'Unnamed junction')+' · '+j.junction_type} onClick={e=>{e.stopPropagation();setActiveJunction(String(j.id));if(mode==='junction')setJunctionDraft({...j});chooseEndpoint({kind:'junction',id:j.id})}} aria-label={'Route junction '+(j.name||j.id)}><SiteIcon name="git-merge" size={17}/></button>)}
+   {junctionDraft&&!junctionDraft.id&&mode==='junction'&&<span className="wtm-junction wtm-junction-draft" style={{left:junctionDraft.map_x+'%',top:junctionDraft.map_y+'%'}} aria-label="Draft junction location"><SiteIcon name="git-merge" size={18}/></span>}
+   {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><SiteIcon name={iconFor(s.map_icon)} size={18} strokeWidth={2}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
    {canEdit&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart&&routeEnd))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
@@ -297,7 +301,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],junction
   </section>}
   {canEdit&&mode==='junction'&&<section className="wtm-junction-editor">
     <strong>SHARED ROAD & RAIL JUNCTIONS</strong>
-    <p>Click an existing line at the exact location for the junction. The route is split into two connected segments, preserving its original bends. For a new free-standing junction, use Add junction.</p>
+    <p>Click an existing line at the exact location for the junction. The route is split into two connected segments, preserving its original bends. For a new free-standing junction, choose Add junction and click the map to position it.</p>
     <div className="wtm-junction-controls"><label>Saved junction<select value={activeJunction||''} onChange={e=>{setActiveJunction(e.target.value);const j=junctions.find(x=>String(x.id)===e.target.value);setJunctionDraft(j?{...j}:null)}}><option value="">Select junction</option>{junctions.map(j=><option value={j.id} key={j.id}>{j.name||'Junction '+j.id} · {j.junction_type}</option>)}</select></label>
      <button type="button" onClick={()=>{setActiveJunction(null);setJunctionDraft({name:'',junction_type:'road',map_x:50,map_y:50})}}>Add junction</button></div>
     {junctionDraft&&<div className="wtm-junction-fields">
@@ -318,7 +322,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],junction
    <button type="button" disabled={busy||mountainPoints.length<2||!mountainName.trim()} onClick={saveMountain}>Save range</button>
    {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
   </div>}
-  {canEdit&&active&&<div className="wtm-symbol"><label>Map icon<select value={active.map_icon||'settlement'} onChange={e=>changeIcon(e.target.value)} disabled={busy}>{ICON_OPTIONS.map(([id,name,symbol])=><option value={id} key={id}>{symbol} {name}</option>)}</select></label><label>Territorial state<select value={active.strategic_state||'peaceful'} onChange={e=>changeState(e.target.value)} disabled={busy}>{STATUS_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><small>Status is visible on every map marker, including without selecting it.</small></div>}
+  {canEdit&&active&&<div className="wtm-symbol"><label>Map icon<SiteMarkerPicker value={active.map_icon||'settlement'} onChange={changeIcon} disabled={busy}/></label><label>Territorial state<select value={active.strategic_state||'peaceful'} onChange={e=>changeState(e.target.value)} disabled={busy}>{STATUS_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><small>Status is visible on every map marker, including without selecting it.</small></div>}
   <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
  </div>;
 }
