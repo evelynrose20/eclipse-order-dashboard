@@ -93,8 +93,8 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   setBusy(true);setError('');setReview(false);
   try{
    const result=await request('/commerce/contracts/'+order.id+'/deliver',{method:'POST',body:{character_id:characterId,quantity:desired,...(order.item_kind==='equipment'?{equipment_item_id:Number(equipmentItemId)}:{})}});
-   await Promise.all([refresh(),onTradeComplete?.()]);
-   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. Faction standing +'+result.reputation_change+'.');
+   const updates=await Promise.allSettled([refresh(),onTradeComplete?.()]);
+   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. Faction standing +'+result.reputation_change+'.'+(updates.some(x=>x.status==='rejected')?' Refresh the exchange to see updated balances.':''));
    setEquipmentItemId('');setQuantity(1);
   }catch(e){setError(e.message||String(e))}
   finally{setBusy(false)}
