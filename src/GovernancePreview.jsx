@@ -1,5 +1,6 @@
 import React,{useState} from 'react';
 import './governance-preview.css';
+import Senate from './Senate.jsx';
 
 // Intentionally uses fabricated, in-memory records. Never calls a live API.
 const OFFICES=[
@@ -39,7 +40,7 @@ function Status({value}){
   value==='declined'||value==='Returned to Council'?'bad':'pending';
  return <span className={'gov-status gov-status-'+type}>{value.replaceAll('_',' ')}</span>;
 }
-export default function GovernancePreview({currentUser}){
+export default function GovernancePreview({currentUser,request,accounts=[]}){
  const [section,setSection]=useState('chamber');
  const [motions,setMotions]=useState(SEED_MOTIONS);
  const [selected,setSelected]=useState(1);
@@ -63,17 +64,18 @@ export default function GovernancePreview({currentUser}){
  };
  const pendingCount=requests.filter(x=>x.site==='pending').length;
  return <div className="gov-root">
-  <div className="gov-warning" role="status"><span className="gov-warning-mark">◈</span><div><strong>Interactive demonstration · No live changes</strong><p>All officers, applications, votes and approvals here are fictional test data held only in this page. Nothing is saved to MySQL, posted to Discord or applied to real characters. Reloading resets the preview.</p></div><button type="button" onClick={reset}>Reset demo</button></div>
-  <div className="gov-heading"><div><span className="gov-kicker">THE INNER CHAMBER</span><h2>Governance of the Order</h2><p>Explore the Council, office appointments and approval procedures before activation.</p></div><span className="gov-edition">Charter 0.2 · Five voting seats</span></div>
-  <div className="gov-summary">
+  {section!=='senate'&&<div className="gov-warning" role="status"><span className="gov-warning-mark">◈</span><div><strong>Interactive demonstration · No live changes</strong><p>All officers, applications, votes and approvals here are fictional test data held only in this page. Nothing is saved to MySQL, posted to Discord or applied to real characters. Reloading resets the preview.</p></div><button type="button" onClick={reset}>Reset demo</button></div>}
+  <div className="gov-heading"><div><span className="gov-kicker">THE INNER CHAMBER</span><h2>Governance of the Order</h2><p>Explore the Council charter, approval workflows, and optional Senate administration.</p></div>{section!=='senate'&&<span className="gov-edition">Charter 0.2 · Five voting seats</span>}</div>
+  {section!=='senate'&&<div className="gov-summary">
    <div><span>Established seats</span><strong>05</strong><small>Original thresholds remain fixed</small></div>
    <div><span>Occupied in preview</span><strong>{String(displayedOffices.filter(o=>o.holder).length).padStart(2,'0')}</strong><small>Domina-appointed</small></div>
    <div><span>Major approvals</span><strong>04 / 05</strong><small>Quorum requires three</small></div>
    <div><span>Review queue</span><strong>{String(pendingCount).padStart(2,'0')}</strong><small>Website reviews remaining</small></div>
-  </div>
+  </div>}
   <div className="gov-tabs" role="tablist" aria-label="Governance preview sections">
-   {[['chamber','Council Chamber'],['offices','Appointments'],['queue','Approval Queue'],['charter','Charter & Authority']].map(([id,label])=><button key={id} role="tab" aria-selected={section===id} className={section===id?'selected':''} onClick={()=>setSection(id)}>{label}</button>)}
+   {[['chamber','Council Chamber'],['offices','Appointments'],['queue','Approval Queue'],['charter','Charter & Authority'],['senate','Senate']].map(([id,label])=><button key={id} role="tab" aria-selected={section===id} className={section===id?'selected':''} onClick={()=>setSection(id)}>{label}</button>)}
   </div>
+  {section==='senate'&&<Senate request={request} accounts={accounts} currentUser={currentUser}/>}
   {section==='chamber'&&<div className="gov-two">
     <section className="gov-panel gov-list"><div className="gov-panel-head"><div><h3>Council motions</h3><p>Select a motion to inspect or simulate voting.</p></div><button className="gov-button" onClick={()=>setCreating(v=>!v)}>{creating?'Cancel':'+ New demo motion'}</button></div>
      {creating&&<form className="gov-new" onSubmit={addMotion}><label>Motion title<input maxLength={110} required value={newMotion.title} onChange={e=>setNewMotion(x=>({...x,title:e.target.value}))}/></label><label>Classification<select value={newMotion.type} onChange={e=>setNewMotion(x=>({...x,type:e.target.value}))}><option value="ordinary">Ordinary</option><option value="major">Major</option><option value="reserved">Reserved · Domina ratification</option></select></label><label>Description<textarea rows={3} maxLength={500} value={newMotion.detail} onChange={e=>setNewMotion(x=>({...x,detail:e.target.value}))}/></label><button type="submit" className="gov-button gov-primary">Create test motion</button></form>}
