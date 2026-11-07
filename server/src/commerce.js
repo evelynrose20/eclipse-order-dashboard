@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {creditTradeRevenue} from './treasury.js';
 
 const fail=(status,error)=>({status,body:{error}});
 const ok=(body)=>({status:200,body});
@@ -128,7 +129,7 @@ export async function commerceRoute(pool,req,path){
   const b=await body(req);
   if(!key(b?.faction_id)||!text(b?.title,130)||typeof b.description!=='string'||b.description.length>600||
    !['material','equipment'].includes(b.item_kind)||!positive(b.required_quantity,100000)||
-   !positive(b.rep_per_unit,20)||!key(b.item_id))return fail(400,'invalid_trade_contract');
+   !positive(b.rep_per_unit,20)||!Number.isInteger(b.sale_value_per_unit)||b.sale_value_per_unit<0||b.sale_value_per_unit>100000||!key(b.item_id))return fail(400,'invalid_trade_contract');
   const itemColumn=b.item_kind==='material'?'material_id':'equipment_template_id';
   return transaction(pool,async conn=>{
    const [faction]=await conn.execute('SELECT id FROM order_factions WHERE id=?',[b.faction_id]);
@@ -136,10 +137,18 @@ export async function commerceRoute(pool,req,path){
    const itemTable=b.item_kind==='material'?'fc_materials':'fc_equipment_templates';
    const [item]=await conn.execute('SELECT id FROM '+itemTable+' WHERE id=?',[b.item_id]);
    if(!item.length)return fail(400,'unknown_trade_item');
-   const [created]=await conn.execute('INSERT INTO fc_trade_contracts(faction_id,title,description,item_kind,material_id,equipment_template_id,required_quantity,rep_per_unit,created_by) VALUES(?,?,?,?,?,?,?,?,?)',
-    [b.faction_id,b.title.trim(),b.description.trim(),b.item_kind,b.item_kind==='material'?b.item_id:null,b.item_kind==='equipment'?b.item_id:null,b.required_quantity,b.rep_per_unit,actor.id]);
+   const [created]=await conn.execute('INSERT INTO fc_trade_contracts(faction_id,title,description,item_kind,material_id,equipment_template_id,required_quantity,rep_per_unit,sale_value_per_unit,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)',
+    [b.faction_id,b.title.trim(),b.description.trim(),b.item_kind,b.item_kind==='material'?b.item_id:null,b.item_kind==='equipment'?b.item_id:null,b.required_quantity,b.rep_per_unit,b.sale_value_per_unit,actor.id]);
    return ok({status:'created',id:created.insertId});
   });
+ }
+ const priceRoute=/^\/commerce\/contracts\/(\d+)\/price$/.exec(path);
+ if(priceRoute&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const b=await body(req);
+  if(!Number.isInteger(b?.sale_value_per_unit)||b.sale_value_per_unit<0||b.sale_value_per_unit>100000)return fail(400,'invalid_sale_value');
+  const [changed]=await pool.execute('UPDATE fc_trade_contracts SET sale_value_per_unit=? WHERE id=? AND status<>"complete"',[b.sale_value_per_unit,Number(priceRoute[1])]);
+  return changed.affectedRows?ok({status:'saved'}):fail(409,'contract_not_editable');
  }
  const setStatus=/^\/commerce\/contracts\/(\d+)\/status$/.exec(path);
  if(setStatus&&req.method==='POST'){
@@ -179,12 +188,14 @@ export async function commerceRoute(pool,req,path){
    await conn.execute('UPDATE order_faction_reputation SET faction_view=? WHERE faction_id=?',[after,contract.faction_id]);
    await conn.execute('INSERT INTO faction_reputation_changes(faction_id,target,account_id,requested_delta,applied_delta,old_value,new_value,event_title,event_details,source_event_id,authored_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
     [contract.faction_id,'faction_view',null,requested,change,before,after,'FC trade: '+contract.title,'Delivered '+b.quantity+' '+contract.item_kind+' to the faction.',null,actor.id]);
-   await conn.execute('INSERT INTO fc_trade_deliveries(contract_id,account_id,character_id,equipment_item_id,quantity,reputation_change) VALUES(?,?,?,?,?,?)',
+   const [delivery]=await conn.execute('INSERT INTO fc_trade_deliveries(contract_id,account_id,character_id,equipment_item_id,quantity,reputation_change) VALUES(?,?,?,?,?,?)',
     [contract.id,actor.id,character.id,equipmentItemId,b.quantity,change]);
+   const income=await creditTradeRevenue(conn,{deliveryId:delivery.insertId,contractId:contract.id,saleValuePerUnit:contract.sale_value_per_unit,quantity:b.quantity,accountId:actor.id,characterId:character.id});
+   if(income.status!==200)return income;
    const newQuantity=Number(contract.delivered_quantity)+b.quantity;
    await conn.execute('UPDATE fc_trade_contracts SET delivered_quantity=?,status=? WHERE id=?',
     [newQuantity,newQuantity===Number(contract.required_quantity)?'complete':'open',contract.id]);
-   return ok({status:'delivered',quantity:b.quantity,reputation_change:change,faction_reputation:after,complete:newQuantity===Number(contract.required_quantity)});
+   return ok({status:'delivered',quantity:b.quantity,reputation_change:change,order_income:income.body.income,faction_reputation:after,complete:newQuantity===Number(contract.required_quantity)});
   });
  }
  return fail(404,'not_found');
