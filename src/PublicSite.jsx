@@ -1,11 +1,14 @@
 import React,{useEffect,useState} from 'react';
 import './public-site.css';
+import './imperial-theme.css';
+import PublicChronicles from './PublicChronicles.jsx';
 
 const RECRUITMENT_LABELS={open:'RECRUITMENT OPEN',limited:'LIMITED RECRUITMENT',closed:'RECRUITMENT CLOSED'};
 const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const NAV=[
  ['about','The Order'],
  ['history','Our History'],
+ ['chronicles','Chronicles'],
 
  ['ranks','Hierarchy'],
  ['roleplay','Roleplay'],
@@ -75,7 +78,7 @@ export default function PublicSite(){
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
    <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>The Eclipse Order</strong><small>FINAL FANTASY XIV · ROLEPLAY</small></span></a>
-   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a href="?lore" onClick={closeMenu}>Chronicles</a><a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
+   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
    <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
@@ -83,12 +86,12 @@ export default function PublicSite(){
    <section className="public-hero" id="home">
     <div className="public-hero-geometry" aria-hidden="true"><div className="public-hero-ring"/><div className="public-hero-disk"/><div className="public-hero-stars">✦</div></div>
     <div className="public-hero-content">
-     <span className="public-kicker"><span className="public-kicker-line"/> A SHADOW OVER HYDAELYN</span>
+     <span className="public-kicker"><span className="public-kicker-line"/> FROM THE SHADOW OF ILSABARD</span>
      <h1>Some loyalties<br/>are forged <em>in darkness.</em></h1>
-     <p className="public-hero-subtitle">An adult, Bad End-focused FFXIV roleplay free company of dangerous bargains, uncertain allegiances, and stories that refuse to be forgotten.</p>
+     <p className="public-hero-subtitle">An adult, Bad End-focused FFXIV roleplay syndicate rooted in the shadows of Ilsabard, where imperial remnants, criminal alliances, and the old household of the Thirteenth find a new purpose.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">✦</span> BAD END FC · 18+ · CONSEQUENCE-DRIVEN RP</div>
-     <div className="public-hero-notes"><span>STORY-FOCUSED ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
+     <div className="public-hero-notes"><span>GARLEAN & UNDERWORLD ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
      <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership" className={'public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a></div>
     </div>
     <div className="public-scroll-cue" aria-hidden="true"><span>DESCEND INTO THE ORDER</span><i/></div>
@@ -112,9 +115,10 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
+   <PublicChronicles/>
    <section className="public-section public-hierarchy" id="ranks">
     <div className="public-section-inner">
-     <SectionTag number="03">THE ORDER OF THE SERPENT</SectionTag>
+     <SectionTag number="05">THE ORDER OF THE SERPENT</SectionTag>
      <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>The Order is not a single ladder. Its leadership, specialized branches, membership standing, and bonds of service are distinct.</p></div>
      <div className="public-command-tree">
       <div className="public-command-crest" aria-hidden="true">✦</div>
@@ -149,7 +153,7 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-bad-end" id="bad-end">
     <div className="public-section-inner">
-     <SectionTag number="05">THE NATURE OF THE ORDER</SectionTag>
+     <SectionTag number="06">THE NATURE OF THE ORDER</SectionTag>
      <div className="public-bad-end-layout">
       <div><div className="public-bad-end-label"><span aria-hidden="true">✦</span> ADULT ROLEPLAY · BAD END FC</div><h2>Not every story<br/><em>ends in freedom.</em></h2><p className="public-lead">The Eclipse Order is a Bad End-focused Free Company. This is a core part of our storytelling, not a hidden twist.</p></div>
       <div className="public-bad-end-explanation">
@@ -165,13 +169,13 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-conduct" id="conduct">
     <div className="public-section-inner">
-     <SectionTag number="06">BEYOND THE MASK</SectionTag>
+     <SectionTag number="07">BEYOND THE MASK</SectionTag>
      <div className="public-conduct-grid"><div><h2>Dark stories.<br/><em>Clear boundaries.</em></h2></div><div><p className="public-lead">The Order can be ruthless in-character. Our community should never be.</p><p>Character conflict is not player conflict. We expect members to respect consent, keep in-character and out-of-character matters separate, and collaborate before imposing lasting consequences on another person’s character.</p><p>The strongest stories are possible when everyone involved knows where their boundaries lie.</p><div className="public-conduct-principles"><span>CONSENT</span><span>RESPECT</span><span>COMMUNICATION</span></div></div></div>
     </div>
    </section>
    <section className="public-section public-visit" id="visit">
     <div className="public-section-inner">
-     <SectionTag number="07">FIND THE ORDER</SectionTag>
+     <SectionTag number="08">FIND THE ORDER</SectionTag>
      <div className="public-visit-grid">
       <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is Elira’s home and the heart of the Order’s renewed ambitions.</p><p>Here, Garlean remnants, criminal families and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
        <a href="?lore" className="public-text-link">Explore the Order’s chronicles <span aria-hidden="true">↗</span></a>
@@ -189,7 +193,7 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-recruit-fit" id="who-fits" aria-labelledby="public-fit-heading">
     <div className="public-section-inner">
-     <SectionTag number="08">WHO WE'RE LOOKING FOR</SectionTag>
+     <SectionTag number="09">WHO WE'RE LOOKING FOR</SectionTag>
      <h2 id="public-fit-heading" className="public-fit-title">The kind of company <em>we keep.</em></h2>
      <div className="public-fit-grid">
       <article className="public-fit-card public-fit-welcome">
@@ -222,7 +226,7 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
-     <SectionTag number="09">{recruitment==='closed'?'THE DOOR IS CLOSED':recruitment==='limited'?'AN INVITATION BY CONSIDERATION':'THE DOOR IS OPEN'}</SectionTag>
+     <SectionTag number="10">{recruitment==='closed'?'THE DOOR IS CLOSED':recruitment==='limited'?'AN INVITATION BY CONSIDERATION':'THE DOOR IS OPEN'}</SectionTag>
      <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p>{applicationsAccepted?<a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a>:<span className="public-membership-closed">{recruitment==='closed'?'The Order is not accepting new members at present.':'Recruitment status is temporarily unavailable.'}</span>}{recruitment==='closed'&&<div className="public-recruitment-announcement" role="status"><strong>Notice from the Order</strong><p>{recruitmentReason||'Recruitment is presently closed.'}</p>{reopeningNote&&<p className="public-reopening-date">{reopeningNote}</p>}{recruitmentReopens&&<p className="public-reopening-date"><span>Anticipated reopening</span> <time dateTime={recruitmentReopens}>{new Date(recruitmentReopens+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</time></p>}</div>}<span className="public-membership-note">{recruitment==='closed'?'Existing members may continue to enter through the member portal.':recruitment==='limited'?'The Order is considering applications selectively. Discord membership and approval by Order command are required.':'Discord server membership and approval by Order command are both required before portal access is granted.'}</span></div>
       <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
@@ -230,12 +234,12 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-faq" id="questions">
     <div className="public-section-inner">
-     <SectionTag number="10">QUESTIONS BEFORE THE OATH</SectionTag>
+     <SectionTag number="11">QUESTIONS BEFORE THE OATH</SectionTag>
      <div className="public-section-heading"><h2>What would you<br/><em>like to know?</em></h2><p>An invitation should come with a few answers.</p></div>
      <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="?lore">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
