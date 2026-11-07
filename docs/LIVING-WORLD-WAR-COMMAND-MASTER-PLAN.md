@@ -68,3 +68,9 @@ Read this file first; also inspect latest schema and src/WorldAdministration.jsx
 - Residents replaces NPC residents in the settlement editor, inspector and registry. Storage remains `population` for existing compatibility.
 - New schema: `043_world_mountain_ranges_order_faction.sql`; full setup requires a backup, `npm run setup:local` from `server/`, and a Windows API restart.
 - Still to implement: true territory ownership polygons, terrain elevation and impassable mountain ranges with pathfinding, new site types and proper simulated settlement population/industry/war flows.
+
+## Update — Site conditions and railway/road cartography (2026-11-07)
+- **Ownership is not a condition.** A territory can legally belong to the Eclipse Order through the controlling/governing faction reference while its site condition is **Secure**, **Abandoned**, **Destroyed**, **Occupied**, **Contested**, etc. The Order's own holdings are not automatically occupied. True territory polygons/borders remain future work.
+- Settlement conditions `secure`, `abandoned`, and `destroyed` are added by idempotent schema migration `044_world_site_conditions.sql`, retaining all existing states and ownership references.
+- Route creation now has a draft stage: select endpoints, place manual bends, review and explicitly save or cancel; clicking the second site must not immediately create an unwanted line. Existing routes are selected through a route registry; edits to bends/type/name are saved explicitly. Rail routes draw recognizable sleepers and twin rails instead of dotted roads. Routes remain visual; no automated transport movement yet.
+- Further road upgrades: shared intersections and rail junctions, station/track metadata, route segment splitting, road elevation, routing, crossings, and convoy pathfinding.
