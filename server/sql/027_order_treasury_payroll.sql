@@ -1,4 +1,7 @@
 -- Fictional in-character Order treasury; all balances are integers, never real-world money.
+-- Let MariaDB/MySQL generate table-specific foreign-key names: old local tables may
+-- already contain generic constraint names (errno 121). This avoids collisions
+-- without deleting or renaming any existing table, constraint, or saved data.
 USE eclipse_order;
 CREATE TABLE IF NOT EXISTS order_treasury (
  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
@@ -20,7 +23,7 @@ CREATE TABLE IF NOT EXISTS character_wallets (
  character_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL PRIMARY KEY,
  balance BIGINT UNSIGNED NOT NULL DEFAULT 0,
  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
- CONSTRAINT fk_wallet_character FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE RESTRICT
+ FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS order_payroll_runs (
  cycle_date DATE NOT NULL PRIMARY KEY,
@@ -43,8 +46,8 @@ CREATE TABLE IF NOT EXISTS order_treasury_ledger (
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE KEY uq_treasury_source(category,source_id),
  INDEX ix_treasury_recent(id),
- CONSTRAINT fk_treasury_account FOREIGN KEY(account_id) REFERENCES accounts(id),
- CONSTRAINT fk_treasury_character FOREIGN KEY(character_id) REFERENCES characters(id)
+ FOREIGN KEY(account_id) REFERENCES accounts(id),
+ FOREIGN KEY(character_id) REFERENCES characters(id)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS character_wallet_ledger (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -56,7 +59,7 @@ CREATE TABLE IF NOT EXISTS character_wallet_ledger (
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE KEY uq_wallet_source(character_id,kind,source_id),
  INDEX ix_wallet_history(character_id,id),
- CONSTRAINT fk_wallet_entry_character FOREIGN KEY(character_id) REFERENCES characters(id)
+ FOREIGN KEY(character_id) REFERENCES characters(id)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS order_daily_payroll (
  cycle_date DATE NOT NULL,
@@ -66,8 +69,8 @@ CREATE TABLE IF NOT EXISTS order_daily_payroll (
  scheduled_amount INT UNSIGNED NOT NULL,
  paid_amount INT UNSIGNED NOT NULL,
  PRIMARY KEY(cycle_date,character_id),
- CONSTRAINT fk_payroll_character FOREIGN KEY(character_id) REFERENCES characters(id),
- CONSTRAINT fk_payroll_account FOREIGN KEY(owner_account_id) REFERENCES accounts(id)
+ FOREIGN KEY(character_id) REFERENCES characters(id),
+ FOREIGN KEY(owner_account_id) REFERENCES accounts(id)
 ) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS order_mission_payments (
  event_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
@@ -76,9 +79,9 @@ CREATE TABLE IF NOT EXISTS order_mission_payments (
  granted_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  PRIMARY KEY(event_id,character_id),
- CONSTRAINT fk_mission_pay_event FOREIGN KEY(event_id) REFERENCES order_encounters(id),
- CONSTRAINT fk_mission_pay_character FOREIGN KEY(character_id) REFERENCES characters(id),
- CONSTRAINT fk_mission_pay_author FOREIGN KEY(granted_by) REFERENCES accounts(id)
+ FOREIGN KEY(event_id) REFERENCES order_encounters(id),
+ FOREIGN KEY(character_id) REFERENCES characters(id),
+ FOREIGN KEY(granted_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB;
 SET @has_sale_rate := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_trade_contracts' AND COLUMN_NAME='sale_value_per_unit');
 SET @sale_ddl := IF(@has_sale_rate=0,'ALTER TABLE fc_trade_contracts ADD COLUMN sale_value_per_unit INT UNSIGNED NOT NULL DEFAULT 0','SELECT 1');
