@@ -129,7 +129,7 @@ export async function commerceRoute(pool,req,path){
   const b=await body(req);
   if(!key(b?.faction_id)||!text(b?.title,130)||typeof b.description!=='string'||b.description.length>600||
    !['material','equipment'].includes(b.item_kind)||!positive(b.required_quantity,100000)||
-   !positive(b.rep_per_unit,20)||!Number.isInteger(b.sale_value_per_unit)||b.sale_value_per_unit<0||b.sale_value_per_unit>100000||!key(b.item_id))return fail(400,'invalid_trade_contract');
+   !positive(b.rep_per_unit,20)||!Number.isInteger(b.sale_value_per_unit??0)||(b.sale_value_per_unit??0)<0||(b.sale_value_per_unit??0)>100000||!key(b.item_id))return fail(400,'invalid_trade_contract');
   const itemColumn=b.item_kind==='material'?'material_id':'equipment_template_id';
   return transaction(pool,async conn=>{
    const [faction]=await conn.execute('SELECT id FROM order_factions WHERE id=?',[b.faction_id]);
@@ -138,7 +138,7 @@ export async function commerceRoute(pool,req,path){
    const [item]=await conn.execute('SELECT id FROM '+itemTable+' WHERE id=?',[b.item_id]);
    if(!item.length)return fail(400,'unknown_trade_item');
    const [created]=await conn.execute('INSERT INTO fc_trade_contracts(faction_id,title,description,item_kind,material_id,equipment_template_id,required_quantity,rep_per_unit,sale_value_per_unit,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)',
-    [b.faction_id,b.title.trim(),b.description.trim(),b.item_kind,b.item_kind==='material'?b.item_id:null,b.item_kind==='equipment'?b.item_id:null,b.required_quantity,b.rep_per_unit,b.sale_value_per_unit,actor.id]);
+    [b.faction_id,b.title.trim(),b.description.trim(),b.item_kind,b.item_kind==='material'?b.item_id:null,b.item_kind==='equipment'?b.item_id:null,b.required_quantity,b.rep_per_unit,b.sale_value_per_unit??0,actor.id]);
    return ok({status:'created',id:created.insertId});
   });
  }
