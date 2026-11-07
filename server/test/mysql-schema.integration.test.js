@@ -494,6 +494,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/031_character_reserved_goods.sql',import.meta.url),'utf8'));
   const [[savedReserved]]=await admin.execute("SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id='iron-ingot'",[char.body.id]);
   assert.equal(Number(savedReserved.quantity),0,'re-running migrations preserves consumed reserved balances');
+  // An older migration was deliberately replayed above. Reapply the current stock-audit enum extension, as setup:local does in order.
+  await admin.query(await readFile(new URL('../sql/032_construction_projects.sql',import.meta.url),'utf8'));
   // Preplan a long-form event storyline before it is opened to players.
   const plan=await constructionRoute(admin,request('POST',{
    name:'Rebuild the Star Observatory',description:'A long-term construction arc across Order events.',location:'Goblet',
