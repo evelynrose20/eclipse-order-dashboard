@@ -38,7 +38,7 @@ export default function LoreArchive({request,admin=false}){
  };
  return <div className={'lore-root '+(admin?'lore-internal':'lore-public')}>
   {!admin&&<nav className="lore-exit"><a href="./">✦ The Eclipse Order</a><a href="./#history">Return to the Order</a><a href="?portal">Member sign-in</a></nav>}
-  <header className="lore-hero"><span className="lore-kicker">THE ECLIPSE ORDER · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>From a vanished house on the Thirteenth to the scattered remnants of an Order seeking its place again in Ilsabard.</p><div className="lore-hero-mark" aria-hidden="true">✦</div></header>
+  <header className="lore-hero"><span className="lore-kicker">THE ECLIPSE ORDER · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>Founded in Garlemald beneath Elira's authority. Discover the Order’s campaigns, its fall, and the throne restored in New Cassia.</p><div className="lore-hero-mark" aria-hidden="true">✦</div></header>
   {error&&<div className="lore-error" role="alert">{error}</div>}{notice&&<p className="lore-notice" role="status">{notice}</p>}
   <div className="lore-layout">
    <aside className="lore-index"><div className="lore-index-head"><span>THE ARCHIVES</span>{editing&&<button type="button" onClick={make}>+ New entry</button>}</div>
