@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import './local-accounts.css';
 import './imperial-theme.css';
+import OrderEmblem from './OrderEmblem.jsx';
 import LocalWorkspace from './LocalWorkspace.jsx';
 import DiscordAccessPage from './DiscordAccessPage.jsx';
 
@@ -88,7 +89,7 @@ export default function LocalAccounts(){
  if(!profile&&accessIssue)return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('');const u=new URL(window.location.href);u.searchParams.delete('access');window.history.replaceState(null,'',u.pathname+u.search)}}/>;
  if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
  return <div className="eo-local">
-  <header className="eo-local-head"><div><span className="eo-mark">✦</span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
+  <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
    <h1>Enter the Order</h1>
