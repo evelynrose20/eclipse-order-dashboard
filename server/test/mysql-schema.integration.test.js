@@ -19,7 +19,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -406,10 +406,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(storefront.status,200,JSON.stringify(storefront.body));
   const assignment=await frontsRoute(admin,request('POST',{character_id:char.body.id,staff_role:'manager'}),'/fronts/'+frontId+'/staff');
   assert.equal(assignment.status,200);
-  const allocate=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:3,direction:'allocate',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
+  const allocate=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:4,direction:'allocate',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
   assert.equal(allocate.status,200,JSON.stringify(allocate.body));
   const frontStock=await frontsRoute(admin,request('GET'),'/fronts/'+frontId+'/stocks');
-  assert.equal(Number(frontStock.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),3);
+  assert.equal(Number(frontStock.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),4);
   const newFrontOrder=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Golden Claw ingots',description:'Settlement buying ingots',item_kind:'material',item_id:'iron-ingot',required_quantity:3,rep_per_unit:1,sale_value_per_unit:20}),'/commerce/contracts');
   assert.equal(newFrontOrder.status,200,JSON.stringify(newFrontOrder.body));
   const badFrontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:4,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
@@ -420,18 +420,26 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(frontShipment.body.front_earnings,28,'front retains the remainder of trade revenue');
   const frontDetails=await frontsRoute(admin,request('GET'),'/fronts/'+frontId);
   assert.equal(Number(frontDetails.body.front.balance),28);
-  assert.equal(Number(frontDetails.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),1);
+  assert.equal(Number(frontDetails.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),2);
   const manualExpense=await frontsRoute(admin,request('POST',{amount:5,description:'Player paying rent'}),'/fronts/'+frontId+'/expenses');
   assert.equal(manualExpense.status,404,'manual player-dependent payments were removed');
-  const setUpkeep=await frontsRoute(admin,request('POST',{daily_rent:3,daily_supplies:1,daily_upkeep:1}),'/fronts/'+frontId+'/operating-costs');
+  const setUpkeep=await frontsRoute(admin,request('POST',{daily_rent:3,daily_upkeep:1}),'/fronts/'+frontId+'/operating-costs');
   assert.equal(setUpkeep.status,200);
+  const requireGoods=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',daily_quantity:2}),'/fronts/'+frontId+'/supply-requirements');
+  assert.equal(requireGoods.status,200,'command configures physical daily supplies');
   const expenses=await runFrontDailyExpenses(admin,new Date('2026-11-08T16:00:00Z'));
   assert.equal(expenses.processed,1);
-  assert.equal(expenses.paid,5);
+  assert.equal(expenses.paid,4,'only rent and upkeep cost gil');
+  assert.equal(expenses.unitsConsumed,2,'supplies consume real allocated stock');
+  assert.equal(expenses.unitsMissing,0);
   const repeatExpenses=await runFrontDailyExpenses(admin,new Date('2026-11-08T18:00:00Z'));
-  assert.equal(repeatExpenses.processed,0,'daily expense is booked only once per reset');
+  assert.equal(repeatExpenses.processed,0,'daily cost and supply consumption occur only once per reset');
   const [[balanceAfterExpense]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
-  assert.equal(Number(balanceAfterExpense.balance),23,'upkeep is charged from the front, not a player or Order treasury');
+  assert.equal(Number(balanceAfterExpense.balance),24,'gil is spent only on rent and upkeep, not crafted supplies');
+  const [[consumedStock]]=await admin.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id="iron-ingot"',[frontId]);
+  assert.equal(Number(consumedStock.quantity),0);
+  const [[dailySupplyRecord]]=await admin.execute('SELECT required_quantity,consumed_quantity,missing_quantity FROM order_front_daily_supplies WHERE front_id=?',[frontId]);
+  assert.equal(Number(dailySupplyRecord.consumed_quantity),2);
   const [[playerMoney]]=await admin.execute('SELECT balance FROM character_wallets WHERE character_id=?',[char.body.id]);
   assert.equal(Number(playerMoney.balance),13,'front overhead never deducts the wallet, including the prior one-gil low-funds payroll');
   const suspend=await frontsRoute(admin,request('POST',{status:'suspended'}),'/fronts/'+frontId+'/status');
@@ -441,7 +449,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const reopen=await frontsRoute(admin,request('POST',{status:'active'}),'/fronts/'+frontId+'/status');
   assert.equal(reopen.status,200);
   const returned=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:1,direction:'return',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
-  assert.equal(returned.status,200);
+  assert.equal(returned.status,409,'used daily supplies cannot be returned or traded a second time');
   const [[remainingFrontStock]]=await admin.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id="iron-ingot"',[frontId]);
   assert.equal(Number(remainingFrontStock.quantity),0);
   const [frontLedgers]=await admin.execute('SELECT kind,amount FROM order_front_ledger WHERE front_id=? ORDER BY id',[frontId]);
@@ -450,8 +458,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(newTreasuryBalance.balance),12,'only real Order share enters funds available for daily pay');
   await admin.query(await readFile(new URL('../sql/028_order_fronts.sql',import.meta.url),'utf8'));
   await admin.query(await readFile(new URL('../sql/029_front_auto_expenses.sql',import.meta.url),'utf8'));
+  await admin.query(await readFile(new URL('../sql/030_front_material_supplies.sql',import.meta.url),'utf8'));
+  const missingSupplyCycle=await runFrontDailyExpenses(admin,new Date('2026-11-09T16:00:00Z'));
+  assert.equal(missingSupplyCycle.unitsConsumed,0);
+  assert.equal(missingSupplyCycle.unitsMissing,2,'missing crafted goods are recorded, never replaced by gil');
   const [[frontAfterMigration]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
-  assert.equal(Number(frontAfterMigration.balance),23,'rerunning setup preserves front profits');
+  assert.equal(Number(frontAfterMigration.balance),24,'rerunning setup preserves front profits');
 
 
 
