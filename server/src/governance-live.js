@@ -41,8 +41,12 @@ export async function governanceRoute(pool,req,path){
  const domina=actor.account_role==='domina';
  const [[senateMode]]=await pool.execute('SELECT enabled FROM order_senate_settings WHERE id=1');
  if(senateMode?.enabled){
-  if(path==='/governance/council'&&req.method==='GET')return ok({replaced_by_senate:true});
-  return fail(409,'senate_is_governing_chamber');
+  if(path==='/governance/council'&&req.method==='GET'){
+   const [[charter]]=await pool.execute('SELECT * FROM order_governance_charter WHERE id=1');
+   const [revisions]=await pool.execute('SELECT h.revision,h.changed_at,a.display_name AS editor FROM order_governance_charter_history h JOIN accounts a ON a.id=h.changed_by ORDER BY h.revision DESC LIMIT 30');
+   return ok({replaced_by_senate:true,can_manage:domina,charter,revisions,history:[],offices:[],motions:[]});
+  }
+  if(!(path==='/governance/council/charter'&&req.method==='PUT'))return fail(409,'senate_is_governing_chamber');
  }
  if(path==='/governance/council'&&req.method==='GET')return ok(await getState(pool,actor));
  if(path==='/governance/council/charter'&&req.method==='PUT'){
