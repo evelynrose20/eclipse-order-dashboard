@@ -15,16 +15,17 @@ test('connected transport graph is installed and routed through command authoriz
  assert.match(graph,/network_import/);
  assert.match(graph,/FOR UPDATE/);
 });
-test('connected map editor shows named terrain, state markers and Font Awesome facility icons',async()=>{
- const [map,ui,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/WorldNetworkEditor.jsx'),load('src/world-network-editor.css')]);
- assert.match(map,/Network & junctions/);
- assert.match(map,/networkNodes=\[\]/);
- assert.match(map,/NetworkPaths nodes=\{networkNodes\}/);
- for(const action of ['Connect','Place junction','Split / branch','Move junction','Edit route','Convert'])assert.ok(ui.includes(action),action);
- assert.match(ui,/markerIcon\(s\.map_icon\)/);
- assert.match(ui,/s\.strategic_state/);
- assert.match(ui,/mountains\.filter/);
- assert.match(css,/\.wn-site\[data-state="occupied"\]/);
- assert.match(css,/\.wn-site\[data-state="secure"\]/);
- assert.match(ui,/fa-solid/);
+test('one original cartographic editor handles shared junctions, smooth curves and state labels',async()=>{
+ const [map,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css')]);
+ assert.doesNotMatch(map,/Network & junctions|<WorldNetworkEditor/);
+ for(const tool of ['Plan a route','Edit routes','Mountains'])assert.ok(map.includes(tool),tool);
+ for(const action of ['Place junction','Branch from route','Move places','Connect','Save new route','Save route changes'])assert.ok(map.includes(action),action);
+ assert.match(map,/smoothRoadPath\(points\)/);
+ assert.match(map,/networkSegments\.map/);
+ assert.match(map,/junctionPointerMove/);
+ assert.match(map,/savePlannedRoute/);
+ assert.match(map,/wtm-pin-state/);
+ assert.match(map,/wtm-mountains/);
+ assert.match(css,/\.wtm-junction-tools/);
+ assert.match(css,/\.wtm-stage button\.wtm-junction/);
 });
