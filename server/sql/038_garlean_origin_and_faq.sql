@@ -24,6 +24,7 @@ SELECT q.question,q.answer,q.sort_order,1 FROM (
  UNION ALL SELECT 'How do I request membership?','Sign in with Discord. Order command reviews new membership requests before access to character and event tools is granted.',60
  UNION ALL SELECT 'What does Bad End FC mean?','Characters can face long-lasting negative outcomes, including captivity, servitude or death. All players must follow out-of-character consent and safety boundaries.',70
 ) q WHERE NOT EXISTS (SELECT 1 FROM order_public_faq LIMIT 1)
+ AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='038_garlean_origin_and_faq')
 ORDER BY q.sort_order;
 
 -- Only migrate the exact initial lore text still present from migration 037.
