@@ -20,16 +20,17 @@ async function tx(pool,callback){
 }
 const owns=u=>command(u)||u.account_role==='handler';
 async function projectDetail(pool,projectId,user){
- const [[rows],[stages],[requirements]] = await Promise.all([
+ const [[rows],[stages],[requirements],[linkedEvents]] = await Promise.all([
   pool.execute('SELECT p.*,e.name AS event_name FROM order_construction_projects p LEFT JOIN order_encounters e ON e.id=p.event_id WHERE p.id=?',[projectId]),
   pool.execute('SELECT id,project_id,position,name,description,status,completed_at FROM order_construction_stages WHERE project_id=? ORDER BY position,id',[projectId]),
-  pool.execute('SELECT r.id,r.stage_id,r.material_id,m.name AS material_name,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r JOIN fc_materials m ON m.id=r.material_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,m.name',[projectId])
+  pool.execute('SELECT r.id,r.stage_id,r.material_id,m.name AS material_name,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r JOIN fc_materials m ON m.id=r.material_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,m.name',[projectId]),
+  pool.execute('SELECT l.event_id,e.name FROM order_construction_event_links l JOIN order_encounters e ON e.id=l.event_id WHERE l.project_id=? ORDER BY l.linked_at,l.event_id',[projectId])
  ]);
  const p=rows[0];if(!p)return null;
  const canEdit=command(user)||(user.account_role==='handler'&&p.created_by===user.id);
  if(['draft','archived'].includes(p.state)&&!canEdit)return null;
  const [history]=await pool.execute('SELECT h.id,h.stage_id,h.character_id,ch.character_name,h.quantity,h.source,h.created_at,r.material_id,m.name AS material_name FROM order_construction_contributions h JOIN characters ch ON ch.id=h.character_id JOIN order_construction_requirements r ON r.id=h.requirement_id JOIN fc_materials m ON m.id=r.material_id WHERE h.project_id=? ORDER BY h.id DESC LIMIT 60',[projectId]);
- return {id:p.id,name:p.name,description:p.description,location:p.location,event_id:p.event_id,event_name:p.event_name,state:p.state,created_by:canEdit?p.created_by:null,can_edit:canEdit,stages:stages.map(s=>({...s,requirements:requirements.filter(r=>Number(r.stage_id)===Number(s.id))})),history};
+ return {id:p.id,name:p.name,description:p.description,location:p.location,event_id:p.event_id,event_name:p.event_name,state:p.state,created_by:canEdit?p.created_by:null,can_edit:canEdit,linked_events:linkedEvents,stages:stages.map(s=>({...s,requirements:requirements.filter(r=>Number(r.stage_id)===Number(s.id))})),history};
 }
 export async function constructionRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
@@ -38,7 +39,8 @@ export async function constructionRoute(pool,req,path){
  const canCreate=owns(user);
  if(path==='/construction'&&req.method==='GET'){
   const [rows]=await pool.execute('SELECT p.id,p.name,p.description,p.location,p.event_id,e.name AS event_name,p.created_by,p.state,COUNT(DISTINCT s.id) AS stage_count FROM order_construction_projects p LEFT JOIN order_encounters e ON e.id=p.event_id LEFT JOIN order_construction_stages s ON s.project_id=p.id WHERE p.state NOT IN ("draft","archived") OR p.created_by=? OR ?=1 GROUP BY p.id ORDER BY p.updated_at DESC,p.id DESC LIMIT 200',[user.id,command(user)?1:0]);
-  return ok({projects:rows.filter(p=>p.state!=='archived'||command(user)||p.created_by===user.id).map(p=>({...p,can_edit:command(user)||(user.account_role==='handler'&&p.created_by===user.id)}))});
+  const [links]=await pool.query('SELECT project_id,event_id FROM order_construction_event_links WHERE project_id IN ('+(rows.length?rows.map(()=>'?').join(','):'NULL')+')',rows.map(row=>row.id));
+  return ok({projects:rows.filter(p=>p.state!=='archived'||command(user)||p.created_by===user.id).map(p=>({...p,event_ids:links.filter(link=>Number(link.project_id)===Number(p.id)).map(link=>link.event_id),can_edit:command(user)||(user.account_role==='handler'&&p.created_by===user.id)}))});
  }
  if(path==='/construction/events'&&req.method==='GET'){
   if(!canCreate)return fail(403,'event_staff_required');
@@ -64,6 +66,7 @@ export async function constructionRoute(pool,req,path){
    if(valid.length!==unique.length)return fail(400,'unknown_material');
    const [made]=await conn.execute('INSERT INTO order_construction_projects(name,description,location,event_id,created_by) VALUES(?,?,?,?,?)',
     [b.name.trim(),b.description.trim(),b.location.trim(),b.event_id||null,user.id]);
+   if(b.event_id)await conn.execute('INSERT IGNORE INTO order_construction_event_links(project_id,event_id) VALUES(?,?)',[made.insertId,b.event_id]);
    for(let i=0;i<b.stages.length;i++){
     const stage=b.stages[i];
     const [entry]=await conn.execute('INSERT INTO order_construction_stages(project_id,position,name,description,status) VALUES(?,?,?,?,"locked")',
@@ -74,7 +77,7 @@ export async function constructionRoute(pool,req,path){
    return ok({id:made.insertId,status:'draft'});
   });
  }
- const match=/^\/construction\/(\d+)(?:\/(activate|pause|resume|archive|stages\/(\d+)\/complete|contribute))?$/.exec(path);
+ const match=/^\/construction\/(\d+)(?:\/(activate|pause|resume|archive|stages\/(\d+)\/complete|contribute|events(?:\/[a-f0-9-]{36})?))?$/.exec(path);
  if(!match||!id(match[1]))return fail(404,'not_found');
  const projectId=Number(match[1]),action=match[2]||'';
  if(req.method==='GET'&&!action){
@@ -106,6 +109,7 @@ export async function constructionRoute(pool,req,path){
    await conn.execute('DELETE FROM order_construction_stages WHERE project_id=?',[projectId]);
    await conn.execute('UPDATE order_construction_projects SET name=?,description=?,location=?,event_id=? WHERE id=?',
     [b.name.trim(),b.description.trim(),b.location.trim(),b.event_id||null,projectId]);
+   if(b.event_id)await conn.execute('INSERT IGNORE INTO order_construction_event_links(project_id,event_id) VALUES(?,?)',[projectId,b.event_id]);
    for(let i=0;i<b.stages.length;i++){
     const stage=b.stages[i];
     const [row]=await conn.execute('INSERT INTO order_construction_stages(project_id,position,name,description,status) VALUES(?,?,?,?,"locked")',
@@ -114,6 +118,31 @@ export async function constructionRoute(pool,req,path){
      [row.insertId,requirement.material_id,requirement.quantity]);
    }
    return ok({status:'saved',id:projectId});
+  });
+ }
+ if(action==='events'&&req.method==='POST'){
+  if(!canCreate)return fail(403,'event_staff_required');
+  const b=await read(req);
+  if(!uuid(b?.event_id))return fail(400,'invalid_event');
+  return tx(pool,async conn=>{
+   const [projects]=await conn.execute('SELECT id,created_by,state FROM order_construction_projects WHERE id=? FOR UPDATE',[projectId]);
+   if(!projects.length||projects[0].state==='archived')return fail(404,'project_not_found');
+   if(!command(user)&&projects[0].created_by!==user.id)return fail(403,'project_director_required');
+   const [events]=await conn.execute('SELECT id,created_by FROM order_encounters WHERE id=? AND archived_at IS NULL',[b.event_id]);
+   if(!events.length||(!command(user)&&events[0].created_by!==user.id))return fail(403,'event_director_required');
+   await conn.execute('INSERT IGNORE INTO order_construction_event_links(project_id,event_id) VALUES(?,?)',[projectId,b.event_id]);
+   return ok({status:'linked'});
+  });
+ }
+ const unlinkEvent=/^events\/([a-f0-9-]{36})$/.exec(action);
+ if(unlinkEvent&&req.method==='DELETE'){
+  if(!canCreate)return fail(403,'event_staff_required');
+  return tx(pool,async conn=>{
+   const [projects]=await conn.execute('SELECT id,created_by,state FROM order_construction_projects WHERE id=? FOR UPDATE',[projectId]);
+   if(!projects.length||projects[0].state==='archived')return fail(404,'project_not_found');
+   if(!command(user)&&projects[0].created_by!==user.id)return fail(403,'project_director_required');
+   await conn.execute('DELETE FROM order_construction_event_links WHERE project_id=? AND event_id=?',[projectId,unlinkEvent[1]]);
+   return ok({status:'unlinked'});
   });
  }
  if(action==='contribute'&&req.method==='POST'){
