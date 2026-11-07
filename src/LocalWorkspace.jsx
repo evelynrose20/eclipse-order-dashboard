@@ -73,7 +73,8 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['roster','Character roster','▦'],
   ['sheet','Character dossiers','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
-  ...(!playerPreview&&canManage(profile.role)?[['governance','Governance & Senate','♛'],['classes','Homebrew classes','✧']]:[]),
+  ...(!playerPreview?[['governance','Governance & Senate','♛']]:[]),
+  ...(!playerPreview&&canManage(profile.role)?[['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['construction','Construction Projects','⚒'],
@@ -145,7 +146,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} request={request} onRefresh={load} classCatalog={classCatalog} userId={profile.id}/>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
-    {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
+    {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
