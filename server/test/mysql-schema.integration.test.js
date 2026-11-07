@@ -198,6 +198,31 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(savedRoad.route_type,'trail');
   const roadDelete=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/routes/'+roadId);
   assert.equal(roadDelete.status,200,JSON.stringify(roadDelete.body));
+  // Preserve existing road IDs while branching at true shared graph junctions.
+  const mainRoad=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:mineId,to_settlement_id:portId,route_type:'road',route_name:'CI Highway',waypoints:[]}),'/world-admin/routes');
+  assert.equal(mainRoad.status,200,JSON.stringify(mainRoad.body));
+  const splitRoad=await worldAdministrationRoute(admin,request('POST',{x:50,y:57.5}),'/world-admin/routes/'+mainRoad.body.id+'/split');
+  assert.equal(splitRoad.status,200,JSON.stringify(splitRoad.body));
+  const junctionId=Number(splitRoad.body.junction_id);
+  const [splitRows]=await admin.execute('SELECT id,from_settlement_id,to_settlement_id,from_junction_id,to_junction_id FROM world_map_routes WHERE id IN (?,?)',[...splitRoad.body.route_ids]);
+  assert.equal(splitRows.length,2,'a split must create exactly two connected route segments');
+  assert.ok(splitRows.every(r=>Number(r.from_junction_id)===junctionId||Number(r.to_junction_id)===junctionId));
+  const camp=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Logging Camp',map_x:65,map_y:23,map_icon:'logging-camp'}),'/world-admin/settlements');
+  assert.equal(camp.status,200,JSON.stringify(camp.body));
+  const branch=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:null,from_junction_id:junctionId,to_settlement_id:camp.body.id,to_junction_id:null,route_type:'road',route_name:'Camp Road',waypoints:[{x:60,y:42}]}),'/world-admin/routes');
+  assert.equal(branch.status,200,JSON.stringify(branch.body));
+  const updatedJunction=await worldAdministrationRoute(admin,request('PUT',{region_id:wrid,name:'CI Three-way Junction',junction_type:'road',map_x:51,map_y:58}),'/world-admin/junctions/'+junctionId);
+  assert.equal(updatedJunction.status,200,JSON.stringify(updatedJunction.body));
+  const refusedDeletion=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/junctions/'+junctionId);
+  assert.equal(refusedDeletion.status,409,'junction deletion must not silently destroy active roads');
+  const graphRead=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
+  assert.equal(graphRead.status,200);
+  assert.ok(graphRead.body.junctions.some(j=>Number(j.id)===junctionId));
+  assert.ok(graphRead.body.routes.some(r=>Number(r.id)===Number(branch.body.id)&&Number(r.from_junction_id)===junctionId));
+  await admin.query(await readFile(new URL('../sql/045_world_route_junction_graph.sql',import.meta.url),'utf8'));
+  const [[preservedBranch]]=await admin.execute('SELECT from_junction_id FROM world_map_routes WHERE id=?',[branch.body.id]);
+  assert.equal(Number(preservedBranch.from_junction_id),junctionId,'repeat migration preserves graph links');
+
   const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
   assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
