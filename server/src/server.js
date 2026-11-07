@@ -17,6 +17,7 @@ import {diceRoute} from './dice.js';
 import {POINT_BUDGET,SCORE_COST} from './progression.js';
 import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
+import {worldAdministrationRoute} from './world-administration.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
 import {senateRoute} from './senate.js';
