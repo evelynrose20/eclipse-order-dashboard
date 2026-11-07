@@ -50,7 +50,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  let match;
  // Small transactional map edits should never overwrite the settlement's
  // concurrently updated civilian/medical/industry fields.
- if((match=/^\/world-admin\/settlements\/(\d+)\/map$/.exec(path))&&req.method==='PATCH'){
+ if((match=/^\/world-admin\/settlements\/(\d+)\/map$/.exec(path))&&['PATCH','POST'].includes(req.method)){
   const b=await read(req);
   if(!num(b?.map_x,0,100)||!num(b?.map_y,0,100)||!validMapIcon(b?.map_icon))return fail(400,'invalid_map_marker');
   return transact(pool,async db=>{
