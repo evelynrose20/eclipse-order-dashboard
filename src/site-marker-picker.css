@@ -1,0 +1,16 @@
+.eo-marker-picker{min-width:0;width:100%;position:relative}
+.eo-marker-trigger{width:100%!important;min-height:38px!important;display:flex!important;align-items:center!important;gap:9px!important;padding:8px 12px!important;color:#e9e8e3!important;background:#162430!important;border:1px solid #61717e!important;border-radius:2px!important;text-align:left!important;font-size:12px!important;cursor:pointer!important}
+.eo-marker-trigger>span{flex:1}
+.eo-marker-menu{position:relative;z-index:11;padding:11px;background:#1b2a36;border:1px solid #a2875d;box-shadow:0 12px 32px #0008;margin-top:4px}
+.eo-marker-menu>input,.eo-marker-custom input{background:#0d1a27;border:1px solid #687d87;color:#f2ebdc;padding:10px;width:100%;min-width:0;border-radius:2px;font-size:12px}
+.eo-marker-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:220px;overflow:auto;margin:9px 0}
+.eo-marker-grid button{display:flex!important;flex-direction:column!important;gap:6px!important;align-items:center!important;min-height:62px!important;min-width:0!important;padding:10px 5px!important;background:#243544!important;border:1px solid #4d6370!important;color:#e8e9e5!important;border-radius:2px!important;font-size:10px!important;cursor:pointer}
+.eo-marker-grid button.active{border-color:#dfbd84!important;background:#55453b!important}
+.eo-marker-grid button i{font-size:19px}
+.eo-marker-grid button span{overflow-wrap:anywhere}
+.eo-marker-custom{display:grid;gap:7px;border-top:1px solid #5c6670;padding-top:10px}
+.eo-marker-custom label{display:grid;gap:6px;font-size:11px;color:#d6c2a2}
+.eo-marker-custom button{justify-self:start;padding:9px 12px;border:1px solid #a68c67;background:#344552;color:#eddec9;cursor:pointer}
+.eo-marker-custom button:disabled{opacity:.4;cursor:not-allowed}
+.eo-marker-custom a{color:#c7b89b;font-size:11px;text-decoration:underline}
+@media(max-width:540px){.eo-marker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
