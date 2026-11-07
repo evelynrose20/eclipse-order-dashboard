@@ -4,17 +4,16 @@ import './public-chronicles.css';
 
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const eraName=era=>ERAS.find(([id])=>id===era)?.[1]||era;
-const CHAPTERS=['thirteenth','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present'];
-// Published founding extracts remain readable even when the public archive cannot be reached.
+const CHAPTERS=['garlemald','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present'];
+// Published founding summaries remain readable while the archive loads.
 const FOUNDING_RECORDS=[
- {id:'origins-thirteenth',title:'Before the Garlean Order',era:'thirteenth',kind:'history',published:true,summary:'Elira’s life before the Order reaches back to the Thirteenth. The Eclipse Order itself was founded in Garlemald.',body:'Elira’s life before the Source belongs to her personal history. She would later establish the Eclipse Order as a Garlean organization under her own rule.'},
- {id:'carteneau-crossing',title:'The Road to Garlemald',era:'arr',kind:'history',published:true,summary:'Elira crossed into the Source near Carteneau.',body:'The crossing preceded Elira’s establishment of the Garlean-founded Eclipse Order. The organization would serve her authority, not another throne.'},
- {id:'yanxia-order',title:'The Garlean Order in Yanxia',era:'stormblood',kind:'history',published:true,summary:'The Garlean Order established its formal hierarchy and a base in Yanxia.',body:'The Order was founded in Garlemald. In Stormblood, its operations in Yanxia grew and its formal ranks were established. Yanxia was an expansion, not its birthplace.'},
- {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order.',body:'The Order’s losses scattered its members and ended the organization as it had been. Its survival into the present was never certain.'},
- {id:'dawntrail-return',title:'What Remains After Dawntrail',era:'dawntrail',kind:'history',published:true,summary:'The Order faces the consequences of its fall and Elira’s return.',body:'Old rivals, Garlean remnants and criminal families have their own reasons to welcome or oppose the Order’s return.'},
- {id:'new-cassia',title:'New Cassia',era:'present',kind:'place',published:true,summary:'Elira’s home in Ilsabard and the center of the Order’s new direction.',body:'An in-character home for stories of imperial politics, the underworld, and uneasy alliances.'}
+ {id:'origins-thirteenth',title:'Origins in Garlemald',era:'garlemald',kind:'history',published:true,summary:'The Eclipse Order began as a Garlean organization built on influence, secrecy and criminal enterprise.',body:'Its origins lie in Garlemald, where imperial society and the underworld created opportunities for those prepared to exploit them. The details of its earliest campaigns remain part of the Order’s developing chronicle.'},
+ {id:'carteneau-crossing',title:'Dalamud and the Calamity',era:'arr',kind:'history',published:true,summary:'The fall of Dalamud marked an era of upheaval for Garlemald and the wider world.',body:'Elira was born in Garlemald and was already alive during the Battle of Carteneau and Dalamud’s fall. Vy’lana remains part of her history. The precise effects of the Calamity on the Order’s early operations are yet to be chronicled.'},
+ {id:'yanxia-order',title:'The Yanxia Operations',era:'stormblood',kind:'history',published:true,summary:'The Garlean-born syndicate expanded into Yanxia and formalized its branches.',body:'During Stormblood, the Eclipse Order established its formal ranks and expanded its operations in Yanxia. The region became a significant chapter in its history, but not its birthplace.'},
+ {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order’s operations and scattered its people.',body:'The Final Days and their aftermath brought years of disarray to the Eclipse Order. Its surviving loyalties would be tested long after the organization fell silent.'},
+ {id:'dawntrail-return',title:'After Dawntrail',era:'dawntrail',kind:'history',published:true,summary:'Old rivals and uneasy allies react to the return of a Garlean criminal power.',body:'The Order’s reappearance invites responses from imperial remnants, rival criminal families and those who still remember its old bargains.'},
+ {id:'new-cassia',title:'New Cassia',era:'present',kind:'place',published:true,summary:'A renewed center for the Order’s influence in Ilsabard.',body:'New Cassia offers a home for Garlean political intrigue, underworld deals and the Order’s next chapter.'}
 ];
-
 const excerpts=body=>String(body||'').split(/\n\s*\n/).filter(Boolean);
 export default function PublicChronicles(){
  const [entries,setEntries]=useState(FOUNDING_RECORDS),[state,setState]=useState('loading'),[selected,setSelected]=useState(null);
@@ -27,7 +26,7 @@ export default function PublicChronicles(){
     const result=await response.json();
     if(!active)return;
     const rows=(result.entries||[]).filter(e=>e.published);
-    setEntries(rows);setSelected(old=>old&&rows.some(e=>e.id===old)?old:rows.find(e=>e.id==='origins-thirteenth')?.id||rows[0]?.id||null);setState('ready');
+    setEntries(rows);setSelected(old=>old&&rows.some(e=>e.id===old)?old:rows.find(e=>e.era==='garlemald'&&e.kind==='history')?.id||rows[0]?.id||null);setState('ready');
    }catch(e){if(active&&e.name!=='AbortError')setState('unavailable')}
   }
   void load();
@@ -42,7 +41,7 @@ export default function PublicChronicles(){
   <div className="public-section-inner">
    <div className="imperial-chronicles-head">
     <div><div className="public-section-tag"><span>03</span><i/><span>THE WRITTEN RECORD</span></div><h2 id="chronicles-heading">From Garlemald.<br/><em>To New Cassia.</em></h2></div>
-    <p>Founded in Garlemald under Elira’s rule, the Eclipse Order outlived its imperial beginnings, expanded into Yanxia, and endured the cost of its own collapse.</p>
+    <p>From its Garlean beginnings to the operations in Yanxia, the collapse of its old power and the struggle to rebuild in New Cassia.</p>
    </div>
    <div className="imperial-chronicles-frame">
     <div className="imperial-chronicles-timeline" aria-label="History of the Eclipse Order">
