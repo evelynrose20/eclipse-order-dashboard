@@ -41,13 +41,56 @@ async function worldAdministrationRouteCore(pool,req,path){
   const effective=regions.map(r=>({...r,effective_weather:effectiveWeather(r,now)}));
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
   const [routes]=await pool.execute('SELECT id,region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
+  const [mountains]=await pool.execute('SELECT id,region_id,name,points FROM world_map_mountain_ranges ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
-  return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),factions});
+  return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
  let match;
+ // Map-only state changes never rewrite the settlement's civilian records.
+ if((match=/^\/world-admin\/settlements\/(\d+)\/state$/.exec(path))&&req.method==='POST'){
+  const b=await read(req);
+  if(!['peaceful','contested','occupied','liberated','rebuilding'].includes(b?.strategic_state))return fail(400,'invalid_territorial_state');
+  return transact(pool,async db=>{
+   const [changed]=await db.execute('UPDATE world_settlements SET strategic_state=? WHERE id=?',[b.strategic_state,Number(match[1])]);
+   if(!changed.affectedRows)return fail(404,'settlement_not_found');
+   await audit(db,actor.id,'territorial_state','settlement',Number(match[1]),b.strategic_state);
+   return ok({saved:true});
+  });
+ }
+ // Named mountain ranges are editable geographic annotations, not settlement
+ // ownership changes. Only command roles may mutate these records.
+ const mountain=/^\/world-admin\/mountains(?:\/(\d+))?$/.exec(path);
+ if(mountain&&['POST','PUT','DELETE'].includes(req.method)){
+  const mid=mountain[1]?Number(mountain[1]):null;
+  if(req.method==='DELETE'){
+   if(!mid)return fail(400,'mountain_id_required');
+   return transact(pool,async db=>{
+    const [r]=await db.execute('DELETE FROM world_map_mountain_ranges WHERE id=?',[mid]);
+    if(!r.affectedRows)return fail(404,'mountain_not_found');
+    await audit(db,actor.id,'mountain_delete','mountain',mid);
+    return ok({saved:true});
+   });
+  }
+  if((req.method==='PUT')!==Boolean(mid))return fail(400,'invalid_mountain_request');
+  const b=await read(req);
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||b.points.length<2||!validWaypoints(b.points))return fail(400,'invalid_mountain_range');
+  return transact(pool,async db=>{
+   const [region]=await db.execute('SELECT id FROM world_regions WHERE id=?',[b.region_id]);
+   if(!region.length)return fail(404,'region_not_found');
+   if(mid){
+    const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,name=?,points=? WHERE id=?',[b.region_id,b.name.trim(),JSON.stringify(b.points),mid]);
+    if(!r.affectedRows)return fail(404,'mountain_not_found');
+    await audit(db,actor.id,'mountain_edit','mountain',mid,b.name.trim());
+    return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_map_mountain_ranges(region_id,name,points,created_by) VALUES(?,?,?,?)',[b.region_id,b.name.trim(),JSON.stringify(b.points),actor.id]);
+   await audit(db,actor.id,'mountain_create','mountain',r.insertId,b.name.trim());
+   return ok({id:r.insertId});
+  });
+ }
  // Small transactional map edits should never overwrite the settlement's
  // concurrently updated civilian/medical/industry fields.
  if((match=/^\/world-admin\/settlements\/(\d+)\/map$/.exec(path))&&['PATCH','POST'].includes(req.method)){
