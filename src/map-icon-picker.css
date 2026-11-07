@@ -1,0 +1,9 @@
+.map-icon-picker{display:grid;gap:6px;min-width:180px;color:#dbe1e3;font-size:12px}
+.map-icon-picker-label{font-weight:700;color:#d7dbd4}
+.map-icon-picker-trigger{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:8px 12px;border:1px solid #657787;border-radius:3px;color:#f3e8d4;background:#253440;text-align:left;cursor:pointer}
+.map-icon-picker-trigger span{flex:1}.map-icon-picker-trigger i:first-child{font-size:16px;color:#e4c58a}
+.map-icon-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;padding:10px;max-height:240px;overflow-y:auto;background:#111e29;border:1px solid #667988;border-radius:4px}
+.map-icon-picker-grid button{display:grid;justify-items:center;gap:7px;padding:10px 5px;background:#243441;border:1px solid transparent;border-radius:4px;color:#dce2e4;font-size:11px;cursor:pointer}
+.map-icon-picker-grid button i{font-size:21px;color:#dcb879}
+.map-icon-picker-grid button.selected{border-color:#e4c48d;background:#4b3940}
+.map-icon-picker-grid button:focus-visible,.map-icon-picker-trigger:focus-visible{outline:2px solid #f0cc91;outline-offset:2px}
