@@ -20,7 +20,7 @@ test('preview data is isolated from live API and explicitly disclosed',()=>{
 test('overview includes parties, election phases, coalitions, bills and history',()=>{
  const screen=load('SenateChamber.jsx');
  for(const label of ['Chamber','Parties','Elections','Coalitions','On the Floor','History','SECRET BALLOT','PROVISIONAL SENATE'])assert.ok(screen.includes(label),label);
- assert.match(screen,/party\.color/);
+ assert.match(screen,/party\?\.color/);
  assert.match(screen,/pol-arc/);
  assert.match(load('senate-chamber.css'),/@media\(max-width:620px\)/);
 });
