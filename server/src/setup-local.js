@@ -101,6 +101,8 @@ async function main(){
   await pool.query(mountainRanges);
   const siteConditions=await readFile(new URL('../sql/044_world_site_conditions.sql',import.meta.url),'utf8');
   await pool.query(siteConditions);
+  const transportGraph=await readFile(new URL('../sql/045_world_transport_graph.sql',import.meta.url),'utf8');
+  await pool.query(transportGraph);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
