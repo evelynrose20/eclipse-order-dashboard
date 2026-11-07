@@ -74,7 +74,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['events','Events & signups','◷'],
   ['factions','Factions & diplomacy','✧'],
   ['workshop','Workshop & Garden','♧'],
-  ['trade','Trading & Armory','♜'],
+  ['trade','Trade Routes','♜'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
   ['transitions','Binding requests','◇'],
