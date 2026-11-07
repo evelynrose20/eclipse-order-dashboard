@@ -56,7 +56,7 @@ export async function commerceRoute(pool,req,path){
   const allowedIds=new Set(contracts.map(x=>Number(x.id)));
   return ok({templates:templates.filter(t=>command||t.enabled).map(t=>({...t,enabled:!!t.enabled,ingredients:ingredients.filter(i=>i.template_id===t.id)})),
    contracts:contracts.filter(c=>command||factions.some(f=>f.id===c.faction_id)),
-   deliveries:deliveries.filter(d=>allowedIds.has(Number(d.contract_id))).map(d=>({...d,account_id:command?d.account_id:null})),
+   deliveries:deliveries.filter(d=>allowedIds.has(Number(d.contract_id))).map(d=>({...d,is_mine:d.account_id===actor.id,account_id:command?d.account_id:null})),
    factions});
  }
  const itemsRoute=/^\/commerce\/characters\/([0-9a-f-]{36})\/equipment$/.exec(path);
