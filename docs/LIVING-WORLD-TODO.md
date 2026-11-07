@@ -38,6 +38,9 @@ updated: 2026-11-07
 - [x] Drag saved site markers and change their symbols without changing other settlement state (migration 042).
 - [x] Create roads/trails/rail/sky/water links with manually adjustable bends.
 - [ ] Region/zone hierarchy; zone navigation and multiple map backgrounds.
+- [x] Add persistent mountain-range map annotations, with editable named ridgelines.
+- [x] Expose territorial status directly on colored settlement map markers and provide a quick status selector.
+- [x] Register the Eclipse Order itself as a selectable, database-backed governing/control/support faction.
 - [ ] Draw, resize and version **ownership polygons / borders**.
 - [ ] Public/secret map layers and role-based intelligence visibility.
 - [ ] Multiple supporting factions, separate beneficiaries/protectorates and territorial history.
@@ -120,6 +123,7 @@ updated: 2026-11-07
 - [ ] Run `npm run setup:local` inside `server/`; verify migrations 041 and 042.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
 - [ ] Browser test all edit operations.
+- [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
 - [ ] Confirm master plan and this checklist are readable in Obsidian.
 
 ## Working principles
