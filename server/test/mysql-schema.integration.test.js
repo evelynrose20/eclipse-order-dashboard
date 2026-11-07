@@ -10,7 +10,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
-import {frontsRoute} from '../src/fronts.js';
+import {frontsRoute,runFrontDailyExpenses} from '../src/fronts.js';
 import {runDailyPayroll,treasuryRoute} from '../src/treasury.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
@@ -19,7 +19,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -421,12 +421,19 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const frontDetails=await frontsRoute(admin,request('GET'),'/fronts/'+frontId);
   assert.equal(Number(frontDetails.body.front.balance),28);
   assert.equal(Number(frontDetails.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),1);
-  const expense=await frontsRoute(admin,request('POST',{amount:5,description:'Market stall rent'}),'/fronts/'+frontId+'/expenses');
-  assert.equal(expense.status,200);
+  const manualExpense=await frontsRoute(admin,request('POST',{amount:5,description:'Player paying rent'}),'/fronts/'+frontId+'/expenses');
+  assert.equal(manualExpense.status,404,'manual player-dependent payments were removed');
+  const setUpkeep=await frontsRoute(admin,request('POST',{daily_rent:3,daily_supplies:1,daily_upkeep:1}),'/fronts/'+frontId+'/operating-costs');
+  assert.equal(setUpkeep.status,200);
+  const expenses=await runFrontDailyExpenses(admin,new Date('2026-11-08T16:00:00Z'));
+  assert.equal(expenses.processed,1);
+  assert.equal(expenses.paid,5);
+  const repeatExpenses=await runFrontDailyExpenses(admin,new Date('2026-11-08T18:00:00Z'));
+  assert.equal(repeatExpenses.processed,0,'daily expense is booked only once per reset');
   const [[balanceAfterExpense]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
-  assert.equal(Number(balanceAfterExpense.balance),23,'business expenses cannot spend the main Order treasury');
-  const frontOverspend=await frontsRoute(admin,request('POST',{amount:100,description:'Too expensive'}),'/fronts/'+frontId+'/expenses');
-  assert.equal(frontOverspend.status,409);
+  assert.equal(Number(balanceAfterExpense.balance),23,'upkeep is charged from the front, not a player or Order treasury');
+  const [[playerMoney]]=await admin.execute('SELECT balance FROM character_wallets WHERE character_id=?',[char.body.id]);
+  assert.equal(Number(playerMoney.balance),12,'front overhead never deducts character wallets');
   const suspend=await frontsRoute(admin,request('POST',{status:'suspended'}),'/fronts/'+frontId+'/status');
   assert.equal(suspend.status,200);
   const closedFrontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
@@ -442,6 +449,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[newTreasuryBalance]]=await admin.execute('SELECT balance FROM order_treasury WHERE id=1');
   assert.equal(Number(newTreasuryBalance.balance),12,'only real Order share enters funds available for daily pay');
   await admin.query(await readFile(new URL('../sql/028_order_fronts.sql',import.meta.url),'utf8'));
+  await admin.query(await readFile(new URL('../sql/029_front_auto_expenses.sql',import.meta.url),'utf8'));
   const [[frontAfterMigration]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
   assert.equal(Number(frontAfterMigration.balance),23,'rerunning setup preserves front profits');
 
