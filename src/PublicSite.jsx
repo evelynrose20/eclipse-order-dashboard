@@ -164,9 +164,42 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
+   <section className="public-section public-recruit-fit" id="who-fits" aria-labelledby="public-fit-heading">
+    <div className="public-section-inner">
+     <SectionTag number="08">WHO WE'RE LOOKING FOR</SectionTag>
+     <h2 id="public-fit-heading" className="public-fit-title">The kind of company <em>we keep.</em></h2>
+     <div className="public-fit-grid">
+      <article className="public-fit-card public-fit-welcome">
+       <h3><span className="public-fit-symbol" aria-hidden="true">✓</span>You'll fit here if —</h3>
+       <ul>
+        <li>You enjoy playing <strong>Garleans</strong>, former imperial officers, defectors, or people still loyal to a fallen cause.</li>
+        <li>Your character belongs among <strong>criminals, smugglers, spies, mercenaries, or other dangerous company.</strong></li>
+        <li>You prefer schemes, intrigue, and hard bargains over being the hero who saves the realm.</li>
+        <li>You like stories where choices have consequences, loyalties can fracture, and not every ending is happy.</li>
+        <li>You want to build a character with a history and ambitions of their own, not borrow the spotlight from FFXIV's main cast.</li>
+        <li>You're new to roleplay or have years behind you. Both are welcome if you're ready to build stories together.</li>
+       </ul>
+      </article>
+      <article className="public-fit-card public-fit-not-for">
+       <h3><span className="public-fit-symbol" aria-hidden="true">×</span>You probably won't fit if —</h3>
+       <ul>
+        <li>You're looking for a <strong>heroic Free Company</strong> devoted to saving the realm and defeating every villain.</li>
+        <li>You want your character to be the <strong>Warrior of Light</strong>, a main-story hero, or the center of everyone else's story.</li>
+        <li>You expect your character to win every confrontation or escape every consequence.</li>
+        <li>You want a nightclub or venue-first group rather than an ongoing criminal syndicate storyline.</li>
+        <li>You don't enjoy darker themes, morally compromised characters, or collaborative storytelling with real stakes.</li>
+       </ul>
+      </article>
+     </div>
+     <aside className="public-fit-lore">
+      <p><strong>ON CHARACTERS AND LORE.</strong> We bend lore; we don't break it. Original Garlean characters, underworld figures, and morally grey outsiders are welcome. Bring your own story, not the realm's main cast. The Order isn't here to make everyone a villain, but it isn't a home for would-be saviors either.</p>
+     </aside>
+     <div className="public-fit-invitation"><p>Sound like your sort of trouble?</p><a href="#membership" className="public-text-link">Find your place in the Order <span aria-hidden="true">↗</span></a></div>
+    </div>
+   </section>
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
-     <SectionTag number="08">THE DOOR IS OPEN</SectionTag>
+     <SectionTag number="09">THE DOOR IS OPEN</SectionTag>
      <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p><a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a><span className="public-membership-note">Discord server membership and approval by Order command are both required before portal access is granted.</span></div>
       <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
@@ -174,12 +207,12 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-faq" id="questions">
     <div className="public-section-inner">
-     <SectionTag number="09">QUESTIONS BEFORE THE OATH</SectionTag>
+     <SectionTag number="10">QUESTIONS BEFORE THE OATH</SectionTag>
      <div className="public-section-heading"><h2>What would you<br/><em>like to know?</em></h2><p>An invitation should come with a few answers.</p></div>
      <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
