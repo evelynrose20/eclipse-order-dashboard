@@ -52,5 +52,8 @@ CREATE TABLE IF NOT EXISTS order_construction_contributions (
  FOREIGN KEY(character_id) REFERENCES characters(id),
  FOREIGN KEY(account_id) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Extend the existing stock audit enums for physical construction deliveries.
+ALTER TABLE fc_material_ledger MODIFY COLUMN activity ENUM('gather','harvest','craft_input','craft_output','upgrade','trade','front_transfer','front_return','project') NOT NULL;
+ALTER TABLE character_reserved_material_ledger MODIFY COLUMN action ENUM('craft','release','front_delivery','project') NOT NULL;
 INSERT INTO schema_migrations(version) VALUES('032_construction_projects')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
