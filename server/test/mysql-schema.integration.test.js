@@ -209,6 +209,18 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[occupiedMine]]=await admin.execute('SELECT strategic_state,population FROM world_settlements WHERE id=?',[mineId]);
   assert.equal(occupiedMine.strategic_state,'occupied');
   assert.equal(Number(occupiedMine.population),150,'quick state change must preserve residents');
+  for(const state of ['secure','abandoned','destroyed']){
+   const change=await worldAdministrationRoute(admin,request('POST',{strategic_state:state}),'/world-admin/settlements/'+mineId+'/state');
+   assert.equal(change.status,200,'state '+state+' should save: '+JSON.stringify(change.body));
+   const [[saved]]=await admin.execute('SELECT strategic_state,controlling_faction_id,population FROM world_settlements WHERE id=?',[mineId]);
+   assert.equal(saved.strategic_state,state);
+   assert.equal(saved.controlling_faction_id,'eclipse-order','condition must never rewrite controller');
+   assert.equal(Number(saved.population),150,'condition must preserve residents');
+  }
+  await admin.query(await readFile(new URL('../sql/044_world_site_conditions.sql',import.meta.url),'utf8'));
+  const [[persistedStatus]]=await admin.execute('SELECT strategic_state FROM world_settlements WHERE id=?',[mineId]);
+  assert.equal(persistedStatus.strategic_state,'destroyed','rerunning migration must not reset state');
+
   const mountainsResult=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,name:'CI Mountain Ridge',points:[{x:10,y:20},{x:30,y:40},{x:70,y:20}]}),'/world-admin/mountains');
   assert.equal(mountainsResult.status,200,JSON.stringify(mountainsResult.body));
   const mountainId=Number(mountainsResult.body.id);
