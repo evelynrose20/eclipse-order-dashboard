@@ -19,10 +19,10 @@ const NAV=[
  ['questions','Questions']
 ];
 const ORDER_BRANCHES=[
- {name:'The Snakes',symbol:'◇',summary:'Secrets, information, and the art of remaining unseen.',ranks:['Hatchling','Coil','Whisper','Shadowkeeper','High Serpent']},
- {name:'The Fangs',symbol:'⚔',summary:'The Order’s strength, enforcement, and protection.',ranks:['Fangling','Fang','Viper','Fangmaster','High Fang']},
- {name:'The Golden Claws',symbol:'✦',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
- {name:'The Household',symbol:'♜',summary:'The people entrusted with the Order’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
+ {name:'The Snakes',symbol:'fa-user-secret',summary:'Secrets, information, and the art of remaining unseen.',ranks:['Hatchling','Coil','Whisper','Shadowkeeper','High Serpent']},
+ {name:'The Fangs',symbol:'fa-shield-halved',summary:'The Order’s strength, enforcement, and protection.',ranks:['Fangling','Fang','Viper','Fangmaster','High Fang']},
+ {name:'The Golden Claws',symbol:'fa-coins',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
+ {name:'The Household',symbol:'fa-building-columns',summary:'The people entrusted with the Order’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
 ];
 const SERVITUDE_RANKS=['Unmarked','Marked Thrall','Bound Serpent','Eclipse Attendant','Silken Thrall','Violet Keeper','Serpent’s Chosen','Eclipsed Consort'];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
@@ -94,7 +94,7 @@ export default function PublicSite(){
   <main id="content">
    <section className="public-hero" id="home">
     <div className="public-hero-geometry" aria-hidden="true">
-     <div className="imperial-architecture"><span className="imperial-structure imperial-structure-left"/><span className="imperial-structure imperial-structure-center"/><span className="imperial-structure imperial-structure-right"/><span className="imperial-crown"/><span className="imperial-spire"/><span className="imperial-gate"/><span className="imperial-citadel-crest">✦</span><span className="imperial-cityline"/></div>
+     <div className="imperial-architecture"><span className="imperial-structure imperial-structure-left"/><span className="imperial-structure imperial-structure-center"/><span className="imperial-structure imperial-structure-right"/><span className="imperial-crown"/><span className="imperial-spire"/><span className="imperial-gate"/><span className="imperial-citadel-crest"><i className="fa-solid fa-chess-rook"/></span><span className="imperial-cityline"/></div>
      <span className="imperial-vertical-copy">ILSABARD · NEW CASSIA · THE ECLIPSE ORDER</span>
     </div>
     <div className="public-hero-content">
@@ -133,14 +133,14 @@ export default function PublicSite(){
      <SectionTag number="04">THE ORDER OF THE SERPENT</SectionTag>
      <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>The Order is not a single ladder. Its leadership, specialized branches, membership standing, and bonds of service are distinct.</p></div>
      <div className="public-command-tree">
-      <div className="public-command-crest" aria-hidden="true">✦</div>
+      <div className="public-command-crest" aria-hidden="true"><i className="fa-solid fa-crown"/></div>
       <div className="public-command-line"/>
       <article><span>THE SOVEREIGN</span><h3>Domina</h3><p>At the center of the Order stands its supreme authority.</p></article>
       <article><span>SECOND IN COMMAND</span><h3>Grand Viper</h3><p>The Domina’s foremost deputy and the link between the throne and the Order’s command.</p></article>
       <article><span>THE INNER CIRCLE</span><h3>Inner Council</h3><p>The council offices guide the Order’s affairs beneath the Domina.</p></article>
      </div>
      <div className="public-branch-intro"><h3>Paths beneath the eclipse</h3><p>Each branch has its own progression, duties, and leadership.</p></div>
-     <div className="public-branch-grid">{ORDER_BRANCHES.map(branch=><article className="public-branch-card" key={branch.name}><span className="public-branch-symbol" aria-hidden="true">{branch.symbol}</span><h3>{branch.name}</h3><p>{branch.summary}</p><div className="public-branch-tiers">{branch.ranks.map((name,index)=><div key={name}><small>{String(index+1).padStart(2,'0')}</small><span>{name}</span></div>)}</div></article>)}</div>
+     <div className="public-branch-grid">{ORDER_BRANCHES.map(branch=><article className="public-branch-card" key={branch.name}><span className="public-branch-symbol" aria-hidden="true"><i className={"fa-solid "+branch.symbol}/></span><h3>{branch.name}</h3><p>{branch.summary}</p><div className="public-branch-tiers">{branch.ranks.map((name,index)=><div key={name}><small>{String(index+1).padStart(2,'0')}</small><span>{name}</span></div>)}</div></article>)}</div>
      <div className="public-other-standing">
       <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Freshscales <em>→</em> Voidscales</h3><p>The Order's membership standing is distinct from a character's branch duties.</p></article>
       <article><span className="public-branch-kicker">BONDS OF SERVICE</span><h3>The bound path</h3><p>Service has its own hierarchy. Standing within the Order does not automatically grant freedom from an in-character bond.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
@@ -154,7 +154,7 @@ export default function PublicSite(){
      <div className="public-section-heading"><div><h2>A world beyond<br/><em>the character sheet.</em></h2></div><p>Roleplay happens in-game. Our companion portal gives the shared story a place to keep its characters, assignments, and encounters together.</p></div>
      <div className="public-play-stage">
       <div className="public-play-tabs" role="tablist" aria-label="Roleplay experiences">{MODES.map((item,i)=><button role="tab" id={'mode-tab-'+i} aria-controls="mode-panel" aria-selected={mode===i} type="button" className={mode===i?'active':''} key={item.name} onClick={()=>setMode(i)}><span>{item.mark}</span>{item.name}</button>)}</div>
-      <div className="public-play-content" role="tabpanel" id="mode-panel" aria-labelledby={'mode-tab-'+mode}><div><span className="public-play-eyebrow">{MODES[mode].mark} / THE EXPERIENCE</span><h3>{MODES[mode].heading}</h3><p>{MODES[mode].body}</p><a className="public-text-link" href="?portal">Explore the member portal <span aria-hidden="true">↗</span></a></div><div className={'public-play-symbol public-play-symbol-'+mode} aria-hidden="true">{mode===0?'◇':mode===1?'✦':'⚔'}</div></div>
+      <div className="public-play-content" role="tabpanel" id="mode-panel" aria-labelledby={'mode-tab-'+mode}><div><span className="public-play-eyebrow">{MODES[mode].mark} / THE EXPERIENCE</span><h3>{MODES[mode].heading}</h3><p>{MODES[mode].body}</p><a className="public-text-link" href="?portal">Explore the member portal <span aria-hidden="true">↗</span></a></div><div className={'public-play-symbol public-play-symbol-'+mode} aria-hidden="true"><i className={'fa-solid fa-'+(mode===0?'book-open':mode===1?'calendar-days':'dice-d20')}/></div></div>
      </div>
      <div className="public-play-details">
       <article><span>01</span><h3>Character dossiers</h3><p>Keep your character’s identity, class, abilities, and progress in one place.</p></article>
@@ -209,7 +209,7 @@ export default function PublicSite(){
      <h2 id="public-fit-heading" className="public-fit-title">The kind of company <em>we keep.</em></h2>
      <div className="public-fit-grid">
       <article className="public-fit-card public-fit-welcome">
-       <h3><span className="public-fit-symbol" aria-hidden="true">✓</span>You'll fit here if —</h3>
+       <h3><span className="public-fit-symbol" aria-hidden="true"><i className="fa-solid fa-check"/></span>You'll fit here if —</h3>
        <ul>
         <li>You enjoy playing <strong>Garleans</strong>, former imperial officers, defectors, or people still loyal to a fallen cause.</li>
         <li>Your character belongs among <strong>criminals, smugglers, spies, mercenaries, or other dangerous company.</strong></li>
@@ -220,7 +220,7 @@ export default function PublicSite(){
        </ul>
       </article>
       <article className="public-fit-card public-fit-not-for">
-       <h3><span className="public-fit-symbol" aria-hidden="true">×</span>You probably won't fit if —</h3>
+       <h3><span className="public-fit-symbol" aria-hidden="true"><i className="fa-solid fa-xmark"/></span>You probably won't fit if —</h3>
        <ul>
         <li>You're looking for a <strong>heroic Free Company</strong> devoted to saving the realm and defeating every villain.</li>
         <li>You want your character to be the <strong>Warrior of Light</strong>, a main-story hero, or the center of everyone else's story.</li>
