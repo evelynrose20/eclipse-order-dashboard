@@ -1,6 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
-import WorldNetworkEditor,{NetworkPaths} from './WorldNetworkEditor.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumber yard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
@@ -169,13 +168,13 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['network','Network & junctions'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('');if(id==='mountains')selectMountain('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('');if(id==='mountains')selectMountain('')}}>{name}</button>)}
    </div>
 
   </div>}
   {error&&<p className="wtm-error" role="alert">{error}</p>}
   {notice&&<p className="wtm-note" role="status">{notice}</p>}
-  {mode==='network'?<WorldNetworkEditor region={region} settlements={displayed} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} mountains={mountains} canEdit={canEdit} request={request} onSaved={reload}/>:<div className="wtm-map-frame">
+  <div className="wtm-map-frame">
   <div className="wtm-map-title"><span>STRATEGIC CARTOGRAPHY</span><strong>{region.name}</strong><small>{mode==='view'?'SURVEY VIEW':'CARTOGRAPHER MODE · '+mode.toUpperCase()}</small></div>
   <div className={'wtm-stage '+(mode!=='view'?'wtm-editing':'')+(region.map_background_url?' wtm-with-image':'')} ref={mapRef} onClick={mapClick} style={region.map_background_url?{backgroundImage:'linear-gradient(#101b25a9,#101b25a9),url("'+region.map_background_url+'")'}:{}}>
    <svg className="wtm-terrain" viewBox="0 0 900 560" preserveAspectRatio="none" aria-hidden="true">
@@ -211,10 +210,10 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    </svg>
    <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b><i className="fa-solid fa-compass"/></b><small>S</small></div>
    <svg className="wtm-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Regional road network">
-     <NetworkPaths nodes={networkNodes} segments={networkSegments} settlements={displayed}/>
+     {networkSegments.map(route=>{const points=graphPoints(route),p=smoothRoadPath(points);return points.length<2?null:<g key={'graph-'+route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute==='graph:'+route.id?' selected':'')}><path d={p} className="wtm-road-base"/><path d={p} className="wtm-road-top"/>{route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}<path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/></g>})}
     {segments.map(route=>{
      const points=segmentPts(route),p=smoothRoadPath(points);
-     return <g key={route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute===route.id?' selected':'')}>
+     return <g key={route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute==='legacy:'+route.id?' selected':'')}>
       <path d={p} className="wtm-road-base"/>
       <path d={p} className="wtm-road-top"/>
       {route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}
@@ -233,8 +232,8 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
   </div>
-  </div>}
-  {canEdit&&mode!=='network'&&<div className="wtm-bottom">
+  </div>
+  {canEdit&&<div className="wtm-bottom">
    <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart&&routeEnd?'Click the map for bends, then save. Nothing is created until you save.':routeStart?'Select the destination location.':'Select a starting location.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
 
   </div>}
@@ -270,6 +269,6 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
   </div>}
   {canEdit&&active&&<div className="wtm-symbol"><MapIconPicker options={ICON_OPTIONS} label="Map icon" value={active.map_icon||'settlement'} onChange={changeIcon} disabled={busy}/><label>Territorial state<select value={active.strategic_state||'peaceful'} onChange={e=>changeState(e.target.value)} disabled={busy}>{STATUS_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><small>Status is visible on every map marker, including without selecting it.</small></div>}
-  <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
+  <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length+networkSegments.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
  </div>;
 }
