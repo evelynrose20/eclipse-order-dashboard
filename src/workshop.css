@@ -215,3 +215,16 @@ button.fc-craft-ingredient.staged{background:#3a4b41;border-color:#9fd1ad;box-sh
 .fc-crafted-gear-bonuses>span{font-size:10px;letter-spacing:.11em;font-weight:700;color:#f2b7d3}
 .fc-crafted-gear-bonuses strong{font-size:11px;color:#b9dfc3;padding:6px;border:1px solid #71937b;border-radius:6px;background:#32483a}
 .fc-crafted-gear-bonuses small{font-size:10px;color:#d4bac8;margin-left:auto}
+
+.fc-reserve-choice{display:grid;gap:6px;color:#edcfdd;font-size:12px}
+.fc-reserve-choice select{min-height:40px;max-width:250px;padding:8px 12px;border:1px solid #b2839e;border-radius:8px;background:#3a2a3d;color:#fce9f0}
+.fc-reserved-panel{display:grid;gap:10px;margin:12px 0 16px;padding:17px 19px;border:1px solid #84637a;border-radius:13px;background:linear-gradient(135deg,#453044,#2a222e)}
+.fc-reserved-panel>div>strong{font:400 21px Georgia,serif;color:#fae2ed}
+.fc-reserved-panel>div>p{font-size:11px;line-height:1.6;color:#cfb4c3;margin:5px 0}
+.fc-reserved-panel article{display:flex;align-items:center;gap:11px;flex-wrap:wrap;background:#352838;border:1px solid #684c62;padding:12px;border-radius:9px}
+.fc-reserved-panel article>div{display:grid;gap:4px;flex:1;min-width:140px}
+.fc-reserved-panel article strong{font-size:13px;color:#f4d8e6}
+.fc-reserved-panel article small,.fc-reserved-panel>small{font-size:11px;color:#c5acbc}
+.fc-reserved-panel input{width:70px;min-height:36px;background:#2a1d2d;color:#f3d6e5;border:1px solid #806078;border-radius:7px;padding:7px}
+.fc-reserved-panel button{padding:10px 13px;border:1px solid #d0a1ba;border-radius:8px;background:#6d4961;color:#f9e6ed;font-size:11px}
+.fc-reserved-panel button:disabled{opacity:.45}
