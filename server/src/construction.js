@@ -1,5 +1,4 @@
 import {resolveSession} from './auth.js';
-import {randomUUID} from 'node:crypto';
 
 const ok=body=>({status:200,body});
 const fail=(status,error)=>({status,body:{error}});
@@ -21,11 +20,10 @@ async function tx(pool,callback){
 }
 const owns=u=>command(u)||u.account_role==='handler';
 async function projectDetail(pool,projectId,user){
- const [[rows],[stages],[requirements],[contributions]] = await Promise.all([
+ const [[rows],[stages],[requirements]] = await Promise.all([
   pool.execute('SELECT p.*,e.name AS event_name FROM order_construction_projects p LEFT JOIN order_encounters e ON e.id=p.event_id WHERE p.id=?',[projectId]),
   pool.execute('SELECT id,project_id,position,name,description,status,completed_at FROM order_construction_stages WHERE project_id=? ORDER BY position,id',[projectId]),
-  pool.execute('SELECT r.id,r.stage_id,r.material_id,m.name AS material_name,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r JOIN fc_materials m ON m.id=r.material_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,m.name',[projectId]),
-  pool.execute('SELECT c.id,c.stage_id,c.material_id,c.name AS character_name FROM (SELECT h.id,h.stage_id,r.material_id,ch.character_name AS name,h.project_id FROM order_construction_contributions h JOIN order_construction_requirements r ON r.id=h.requirement_id JOIN characters ch ON ch.id=h.character_id) c WHERE c.project_id=? ORDER BY c.id DESC LIMIT 60',[projectId])
+  pool.execute('SELECT r.id,r.stage_id,r.material_id,m.name AS material_name,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r JOIN fc_materials m ON m.id=r.material_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,m.name',[projectId])
  ]);
  const p=rows[0];if(!p)return null;
  const canEdit=command(user)||(user.account_role==='handler'&&p.created_by===user.id);
