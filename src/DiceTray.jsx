@@ -57,7 +57,7 @@ export default function DiceTray({encounter,canDirect,working,action,onOpenFull}
    {canDirect&&<label className="dice-tray-wide"><span>Visibility</span><select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="public">Public roll</option><option value="gm_private">GM only</option></select></label>}
   </div>
   {!parsed.ok&&<p className="dice-tray-validation" role="alert">{parsed.error}</p>}
-  <button type="button" className="dice-tray-roll-button" disabled={!enabled} onClick={roll}>⚄ {rolling?'Rolling…':'Roll '+selected.name}</button>
+  <button type="button" className="dice-tray-roll-button" disabled={!enabled} onClick={roll}><i className="fa-solid fa-dice-d20"/> {rolling?'Rolling…':'Roll '+selected.name}</button>
   {latest&&<div className="dice-tray-result" role="status"><span>LAST ROLL</span><strong>{latest.total}</strong><small>{latest.formula}{latest.target_dc!=null?' · DC '+latest.target_dc:''}</small></div>}
   <div className="dice-tray-recent"><div><strong>Recent rolls</strong><span>{history.length?history.length+' shown':''}</span></div>
    {history.length?history.map((entry,i)=><div className="dice-tray-history-row" key={entry.id||i}><span>{entry.formula}</span><strong>{entry.total}</strong></div>):<p>No rolls yet.</p>}
