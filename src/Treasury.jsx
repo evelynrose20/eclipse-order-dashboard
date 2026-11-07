@@ -36,7 +36,7 @@ export default function Treasury({request,characters=[],canManage=false,readOnly
  const paid=missions?.paid.find(p=>p.event_id===eventId&&p.character_id===characterId);
  const award=()=>submit('/treasury/missions/'+eventId+'/pay/'+characterId,{amount:Number(missionAmount)},'Mission payment credited to the character wallet.');
  return <section className="eo-treasury">
-  <header className="eo-treasury-hero"><div><span>THE ECLIPSE ORDER · FINANCIAL LEDGER</span><h2>The Order's Treasury</h2><p>Every gil comes from trade. Wages and mission rewards draw from the same funds, and an empty treasury cannot promise a payout.</p></div><div aria-hidden="true" className="eo-treasury-crest">♛</div></header>
+  <header className="eo-treasury-hero"><div><span>THE ECLIPSE ORDER · FINANCIAL LEDGER</span><h2>The Order's Treasury</h2><p>Every gil comes from trade. Wages and mission rewards draw from the same funds, and an empty treasury cannot promise a payout.</p></div><div aria-hidden="true" className="eo-treasury-crest"><i className="fa-solid fa-coins"/></div></header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
   {notice&&<p role="status" className="eo-treasury-notice">{notice}</p>}
   {!data?<section className="panel">Opening the treasury ledger…</section>:<>
