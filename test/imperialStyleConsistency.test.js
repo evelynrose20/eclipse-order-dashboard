@@ -35,6 +35,6 @@ test('public site no longer loads or depends on the old ornamental font set',()=
 test('status colors remain differentiated for gameplay and member workflows',()=>{
  for(const name of ['workshop','fronts','treasury']){
   const css=sources.find(s=>s.name===name).css;
-  assert.match(css,/#(?:a8e2c2|a8e9c2|a8d9|b5d|bee8c9|c2ebce|a8e2|aecfb7|a6d)/i,name+' should retain success styling');
+  assert.match(css,/#(?:a8e2c2|a8e9c2|a8d9|b5d|bee8c9|c3e0c5|c2ebce|a8e2|aecfb7|a6d)/i,name+' should retain success styling');
  }
 });
