@@ -41,7 +41,7 @@ test('estate card clearly distinguishes the in-game estate from New Cassia in Il
  assert.match(site,/id="visit"/);
  assert.match(site,/NEW CASSIA · ILSABARD/);
  assert.match(site,/IN-CHARACTER HOME/);
- assert.match(site,/href="\?lore"/);
+ assert.match(site,/href="#chronicles"/);
  assert.match(site,/Copy estate address/);
  assert.match(site,/navigator\.clipboard\.writeText/);
  assert.match(style,/\.public-estate-corner\.top-left/);
@@ -50,6 +50,7 @@ test('estate card clearly distinguishes the in-game estate from New Cassia in Il
 test('recruitment is noticeable both in site header and hero while navigation remains responsive',()=>{
  assert.match(site,/public-recruitment-link/);
  assert.match(site,/public-hero-location/);
+ assert.match(site,/PublicChronicles/);
  assert.match(site,/RECRUITMENT OPEN/);
  assert.match(site,/href="#membership"/);
  assert.match(style,/@media\(max-width:525px\)/);

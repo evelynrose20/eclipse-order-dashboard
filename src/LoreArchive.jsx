@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './lore-archive.css';
+import './imperial-theme.css';
 
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 export const ERAS=[['thirteenth','The Thirteenth'],['arr','A Realm Reborn'],['heavensward','Heavensward'],['stormblood','Stormblood'],['shadowbringers','Shadowbringers'],['endwalker','Endwalker'],['dawntrail','Dawntrail'],['present','The Return']];

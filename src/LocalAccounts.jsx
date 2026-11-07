@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import './local-accounts.css';
+import './imperial-theme.css';
 import LocalWorkspace from './LocalWorkspace.jsx';
 import DiscordAccessPage from './DiscordAccessPage.jsx';
 
