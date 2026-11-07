@@ -84,7 +84,7 @@ export async function frontsRoute(pool,req,path){
   const managers=new Set(staff.filter(s=>s.staff_role==='manager').map(s=>Number(s.front_id)));
   return ok({fronts:rows.filter(f=>isCommand||f.status==='active'||f.owner_account_id===actor.id||permitted.has(Number(f.id))).map(f=>{
    const manage=isCommand||f.owner_account_id===actor.id||managers.has(Number(f.id));
-   return {id:f.id,name:f.name,category:f.category,location:f.location,description:f.description,ownership:f.ownership,owner_name:f.owner_name,owner_character_id:manage?f.owner_character_id:null,status:f.status,ic_approved:!!f.ic_approved,site_approved:!!f.site_approved,order_share_percent:manage?Number(f.order_share_percent):null,balance:manage?Number(f.balance):null,can_manage:manage,created_at:f.created_at};
+   return {id:f.id,name:f.name,category:f.category,location:f.location,description:f.description,ownership:f.ownership,owner_name:f.owner_name,owner_character_id:manage?f.owner_character_id:null,status:f.status,ic_approved:!!f.ic_approved,site_approved:!!f.site_approved,order_share_percent:manage?Number(f.order_share_percent):null,balance:manage?Number(f.balance):null,can_manage:manage,can_ship:isCommand||f.owner_account_id===actor.id||permitted.has(Number(f.id)),created_at:f.created_at};
   })});
  }
  if(path==='/fronts'&&req.method==='POST'){
@@ -108,6 +108,15 @@ export async function frontsRoute(pool,req,path){
  if(!route)return fail(404,'not_found');
  const frontId=Number(route[1]),action=route[2]||'';
  if(!id(frontId))return fail(400,'invalid_front');
+ if(req.method==='GET'&&action==='stocks'){
+  const [[front]]=await pool.execute('SELECT status FROM order_fronts WHERE id=?',[frontId]);
+  if(!front||front.status!=='active')return fail(404,'front_not_active');
+  const [authorization]=await pool.execute('SELECT 1 FROM order_fronts f LEFT JOIN characters owner ON owner.id=f.owner_character_id WHERE f.id=? AND owner.player_account_id=? UNION SELECT 1 FROM order_front_staff s JOIN characters c ON c.id=s.character_id WHERE s.front_id=? AND c.player_account_id=? LIMIT 1',
+   [frontId,actor.id,frontId,actor.id]);
+  if(!isCommand&&!authorization.length)return fail(403,'front_not_authorized');
+  const [stocks]=await pool.execute('SELECT material_id,quantity FROM order_front_stock WHERE front_id=? ORDER BY material_id',[frontId]);
+  return ok({stocks});
+ }
  if(req.method==='GET'&&!action){
   const [rows]=await pool.execute('SELECT f.*,c.character_name AS owner_name,c.player_account_id AS owner_account_id FROM order_fronts f LEFT JOIN characters c ON c.id=f.owner_character_id WHERE f.id=?',[frontId]);
   const front=rows[0];if(!front)return fail(404,'front_not_found');
