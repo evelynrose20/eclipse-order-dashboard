@@ -103,7 +103,8 @@ const server=http.createServer(async(req,res)=>{
  }
  let result;
  try{
-  if(pathname==='/recruitment')result=await recruitmentRoute(pool,req,pathname);
+  if(pathname==='/lore'||pathname==='/lore/public'||pathname.startsWith('/lore/'))result=await loreRoute(pool,req,pathname);
+  else if(pathname==='/recruitment')result=await recruitmentRoute(pool,req,pathname);
   else if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
