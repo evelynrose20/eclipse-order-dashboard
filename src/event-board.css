@@ -74,3 +74,12 @@
 .order-event-chapter-difficulty{border:1px solid #9a7282;color:#e0b8c8;padding:5px 7px;font-size:10px}
 
 .order-event-chapter-msq{display:inline-block;margin-left:10px;border:1px solid #ad8968;color:#eac89f;background:#3b2c2b;padding:2px 6px;font-size:9px;font-weight:700;letter-spacing:.08em;vertical-align:middle}
+
+.order-event-construction{display:grid;gap:11px;margin:14px 0;padding:17px;background:linear-gradient(130deg,#493449,#342738);border:1px solid #b0839d;border-radius:12px}
+.order-event-construction>span{color:#eab5ce;font-size:10px;font-weight:700;letter-spacing:.14em}
+.order-event-construction h4{font:400 23px Georgia,serif;color:#f7dce9;margin:0}
+.order-event-construction p{font-size:12px;line-height:1.6;color:#d1b6c8;margin:0}
+.order-event-construction button{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px;text-align:left;background:#644761;border:1px solid #c391ad;border-radius:9px;padding:12px 16px;color:#f5deed;cursor:pointer}
+.order-event-construction button strong{font-size:13px}
+.order-event-construction button small{color:#d0b9c4;font-size:11px}
+.order-event-construction button em{color:#bfe0cb;font-style:normal;font-size:11px}
