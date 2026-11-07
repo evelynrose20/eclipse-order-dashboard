@@ -123,13 +123,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(testHamlet.faction_scope,'settlement');
 
   const [seedFactions]=await admin.query("SELECT id,leader,relationship,image_reference_url FROM order_factions WHERE faction_scope='order_story' ORDER BY sort_order");
-  assert.equal(seedFactions.length,5);
+  assert.equal(seedFactions.length,6,'five initial factions plus the Eclipse Order authority');
   assert.equal(seedFactions.find(f=>f.id==='house-kurogane')?.leader,'Lady Reika Kurogane');
   assert.equal(seedFactions.find(f=>f.id==='ashen-veil')?.relationship,'watchful_rival');
   assert.match(seedFactions.find(f=>f.id==='iron-remnant')?.image_reference_url||'',/^https:\/\//);
   await admin.query(await readFile(new URL('../sql/017_factions.sql',import.meta.url),'utf8'));
   const [[seedCount]]=await admin.query('SELECT COUNT(*) AS total FROM order_factions');
-  assert.equal(Number(seedCount.total),6,'re-running migration preserves the five initial factions and the new settlement');
+  assert.equal(Number(seedCount.total),7,'re-running migration preserves the original factions, the Order and the new settlement');
   const [fcMaterials]=await admin.query('SELECT id,name FROM fc_materials');
   assert.ok(fcMaterials.some(m=>m.id==='iron-ore'));
   assert.ok(fcMaterials.some(m=>m.id==='duskbloom'));
