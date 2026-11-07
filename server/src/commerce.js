@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {creditTradeRevenue} from './treasury.js';
+import {authorizeFrontTrade,applyFrontTrade} from './fronts.js';
 
 const fail=(status,error)=>({status,body:{error}});
 const ok=(body)=>({status:200,body});
@@ -51,7 +52,7 @@ export async function commerceRoute(pool,req,path){
    pool.query('SELECT id,name,description,slot,minimum_level,attack_bonus,defense_bonus,tool_bonus,enabled FROM fc_equipment_templates ORDER BY slot,name'),
    pool.query('SELECT template_id,material_id,quantity FROM fc_equipment_ingredients ORDER BY template_id,material_id'),
    pool.query('SELECT c.*,f.name AS faction_name,f.faction_scope,m.name AS material_name,t.name AS equipment_name FROM fc_trade_contracts c JOIN order_factions f ON f.id=c.faction_id LEFT JOIN fc_materials m ON m.id=c.material_id LEFT JOIN fc_equipment_templates t ON t.id=c.equipment_template_id '+(command?'':'WHERE c.status<>"paused" ')+'ORDER BY c.status,c.created_at DESC,c.id DESC'),
-   pool.query('SELECT d.id,d.contract_id,d.account_id,a.display_name,d.quantity,d.reputation_change,d.created_at FROM fc_trade_deliveries d JOIN accounts a ON a.id=d.account_id ORDER BY d.id DESC LIMIT 60'),
+   pool.query('SELECT d.id,d.contract_id,d.account_id,a.display_name,d.quantity,d.reputation_change,d.front_id,d.created_at FROM fc_trade_deliveries d JOIN accounts a ON a.id=d.account_id ORDER BY d.id DESC LIMIT 60'),
    pool.query('SELECT id,name,faction_scope,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name')
   ]);
   const allowedIds=new Set(contracts.map(x=>Number(x.id)));
@@ -161,7 +162,8 @@ export async function commerceRoute(pool,req,path){
  const deliver=/^\/commerce\/contracts\/(\d+)\/deliver$/.exec(path);
  if(deliver&&req.method==='POST'){
   const b=await body(req);
-  if(!uuid(b?.character_id)||!positive(b?.quantity,100)|| (b.equipment_item_id!==undefined&&!positive(b.equipment_item_id,Number.MAX_SAFE_INTEGER)))return fail(400,'invalid_delivery');
+  if(!uuid(b?.character_id)||!positive(b?.quantity,100)|| (b.equipment_item_id!==undefined&&!positive(b.equipment_item_id,Number.MAX_SAFE_INTEGER))||
+   (b.front_id!==undefined&&(!Number.isSafeInteger(Number(b.front_id))||Number(b.front_id)<=0)))return fail(400,'invalid_delivery');
   return transaction(pool,async conn=>{
    const character=await ownedCharacter(conn,actor,b.character_id);
    if(!character)return fail(403,'character_owner_required');
@@ -172,8 +174,13 @@ export async function commerceRoute(pool,req,path){
    const remaining=Number(contract.required_quantity)-Number(contract.delivered_quantity);
    if(b.quantity>remaining)return fail(409,'delivery_exceeds_contract');
    let equipmentItemId=null;
+   const frontId=b.front_id?Number(b.front_id):null;
+   if(frontId){
+    const authorization=await authorizeFrontTrade(conn,frontId,actor,{materialId:contract.item_kind==='material'?contract.material_id:null,quantity:b.quantity,characterId:character.id});
+    if(authorization.status!==200)return authorization;
+   }
    if(contract.item_kind==='material'){
-    if(!await useStock(conn,contract.material_id,b.quantity,'trade',actor.id,character.id,'Trade contract '+contract.id))return fail(409,'insufficient_materials');
+    if(!frontId&&!await useStock(conn,contract.material_id,b.quantity,'trade',actor.id,character.id,'Trade contract '+contract.id))return fail(409,'insufficient_materials');
    }else{
     if(b.quantity!==1||!positive(b.equipment_item_id,Number.MAX_SAFE_INTEGER))return fail(400,'equipment_delivery_requires_one_item');
     const [items]=await conn.execute('SELECT id,template_id,status,equipped FROM character_equipment_items WHERE id=? AND character_id=? FOR UPDATE',[b.equipment_item_id,character.id]);
@@ -188,14 +195,16 @@ export async function commerceRoute(pool,req,path){
    await conn.execute('UPDATE order_faction_reputation SET faction_view=? WHERE faction_id=?',[after,contract.faction_id]);
    await conn.execute('INSERT INTO faction_reputation_changes(faction_id,target,account_id,requested_delta,applied_delta,old_value,new_value,event_title,event_details,source_event_id,authored_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
     [contract.faction_id,'faction_view',null,requested,change,before,after,'FC trade: '+contract.title,'Delivered '+b.quantity+' '+contract.item_kind+' to the faction.',null,actor.id]);
-   const [delivery]=await conn.execute('INSERT INTO fc_trade_deliveries(contract_id,account_id,character_id,equipment_item_id,quantity,reputation_change) VALUES(?,?,?,?,?,?)',
-    [contract.id,actor.id,character.id,equipmentItemId,b.quantity,change]);
+   const [delivery]=await conn.execute('INSERT INTO fc_trade_deliveries(contract_id,account_id,character_id,equipment_item_id,quantity,reputation_change,front_id) VALUES(?,?,?,?,?,?,?)',
+    [contract.id,actor.id,character.id,equipmentItemId,b.quantity,change,frontId]);
    const income=await creditTradeRevenue(conn,{deliveryId:delivery.insertId,contractId:contract.id,saleValuePerUnit:contract.sale_value_per_unit,quantity:b.quantity,accountId:actor.id,characterId:character.id});
    if(income.status!==200)return income;
+   const frontShare=frontId?await applyFrontTrade(conn,{frontId,deliveryId:delivery.insertId,revenue:income.body.income,accountId:actor.id}):ok({retained:0});
+   if(frontShare.status!==200)return frontShare;
    const newQuantity=Number(contract.delivered_quantity)+b.quantity;
    await conn.execute('UPDATE fc_trade_contracts SET delivered_quantity=?,status=? WHERE id=?',
     [newQuantity,newQuantity===Number(contract.required_quantity)?'complete':'open',contract.id]);
-   return ok({status:'delivered',quantity:b.quantity,reputation_change:change,order_income:income.body.income,faction_reputation:after,complete:newQuantity===Number(contract.required_quantity)});
+   return ok({status:'delivered',quantity:b.quantity,reputation_change:change,order_income:income.body.income-frontShare.body.retained,front_earnings:frontShare.body.retained,faction_reputation:after,complete:newQuantity===Number(contract.required_quantity)});
   });
  }
  return fail(404,'not_found');
