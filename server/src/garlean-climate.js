@@ -4,7 +4,7 @@
 // internal Celsius-based civic-heating calculations.
 export const fToC=fahrenheit=>(fahrenheit-32)*5/9;
 export const cToF=celsius=>celsius*9/5+32;
-export const MAP_ICONS=['settlement','capital','village','mine','factory','refinery','fortress','outpost','farm','port','depot','ruins','landmark'];
+export const MAP_ICONS=['settlement','capital','village','mine','factory','refinery','fortress','outpost','farm','port','depot','ruins','landmark','lumberyard','sawmill','logging-camp','forest','quarry','ranch','fishery','hospital','barracks','rail-station','road-junction','warehouse','market','workshop','ceruleum-plant','drilling-rig','watchtower','bridge','power-plant','government','military-base','mountain','camp','airship-dock','cargo-terminal'];
 export const ROUTE_TYPES=['road','trail','rail','skyway','waterway'];
 const monthlyF=[9,13,26,39,51,61,67,64,54,40,25,13];
 const seasonForMonth=m=>[11,0,1].includes(m)?'winter':[2,3,4].includes(m)?'spring':[5,6,7].includes(m)?'summer':'autumn';
