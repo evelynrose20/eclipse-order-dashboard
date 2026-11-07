@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import './public-site.css';
 import './imperial-theme.css';
 import PublicChronicles from './PublicChronicles.jsx';
+import OrderEmblem from './OrderEmblem.jsx';
 
 const RECRUITMENT_LABELS={open:'RECRUITMENT OPEN',limited:'LIMITED RECRUITMENT',closed:'RECRUITMENT CLOSED'};
 const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
@@ -39,7 +40,7 @@ const MODES=[
  {name:'Events',mark:'II',heading:'Every assignment has stakes.',body:'Posted events can carry a difficulty rating, an impact rating, and a sequence of chapters. FC MSQ marks the stories that advance the Order’s central narrative.'},
  {name:'Combat',mark:'III',heading:'A tabletop beneath the tale.',body:'The companion portal brings together level-based jobs, character sheets, dice checks, initiative, and tactical encounters. DMs can direct enemies and allied NPCs.'}
 ];
-function Mark({className=''}){return <span className={'public-mark '+className} aria-hidden="true"><svg viewBox="0 0 64 72" fill="none" className="public-mark-emblem"><path d="M32 2 59 15V49L32 69 5 49V15Z" stroke="currentColor" strokeWidth="2"/><path d="M32 9 52 19V45L32 60 12 45V19Z" stroke="currentColor" strokeWidth=".8" opacity=".45"/><path d="M41 20A17 17 0 1 0 45 43 16 16 0 0 1 41 20Z" fill="currentColor"/><path d="m35 26 4 7 8 2-8 3-4 7-3-7-8-3 8-2Z" fill="#aa343c"/><path d="M13 53 32 65 51 53" stroke="#aa343c" strokeWidth="2"/></svg></span>}
+function Mark({className=''}){return <span className={'public-mark '+className} aria-hidden="true"><OrderEmblem className="public-mark-emblem"/></span>}
 function SectionTag({number,children}){return <div className="public-section-tag"><span>{number}</span><i/><span>{children}</span></div>}
 export default function PublicSite(){
  const [menuOpen,setMenuOpen]=useState(false);
