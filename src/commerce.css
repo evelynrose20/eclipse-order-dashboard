@@ -228,3 +228,6 @@
 .eo-exchange-trades-filters{display:flex;gap:7px;border:1px solid #6a4b61;padding:4px;border-radius:9px;background:#29212e}
 .eo-exchange-trades-filters button{padding:9px 12px;border-radius:7px;border:1px solid transparent;background:transparent;color:#c4aabb;font-size:11px;font-weight:700}
 .eo-exchange-trades-filters button.current{background:#64445b;border-color:#c395af;color:#ffeaf2}
+
+.eo-front-trade-source{display:grid;gap:6px;color:#e4bad0;font-size:10px;letter-spacing:.09em;font-weight:700}
+.eo-front-trade-source select{padding:9px 12px;min-width:190px;border-radius:8px;background:#33263a;border:1px solid #a57c97;color:#fae2ee;max-width:100%}
