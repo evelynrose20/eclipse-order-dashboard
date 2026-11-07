@@ -2,7 +2,7 @@ import {resolveSession} from './auth.js';
 const fail=(status,error)=>({status,body:{error}});
 const ok=body=>({status:200,body});
 const idPattern=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const eras=new Set(['thirteenth','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present']);
+const eras=new Set(['garlemald','thirteenth','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present']);
 const kinds=new Set(['history','place','person','faction']);
 const fields='id,title,era,kind,summary,body,sort_order,published,updated_at';
 async function payload(req){
@@ -22,14 +22,14 @@ function validate(b){
 export async function loreRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
  if(req.method==='GET'&&path==='/lore/public'){
-  const [rows]=await pool.execute('SELECT '+fields+' FROM order_lore_entries WHERE published=1 ORDER BY FIELD(era,"thirteenth","arr","heavensward","stormblood","shadowbringers","endwalker","dawntrail","present"),sort_order,id LIMIT 250');
+  const [rows]=await pool.execute('SELECT '+fields+' FROM order_lore_entries WHERE published=1 ORDER BY FIELD(era,"garlemald","thirteenth","arr","heavensward","stormblood","shadowbringers","endwalker","dawntrail","present"),sort_order,id LIMIT 250');
   return ok({entries:rows.map(r=>({...r,published:Boolean(r.published)}))});
  }
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
  const canEdit=actor.account_role==='domina'||actor.account_role==='high_command';
  if(path==='/lore'&&req.method==='GET'){
-  const [rows]=await pool.execute('SELECT '+fields+' FROM order_lore_entries '+(canEdit?'':'WHERE published=1 ')+'ORDER BY FIELD(era,"thirteenth","arr","heavensward","stormblood","shadowbringers","endwalker","dawntrail","present"),sort_order,id LIMIT 250');
+  const [rows]=await pool.execute('SELECT '+fields+' FROM order_lore_entries '+(canEdit?'':'WHERE published=1 ')+'ORDER BY FIELD(era,"garlemald","thirteenth","arr","heavensward","stormblood","shadowbringers","endwalker","dawntrail","present"),sort_order,id LIMIT 250');
   return ok({entries:rows.map(r=>({...r,published:Boolean(r.published)})),can_edit:canEdit});
  }
  if(path==='/lore'&&req.method==='POST'){
