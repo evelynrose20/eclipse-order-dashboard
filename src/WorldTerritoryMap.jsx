@@ -142,6 +142,70 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   try{await request(graphSelected?'/world-admin/network/segments/'+currentRoute.id:'/world-admin/routes/'+currentRoute.id,{method:'DELETE'});await reload();setSelectedRoute(null);setDraftWaypoints([]);setNotice('Route deleted.')}
   catch(e){setError(e.message||'Unable to delete route.')}finally{setBusy(false)}
  }
+
+ async function mutation(path,method,body,success){
+  if(!canEdit||busy)return null;
+  setBusy(true);setError('');setNotice('');
+  try{const value=await request(path,{method,body});await reload();setNotice(success);return value}
+  catch(e){setError(e.message||'Unable to update the road network.');return null}
+  finally{setBusy(false)}
+ }
+ async function endpointNode(id){
+  if(Number(id)<0)return -Number(id);
+  const previous=networkNodes.find(n=>Number(n.settlement_id)===Number(id));
+  if(previous)return Number(previous.id);
+  const data=await request('/world-admin/network/nodes',{method:'POST',body:{region_id:Number(region.id),settlement_id:Number(id)}});
+  if(!data?.id)throw new Error('Unable to connect the settlement.');
+  return Number(data.id);
+ }
+ async function savePlannedRoute(){
+  if(!canEdit||busy||routeStart==null||routeEnd==null||Number(routeStart)===Number(routeEnd))return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   const from=await endpointNode(routeStart),to=await endpointNode(routeEnd);
+   if(from===to)throw new Error('A route must have two different endpoints.');
+   await request('/world-admin/network/segments',{method:'POST',body:{region_id:Number(region.id),from_node_id:from,to_node_id:to,route_type:routeType,route_name:routeName,waypoints:newRoutePoints}});
+   await reload();setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route saved on the existing map.');
+  }catch(e){setError(e.message||'Unable to save this connection.')}finally{setBusy(false)}
+ }
+ async function createJunction(p){
+  const candidate=networkNodes.find(n=>!n.settlement_id&&Math.hypot(Number(n.map_x)-p.x,Number(n.map_y)-p.y)<1.8);
+  if(candidate){setNotice('This junction already exists. Select it as an endpoint.');setJunctionAction('');return}
+  const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
+  if(data?.id)setJunctionAction('');
+ }
+ async function splitRoute(route,e){
+  if(!canEdit||busy)return;
+  const p=coords(e);if(!p)return;
+  const result=await mutation('/world-admin/network/segments/'+route.id+'/split','POST',p,'Shared junction inserted. Plan a route from it to create a branch.');
+  if(result?.id){setJunctionAction('');setMode('link');chooseEndpoint(-Number(result.id))}
+ }
+ function junctionPointerDown(e,n){
+  if(mode!=='move'||busy||!canEdit||n.settlement_id)return;
+  e.preventDefault();e.stopPropagation();
+  dragRef.current={junction:Number(n.id),moved:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+ }
+ function junctionPointerMove(e){
+  if(dragRef.current?.junction===undefined)return;
+  const p=coords(e);if(!p)return;
+  dragRef.current.moved=true;
+  const id=dragRef.current.junction;
+  setJunctionPositions(old=>({...old,[id]:{map_x:p.x,map_y:p.y}}));
+ }
+ async function junctionPointerUp(e,n){
+  if(dragRef.current?.junction===undefined)return;
+  const moved=dragRef.current.moved;dragRef.current=null;
+  if(!moved)return;
+  const p=coords(e);if(!p){setJunctionPositions({});return}
+  await mutation('/world-admin/network/nodes/'+n.id,'PUT',{x:p.x,y:p.y,node_kind:n.node_kind,name:n.name||''},'Junction moved; all attached routes remain connected.');
+  setJunctionPositions({});
+ }
+ async function importLegacyRoutes(){
+  if(!routes.length)return;
+  const response=await mutation('/world-admin/network/import','POST',{region_id:Number(region.id)},'Existing routes joined the shared network, preserving their bends and types.');
+  if(response){setSelectedRoute(null);setDraftWaypoints([]);setJunctionAction('')}
+ }
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
@@ -251,15 +315,15 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{mode==='link'?'PLAN A NEW CONNECTION':'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
-    <div className="wtm-route-field"><label>Existing connections<select value={selectedRoute||''} onChange={e=>{const chosen=routes.find(r=>String(r.id)===e.target.value);if(chosen)selectRoad(chosen);else setSelectedRoute(null)}}><option value="">Choose a route to edit</option>{routes.map(r=><option value={r.id} key={r.id}>{r.route_name||ROUTE_OPTIONS.find(t=>t[0]===r.route_type)?.[1]||'Route'} · {byId.get(Number(r.from_settlement_id))?.name||'?'} → {byId.get(Number(r.to_settlement_id))?.name||'?'}</option>)}</select></label></div>
+    <div className="wtm-route-field"><label>Existing connections<select value={selectedRoute||''} onChange={e=>{const r=[...routes,...networkSegments].find(r=>(r.from_node_id?'graph:':'legacy:')+r.id===e.target.value);if(r)selectRoad(r);else setSelectedRoute(null)}}><option value="">Choose a route to edit</option>{[...routes,...networkSegments].map(r=><option value={(r.from_node_id?'graph:':'legacy:')+r.id} key={(r.from_node_id?'graph:':'legacy:')+r.id}>{r.route_name||ROUTE_OPTIONS.find(t=>t[0]===r.route_type)?.[1]||'Route'} · {r.from_node_id?(graphNodes.get(Number(r.from_node_id))?.name||'Node '+r.from_node_id)+' → '+(graphNodes.get(Number(r.to_node_id))?.name||'Node '+r.to_node_id):(byId.get(Number(r.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(r.to_settlement_id))?.name||'?')}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route type<select value={routeType} onChange={e=>{setRouteType(e.target.value);setRouteDirty(true)}}>{ROUTE_OPTIONS.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
-    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?(routeStart?(byId.get(Number(routeStart))?.name||'?'):'Select origin')+' → '+(routeEnd?(byId.get(Number(routeEnd))?.name||'?'):'Select destination'):(currentRoute?(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?'):'Choose existing route')}</span></label></div>
+    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
    </div>
    <p className="wtm-route-help">{mode==='link'?'Click two locations, then add optional bends by clicking along the intended path. The preview is unsaved until you confirm.': 'Choose an existing road or railway from the list. Click to insert a bend at the nearest segment, then drag its square handles. Existing routes are unchanged until saved.'}</p>
    <div className="wtm-route-actions">
     {mode==='link'?<>
-      <button disabled={busy||!routeStart||!routeEnd} onClick={()=>saveRoute({region_id:Number(region.id),from_settlement_id:Number(routeStart),to_settlement_id:Number(routeEnd),route_type:routeType,route_name:routeName,waypoints:newRoutePoints})}>Save new route</button>
+      <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>Save new route</button>
       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}>Undo bend</button>
       <button disabled={busy} onClick={()=>{setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route draft discarded.')}}>Cancel draft</button>
     </>:<>
