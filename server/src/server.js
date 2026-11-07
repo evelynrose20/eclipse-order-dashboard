@@ -2,6 +2,7 @@ import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
 import {recruitmentRoute} from './recruitment.js';
+import {loreRoute} from './lore.js';
 import {discordRoute} from './discord-oauth.js';
 import {accountRoute} from './accounts.js';
 import {firstDominaRoute} from './first-domina.js';
