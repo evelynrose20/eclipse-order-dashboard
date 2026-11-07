@@ -38,6 +38,7 @@ const newSheet=()=>({name:'',player:'',owner:'',specialty:'',notes:'',rank:'Unbo
  hp:10,max_hp:10,armor_class:10,level:1,experience:0,class_id:'',class_name:'',species:'',str:10,dex:10,con:10,int:10,wis:10,cha:10});
 export default function LocalWorkspace({profile,request,onLogout}){
  const [tab,setTab]=useState('overview');
+ const [constructionEventId,setConstructionEventId]=useState('');
  const [menuOpen,setMenuOpen]=useState(false);
  const [members,setMembers]=useState([]);
  const [rankCatalog,setRankCatalog]=useState([]);
@@ -151,8 +152,8 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
-    {tab==='construction'&&<ConstructionProjects request={request} characters={visibleCharacters} userId={profile.id} canManage={staff} readOnly={playerPreview}/>}
-    {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} isStaff={staff}/>}
+    {tab==='construction'&&<ConstructionProjects key={constructionEventId||'all'} request={request} characters={visibleCharacters} userId={profile.id} canManage={staff} readOnly={playerPreview} initialEventId={constructionEventId}/>}
+    {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} request={request} onOpenConstruction={id=>{setConstructionEventId(id);setTab('construction')}} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} isStaff={staff}/>}
     {tab==='encounters'&&(playerPreview||!staff?<PlayerBattleView key={playerPreview?'preview-battle':'member-battle'}/>:<Encounters classCatalog={classCatalog} key="dm-studio" role={profile.role} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>)}
     {tab==='profile'&&<><DiscordAccountConnection request={request} readOnly={playerPreview}/><ProfileConsent readOnly={playerPreview}/></>}
     {tab==='directory'&&<MemberRPDirectory/>}
