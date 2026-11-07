@@ -202,3 +202,26 @@
 .wtm-junction-tools button:disabled{opacity:.45;cursor:not-allowed}
 .wtm-junction-tools button i{margin-right:5px}
 .wtm-junction-tools small{flex:1;min-width:185px;color:#bfcbd0;font-size:11px}
+
+/* Site marker icons: upright, crisp Font Awesome glyphs with contrast on all states. */
+.wtm-stage .wtm-pin-icon,.app-shell.eo-local .wtm-stage .wtm-pin-icon{
+ transform:none!important;border-radius:7px!important;width:34px!important;height:34px!important;
+ min-width:34px!important;min-height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;
+ font-size:0!important;overflow:visible;isolation:isolate
+}
+.wtm-stage .wtm-pin-icon::first-letter{font-size:inherit!important}
+.wtm-stage .wtm-pin-icon > i.fa-solid,.app-shell.eo-local .wtm-stage .wtm-pin-icon > i.fa-solid{
+ transform:none!important;display:inline-block!important;position:relative!important;line-height:1!important;
+ font-family:'Font Awesome 6 Free'!important;font-weight:900!important;font-style:normal!important;
+ font-size:18px!important;color:#fffaf0!important;opacity:1!important;text-shadow:0 1px 2px #08111cbb;
+ -webkit-font-smoothing:antialiased
+}
+.wtm-stage .wtm-pin[data-type="capital"] .wtm-pin-icon{width:39px!important;height:39px!important}
+.wtm-stage .wtm-pin[data-type="capital"] .wtm-pin-icon i.fa-solid{font-size:21px!important}
+.wtm-stage .wtm-pin.selected .wtm-pin-icon > i.fa-solid,.wtm-stage .wtm-pin.origin .wtm-pin-icon > i.fa-solid{color:#1b2530!important;text-shadow:none}
+.wtm-stage button.wtm-junction.selected,.app-shell.eo-local .wtm-stage button.wtm-junction.selected{border-color:#fff3cc!important;background:#aa7246!important;outline:2px solid #f7d99c!important;outline-offset:2px!important}
+.wtm-junction-editor{display:grid;gap:12px;padding:12px;margin:10px 0;background:#1b2a36;border:1px solid #bfa67b;color:#e5e9e7}
+.wtm-junction-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.wtm-junction-fields label{display:grid;gap:5px;font-size:11px;font-weight:800}
+.wtm-junction-fields input,.wtm-junction-fields select{min-width:0;width:100%;padding:9px;background:#101e29;border:1px solid #6d7d88;color:#f6eee0}
+.wtm-junction-warning{margin:0;font-size:12px;line-height:1.45;color:#f4caa6}
