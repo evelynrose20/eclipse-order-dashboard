@@ -57,6 +57,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/037_order_lore_archive.sql',import.meta.url),'utf8'));
   const [loreAgain]=await admin.query('SELECT id FROM order_lore_entries');
   assert.equal(loreAgain.length,chronicles.length,'repeat installation retains lore');
+  const [worldTables]=await admin.query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('world_regions','world_settlements','world_administration_audit')");
+  assert.equal(worldTables.length,3,'world administration tables install with the rest of the API');
+  const [[regionsBefore]]=await admin.query("SELECT COUNT(*) AS n FROM world_regions");
+  assert.equal(Number(regionsBefore.n),0,'world administration starts empty and does not invent canon');
+  await admin.query(await readFile(new URL('../sql/041_world_administration_foundation.sql',import.meta.url),'utf8'));
+  const [[regionsAfter]]=await admin.query("SELECT COUNT(*) AS n FROM world_regions");
+  assert.equal(Number(regionsAfter.n),0,'repeat setup does not create synthetic regions');
   const [politicalTables]=await admin.query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('order_senate_parties','order_senate_party_members','order_senate_elections','order_senate_candidates','order_senate_election_ballots','order_senate_election_results','order_senate_election_rejections','order_senate_coalitions','order_senate_coalition_parties')");
   assert.equal(politicalTables.length,9,'Senate political tables are installed');
   const [partyColumn]=await admin.query("SHOW COLUMNS FROM order_senate_seats LIKE 'party_id'");
