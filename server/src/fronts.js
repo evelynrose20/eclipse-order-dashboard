@@ -325,6 +325,26 @@ export async function frontsRoute(pool,req,path){
    return done.affectedRows?ok({status:'retired'}):fail(404,'offering_not_found');
   });
  }
+ if(action==='reserved-stock'&&req.method==='POST'){
+  const b=await read(req);
+  if(!uuid(b?.character_id)||typeof b.material_id!=='string'||b.material_id.length>48||!qty(b.quantity,100))return fail(400,'invalid_reserved_transfer');
+  return atomic(pool,async conn=>{
+   const front=await managedFront(conn,frontId,actor,{lock:true});
+   if(!front||front.status!=='active')return fail(403,'front_not_authorized');
+   if(!await characterOwner(conn,b.character_id,actor.id))return fail(403,'character_owner_required');
+   const [owned]=await conn.execute('SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id=? FOR UPDATE',[b.character_id,b.material_id]);
+   if(!owned.length||Number(owned[0].quantity)<b.quantity)return fail(409,'reserved_stock_insufficient');
+   await conn.execute('INSERT IGNORE INTO order_front_stock(front_id,material_id,quantity) VALUES(?,?,0)',[frontId,b.material_id]);
+   const [[atFront]]=await conn.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id=? FOR UPDATE',[frontId,b.material_id]);
+   const next=Number(atFront.quantity)+b.quantity,remaining=Number(owned[0].quantity)-b.quantity;
+   if(!Number.isSafeInteger(next)||next>4294967295)return fail(409,'front_stock_limit');
+   await conn.execute('UPDATE character_reserved_materials SET quantity=? WHERE character_id=? AND material_id=?',[remaining,b.character_id,b.material_id]);
+   await conn.execute('UPDATE order_front_stock SET quantity=? WHERE front_id=? AND material_id=?',[next,frontId,b.material_id]);
+   await conn.execute('INSERT INTO character_reserved_material_ledger(character_id,material_id,action,quantity,balance_after,front_id) VALUES(?,?,"front_delivery",?,?,?)',
+    [b.character_id,b.material_id,b.quantity,remaining,frontId]);
+   return ok({status:'delivered',quantity:b.quantity,remaining});
+  });
+ }
  if(action==='stock'&&req.method==='POST'){
   const b=await read(req);
   if(!['allocate','return'].includes(b?.direction)||!qty(b.quantity,100000)||!uuid(b.character_id)||
