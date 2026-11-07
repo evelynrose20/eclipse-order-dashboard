@@ -1,0 +1,73 @@
+.wa-root{--wa-metal:#141e29;--wa-border:#40515b;--wa-brass:#cca673;--wa-ink:#e7e9e7;--wa-muted:#a1b0b9;display:grid;gap:16px;min-width:0;color:var(--wa-ink)}
+.wa-root *{box-sizing:border-box}
+.wa-heading{border:1px solid #43505b;border-left:4px solid #a44a52;background:linear-gradient(120deg,#202a34,#111922);padding:23px 26px;display:flex;justify-content:space-between;gap:15px;align-items:center}
+.wa-heading span{font-size:10px;letter-spacing:.14em;color:var(--wa-brass);font-weight:800}
+.wa-heading h2{font:800 clamp(27px,3vw,40px) var(--imperial-heading,'Arial Narrow',sans-serif);margin:8px 0;color:#f0ece5;text-transform:uppercase}
+.wa-heading p{margin:0;color:var(--wa-muted);font-size:12px}
+.wa-root button{cursor:pointer}
+.wa-root button:disabled{opacity:.55;cursor:not-allowed}
+.wa-root .wa-accent{background:#963f49;color:#fff0ec;border:1px solid #bd6872;padding:10px 16px;font-weight:800;font-size:11px;border-radius:2px;flex:none}
+.wa-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #52616b;padding-bottom:8px}
+.wa-tabs button{padding:10px 14px;white-space:nowrap;color:#b4c2c7;border:1px solid #46535e;background:#1a2631;font-size:12px;font-weight:700;border-radius:2px}
+.wa-tabs button.active{color:#ecd3ac;background:#3b2e2e;border-color:#c19b68}
+.wa-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.wa-controls label{display:grid;gap:5px;color:#bdc8cd;font-size:11px;min-width:min(260px,100%)}
+.wa-controls select,.wa-controls button{background:#1d2933;border:1px solid #576875;color:#e4e7e8;padding:10px 12px;border-radius:2px;font-size:12px;max-width:100%}
+.wa-columns{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:14px}
+.wa-panel{min-width:0;border:1px solid var(--wa-border);background:linear-gradient(135deg,#1a2530,#121b26)}
+.wa-panel-title{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 17px;background:#1e2a35;border-bottom:1px solid #465661}
+.wa-panel-title strong{color:#debf8c;letter-spacing:.09em;font-size:11px}
+.wa-panel-title span{color:#90a3af;font-size:10px}
+.wa-map{height:410px;margin:14px;position:relative;overflow:hidden;border:1px solid #52636d;background:linear-gradient(160deg,#273846,#131e29);background-position:center;background-size:cover}
+.wa-map-crosshair{position:absolute;inset:0;background-image:linear-gradient(#62758624 1px,transparent 1px),linear-gradient(90deg,#62758624 1px,transparent 1px);background-size:25px 25px;pointer-events:none}
+.wa-map:before{content:'';position:absolute;inset:8%;border:1px dashed #6c7b8066;pointer-events:none;transform:rotate(-5deg)}
+.wa-map-pin{position:absolute!important;transform:translate(-50%,-50%);background:transparent!important;border:0!important;display:grid!important;gap:4px;justify-items:center;padding:8px!important;color:#f1f2ef!important;min-width:0!important;min-height:0!important;max-width:155px;font-size:11px}
+.wa-map-dot{display:block;background:#b65359;box-shadow:0 0 0 4px #111921,0 0 0 5px #a79b85;border-radius:50%;width:12px;height:12px}
+.wa-map-pin.active .wa-map-dot{background:#f0ce8d;box-shadow:0 0 0 5px #b34b5480,0 0 0 7px #f0ce8d}
+.wa-map-label{background:#0b131de5;border:1px solid #566470;padding:5px 7px;white-space:normal;overflow-wrap:anywhere;font-weight:800;max-width:135px}
+.wa-map-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:#a8b5b9;text-align:center;pointer-events:none}
+.wa-hint{padding:10px 15px!important;color:#98aab6!important;font-size:11px;line-height:1.65;margin:0}
+.wa-inspector{padding:19px;display:grid;gap:12px}
+.wa-inspector h3{font:800 25px var(--imperial-heading,'Arial Narrow',sans-serif);margin:0}
+.wa-inspector p{margin:0;color:#aabac1;font-size:12px;line-height:1.6}
+.wa-inspector>div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #33434f;padding-bottom:8px}
+.wa-inspector>div span{color:#8fa3af;font-size:11px}.wa-inspector>div strong{font-size:12px;text-align:right}
+.wa-settlement-list{display:grid;padding:14px;gap:7px}
+.wa-settlement-list button{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:10px;text-align:left;background:#1b2833;color:#e8ebeb;border:1px solid #485966;padding:13px;font-size:12px;border-radius:2px}
+.wa-settlement-list button:hover{border-color:#b79569}
+.wa-settlement-list span,.wa-settlement-list small{color:#9caeba}
+.wa-weather{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.wa-weather>div{border:1px solid #485966;padding:18px;background:#1e2b36;display:grid;gap:8px}
+.wa-weather span{font-size:10px;color:#c3a278;letter-spacing:.07em;font-weight:800}
+.wa-weather strong{font:800 25px var(--imperial-heading,'Arial Narrow',sans-serif);color:#f0e8dc}
+.wa-weather small{font-size:11px;color:#96a9b4}
+.wa-civil-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wa-civil-card{display:grid;align-content:start}
+.wa-civic-values{padding:14px;display:grid;gap:9px}
+.wa-civic-values div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #31414e;padding-bottom:7px;font-size:12px}
+.wa-civic-values div span{color:#aabac0}
+.wa-civil-card>button{justify-self:start;margin:0 14px 14px;background:#243441;border:1px solid #a28a67;color:#e5d3b3;padding:9px 12px}
+.wa-empty{padding:30px;border:1px dashed #53616b;background:#17232e;color:#aab9c2}
+.wa-empty h3{color:#eee6db;margin-top:0}
+.wa-reference{padding:0 20px 24px;color:#acbcc4}
+.wa-reference .wa-panel-title{margin:0 -20px 18px}
+.wa-reference h3{color:#e8e5dc}.wa-reference p{font-size:13px;line-height:1.7;max-width:850px}
+.wa-reference code{color:#e1c390;overflow-wrap:anywhere}
+.wa-overlay{position:fixed;inset:0;z-index:1000;background:#05090de5;display:grid;place-items:center;padding:12px}
+.wa-dialog{background:#192531;border:1px solid #687580;box-shadow:0 20px 75px #0009;width:min(780px,100%);max-height:92vh;overflow:auto}
+.wa-dialog-head{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;background:#263542;border-bottom:1px solid #657582;padding:14px 20px}
+.wa-dialog-head h3{margin:0;font:800 22px var(--imperial-heading,'Arial Narrow',sans-serif);color:#e5c08a}
+.wa-dialog-head button{font-size:27px;background:none;color:#edf0ed;border:0}
+.wa-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:20px}
+.wa-fields label{min-width:0;display:grid;gap:5px;color:#bac8ce;font-size:12px}
+.wa-fields label.wide,.wa-projection{grid-column:1/-1}
+.wa-fields input:not([type=checkbox]),.wa-fields textarea,.wa-fields select{width:100%;min-width:0;padding:10px;background:#111b26;color:#e8ecec;border:1px solid #647681;border-radius:2px;font-size:13px}
+.wa-fields .wa-checkbox{display:flex;align-items:center;gap:9px;line-height:1.5}
+.wa-fields .wa-checkbox input{accent-color:#a94753}
+.wa-projection{border-left:3px solid #c39e68;background:#28343b;padding:12px;display:grid;gap:6px;color:#ebd8b8;font-size:12px}
+.wa-projection small{color:#aab7c0}
+.wa-dialog-actions{position:sticky;bottom:0;background:#22303d;padding:14px 20px;border-top:1px solid #627480;display:flex;justify-content:flex-end;gap:9px}
+.wa-dialog-actions button:not(.wa-accent){background:#26333f;color:#e8e8e6;border:1px solid #778590;padding:10px 15px}
+.wa-error{border-left:3px solid #d35a69;background:#39232c;color:#f6d8d5;padding:12px;margin:0}.wa-notice{border-left:3px solid #6eae96;background:#243b34;color:#d8ecdf;padding:12px;margin:0}
+@media(max-width:900px){.wa-columns{grid-template-columns:1fr}.wa-civil-grid{grid-template-columns:1fr}.wa-map{height:340px}}
+@media(max-width:600px){.wa-heading{padding:16px;align-items:start;flex-direction:column}.wa-weather{grid-template-columns:1fr}.wa-fields{grid-template-columns:1fr}.wa-fields label.wide,.wa-projection{grid-column:1}.wa-settlement-list button{grid-template-columns:1fr}.wa-map{height:280px;margin:8px}}
