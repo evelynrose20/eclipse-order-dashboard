@@ -8,6 +8,7 @@ import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
 import Factions from './Factions.jsx';
+import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
 import Treasury from './Treasury.jsx';
@@ -80,6 +81,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['events','Events & signups','◷'],
   ['construction','Construction Projects','⚒'],
   ['factions','Factions & diplomacy','✧'],
+  ['world','World Administration','▧'],
   ['lore','Order Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
@@ -155,6 +157,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
+    {tab==='world'&&<WorldAdministration request={request} readOnly={playerPreview}/> }
     {tab==='construction'&&<ConstructionProjects key={constructionEventId||'all'} request={request} characters={visibleCharacters} userId={profile.id} canManage={staff} readOnly={playerPreview} initialEventId={constructionEventId}/>}
     {tab==='events'&&<EventBoard key={playerPreview?'preview-events':'member-events'} request={request} onOpenConstruction={id=>{setConstructionEventId(id);setTab('construction')}} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} previewOnly={playerPreview} isStaff={staff}/>}
     {tab==='encounters'&&(playerPreview||!staff?<PlayerBattleView key={playerPreview?'preview-battle':'member-battle'}/>:<Encounters classCatalog={classCatalog} key="dm-studio" role={profile.role} userId={profile.id} characters={visibleCharacters} onOpenProfile={()=>setTab('profile')} onRefreshCharacters={load}/>)}

@@ -5,7 +5,7 @@ import OrderEmblem from './OrderEmblem.jsx';
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
- scenes:'activities',encounters:'activities',events:'activities',construction:'activities',factions:'activities',workshop:'activities',trade:'activities',fronts:'activities',treasury:'activities',
+ scenes:'activities',encounters:'activities',events:'activities',construction:'world',factions:'world',world:'world',workshop:'economy',trade:'economy',fronts:'economy',treasury:'economy',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',lore:'administration',
  settings:'administration'
@@ -14,6 +14,8 @@ const GROUPS=[
  {id:'home',name:'YOUR SPACE',hint:'Start here'},
  {id:'characters',name:'CHARACTERS',hint:'Rosters and dossiers'},
  {id:'activities',name:'OPERATIONS',hint:'Events and encounters'},
+ {id:'world',name:'WORLD & TERRITORY',hint:'Regions and settlements'},
+ {id:'economy',name:'INDUSTRY & LOGISTICS',hint:'Trade and production'},
  {id:'community',name:'COMMUNITY',hint:'Profiles and connections'},
  {id:'administration',name:'ORDER MANAGEMENT',hint:'Staff and records'}
 ];
@@ -23,7 +25,7 @@ const DESCRIPTIONS={
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'The Order’s governing chamber and charter',
- settings:'Rules and records',lore:'The Order’s history, figures and places'
+ settings:'Rules and records',lore:'The Order’s history, figures and places',world:'Territories, climate, civilians and supplies'
 };
 
 export const getNavSection=(id)=>GROUPS.find(g=>g.id===SECTION_MAP[id])?.name||'WORKSPACE';

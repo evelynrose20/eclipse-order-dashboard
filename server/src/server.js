@@ -17,6 +17,7 @@ import {diceRoute} from './dice.js';
 import {POINT_BUDGET,SCORE_COST} from './progression.js';
 import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
+import {worldAdministrationRoute} from './world-administration.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
 import {senateRoute} from './senate.js';
@@ -119,6 +120,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/governance/senate'||pathname.startsWith('/governance/senate/'))result=await senateRoute(pool,req,pathname);
   else if(pathname==='/construction'||pathname.startsWith('/construction/'))result=await constructionRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
+  else if(pathname==='/world-admin'||pathname.startsWith('/world-admin/'))result=await worldAdministrationRoute(pool,req,pathname);
   else if(pathname==='/factions'||pathname.startsWith('/factions/'))result=await factionRoute(pool,req,pathname);
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
