@@ -23,7 +23,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false,rec
  const calls=[];
  const pool={execute:async(sql,args=[])=>{
   calls.push({sql,args});
-  if(sql.includes("SELECT content FROM order_settings WHERE setting_key='recruitment_status'"))return [[{content:recruitment}]];
+  if(sql.includes("SELECT setting_key,content FROM order_settings"))return [[{setting_key:'recruitment_status',content:recruitment}]];
   if(sql.startsWith('SELECT a.id,a.email')){const account=sessions.get(args[0]);return [account?[{id:account,account_role:'domina',discord_user_id:discordId}]:[]]}
   if(sql.startsWith('DELETE FROM discord_oauth_states WHERE expires_at')||sql.startsWith('DELETE FROM discord_oauth_tickets WHERE expires_at'))return [{affectedRows:0}];
   if(sql.startsWith('SELECT discord_user_id FROM account_discord_links')){const row=[...links.values()].find(x=>x.account_id===args[0]);return [row?[row]:[]]}
