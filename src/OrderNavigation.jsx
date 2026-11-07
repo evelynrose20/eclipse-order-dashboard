@@ -6,7 +6,7 @@ const SECTION_MAP={
  roster:'characters',sheet:'characters',
  scenes:'activities',encounters:'activities',events:'activities',construction:'activities',factions:'activities',workshop:'activities',trade:'activities',fronts:'activities',treasury:'activities',
  profile:'community',directory:'community',transitions:'community',
- members:'administration',governance:'administration',classes:'administration',
+ members:'administration',governance:'administration',classes:'administration',lore:'administration',
  settings:'administration'
 };
 const GROUPS=[
