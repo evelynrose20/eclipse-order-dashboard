@@ -11,8 +11,8 @@ test('hero has custom industrial fortress instead of the old circle illustration
 });
 test('crest is a custom geometric symbol and the page uses an industrial lettering system',()=>{
  const emblem=get('src/OrderEmblem.jsx');
- assert.match(emblem,/<svg className=\\{className\\} viewBox="0 0 64 72"/);
- assert.match(site,/<OrderEmblem className="public-mark-emblem"\\/>/);
+ assert.ok(emblem.includes('<svg className={className} viewBox="0 0 64 72"'));
+ assert.ok(site.includes('<OrderEmblem className="public-mark-emblem"/>'));
  assert.match(theme,/Barlow\+Condensed/);
  assert.match(theme,/IBM\+Plex\+Sans/);
  assert.match(theme,/--imperial-heading/);
