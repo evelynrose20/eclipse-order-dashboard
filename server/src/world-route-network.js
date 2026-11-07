@@ -23,7 +23,7 @@ const projected=(p,a,b)=>{
  const x=a.x+t*dx,y=a.y+t*dy;return {x:Math.round(x*100)/100,y:Math.round(y*100)/100,d:Math.hypot(p.x-x,p.y-y)};
 };
 export async function handleTransportGraph(pool,req,path,actor){
- const m=path.match(/^\/world-admin\/network\/(nodes|segments)(?:\/(\d+))?(?:\/(split))?$/);
+ const m=path.match(/^\/world-admin\/network\/(nodes|segments)(?:\/(\d+))?(?:\/(split|remove))?$/);
  if(path==='/world-admin/network/import'&&req.method==='POST'){
   const b=await body(req);if(!ident(b?.region_id))return fail(400,'invalid_region');
   return tx(pool,async db=>{
@@ -60,6 +60,19 @@ export async function handleTransportGraph(pool,req,path,actor){
    const [r]=await db.execute('UPDATE world_route_nodes SET map_x=?,map_y=?,node_kind=?,name=? WHERE id=? AND settlement_id IS NULL',[b.x,b.y,b.node_kind,(b.name||'').trim(),id]);
    if(!r.affectedRows)return fail(404,'movable_node_not_found');
    await audit(db,actor,'network_node_edit',id);return ok({saved:true});
+  });
+ }
+ if(table==='nodes'&&id&&split==='remove'&&req.method==='POST'){
+  if(b?.delete_connected_segments!==true)return fail(400,'explicit_segment_removal_required');
+  return tx(pool,async db=>{
+   const [[node]]=await db.execute('SELECT id,settlement_id FROM world_route_nodes WHERE id=? FOR UPDATE',[id]);
+   if(!node||node.settlement_id!=null)return fail(404,'junction_not_found');
+   const [edges]=await db.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=? FOR UPDATE',[id,id]);
+   await db.execute('DELETE FROM world_route_segments WHERE from_node_id=? OR to_node_id=?',[id,id]);
+   const [deleted]=await db.execute('DELETE FROM world_route_nodes WHERE id=? AND settlement_id IS NULL',[id]);
+   if(!deleted.affectedRows)return fail(404,'junction_not_found');
+   await audit(db,actor,'network_node_remove_with_segments',id);
+   return ok({saved:true,deleted_segments:edges.length});
   });
  }
  if(table==='nodes'&&id&&req.method==='DELETE'){
