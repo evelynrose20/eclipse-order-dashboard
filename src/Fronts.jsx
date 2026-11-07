@@ -3,7 +3,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './fronts.css';
 
 const CATEGORIES={tavern:'Tavern & Hospitality',apothecary:'Apothecary',workshop:'Artisan Workshop',merchant:'Merchant House',hospitality:'Guesthouse & Services',other:'Other Front'};
-const SYMBOLS={tavern:'♨',apothecary:'✿',workshop:'⚒',merchant:'♜',hospitality:'⌂',other:'✧'};
+const SYMBOLS={tavern:'mug-hot',apothecary:'flask',workshop:'hammer',merchant:'store',hospitality:'hotel',other:'building'};
 const gil=value=>Number(value||0).toLocaleString()+' gil';
 const newApplication=()=>({name:'',category:'merchant',location:'',description:'',ownership:'member',owner_character_id:'',license_terms:''});
 const newOffer=()=>({offer_type:'goods',material_id:'',name:'',description:'',posted_price:5,restricted:false});
@@ -92,7 +92,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
  return <section className="eo-fronts">
   <header className="eo-fronts-hero">
    <div><span>THE GOLDEN CLAWS · COMMERCIAL NETWORK</span><h2>Order Fronts</h2><p>Businesses sanctioned by the Order. Two approvals establish a license; the Merchant Exchange funds their books through fulfilled trade.</p></div>
-   <div className="eo-fronts-hero-mark" aria-hidden="true">♜</div>
+   <div className="eo-fronts-hero-mark" aria-hidden="true"><i className="fa-solid fa-store"/></div>
   </header>
   {error&&<div className="alert" role="alert">{error.replaceAll('_',' ')}</div>}
   {notice&&<div className="eo-fronts-success" role="status">{notice}</div>}
@@ -105,13 +105,13 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
    <aside className="eo-fronts-directory" aria-label="Order business registry">
     <div className="eo-fronts-directory-head"><strong>LICENSED NETWORK</strong><small>{fronts.length} recorded</small></div>
     {fronts.map(front=><button key={front.id} type="button" className={'eo-fronts-location '+(String(selected)===String(front.id)?'selected':'')} onClick={()=>pick(front.id)}>
-      <span className="eo-fronts-location-icon">{SYMBOLS[front.category]}</span><span><strong>{front.name}</strong><small>{front.location}</small><em>{CATEGORIES[front.category]||front.category}</em></span><span className={'eo-fronts-status '+front.status}>{front.status}</span>
+      <span className="eo-fronts-location-icon"><i className={"fa-solid fa-"+(SYMBOLS[front.category]||"building")}/></span><span><strong>{front.name}</strong><small>{front.location}</small><em>{CATEGORIES[front.category]||front.category}</em></span><span className={'eo-fronts-status '+front.status}>{front.status}</span>
     </button>)}
     {!fronts.length&&<div className="eo-fronts-empty"><strong>No storefronts found</strong><p>Apply for an Order-sanctioned front or try a different filter.</p></div>}
    </aside>
    {chosen?<main className="eo-fronts-detail">
     <div className="eo-fronts-detail-cover">
-     <div className="eo-fronts-signage" aria-hidden="true">{SYMBOLS[chosen.category]}</div>
+     <div className="eo-fronts-signage" aria-hidden="true"><i className={"fa-solid fa-"+(SYMBOLS[chosen.category]||"building")}/></div>
      <div><span>{CATEGORIES[chosen.category]||'Order Front'} · {chosen.location}</span><h3>{chosen.name}</h3><p>{chosen.description||'A commercial face of the Eclipse Order.'}</p></div>
      <span className={'eo-fronts-status '+chosen.status}>{chosen.status}</span>
     </div>
