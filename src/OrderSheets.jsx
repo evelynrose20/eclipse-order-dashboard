@@ -23,7 +23,7 @@ const mod = n => Math.floor((Number(n||10)-10)/2);
 const signed = n => (n>=0?'+':'')+n;
 export function LimitedSheet({character}){
   return <section className="panel bound-sheet">
-    <div className="bound-heading"><div className="bound-emblem">◇</div><div><div className="eyebrow">ARCANE COLLAR · BOUND RECORD</div><h2>{character.name}</h2><p>{character.rank}</p></div></div>
+    <div className="bound-heading"><div className="bound-emblem"><i className="fa-solid fa-link"/></div><div><div className="eyebrow">ARCANE COLLAR · BOUND RECORD</div><h2>{character.name}</h2><p>{character.rank}</p></div></div>
     <p className="bound-intro">Your character is under a magical binding. The Order's system displays only the details the collar allows you to perceive. This seal affects only the character's knowledge, never the player's choices or boundaries.</p>
     <div className="limited-grid">
       <div><small>CHARACTER</small><strong>{character.name}</strong></div>
@@ -32,7 +32,7 @@ export function LimitedSheet({character}){
       <div><small>COLLAR STATUS</small><strong>Binding active</strong></div>
       <div><small>VISIBLE CONDITION</small><strong>{character.hp ?? 'Unknown'} HP</strong></div>
     </div>
-    <div className="sealed"><span className="sealed-symbol">✦</span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. The Domina and authorized handlers may consult the complete record.</p></div></div>
+    <div className="sealed"><span className="sealed-symbol"><i className="fa-solid fa-lock"/></span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. The Domina and authorized handlers may consult the complete record.</p></div></div>
   </section>;
 }
 function TextSection({label,value}){
