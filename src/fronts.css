@@ -41,3 +41,5 @@
 .eo-fronts-supply-board>.eo-fronts-fields{align-items:end;grid-template-columns:minmax(0,1.4fr) minmax(110px,.6fr) auto}
 .eo-fronts-supply-board .eo-fronts-fields button{min-height:42px}
 @media(max-width:690px){.eo-fronts-supply-board>.eo-fronts-fields{grid-template-columns:1fr}}
+
+.eo-front-reserved-transfer>p{font-size:12px;line-height:1.6;color:#c8b1c0;margin:0}
