@@ -307,9 +307,27 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'planted',plot_id:newId});
   });
  }
+ if(path==='/workshop/reserved'&&req.method==='GET'){
+  const [rows]=await pool.execute('SELECT r.character_id,r.material_id,m.name,r.quantity FROM character_reserved_materials r JOIN characters c ON c.id=r.character_id JOIN fc_materials m ON m.id=r.material_id WHERE c.player_account_id=? AND r.quantity>0 ORDER BY c.character_name,m.name',[user.id]);
+  return ok({goods:rows});
+ }
+ if(path==='/workshop/reserved/release'&&req.method==='POST'){
+  const b=await read(req);
+  if(!validUuid(b?.character_id)||!validId(b?.material_id)||!amount(b?.quantity))return fail(400,'invalid_reserved_release');
+  return withTransaction(pool,async conn=>{
+   if(!await checkCharacter(conn,user,b.character_id))return fail(403,'character_not_owned');
+   const [rows]=await conn.execute('SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id=? FOR UPDATE',[b.character_id,b.material_id]);
+   if(!rows.length||Number(rows[0].quantity)<b.quantity)return fail(409,'reserved_stock_insufficient');
+   if(!await stockChange(conn,b.material_id,b.quantity,'craft_output',user.id,b.character_id,'Released reserved goods to FC stores'))return fail(409,'fc_stock_limit');
+   const remaining=Number(rows[0].quantity)-b.quantity;
+   await conn.execute('UPDATE character_reserved_materials SET quantity=? WHERE character_id=? AND material_id=?',[remaining,b.character_id,b.material_id]);
+   await conn.execute('INSERT INTO character_reserved_material_ledger(character_id,material_id,action,quantity,balance_after) VALUES(?,?,"release",?,?)',[b.character_id,b.material_id,b.quantity,remaining]);
+   return ok({status:'released',remaining});
+  });
+ }
  if(path==='/workshop/craft'&&req.method==='POST'){
   const body=await read(req),qty=amount(body?.quantity);
-  if(!validId(body?.recipe_id)||!qty||!validUuid(body?.character_id))return fail(400,'invalid_craft');
+  if(!validId(body?.recipe_id)||!qty||!validUuid(body?.character_id)||!['shared','reserved'].includes(body.destination||'shared'))return fail(400,'invalid_craft');
   return withTransaction(pool,async conn=>{
    if(!await checkCharacter(conn,user,body.character_id))return fail(403,'character_not_owned');
    const [recipes]=await conn.execute('SELECT output_material,output_quantity,minimum_level FROM fc_recipes WHERE id=?',[body.recipe_id]);
@@ -323,8 +341,16 @@ export async function craftingRoute(pool,req,path){
     if(Number(available[0].quantity)<i.quantity*qty)return fail(409,'insufficient_materials');
    }
    for(const i of inputs)if(!await stockChange(conn,i.material_id,-i.quantity*qty,'craft_input',user.id,body.character_id,body.recipe_id))return fail(409,'insufficient_materials');
-   if(!await stockChange(conn,recipes[0].output_material,recipes[0].output_quantity*qty,'craft_output',user.id,body.character_id,body.recipe_id))return fail(409,'stock_limit');
-   return ok({status:'crafted',quantity:qty});
+   const produced=recipes[0].output_quantity*qty;
+   if((body.destination||'shared')==='reserved'){
+    await conn.execute('INSERT IGNORE INTO character_reserved_materials(character_id,material_id,quantity) VALUES(?,?,0)',[body.character_id,recipes[0].output_material]);
+    const [[owned]]=await conn.execute('SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id=? FOR UPDATE',[body.character_id,recipes[0].output_material]);
+    const newQuantity=Number(owned.quantity)+produced;
+    if(!Number.isSafeInteger(newQuantity)||newQuantity>100000000)return fail(409,'reserved_stock_limit');
+    await conn.execute('UPDATE character_reserved_materials SET quantity=? WHERE character_id=? AND material_id=?',[newQuantity,body.character_id,recipes[0].output_material]);
+    await conn.execute('INSERT INTO character_reserved_material_ledger(character_id,material_id,action,quantity,balance_after) VALUES(?,?,"craft",?,?)',[body.character_id,recipes[0].output_material,produced,newQuantity]);
+   }else if(!await stockChange(conn,recipes[0].output_material,produced,'craft_output',user.id,body.character_id,body.recipe_id))return fail(409,'stock_limit');
+   return ok({status:'crafted',quantity:qty,produced,destination:body.destination||'shared'});
   });
  }
  const plotPath=/^\/workshop\/garden\/(\d+)\/(care|harvest)$/.exec(path);
