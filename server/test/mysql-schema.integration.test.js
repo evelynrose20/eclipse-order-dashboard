@@ -526,8 +526,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(secondDelivery.status,200);
   const nextStage=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
   assert.equal(nextStage.body.state,'next_stage');
-  const repeated=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
-  assert.equal(repeated.status,409,'stage advances only once');
+  const secondSignOffAttempt=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
+  assert.equal(secondSignOffAttempt.status,409,'stage advances only once');
   await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',6) ON DUPLICATE KEY UPDATE quantity=6");
   const freshReserved=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id,destination:'reserved'}),'/workshop/craft');
   assert.equal(freshReserved.status,200);
