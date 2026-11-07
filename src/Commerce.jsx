@@ -41,6 +41,11 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   catch(e){setError(e.message||String(e))}
   finally{setBusy(false)}
  }
+ const changeContractStatus=async(contract,status)=>{
+  setBusy(true);setError('');setNotice('');
+  try{await request('/commerce/contracts/'+contract.id+'/status',{method:'POST',body:{status}});await refresh();setNotice(status==='paused'?'Trade contract paused.':'Trade contract reopened.')}
+  catch(e){setError(e.message||String(e))}finally{setBusy(false)}
+ };
  const craft=template=>action('/commerce/craft',{template_id:template.id,character_id:characterId},r=>setNotice('Crafted '+template.name+'. Item #'+r.item_id+' is now in this character’s equipment bag.'));
  const deliver=contract=>{
   const quantity=contract.item_kind==='equipment'?1:Math.max(1,Math.min(100,Number(quantities[contract.id]||1)));
@@ -73,6 +78,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
     <p className="eo-contract-progress-caption">{contract.delivered_quantity} / {contract.required_quantity} delivered</p>
     {contract.status==='open'&&contract.item_kind==='material'&&<div className="eo-contract-controls"><label>Quantity <input type="number" min="1" max={Math.min(100,remaining(contract))} value={quantities[contract.id]||1} onChange={e=>setQuantities({...quantities,[contract.id]:e.target.value})}/></label><span>{stock(contract.material_id)} in shared stores</span></div>}
     {contract.status==='open'&&contract.item_kind==='equipment'&&<label className="eo-contract-gear">Select unequipped crafted equipment<select value={selectedItems[contract.id]||''} onChange={e=>setSelectedItems({...selectedItems,[contract.id]:e.target.value})}><option value="">Choose an item</option>{equipment.filter(item=>item.template_id===contract.equipment_template_id&&!item.equipped).map(item=><option value={item.id} key={item.id}>{item.name} · #{item.id}</option>)}</select></label>}
+    {canManage&&!readOnly&&contract.status!=='complete'&&<button type="button" className="btn secondary" disabled={busy} onClick={()=>changeContractStatus(contract,contract.status==='paused'?'open':'paused')}>{contract.status==='paused'?'Reopen contract':'Pause contract'}</button>}
     <button type="button" className="btn primary" disabled={busy||!canAct||contract.status!=='open'||remaining(contract)===0||(contract.item_kind==='equipment'&&!selectedItems[contract.id])||(contract.item_kind==='material'&&(stock(contract.material_id)<(Number(quantities[contract.id]||1))||Number(quantities[contract.id]||1)>remaining(contract)))} onClick={()=>deliver(contract)}>{contract.status==='complete'?'Contract fulfilled':contract.status==='paused'?'Contract paused':'Deliver to '+contract.faction_name}</button>
    </article>)}
     {!contracts.length&&<div className="eo-commerce-empty"><h3>No contracts posted</h3><p>Order command can create a trade contract to request supplies or crafted equipment for a faction or settlement.</p></div>}
