@@ -180,7 +180,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const newPort=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Port',map_x:75,map_y:65,map_icon:'port'}),'/world-admin/settlements');
   assert.equal(newPort.status,200,JSON.stringify(newPort.body));
   const portId=Number(newPort.body.id);
-  const moved=await worldAdministrationRoute(admin,request('PATCH',{map_x:44,map_y:52,map_icon:'refinery'}),'/world-admin/settlements/'+mineId+'/map');
+  const moved=await worldAdministrationRoute(admin,request('POST',{map_x:44,map_y:52,map_icon:'refinery'}),'/world-admin/settlements/'+mineId+'/map');
   assert.equal(moved.status,200,JSON.stringify(moved.body));
   const [[afterMap]]=await admin.execute('SELECT map_x,map_icon,population,food_days FROM world_settlements WHERE id=?',[mineId]);
   assert.equal(Number(afterMap.map_x),44);
