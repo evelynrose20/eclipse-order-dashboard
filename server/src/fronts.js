@@ -59,7 +59,10 @@ export async function applyFrontTrade(conn,{frontId,deliveryId,revenue,accountId
 }
 export async function authorizeFrontTrade(conn,frontId,actor,{materialId,quantity,characterId}){
  const front=await managedFront(conn,frontId,actor,{lock:true});
- if(!front||front.status!=='active')return fail(403,'front_not_authorized');
+ if(!front||front.status!=='active'){
+  const [workers]=await conn.execute('SELECT 1 FROM order_fronts f JOIN order_front_staff fs ON fs.front_id=f.id JOIN characters c ON c.id=fs.character_id WHERE f.id=? AND f.status="active" AND c.player_account_id=? LIMIT 1',[frontId,actor.id]);
+  if(!workers.length)return fail(403,'front_not_authorized');
+ }
  if(materialId){
   await conn.execute('INSERT IGNORE INTO order_front_stock(front_id,material_id,quantity) VALUES(?,?,0)',[frontId,materialId]);
   const [[stock]]=await conn.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id=? FOR UPDATE',[frontId,materialId]);
