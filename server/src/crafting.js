@@ -29,7 +29,7 @@ async function stockChange(conn,materialId,delta,activity,actor,characterId=null
 // A single atomic UPDATE prevents refreshes or concurrent gardeners from doubling growth.
 export async function advanceGardenGrowth(conn,plotId=null){
  const where=plotId===null?'':' WHERE id=?';
- const sql='UPDATE fc_garden_plots SET growth=LEAST(100,growth+LEAST(100,GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP()) DIV 360)*5)),last_growth_at=DATE_ADD(last_growth_at,INTERVAL (GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP())) DIV 360)*360 MINUTE)'+where;
+ const sql='UPDATE fc_garden_plots SET growth=LEAST(100,growth+LEAST(100,GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP()) DIV 360)*5)),last_growth_at=DATE_ADD(last_growth_at,INTERVAL ((GREATEST(0,TIMESTAMPDIFF(MINUTE,last_growth_at,UTC_TIMESTAMP())) DIV 360)*360) MINUTE)'+where;
  await conn.execute(sql,plotId===null?[]:[plotId]);
 }
 const withTransaction=async(pool,fn)=>{
