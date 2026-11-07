@@ -210,3 +210,8 @@ button.fc-craft-ingredient.staged{background:#3a4b41;border-color:#9fd1ad;box-sh
 .fc-play .fc-scene:has(.fc-craft-categories){background:linear-gradient(155deg,#2b202c,#241d29);border-color:#81576f}
 @media(max-width:930px){.fc-play .fc-craft-layout{grid-template-columns:1fr}.fc-play .fc-recipe-index{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));max-height:none}}
 @media(max-width:520px){.fc-play .fc-craft-categories{grid-template-columns:repeat(2,minmax(0,1fr))}.fc-play .fc-recipe-index{grid-template-columns:1fr}.fc-play .fc-gear-stats-editor{grid-template-columns:1fr}}
+
+.fc-crafted-gear-bonuses{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 13px;border:1px solid #a77b9a;border-radius:10px;background:#55375070}
+.fc-crafted-gear-bonuses>span{font-size:10px;letter-spacing:.11em;font-weight:700;color:#f2b7d3}
+.fc-crafted-gear-bonuses strong{font-size:11px;color:#b9dfc3;padding:6px;border:1px solid #71937b;border-radius:6px;background:#32483a}
+.fc-crafted-gear-bonuses small{font-size:10px;color:#d4bac8;margin-left:auto}
