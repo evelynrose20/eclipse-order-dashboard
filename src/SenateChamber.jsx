@@ -8,21 +8,33 @@ const label=value=>String(value||'').replaceAll('_',' ').replace(/\b\w/g,s=>s.to
 const id=x=>Number(x);
 const fmtDate=value=>value?new Date(value).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Not scheduled';
 
+// Three concentric semicircular seating rows: 6 + 5 + 4 = 15 seats.
+// Coordinates are percentages of the chamber stage, not arbitrary per-row
+// offsets; seats preserve their circular appearance at every viewport size.
+export function senateSeatPositions(){
+ const rows=[{count:6,rx:43,ry:65},{count:5,rx:32,ry:51},{count:4,rx:21,ry:37}];
+ return rows.flatMap(({count,rx,ry})=>Array.from({length:count},(_,index)=>{
+  const angle=(198+(144*index)/(count-1))*Math.PI/180;
+  return {left:50+Math.cos(angle)*rx,top:92+Math.sin(angle)*ry};
+ }));
+}
 function Dots({seats,parties,onSelect,active}){
  const sorted=[...seats].sort((a,b)=>Number(a.seat_number)-Number(b.seat_number));
- return <div className="pol-arc" role="group" aria-label="Fifteen Senate seat assignments">
-  {sorted.map((seat,i)=>{
-   // Three shallow semi-circular rows, fitted to 15 places.
-   const row=Math.floor(i/5),column=i%5;
-   const x=11+column*17+(row===1?6:row===2?10:0);
-   const y=15+row*27+Math.abs(column-2)*6;
-   const party=parties.find(p=>id(p.id)===id(seat.party_id));
-   return <button type="button" className={'pol-seat '+(active===seat.seat_number?'pol-seat-active':'')} style={{left:x+'%',top:y+'%',backgroundColor:seat.account_id?(party?.color||'#86919C'):'#313943'}} key={seat.seat_number}
-    aria-label={'Seat '+seat.seat_number+': '+(seat.holder||'Vacant')+(party?' — '+party.name:'')}
-    title={'Seat '+seat.seat_number+' · '+(seat.holder||'Vacant')+(party?' · '+party.name:'')}
-    onClick={()=>onSelect(seat.seat_number)}>{!seat.account_id&&<span>+</span>}</button>
-  })}
-  <div className="pol-majority"><strong>8 OF 15</strong><small>ELECTED-SEAT MAJORITY</small></div>
+ const positions=senateSeatPositions();
+ return <div className="pol-seat-layout">
+  <div className="pol-arc" role="group" aria-label="Fifteen Senate seat assignments">
+   {sorted.map((seat,i)=>{
+    const position=positions[i];
+    const party=parties.find(p=>id(p.id)===id(seat.party_id));
+    return <button type="button" className={'pol-seat '+(active===seat.seat_number?'pol-seat-active':'')}
+     style={{left:position.left+'%',top:position.top+'%',backgroundColor:seat.account_id?(party?.color||'#86919C'):'#313943'}}
+     key={seat.seat_number} aria-pressed={active===seat.seat_number}
+     aria-label={'Seat '+seat.seat_number+': '+(seat.holder||'Vacant')+(party?' — '+party.name:'')}
+     title={'Seat '+seat.seat_number+' · '+(seat.holder||'Vacant')+(party?' · '+party.name:'')}
+     onClick={()=>onSelect(seat.seat_number)}>{!seat.account_id&&<span aria-hidden="true">+</span>}</button>;
+   })}
+  </div>
+  <div className="pol-majority"><span className="pol-majority-mark" aria-hidden="true">◆</span><strong>MAJORITY AT 8</strong><small>OF 15 ELECTED SEATS</small></div>
  </div>;
 }
 function Bill({bill}){
