@@ -59,6 +59,8 @@ test('map uses Font Awesome web-font icons and accepts production and civic mark
   assert.ok(map.includes("'"+marker+"'"),'frontend: '+marker);
   assert.ok(server.includes("'"+marker+"'"),'server: '+marker);
  }
- assert.match(form,/ICON_OPTIONS\.map/);
+ assert.match(form,/MapIconPicker options=\{ICON_OPTIONS\}/);
+ const palette=await load('src/MapIconPicker.jsx');
+ assert.match(palette,/options\.map/);
  assert.match(css,/Font Awesome 6 Free/);
 });
