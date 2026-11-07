@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {DEMO_POLITICS} from './senate-preview-data.js';
+import {senateSeatPositions} from './senateSeatGeometry.js';
 import './senate-chamber.css';
 
 const NAV=[['chamber','Chamber'],['parties','Parties'],['elections','Elections'],['coalitions','Coalitions'],['floor','On the Floor'],['history','History']];
@@ -8,16 +9,6 @@ const label=value=>String(value||'').replaceAll('_',' ').replace(/\b\w/g,s=>s.to
 const id=x=>Number(x);
 const fmtDate=value=>value?new Date(value).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Not scheduled';
 
-// Three concentric semicircular seating rows: 6 + 5 + 4 = 15 seats.
-// Coordinates are percentages of the chamber stage, not arbitrary per-row
-// offsets; seats preserve their circular appearance at every viewport size.
-export function senateSeatPositions(){
- const rows=[{count:6,rx:43,ry:65},{count:5,rx:32,ry:51},{count:4,rx:21,ry:37}];
- return rows.flatMap(({count,rx,ry})=>Array.from({length:count},(_,index)=>{
-  const angle=(198+(144*index)/(count-1))*Math.PI/180;
-  return {left:50+Math.cos(angle)*rx,top:92+Math.sin(angle)*ry};
- }));
-}
 function Dots({seats,parties,onSelect,active}){
  const sorted=[...seats].sort((a,b)=>Number(a.seat_number)-Number(b.seat_number));
  const positions=senateSeatPositions();
