@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {cycleDate} from './treasury.js';
 
 const ok=body=>({status:200,body});
 const fail=(status,error)=>({status,body:{error}});
@@ -45,6 +46,43 @@ async function logStock(conn,materialId,delta,accountId,characterId,activity,fro
   [materialId,delta,balance,activity,accountId,characterId,'Front #'+frontId+' stock '+(delta>0?'return':'allocation')]);
  return true;
 }
+// Front expenses are charged from business reserves at the same daily reset as wages.
+// A separate cycle record prevents replay after a Windows API restart or overlapping ticks.
+export async function runFrontDailyExpenses(pool,now=new Date()){
+ if(!pool)return null;
+ const [[settings]]=await pool.query('SELECT reset_hour_utc FROM order_payroll_settings WHERE id=1');
+ const cycle=cycleDate(now,Number(settings.reset_hour_utc));
+ const [fronts]=await pool.query('SELECT id FROM order_fronts WHERE status="active" ORDER BY id');
+ const totals={cycle,processed:0,paid:0,shortfall:0};
+ for(const row of fronts){
+  const result=await atomic(pool,async conn=>{
+   const [rows]=await conn.execute('SELECT id,balance,status,daily_rent,daily_supplies,daily_upkeep FROM order_fronts WHERE id=? FOR UPDATE',[row.id]);
+   const front=rows[0];
+   if(!front||front.status!=='active')return ok({status:'inactive'});
+   const [previous]=await conn.execute('SELECT front_id FROM order_front_daily_expenses WHERE front_id=? AND cycle_date=?',[front.id,cycle]);
+   if(previous.length)return ok({status:'already_recorded'});
+   const scheduled=Number(front.daily_rent)+Number(front.daily_supplies)+Number(front.daily_upkeep);
+   const available=Number(front.balance);
+   const paid=Math.min(scheduled,available),shortfall=scheduled-paid;
+   await conn.execute('INSERT INTO order_front_daily_expenses(front_id,cycle_date,scheduled_total,paid_total,shortfall) VALUES(?,?,?,?,?)',
+    [front.id,cycle,scheduled,paid,shortfall]);
+   if(paid){
+    const balance=available-paid;
+    await conn.execute('UPDATE order_fronts SET balance=? WHERE id=?',[balance,front.id]);
+    await conn.execute('INSERT INTO order_front_ledger(front_id,kind,amount,balance_after,description,by_account) VALUES(?,"operating_expense",?,?,?,NULL)',
+     [front.id,paid,balance,'Automatic daily operating costs · '+cycle]);
+   }
+   return ok({status:'recorded',paid,shortfall});
+  });
+  if(result.body?.status==='recorded'){
+   totals.processed++;
+   totals.paid+=result.body.paid;
+   totals.shortfall+=result.body.shortfall;
+  }
+ }
+ return totals;
+}
+
 export async function applyFrontTrade(conn,{frontId,deliveryId,revenue,accountId}){
  if(!frontId||!revenue)return ok({retained:0});
  const [[front]]=await conn.execute('SELECT status,order_share_percent,balance,name FROM order_fronts WHERE id=? FOR UPDATE',[frontId]);
@@ -130,14 +168,15 @@ export async function frontsRoute(pool,req,path){
   const [isStaff]=await pool.execute('SELECT fs.staff_role FROM order_front_staff fs JOIN characters c ON c.id=fs.character_id WHERE fs.front_id=? AND c.player_account_id=? LIMIT 1',[frontId,actor.id]);
   const manage=isOfficer||front.owner_account_id===actor.id||isStaff.some(s=>s.staff_role==='manager');
   if(front.status!=='active'&&!manage)return fail(404,'front_not_found');
-  const [[offers],[staff],[stocks],[ledger],[changes]] = await Promise.all([
+  const [[offers],[staff],[stocks],[ledger],[changes],[dailyExpenses]] = await Promise.all([
    pool.execute('SELECT o.id,o.offer_type,o.material_id,o.name,o.description,o.posted_price,o.restricted,o.is_active FROM order_front_offerings o WHERE o.front_id=? ORDER BY o.id DESC',[frontId]),
    manage?pool.execute('SELECT s.character_id,c.character_name,s.staff_role FROM order_front_staff s JOIN characters c ON c.id=s.character_id WHERE s.front_id=? ORDER BY s.staff_role,c.character_name',[frontId]):Promise.resolve([[]]),
    manage?pool.execute('SELECT s.material_id,m.name,s.quantity FROM order_front_stock s JOIN fc_materials m ON m.id=s.material_id WHERE s.front_id=? ORDER BY m.name',[frontId]):Promise.resolve([[]]),
    manage?pool.execute('SELECT kind,gross_amount,amount,balance_after,description,created_at FROM order_front_ledger WHERE front_id=? ORDER BY id DESC LIMIT 60',[frontId]):Promise.resolve([[]]),
-   manage?pool.execute('SELECT id,request_type,requested_value,justification,state,created_at,reviewed_at FROM order_front_change_requests WHERE front_id=? ORDER BY id DESC LIMIT 50',[frontId]):Promise.resolve([[]])
+   manage?pool.execute('SELECT id,request_type,requested_value,justification,state,created_at,reviewed_at FROM order_front_change_requests WHERE front_id=? ORDER BY id DESC LIMIT 50',[frontId]):Promise.resolve([[]]),
+   manage?pool.execute('SELECT cycle_date,scheduled_total,paid_total,shortfall FROM order_front_daily_expenses WHERE front_id=? ORDER BY cycle_date DESC LIMIT 30',[frontId]):Promise.resolve([[]])
   ]);
-  return ok({front:{...front,balance:manage?Number(front.balance):null,order_share_percent:manage?Number(front.order_share_percent):null,license_terms:manage?front.license_terms:null,can_manage:manage,ic_approved:!!front.ic_approved,site_approved:!!front.site_approved},offers:offers.filter(o=>manage||o.is_active),staff,stocks,ledger,change_requests:changes});
+  return ok({front:{...front,balance:manage?Number(front.balance):null,order_share_percent:manage?Number(front.order_share_percent):null,license_terms:manage?front.license_terms:null,can_manage:manage,ic_approved:!!front.ic_approved,site_approved:!!front.site_approved},offers:offers.filter(o=>manage||o.is_active),staff,stocks,ledger,daily_expenses:dailyExpenses,change_requests:changes});
  }
  if(action==='approve'&&req.method==='POST'){
   const b=await read(req);
@@ -288,19 +327,13 @@ export async function frontsRoute(pool,req,path){
    return ok({status:'transferred',quantity:b.quantity});
   });
  }
- if(action==='expenses'&&req.method==='POST'){
+ if(action==='operating-costs'&&req.method==='POST'){
+  if(!isCommand)return fail(403,'command_required');
   const b=await read(req);
-  if(!qty(b?.amount,1000000)||!str(b.description,250))return fail(400,'invalid_front_expense');
-  return atomic(pool,async conn=>{
-   const front=await managedFront(conn,frontId,actor,{lock:true});
-   if(!front||front.status!=='active')return fail(403,'front_not_authorized');
-   if(Number(front.balance)<b.amount)return fail(409,'front_funds_insufficient');
-   const next=Number(front.balance)-b.amount;
-   await conn.execute('UPDATE order_fronts SET balance=? WHERE id=?',[next,frontId]);
-   await conn.execute('INSERT INTO order_front_ledger(front_id,kind,amount,balance_after,description,by_account) VALUES(?,"operating_expense",?,?,?,?)',
-    [frontId,b.amount,next,b.description.trim(),actor.id]);
-   return ok({status:'recorded',balance:next});
-  });
+  if(![b?.daily_rent,b?.daily_supplies,b?.daily_upkeep].every(v=>Number.isInteger(v)&&v>=0&&v<=100000))return fail(400,'invalid_operating_costs');
+  const [updated]=await pool.execute('UPDATE order_fronts SET daily_rent=?,daily_supplies=?,daily_upkeep=? WHERE id=? AND status<>"closed"',
+   [b.daily_rent,b.daily_supplies,b.daily_upkeep,frontId]);
+  return updated.affectedRows?ok({status:'saved'}):fail(404,'front_not_editable');
  }
  return fail(404,'not_found');
 }
