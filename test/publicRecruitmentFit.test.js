@@ -30,7 +30,7 @@ test('recruitment fit is rendered as HTML and responsive CSS rather than a stati
 });
 
 test('section numbering remains sequential',()=>{
- for(const [number,label] of [['08',"WHO WE'RE LOOKING FOR"],['09','THE DOOR IS OPEN'],['10','QUESTIONS BEFORE THE OATH']]){
-  assert.ok(number==='09'?publicSite.includes('<SectionTag number="09">{recruitment='):publicSite.includes('<SectionTag number="'+number+'">'+label+'</SectionTag>'));
+ for(const [number,label] of [['09',"WHO WE'RE LOOKING FOR"],['10','THE DOOR IS OPEN'],['11','QUESTIONS BEFORE THE OATH']]){
+  assert.ok(number==='10'?publicSite.includes('<SectionTag number="10">{recruitment='):publicSite.includes('<SectionTag number="'+number+'">'+label+'</SectionTag>'));
  }
 });
