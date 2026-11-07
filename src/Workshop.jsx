@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import './workshop.css';
+import Commerce from './Commerce.jsx';
 
 const ICON={ore:'⛏',herb:'❧',botanical:'✿',refined:'◆',supply:'▣'};
 const slug=value=>value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 -]/g,'').trim().replace(/\s+/g,'-').slice(0,48);
@@ -98,7 +99,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
    await refresh();setRecipeLevelEditor(null);setNotice('Crafting level requirement saved.');
   }catch(e){setError(e.message)}finally{setBusy(false)}
  };
- const nav=[['garden','The Garden','✿'],['gather','Expeditions','⛏'],['craft','The Workshop','⚒'],['stores','FC Stores','▣']];
+ const nav=[['garden','The Garden','✿'],['gather','Expeditions','⛏'],['craft','The Workshop','⚒'],['trade','Trade & Armory','♜'],['stores','FC Stores','▣']];
  return <section className="fc-workshop fc-play">
   <header className="fc-play-banner">
    <div><span className="fc-play-eyebrow">THE ECLIPSE ORDER · ESTATE GROUNDS</span><h2>The Order's Living Workshop</h2><p>Raise the garden together. Venture into the wilds. Bring every resource home to the same storeroom.</p></div>
@@ -152,6 +153,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
       {!canCraft&&<p className="fc-scene-hint">Choose a character, make sure the stores have enough, and prepare each ingredient.</p>}
      </div>}</div>
    </div>}
+   {tab==='trade'&&<Commerce request={request} characters={characters} canManage={canManage} readOnly={readOnly} materials={materials}/>}
    {tab==='stores'&&<div className="fc-scene"><div className="fc-scene-title"><div><span>THE ORDER'S VAULT</span><h3>One treasury, many contributors</h3><p>Every ore, herb, and finished item belongs to the Free Company.</p></div></div>
     <input type="search" aria-label="Find a material" className="fc-store-search" placeholder="Find a material…" value={search} onChange={e=>setSearch(e.target.value)}/>
     <div className="fc-store-grid">{materials.filter(m=>[m.name,m.category].join(' ').toLowerCase().includes(search.toLowerCase())).map(m=><article className="fc-store-item" key={m.id}><span>{ICON[m.category]||'✦'}</span><div><small>{m.category}</small><strong>{m.name}</strong></div><b>×{m.quantity}</b></article>)}</div>
