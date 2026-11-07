@@ -145,3 +145,5 @@ updated: 2026-11-07
 - No hidden edits to player or business-front inventory.
 - Major territorial/civic/military losses require authorization; never run punitive offline cascades.
 - Keep **world state**, **site control**, **government**, **support**, and **faction reputation** distinct.
+
+- [x] Searchable Font Awesome site icon picker; choose built-in markers or validate and save an additional Free Solid `fa-*` icon by name without code changes.
