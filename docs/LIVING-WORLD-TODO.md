@@ -119,13 +119,22 @@ updated: 2026-11-07
 - [ ] Windows service deployment instructions, backup/restore dry run, secrets isolation.
 - [ ] Performance tests with hundreds of locations, routes, site types and NPC cohorts.
 
+## Transport network editor — released on main
+- [x] Font Awesome web-font icons for major site and dashboard controls; map facility icon picker includes lumber yards, logging, sawmills, quarries, rail stations and more.
+- [x] Authenticated road/rail graph tables with shared junctions and rail switches (migration 045).
+- [x] Create branches, snap to existing nodes and route segments, split segments at saved junctions, move a junction and retain all attached connections.
+- [x] Preview and save road, trail, railway, air-route and waterway edges with editable bend points.
+- [x] Explicit transaction-safe conversion of older settlement-to-settlement routes without losing waypoints or track types.
+- [x] MySQL 8 integration tests covering junction splits, branches, moves and import.
+- [ ] Production Windows API migration and browser acceptance test after updating to this release.
+
 ## Current release checklist
 
 - [ ] Back up production MySQL.
 - [ ] Pull latest matching frontend and Windows API code.
-- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041 and 042.
+- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–045, including 045_world_transport_graph.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
-- [ ] Browser test all edit operations.
+- [ ] Browser test all edit operations, including Network & junctions: split a rail line, attach a branch, move the shared switch, save and reload.
 - [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
 - [ ] Confirm master plan and this checklist are readable in Obsidian.
 
