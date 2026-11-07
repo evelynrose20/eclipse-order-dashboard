@@ -16,7 +16,7 @@ import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
 import {commerceRoute} from './commerce.js';
-import {frontsRoute} from './fronts.js';
+import {frontsRoute,runFrontDailyExpenses} from './fronts.js';
 import {treasuryRoute,runDailyPayroll} from './treasury.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
@@ -155,7 +155,13 @@ let payrollTickRunning=false;
 const payrollTick=async()=>{
  if(!pool||payrollTickRunning)return;
  payrollTickRunning=true;
- try{const r=await runDailyPayroll(pool,new Date());if(r?.body?.status==='paid')console.log('[Eclipse Order API] Daily payroll processed:',r.body.cycle,'distributed:',r.body.paid_total)}
+ try{
+  const now=new Date();
+  const r=await runDailyPayroll(pool,now);
+  if(r?.body?.status==='paid')console.log('[Eclipse Order API] Daily payroll processed:',r.body.cycle,'distributed:',r.body.paid_total);
+  const fronts=await runFrontDailyExpenses(pool,now);
+  if(fronts?.processed)console.log('[Eclipse Order API] Front operating costs:',fronts.cycle,'paid:',fronts.paid);
+ }
  catch(e){console.warn('[Eclipse Order API] Payroll check unavailable:',e?.code||'database_unavailable')}
  finally{payrollTickRunning=false}
 };
