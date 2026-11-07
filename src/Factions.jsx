@@ -95,7 +95,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
     ].map(section=><section className="faction-list-section" key={section.id} aria-label={section.title}>
      <div className="faction-section-heading"><h3>{section.title}</h3><span className="faction-section-count">{shown.filter(f=>f.faction_scope===section.id).length}</span></div>
      {shown.filter(f=>f.faction_scope===section.id).map(f=><button type="button" key={f.id} className={'faction-list-item '+(current===f.id?'selected':'')} onClick={()=>{setCurrent(f.id);setEditing(null);setEventDraft(null);setNotice('')}} aria-pressed={current===f.id}>
-      <span className="faction-symbol">{section.id==='settlement'?'⌂':section.id==='world'?'◇':'✦'}</span><span className="faction-list-copy"><strong>{f.name}</strong><small>{f.leader}</small></span>
+      <span className="faction-symbol"><i className={'fa-solid fa-'+(section.id==='settlement'?'house':section.id==='world'?'earth-europe':'flag')}/></span><span className="faction-list-copy"><strong>{f.name}</strong><small>{f.leader}</small></span>
       <span className={'faction-relation '+relation(f.relationship)[1]}>{relation(f.relationship)[0]}</span>
      </button>)}
      {!shown.some(f=>f.faction_scope===section.id)&&<p className="faction-section-empty">{query||filter!=='all'?'No matching entries.':'No entries yet.'}</p>}
