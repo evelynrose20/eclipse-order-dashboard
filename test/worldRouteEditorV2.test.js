@@ -26,7 +26,7 @@ test('route planning is preview-first with explicit save and cancellation',async
  assert.match(map,/Save new route/);
  assert.match(map,/Cancel draft/);
  assert.match(map,/wtm-planned-route/);
- assert.match(map,/setRouteEnd\(Number\(s\.id\)\)/);
+ assert.match(map,/chooseEndpoint/);
  assert.doesNotMatch(map,/void saveRoute/);
  assert.match(map,/Endpoints selected/);
  assert.match(map,/e\.stopPropagation\(\);mapClick\(e\)/);
@@ -35,7 +35,7 @@ test('existing roads are editable by route list with waypoint insertion and rese
  const map=await load('src/WorldTerritoryMap.jsx');
  for(const label of ['Existing connections','Save route changes','Reset edits','Delete route','Route type','Route name'])assert.ok(map.includes(label),label);
  assert.match(map,/next\.splice\(nearest\?\.i\?\?old\.length,0,p\)/);
- assert.match(map,/selectRoad\(chosen\)/);
+ assert.match(map,/selectRoad\(r\)/);
  assert.match(map,/setRouteDirty\(true\)/);
 });
 test('railways render track/sleeper symbols distinct from road and trail',async()=>{
