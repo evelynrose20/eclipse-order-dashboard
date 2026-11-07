@@ -198,6 +198,39 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(savedRoad.route_type,'trail');
   const roadDelete=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/routes/'+roadId);
   assert.equal(roadDelete.status,200,JSON.stringify(roadDelete.body));
+  // Canonical transport-graph regression: real junctions connect independently
+  // saved roads and railways, and never overwrite the old route backup.
+  const [terminalNodes]=await admin.execute('SELECT id,settlement_id FROM world_route_nodes WHERE settlement_id IN (?,?)',[mineId,portId]);
+  assert.equal(terminalNodes.length,2,'new settlements have shared transport terminals');
+  const mineTerminal=terminalNodes.find(n=>Number(n.settlement_id)===mineId).id;
+  const portTerminal=terminalNodes.find(n=>Number(n.settlement_id)===portId).id;
+  const testRail=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_node_id:mineTerminal,to_node_id:portTerminal,route_type:'rail',route_name:'CI railway',waypoints:[]}),'/world-admin/transport/segments');
+  assert.equal(testRail.status,200,JSON.stringify(testRail.body));
+  const railSplit=await worldAdministrationRoute(admin,request('POST',{x:50,y:57.5}),'/world-admin/transport/segments/'+testRail.body.id+'/split');
+  assert.equal(railSplit.status,200,JSON.stringify(railSplit.body));
+  const switchId=Number(railSplit.body.junction_id);
+  const [[railSwitch]]=await admin.execute('SELECT node_kind FROM world_route_nodes WHERE id=?',[switchId]);
+  assert.equal(railSwitch.node_kind,'rail_switch');
+  const [twoSegments]=await admin.execute('SELECT from_node_id,to_node_id FROM world_route_segments WHERE id IN (?,?)',railSplit.body.segment_ids);
+  assert.equal(twoSegments.length,2);
+  assert.ok(twoSegments.every(r=>Number(r.from_node_id)===switchId||Number(r.to_node_id)===switchId),'split segments must meet at the same junction');
+  const camp=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Logging Camp',map_x:65,map_y:23,map_icon:'lumber_yard'}),'/world-admin/settlements');
+  assert.equal(camp.status,200,JSON.stringify(camp.body));
+  const [[campNode]]=await admin.execute('SELECT id FROM world_route_nodes WHERE settlement_id=?',[camp.body.id]);
+  const branchRail=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_node_id:switchId,to_node_id:campNode.id,route_type:'rail',route_name:'CI rail spur',waypoints:[{x:63,y:44}]}),'/world-admin/transport/segments');
+  assert.equal(branchRail.status,200,JSON.stringify(branchRail.body));
+  const movedSwitch=await worldAdministrationRoute(admin,request('PUT',{region_id:wrid,settlement_id:null,name:'Industrial Switch',node_kind:'rail_switch',map_x:51,map_y:58}),'/world-admin/transport/nodes/'+switchId);
+  assert.equal(movedSwitch.status,200,JSON.stringify(movedSwitch.body));
+  const refusedDelete=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/transport/nodes/'+switchId);
+  assert.equal(refusedDelete.status,409,'cannot remove a node with attached routes');
+  const worldNetwork=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
+  assert.equal(worldNetwork.status,200);
+  assert.ok(worldNetwork.body.network_nodes.some(n=>Number(n.id)===switchId&&n.name==='Industrial Switch'));
+  assert.ok(worldNetwork.body.network_segments.some(e=>Number(e.id)===Number(branchRail.body.id)));
+  await admin.query(await readFile(new URL('../sql/046_import_legacy_world_routes.sql',import.meta.url),'utf8'));
+  const [[existingSpur]]=await admin.execute('SELECT from_node_id FROM world_route_segments WHERE id=?',[branchRail.body.id]);
+  assert.equal(Number(existingSpur.from_node_id),switchId,'repeat graph import preserves authored spur and edits');
+
   const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
   assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
