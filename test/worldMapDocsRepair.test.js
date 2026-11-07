@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
 const source=async p=>readFile(new URL('../'+p,import.meta.url),'utf8');
-test('preflight permits PATCH used by the settlement map editor',async()=>{
+test('map editor uses POST for compatibility with standard API preflight methods',async()=>{
  const server=await source('server/src/server.js');
  const editor=await source('src/WorldTerritoryMap.jsx');
  assert.match(server,/Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS'/);
- assert.match(editor,/method:'PATCH'/);
+ assert.match(editor,/\/map',\{method:'POST'/);
  assert.match(editor,/\/world-admin\/settlements\//);
+ assert.doesNotMatch(editor,/method:'PATCH'/);
+ assert.doesNotMatch(editor,/M-10 120 C 140 150 205 280 355 252 S 605 325 914 505/);
 });
 test('missing world migration surfaces actionable error instead of generic failure',async()=>{
  const api=await source('server/src/world-administration.js');
