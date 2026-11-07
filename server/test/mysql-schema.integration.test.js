@@ -10,6 +10,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
+import {runDailyPayroll,treasuryRoute} from '../src/treasury.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
  const admin=createPool({
@@ -17,7 +18,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -287,7 +288,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(equipped.status,200);
   const equipmentAfter=await commerceRoute(admin,request('GET'),'/commerce/characters/'+char.body.id+'/equipment');
   assert.equal(equipmentAfter.body.bonuses.tool,1);
-  const contract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Supply settlement metal',description:'Deliver metal to local makers.',item_kind:'material',item_id:'iron-ingot',required_quantity:4,rep_per_unit:2}),'/commerce/contracts');
+  const contract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Supply settlement metal',description:'Deliver metal to local makers.',item_kind:'material',item_id:'iron-ingot',required_quantity:4,rep_per_unit:2,sale_value_per_unit:10}),'/commerce/contracts');
   assert.equal(contract.status,200,JSON.stringify(contract.body));
   const firstDelivery=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:3}),'/commerce/contracts/'+contract.body.id+'/deliver');
   assert.equal(firstDelivery.status,200,JSON.stringify(firstDelivery.body));
@@ -302,7 +303,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(completed.body.complete,true);
   const deliverTwice=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1}),'/commerce/contracts/'+contract.body.id+'/deliver');
   assert.equal(deliverTwice.status,409,'completed contract must not double reward');
-  const gearContract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Settlement tools',description:'Deliver a crafted mining pick.',item_kind:'equipment',item_id:'field-pick',required_quantity:1,rep_per_unit:3}),'/commerce/contracts');
+  const gearContract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Settlement tools',description:'Deliver a crafted mining pick.',item_kind:'equipment',item_id:'field-pick',required_quantity:1,rep_per_unit:3,sale_value_per_unit:20}),'/commerce/contracts');
   assert.equal(gearContract.status,200);
   const cannotTradeEquipped=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,equipment_item_id:pickId}),'/commerce/contracts/'+gearContract.body.id+'/deliver');
   assert.equal(cannotTradeEquipped.status,409,'cannot trade currently equipped tool');
@@ -318,6 +319,45 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(tradeReputation.faction_view),11);
   const [tradeLog]=await admin.execute("SELECT applied_delta FROM faction_reputation_changes WHERE faction_id='test-hamlet' AND target='faction_view' ORDER BY id");
   assert.deepEqual(tradeLog.map(e=>Number(e.applied_delta)),[6,2,3]);
+  // All character pay is funded by trade proceeds, never by a free daily mint.
+  const [[treasuryBefore]]=await admin.execute('SELECT balance FROM order_treasury WHERE id=1');
+  assert.equal(Number(treasuryBefore.balance),60,'4 ingots at 10 and 1 tool at 20 fund the Order');
+  const [incomeEntries]=await admin.query('SELECT amount FROM order_treasury_ledger WHERE category="trade" ORDER BY id');
+  assert.deepEqual(incomeEntries.map(e=>Number(e.amount)),[30,10,20]);
+  const boundId='99999999-9999-4999-8999-999999999999';
+  await admin.execute('INSERT INTO characters(id,character_name,player_account_id,collar_bound,bound_rank,sheet_json) VALUES(?,?,?,?,?,?)',
+   [boundId,'CI Bound Worker',id,1,'rank_i',JSON.stringify({name:'CI Bound Worker',level:1})]);
+  const payroll=await runDailyPayroll(admin,new Date('2026-11-06T15:15:00Z'));
+  assert.equal(payroll.status,200,JSON.stringify(payroll.body));
+  assert.equal(payroll.body.status,'paid');
+  assert.equal(payroll.body.requested_total,6,'member earns five gil, bound character one');
+  assert.equal(payroll.body.paid_total,6);
+  const repeatPayroll=await runDailyPayroll(admin,new Date('2026-11-06T17:00:00Z'));
+  assert.equal(repeatPayroll.body.status,'already_paid');
+  const memberWallet=await treasuryRoute(admin,request('GET'),'/treasury/characters/'+char.body.id);
+  assert.equal(memberWallet.body.balance,5);
+  const slaveWallet=await treasuryRoute(admin,request('GET'),'/treasury/characters/'+boundId);
+  assert.equal(slaveWallet.body.balance,1);
+  const missingFunds=await treasuryRoute(admin,request('POST',{amount:1000}),'/treasury/missions/'+eventId+'/pay/'+char.body.id);
+  assert.equal(missingFunds.status,409,'missions cannot overdraw');
+  const missionPaid=await treasuryRoute(admin,request('POST',{amount:7}),'/treasury/missions/'+eventId+'/pay/'+char.body.id);
+  assert.equal(missionPaid.status,200,JSON.stringify(missionPaid.body));
+  const doubleMission=await treasuryRoute(admin,request('POST',{amount:7}),'/treasury/missions/'+eventId+'/pay/'+char.body.id);
+  assert.equal(doubleMission.status,409,'same character cannot earn the same event reward twice');
+  const [[memberPurse]]=await admin.execute('SELECT balance FROM character_wallets WHERE character_id=?',[char.body.id]);
+  assert.equal(Number(memberPurse.balance),12);
+  const [[cashAfter]]=await admin.execute('SELECT balance FROM order_treasury WHERE id=1');
+  assert.equal(Number(cashAfter.balance),47,'trade revenue less real wages and mission spending');
+  await admin.execute('UPDATE order_treasury SET balance=1 WHERE id=1');
+  const lowCashPayroll=await runDailyPayroll(admin,new Date('2026-11-07T15:30:00Z'));
+  assert.equal(lowCashPayroll.body.paid_total,1,'low cash proportionally lowers wages instead of printing money');
+  const [[emptyCash]]=await admin.execute('SELECT balance FROM order_treasury WHERE id=1');
+  assert.equal(Number(emptyCash.balance),0);
+  const noBackPay=await runDailyPayroll(admin,new Date('2026-11-07T16:00:00Z'));
+  assert.equal(noBackPay.body.status,'already_paid');
+  const [payRecords]=await admin.query('SELECT cycle_date,character_id,paid_amount FROM order_daily_payroll ORDER BY cycle_date,character_id');
+  assert.equal(payRecords.length,4,'exactly one record per character and reset');
+
 
 
 
