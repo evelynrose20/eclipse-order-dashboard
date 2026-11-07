@@ -191,3 +191,14 @@
 .wtm-pin-icon > .fa-solid{display:inline-block;font-family:'Font Awesome 6 Free';font-weight:900;font-size:17px;line-height:1;transform:rotate(-45deg);font-style:normal}
 .wtm-pin[data-type='capital'] .wtm-pin-icon > .fa-solid{font-size:21px}
 .wtm-symbol select{min-width:180px}
+
+/* Shared transport nodes live on the original cartographic stage, not a second map. */
+.wtm-stage button.wtm-junction,.app-shell.eo-local .wtm-stage button.wtm-junction{position:absolute!important;z-index:7!important;display:grid!important;place-items:center!important;width:23px!important;height:23px!important;min-width:23px!important;min-height:23px!important;padding:0!important;margin:0!important;transform:translate(-50%,-50%)!important;border:2px solid #e0c48e!important;border-radius:50%!important;background:#253e48!important;color:#ffe5b1!important;box-shadow:0 2px 5px #070c14bc!important;cursor:pointer;touch-action:none}
+.wtm-stage button.wtm-junction.endpoint{background:#91623d!important;outline:2px solid #f5ddb0;outline-offset:2px}
+.wtm-stage button.wtm-junction i{font-size:10px;line-height:1}
+.wtm-junction-tools{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:10px 0}
+.wtm-junction-tools button{background:#273b45;color:#f0e6d7;border:1px solid #71818b;border-radius:3px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.wtm-junction-tools button.active{background:#59443a;border-color:#dfbf89;color:#ffe7b2}
+.wtm-junction-tools button:disabled{opacity:.45;cursor:not-allowed}
+.wtm-junction-tools button i{margin-right:5px}
+.wtm-junction-tools small{flex:1;min-width:185px;color:#bfcbd0;font-size:11px}
