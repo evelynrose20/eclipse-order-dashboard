@@ -30,7 +30,7 @@ export function civicOutlook(settlement,region){
  const risk=Math.max(0,Math.min(100,Math.round(unmet*.6+Number(s.unrest??0)*.4)));
  return {heat_demand:heatDemand,cold_stress:Math.round(coldStress),food_pressure:Math.round(shortage),diet_monotony:Math.round(monotony),unmet_needs:unmet,unrest_risk:risk,warning:risk>=65?'elevated':risk>=30?'watch':'stable'};
 }
-export async function worldAdministrationRoute(pool,req,path){
+async function worldAdministrationRouteCore(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
@@ -113,4 +113,18 @@ export async function worldAdministrationRoute(pool,req,path){
   });
  }
  return fail(404,'not_found');
+}
+
+ 
+// Return a recoverable deployment problem instead of treating a missing
+// local migration as a generic server failure. Never expose SQL text.
+export async function worldAdministrationRoute(pool,req,path){
+ try{return await worldAdministrationRouteCore(pool,req,path)}
+ catch(error){
+  if(['ER_NO_SUCH_TABLE','ER_BAD_FIELD_ERROR'].includes(error?.code)){
+   console.error('[World Administration] Required schema is not installed:',error.code,path);
+   return fail(503,'world_setup_required');
+  }
+  throw error;
+ }
 }

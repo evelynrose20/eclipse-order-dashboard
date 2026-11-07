@@ -30,7 +30,7 @@ An account's 18+ declaration is not conclusive age verification. Community admis
 
 ## Public routing and launch
 
-Follow [Cloudflare launch](../server/CLOUDFLARE-LAUNCH.md). Confirm the site's **exact** HTTPS origin in `API_ALLOWED_ORIGIN`, the expected `API_PUBLIC_HOST`, the tunnel route, preflight CORS and sign-in from the published site. Ensure `/auth/setup-domina` and `/ready` are unavailable over the public API. Configure Cloudflare rate limits on login and registration; avoid HTML challenges on JSON API requests without client support.
+Follow [Cloudflare launch](Operations/CLOUDFLARE-LAUNCH.md). Confirm the site's **exact** HTTPS origin in `API_ALLOWED_ORIGIN`, the expected `API_PUBLIC_HOST`, the tunnel route, preflight CORS and sign-in from the published site. Ensure `/auth/setup-domina` and `/ready` are unavailable over the public API. Configure Cloudflare rate limits on login and registration; avoid HTML challenges on JSON API requests without client support.
 
 ## Recovery and ongoing operations
 

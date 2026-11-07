@@ -101,7 +101,7 @@ const server=http.createServer(async(req,res)=>{
   res.end(JSON.stringify({error:'not_found'}));return;
  }
  if(req.method==='OPTIONS'&&origin===expectedOrigin){
-  res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
+  res.writeHead(204,{...cors,'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Cache-Control':'no-store'});
   res.end();return;
  }
  let result;
@@ -138,7 +138,7 @@ const server=http.createServer(async(req,res)=>{
  }catch(error){
   if(error?.status===400||error?.status===413)result={status:error.status,body:{error:error.message}};
   else{
-   console.error('[Eclipse Order API] Request failed:',error?.code||'internal_error');
+   console.error('[Eclipse Order API] Request failed:',req.method,pathname,error?.code||error?.name||'internal_error');
    result={status:500,body:{error:'internal_error'}};
   }
  }

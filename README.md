@@ -72,7 +72,7 @@ Roleplay content preferences are private by default. A profile selection is not 
 
 ## Windows development and setup
 
-Requires Node.js 22+, a local MySQL `eclipse_order` database, a private `server/.env`, and the existing local MySQL permissions. See [Windows setup](server/README.md) for prerequisites and account bootstrap.
+Requires Node.js 22+, a local MySQL `eclipse_order` database, a private `server/.env`, and the existing local MySQL permissions. See [Windows setup](docs/Operations/SERVER-README.md) for prerequisites and account bootstrap.
 
 From the `server` folder, after backing up MySQL and pulling updates:
 
@@ -97,7 +97,7 @@ Use `http://localhost:5173`. Run backend tests separately with `cd server; npm t
 
 ## Release readiness
 
-Before inviting members, verify migrations against the actual Windows MySQL instance, account roles and private-record permissions with distinct users, the full event/XP workflow, Cloudflare HTTPS/CORS and auth throttling, session expiry, and encrypted backups with a tested restore. Email verification/recovery and production operations remain open work. See [release roadmap](docs/ROADMAP.md), [operations checklist](docs/OPERATIONS.md), and [Cloudflare launch guide](server/CLOUDFLARE-LAUNCH.md).
+Before inviting members, verify migrations against the actual Windows MySQL instance, account roles and private-record permissions with distinct users, the full event/XP workflow, Cloudflare HTTPS/CORS and auth throttling, session expiry, and encrypted backups with a tested restore. Email verification/recovery and production operations remain open work. See [release roadmap](docs/ROADMAP.md), [operations checklist](docs/OPERATIONS.md), and [Cloudflare launch guide](docs/Operations/CLOUDFLARE-LAUNCH.md).
 
 The GitHub Pages workflow may deploy on updates to `main`; a PR does **not** automatically apply database migrations. Never commit credentials or expose MySQL port 3306.
 

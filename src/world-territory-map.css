@@ -41,3 +41,71 @@
 .wtm-error{margin:6px 12px;color:#f3c8c9;background:#482b32;border-left:3px solid #d26171;padding:10px}
 .wtm-note{margin:6px 12px;color:#d3e8df;background:#253f35;border-left:3px solid #6ab298;padding:10px}
 @media(max-width:700px){.wtm-stage{height:335px;margin:6px}.wtm-toolbar{padding:8px}.wtm-toolbar label{flex:1}.wtm-pin-name{font-size:10px!important}.wtm-pin-icon{min-width:26px;min-height:26px}}
+
+/* Cassian cartography — detailed, subdued topographical presentation */
+.wtm-root{gap:0;border:1px solid #485867;background:linear-gradient(145deg,#17232e,#0e1821)}
+.wtm-map-frame{position:relative;background:#101b25;border-top:1px solid #6b5c46;padding:0 12px 7px}
+.wtm-map-title{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:18px;padding:16px 9px 10px;color:#e9e0d0}
+.wtm-map-title span{grid-column:1/-1;color:#c2a574;font-size:9px;letter-spacing:.22em;font-weight:800}
+.wtm-map-title strong{font:800 clamp(20px,2.6vw,31px) var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:.09em;text-transform:uppercase}
+.wtm-map-title small{font-size:9px;letter-spacing:.12em;color:#9cabb4;border:1px solid #596777;padding:7px 9px;text-align:right}
+.wtm-stage{height:clamp(360px,40vw,580px);margin:5px 0;outline:1px solid #6e6658;outline-offset:-1px;background-color:#182932;box-shadow:inset 0 0 70px #070c14;transition:box-shadow .2s}
+.wtm-stage.wtm-editing{box-shadow:inset 0 0 70px #070c14,0 0 0 1px #bea174}
+.wtm-stage:before{background:linear-gradient(#a7ac9a13 1px,transparent 1px),linear-gradient(90deg,#a7ac9a13 1px,transparent 1px);background-size:48px 48px;z-index:1}
+.wtm-terrain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;filter:sepia(.12)}
+.wtm-with-image .wtm-terrain{opacity:.28}
+.wtm-map-compass{position:absolute;right:15px;top:13px;z-index:3;display:grid;justify-items:center;gap:0;width:45px;height:74px;color:#d9c49e;pointer-events:none;text-shadow:0 2px 4px #081119}
+.wtm-map-compass span,.wtm-map-compass small{font:800 10px var(--imperial-ui,sans-serif);letter-spacing:.1em}
+.wtm-map-compass b{font:400 34px Georgia,serif;line-height:1}
+.wtm-map-corner{position:absolute;bottom:10px;right:11px;display:grid;text-align:right;gap:2px;color:#c4af8d;letter-spacing:.12em;z-index:1;pointer-events:none;text-shadow:0 1px 5px #030608}
+.wtm-map-corner span{font:800 9px var(--imperial-heading,'Arial Narrow',sans-serif)}
+.wtm-map-corner small{font-size:8px;color:#99a7a9}
+.wtm-road-base{stroke:#070b0e;stroke-width:7}
+.wtm-road-top{stroke:#ceb88d;stroke-width:3.1;opacity:.92}
+.wtm-road-rail .wtm-road-top{stroke:#c2d0d1;stroke-width:3}
+.wtm-road-skyway .wtm-road-top{stroke:#96b4d6}
+.wtm-road-waterway .wtm-road-top{stroke:#73bad3;stroke-width:4}
+.wtm-road-trail .wtm-road-top{stroke:#a99479;stroke-width:2.2}
+.wtm-road.selected .wtm-road-top{stroke:#f8da9f;stroke-width:4.1;opacity:1}
+.wtm-road-hit{stroke-width:23}
+.wtm-pin-icon{min-width:33px;min-height:33px;width:33px;height:33px;border-radius:8px;transform:rotate(45deg);background:linear-gradient(135deg,#863b48,#502b38);border:1px solid #e0c38b;box-shadow:0 3px 0 #0e1821,0 0 0 3px #141e26;line-height:1;font-size:0}
+.wtm-pin-icon::first-letter{font-size:17px}
+.wtm-pin .wtm-pin-icon{font-size:16px}
+.wtm-pin-icon{font-family:Georgia,serif}
+.wtm-pin-icon{position:relative}
+.wtm-pin-icon{color:#f8e8c8}
+.wtm-pin-icon{ /* text remains upright inside the cartographic lozenge */
+  transform:none;clip-path:polygon(50% 0,100% 36%,100% 80%,50% 100%,0 80%,0 36%);
+}
+.wtm-pin[data-state="occupied"] .wtm-pin-icon{background:linear-gradient(150deg,#81313a,#451c26);border-color:#eb9093}
+.wtm-pin[data-state="contested"] .wtm-pin-icon{background:linear-gradient(145deg,#a17b40,#4a4534);border-color:#f4cd7f}
+.wtm-pin[data-state="liberated"] .wtm-pin-icon{background:linear-gradient(145deg,#367c72,#1b4747);border-color:#a6dcc9}
+.wtm-pin[data-state="rebuilding"] .wtm-pin-icon{background:linear-gradient(145deg,#547287,#2b485c);border-color:#bdd8e2}
+.wtm-pin[data-type="capital"] .wtm-pin-icon{min-width:40px;min-height:40px;width:40px;height:40px;font-size:21px}
+.wtm-pin.selected .wtm-pin-icon,.wtm-pin.origin .wtm-pin-icon{background:linear-gradient(145deg,#e2bf7e,#936842);color:#1b1d22;border-color:#fff1c7;box-shadow:0 0 0 5px #ae5c4d99,0 2px 15px #f7e0af6b}
+.wtm-pin-name{background:#101b23e8;border:1px solid #66727b;border-top-color:#ad9777;color:#f2ede2!important;font-size:10.5px!important;letter-spacing:.025em;box-shadow:0 4px 12px #0306087a;padding:5px 8px}
+.wtm-pin:hover .wtm-pin-name{border-color:#e1c592}
+.wtm-pin:hover{z-index:8!important}
+.wtm-blank{display:grid;align-content:center;justify-items:center;gap:10px;text-align:center;padding:30px;background:#111a23b8;color:#bdc7c8}
+.wtm-blank strong{color:#d3b582;font:800 23px var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:.13em}
+.wtm-blank span{font-size:11px;max-width:280px;line-height:1.6}
+.wtm-legend{display:grid;grid-template-columns:1fr 1fr minmax(0,1.6fr);gap:9px;border-top:1px solid #42525e;padding:14px}
+.wtm-legend>div{display:grid;gap:5px;border-left:2px solid #94744c;padding-left:10px}
+.wtm-legend strong{color:#d4b888;letter-spacing:.12em;font-size:9px}
+.wtm-legend span{color:#bdc7cc;font-size:11px}
+.wtm-key{display:inline-block;width:17px;height:0;border-top:3px solid #d0b992;vertical-align:middle;margin:0 5px}
+.wtm-key-trail{border-top-style:dashed;border-color:#af977e}
+.wtm-key-rail{border-top-style:dotted;border-color:#c2d0d1}
+.wtm-bottom{background:#192632;padding:13px 16px;border-top:1px solid #384b56}
+.wtm-toolbar{background:#1d2b37;border-bottom:1px solid #52616e}
+.wtm-toolbar button.active{color:#ffe4b6;border-color:#bfa26c;background:#49363a}
+.wtm-symbol{background:#14222d;border-top:1px solid #43515d;padding:14px}
+@media(max-width:700px){
+ .wtm-stage{height:390px;margin:4px 0}
+ .wtm-map-frame{padding:0 6px 5px}
+ .wtm-map-title{grid-template-columns:1fr;gap:7px}
+ .wtm-map-title small{justify-self:start}
+ .wtm-legend{grid-template-columns:1fr 1fr}
+ .wtm-legend>div:last-child{grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){.wtm-stage{transition:none}}

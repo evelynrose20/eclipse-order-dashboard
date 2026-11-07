@@ -44,4 +44,4 @@ See [Testing without players](TESTING-WITHOUT-PLAYERS.md) for the verification g
 - Spell-slot/rest tracking, automatic resistances and concentration, advanced contested checks, encounter balancing and a larger compendium
 - Configurable house-rule tools and additional accessibility refinements
 
-The historical Supabase migration files support the retired compatibility path and must **not** be used as Windows/MySQL setup instructions. Release details: [Operations](OPERATIONS.md) and [Windows API](../server/README.md).
+The historical Supabase migration files support the retired compatibility path and must **not** be used as Windows/MySQL setup instructions. Release details: [Operations](OPERATIONS.md) and [Windows API](Operations/SERVER-README.md).

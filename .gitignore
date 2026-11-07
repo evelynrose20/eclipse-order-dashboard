@@ -8,3 +8,8 @@ dist/
 !.env.example
 server/.env
 server/*.log
+
+# Obsidian vault lives in docs/, but editor-local state should not be committed
+docs/.obsidian/workspace.json
+docs/.obsidian/workspace-mobile.json
+docs/.obsidian/cache/

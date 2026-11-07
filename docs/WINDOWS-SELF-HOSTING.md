@@ -9,7 +9,7 @@
 - Database: local MySQL `eclipse_order`; do not expose port 3306.
 - External access: existing **Eclipse-Order-API** Cloudflare Tunnel, configured to the local Node API after security checks.
 
-See [server setup](../server/README.md) for installation and [Cloudflare launch](../server/CLOUDFLARE-LAUNCH.md) for routing. Use `npm run setup:local` from `server/` after a backup to install additive MySQL migrations, including event XP.
+See [server setup](Operations/SERVER-README.md) for installation and [Cloudflare launch](Operations/CLOUDFLARE-LAUNCH.md) for routing. Use `npm run setup:local` from `server/` after a backup to install additive MySQL migrations, including event XP.
 
 ## What the old Supabase files mean
 
