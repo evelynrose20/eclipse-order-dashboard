@@ -187,8 +187,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(afterMap.map_icon,'refinery');
   assert.equal(Number(afterMap.population),150,'map edit must not replace civilian state');
   assert.equal(Number(afterMap.food_days),24);
-  const revised=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,map_icon:'factory'}),'/world-admin/settlements/'+mineId);
-  assert.equal(revised.status,200,JSON.stringify(revised.body));
+  const updatedWorldPlace=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,map_icon:'factory'}),'/world-admin/settlements/'+mineId);
+  assert.equal(updatedWorldPlace.status,200,JSON.stringify(updatedWorldPlace.body));
   const road=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:mineId,to_settlement_id:portId,route_type:'road',route_name:'CI road',waypoints:[{x:55,y:40}]}),'/world-admin/routes');
   assert.equal(road.status,200,JSON.stringify(road.body));
   const roadId=Number(road.body.id);
