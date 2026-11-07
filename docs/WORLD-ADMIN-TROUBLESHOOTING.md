@@ -21,7 +21,7 @@ Other network failures (Windows service stopped, stale frontend URL, Cloudflare 
 1. **Back up** the `eclipse_order` MySQL database and confirm you have restoration access.
 2. Pull matching latest `main` frontend/API revisions. Check that the Windows API service uses that same revision.
 3. From `server/`, run `npm ci` if dependencies changed, then `npm run setup:local`. It needs a local MySQL administrator password; never commit or post the password.
-4. Verify migrations `041_world_administration_foundation` and `042_world_routes_garlean_weather` exist in `schema_migrations`.
+4. Verify migrations `041_world_administration_foundation` through `045_world_transport_graph` exist in `schema_migrations`.
 5. Restart the **Windows Node API service**; updating GitHub Pages alone cannot fix API CORS methods or MySQL schema.
 6. On the Windows host, confirm `http://127.0.0.1:3182/health` and `/ready` using your established local checks.
 7. From the actual deployed web origin, test editing a region, settlement, icon/marker, and road. Inspect the browser Network panel for the `OPTIONS` preflight and the subsequent `PATCH`/ `PUT` request.
@@ -30,6 +30,16 @@ Other network failures (Windows service stopped, stale frontend URL, Cloudflare 
 ## Security considerations
 
 Only authorized command staff may edit world state; public/member reads must not expose hidden faction details. The migration is additive and does not delete existing settlements or positions. CORS is restricted to the configured website origin; it should **not** be opened to `*`.
+
+## Connected road and railway editor (migration 045)
+
+The **Network & junctions** tool uses `world_route_nodes` and `world_route_segments`. The optional **Convert older routes** action transactionally imports the old `world_map_routes` records as network edges and removes those originals only after successful import. It retains route names, types, bends and endpoint links. Back up production MySQL before invoking it.
+
+After pulling the matching frontend and Windows API revisions, run `npm run setup:local` in `server/` and restart the Windows service. Verify all versions 041 through **045_world_transport_graph** exist in `schema_migrations`.
+
+In the map, choose **Network & junctions**. **Connect** joins settlements or existing junctions; **Place junction** snaps near nodes/sites/roads; **Split / branch** creates a durable shared vertex on an existing edge; **Move junction** moves all attached route ends; **Edit route** saves the name, transport type and bends. Railway splits automatically create rail switch nodes. Nodes with attached edges cannot be deleted.
+
+Map routes are drawn using SVG paths because they are editable geographic geometry; user-facing icons use the Font Awesome CSS/web-font library, not SVG icons.
 
 ## Related
 
