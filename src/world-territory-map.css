@@ -147,3 +147,42 @@
 .wtm-mountain-editor button:last-child:not(:first-child){border-color:#a86267}
 .wtm-symbol{gap:16px}
 .wtm-symbol label{min-width:160px}
+
+/* Separate settlement condition from legal ownership. */
+.wtm-pin[data-state="secure"] .wtm-pin-icon{background:linear-gradient(145deg,#248c61,#18543b);border-color:#c6f7d9}
+.wtm-pin[data-state="secure"] .wtm-pin-state{color:#dcffeb;border-color:#7fdcb0;background:#164a39ef}
+.wtm-pin[data-state="abandoned"] .wtm-pin-icon{background:linear-gradient(145deg,#68737c,#313b46);border-color:#bac3c8}
+.wtm-pin[data-state="abandoned"] .wtm-pin-state{color:#d0d6dc;border-color:#87939f;background:#2a3542ef}
+.wtm-pin[data-state="destroyed"] .wtm-pin-icon{background:linear-gradient(145deg,#68353c,#2d1f28);border-color:#d18b91}
+.wtm-pin[data-state="destroyed"] .wtm-pin-state{color:#ffc7c9;border-color:#bd6f78;background:#45242aef}
+.wtm-state-key [data-state="secure"] i{background:#248c61;border-color:#a9e4c7}
+.wtm-state-key [data-state="abandoned"] i{background:#62717c;border-color:#c2d0d6}
+.wtm-state-key [data-state="destroyed"] i{background:#68353c;border-color:#e59da2}
+/* New railway cartography: sleepers across a dark ballast line and two
+   bright parallel rails rather than a dotted road. All layers follow the
+   same editable path with no baked-in rail geometry. */
+.wtm-road-rail .wtm-road-base{stroke:#0a131b;stroke-width:10}
+.wtm-road-rail .wtm-road-top{stroke:#d2d5d5;stroke-width:5.4;stroke-dasharray:none}
+.wtm-road-rail .wtm-rail-ties{fill:none;stroke:#303c45;stroke-width:8;stroke-dasharray:1.6 7;vector-effect:non-scaling-stroke}
+.wtm-road-rail .wtm-rail-center{fill:none;stroke:#1f2f3a;stroke-width:2.1;vector-effect:non-scaling-stroke}
+.wtm-road-rail.selected .wtm-rail-center{stroke:#86602a}
+.wtm-road-rail.selected .wtm-road-top{stroke:#f4d4a1}
+.wtm-planned-route{fill:none;stroke:#f8d299;stroke-width:3;stroke-dasharray:7 4;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.wtm-route-draw{position:absolute;inset:0;z-index:3;cursor:crosshair}
+.wtm-plan-point{position:absolute;z-index:5;width:11px;height:11px;transform:translate(-50%,-50%);background:#e6c48b;border:2px solid #1a2732;border-radius:2px;pointer-events:none}
+.wtm-route-editor{padding:15px 17px;border-top:1px solid #5f6c76;background:linear-gradient(145deg,#24313d,#15222c);display:grid;gap:12px}
+.wtm-route-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.wtm-route-heading strong{color:#e1c38d;letter-spacing:.12em;font-size:12px}
+.wtm-route-heading span{color:#9aafbb;font-size:10px;letter-spacing:.08em}
+.wtm-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.wtm-route-field{min-width:0}
+.wtm-route-field label{display:grid;gap:6px;color:#cbd2d4;font-size:11px;font-weight:700}
+.wtm-route-field input,.wtm-route-field select{width:100%;min-width:0;padding:9px 11px;border-radius:2px;background:#111e2a;color:#f0eae2;border:1px solid #71818d;font-size:12px}
+.wtm-endpoints{padding:10px;background:#14222f;border:1px solid #4d6170;color:#e5cba3;line-height:1.5;min-height:37px}
+.wtm-route-help{font-size:11px;line-height:1.6;color:#a8bac3;margin:0}
+.wtm-route-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.wtm-route-actions button{padding:10px 13px;border:1px solid #a89066;border-radius:2px;background:#324250;color:#f1e2c7;font-size:11px;font-weight:800;cursor:pointer}
+.wtm-route-actions button:first-child{background:#7c4840;border-color:#ce9b7f}
+.wtm-route-actions button.wtm-delete-route{border-color:#c86d77;color:#f0c1c4;background:#50303b}
+.wtm-route-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:670px){.wtm-route-grid{grid-template-columns:1fr}.wtm-route-editor{padding:12px}}
