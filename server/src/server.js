@@ -15,6 +15,7 @@ import {POINT_BUDGET,SCORE_COST} from './progression.js';
 import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
+import {constructionRoute} from './construction.js';
 import {commerceRoute} from './commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from './fronts.js';
 import {treasuryRoute,runDailyPayroll} from './treasury.js';
@@ -104,6 +105,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
+  else if(pathname==='/construction'||pathname.startsWith('/construction/'))result=await constructionRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
   else if(pathname==='/factions'||pathname.startsWith('/factions/'))result=await factionRoute(pool,req,pathname);
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
