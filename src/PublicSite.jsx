@@ -26,15 +26,6 @@ const ORDER_BRANCHES=[
 ];
 const SERVITUDE_RANKS=['Unmarked','Marked Thrall','Bound Serpent','Eclipse Attendant','Silken Thrall','Violet Keeper','Serpent’s Chosen','Eclipsed Consort'];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
-const FAQ=[
- {q:'What kind of FFXIV group is this?',a:'The Eclipse Order is a story-focused Final Fantasy XIV roleplay free company built around a morally dark syndicate. We tell stories about loyalty, ambition, consequence, and the people caught between them.'},
- {q:'Do I need to know the Order’s history?',a:'No. New characters do not need to have been present for past events. You can arrive knowing only rumors and discover the Order through roleplay.'},
- {q:'Do I need to play a villain?',a:'Not necessarily. The Order includes characters with different loyalties, talents, motives, and personal boundaries. What matters is that your character has a believable reason to become involved.'},
- {q:'How do events and character sheets work?',a:'Members use a companion portal for character dossiers, event registrations, and the Order’s dice-based encounters. Roleplay still takes place in Final Fantasy XIV.'},
- {q:'Can my character have a different rank from my account role?',a:'Yes. In-character standing is separate from out-of-character site permissions and moderation responsibilities.'},
- {q:'How do I request membership?',a:'Start with Discord sign-in. If you are not in our Discord, the portal will offer to request entry. Order command must approve your membership before you can access character and event tools.'},
- {q:'What does Bad End FC mean?',a:'Characters can face long-lasting negative outcomes, including captivity, servitude, or death. It is an 18+ roleplay premise with player consent and out-of-character boundaries.'}
-];
 const MODES=[
  {name:'Story',mark:'I',heading:'The Order remembers.',body:'An arrangement made in one scene may change the next. Rivalries, debts, fragile trust, and personal loyalties build an ongoing shared story.'},
  {name:'Events',mark:'II',heading:'Every assignment has stakes.',body:'Posted events can carry a difficulty rating, an impact rating, and a sequence of chapters. FC MSQ marks the stories that advance the Order’s central narrative.'},
@@ -46,7 +37,24 @@ export default function PublicSite(){
  const [menuOpen,setMenuOpen]=useState(false);
  const [letterOpen,setLetterOpen]=useState(false);
  const [mode,setMode]=useState(0);
- const [expandedFAQ,setExpandedFAQ]=useState(-1);
+ const [expandedFAQ,setExpandedFAQ]=useState(null);
+ const [faqEntries,setFaqEntries]=useState([]),[faqStatus,setFaqStatus]=useState('loading');
+ useEffect(()=>{
+  let active=true;
+  const controller=new AbortController();
+  async function loadFaq(){
+   try{
+    const response=await fetch(RECRUITMENT_API+'/faq/public',{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error('unavailable');
+    const data=await response.json();
+    if(active){setFaqEntries(data.entries||[]);setFaqStatus('ready')}
+   }catch(error){if(active&&error.name!=='AbortError')setFaqStatus('unavailable')}
+  }
+  void loadFaq();
+  const onVisible=()=>{if(document.visibilityState==='visible')void loadFaq()};
+  document.addEventListener('visibilitychange',onVisible);
+  return()=>{active=false;controller.abort();document.removeEventListener('visibilitychange',onVisible)};
+ },[]);
  const [addressCopied,setAddressCopied]=useState(false);
  const [recruitment,setRecruitment]=useState(null);
  const [recruitmentReason,setRecruitmentReason]=useState(''),[recruitmentReopens,setRecruitmentReopens]=useState(null),[reopeningNote,setReopeningNote]=useState('');
@@ -92,7 +100,7 @@ export default function PublicSite(){
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
      <h1>AN ORDER<br/><span className="imperial-headline-line">WITHOUT <em>EMPIRE.</em></span></h1>
-     <p className="public-hero-subtitle">From the ruins of the Thirteenth to New Cassia in Ilsabard. A Garlean-facing criminal syndicate of imperial remnants, dangerous alliances, and loyalties forged beyond any throne.</p>
+     <p className="public-hero-subtitle">Founded in Garlemald. Ruled by Elira from her own throne. The Eclipse Order is a criminal syndicate of imperial ambition, dangerous alliances and loyalties sworn to the Domina.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
      <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · THE UNDERWORLD</span><span>03 · NEW CASSIA</span></div>
@@ -115,7 +123,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="02">A HISTORY WRITTEN IN SHADOW</SectionTag>
      <div className="public-history-grid"><div className="public-history-art" aria-hidden="true"><div className="public-history-seal"><Mark/><span>THE ECLIPSE<br/>ENDURES</span></div><span className="public-art-caption">THE SERPENT · THE ECLIPSE · THE OATH</span></div>
-      <div><h2>BEFORE THE ORDER,<br/><em>THERE WAS A HOUSE.</em></h2><p className="public-lead">Its roots reach back to the Thirteenth, where the remnants of Elira’s noble household endured the Flood of Darkness.</p><p>Traditions survived when so much else did not. What began as a circle of scattered loyalties eventually took shape as a syndicate in Yanxia, where formal ranks emerged during the Stormblood era.</p><p>The Final Days broke more than kingdoms. The Order itself fell silent for a time, its leader absent and its remaining bonds scattered. But some stories are not so easily laid to rest.</p><div className="public-history-quote">THE THIRTEENTH / THE SOURCE / ILSABARD</div></div>
+      <div><h2>FOUNDED IN GARLEMALD.<br/><em>RULED BY ELIRA.</em></h2><p className="public-lead">The Eclipse Order was Garlean from its founding, created under Elira’s authority—not formed from a household in Yanxia.</p><p>Elira’s personal history reaches back to the Thirteenth, but the Order belongs to Garlemald. During Stormblood, it expanded its operations into Yanxia and established its formal ranks. Its identity and allegiance to its ruler predate that chapter.</p><p>The Final Days broke more than kingdoms. The Order itself fell silent for a time, its leader absent and its remaining bonds scattered. But some stories are not so easily laid to rest.</p><div className="public-history-quote">GARLEMALD / YANXIA / NEW CASSIA</div></div>
      </div>
     </div>
    </section>
@@ -240,7 +248,12 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="11">QUESTIONS BEFORE THE OATH</SectionTag>
      <div className="public-section-heading"><h2>What would you<br/><em>like to know?</em></h2><p>An invitation should come with a few answers.</p></div>
-     <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
+     <div className="public-faq-list">
+      {faqEntries.map(entry=><div key={entry.id} className={'public-faq-item '+(expandedFAQ===entry.id?'open':'')}><button type="button" aria-expanded={expandedFAQ===entry.id} onClick={()=>setExpandedFAQ(expandedFAQ===entry.id?null:entry.id)}><span>{entry.question}</span><span aria-hidden="true">{expandedFAQ===entry.id?'−':'+'}</span></button>{expandedFAQ===entry.id&&<p>{entry.answer}</p>}</div>)}
+      {faqStatus==='unavailable'&&<p className="public-faq-message">The Order's answers are temporarily unavailable.</p>}
+      {faqStatus==='loading'&&<p className="public-faq-message">Opening the Order's answers…</p>}
+      {faqStatus==='ready'&&!faqEntries.length&&<p className="public-faq-message">No public questions have been published yet.</p>}
+     </div>
     </div>
    </section>
    <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
