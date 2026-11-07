@@ -4,7 +4,7 @@
 // internal Celsius-based civic-heating calculations.
 export const fToC=fahrenheit=>(fahrenheit-32)*5/9;
 export const cToF=celsius=>celsius*9/5+32;
-export const MAP_ICONS=['settlement','capital','village','mine','factory','refinery','fortress','outpost','farm','port','depot','ruins','landmark','lumber_yard','logging_camp','sawmill','quarry','workshop','warehouse','barracks','watchtower','bridge','market','hospital','laboratory','power_plant','rail_station','airfield'];
+export const MAP_ICONS=['settlement','capital','village','mine','factory','refinery','fortress','outpost','farm','port','depot','ruins','landmark','lumber_yard','logging_camp','sawmill','forest','orchard','ranch','fishery','quarry','workshop','warehouse','barracks','watchtower','bridge','market','hospital','laboratory','power_plant','rail_station','rail_depot','airfield','ceruleum_plant','drilling_rig','logging_road','military_base','temple','lighthouse'];
 export const ROUTE_TYPES=['road','trail','rail','skyway','waterway'];
 const monthlyF=[9,13,26,39,51,61,67,64,54,40,25,13];
 const seasonForMonth=m=>[11,0,1].includes(m)?'winter':[2,3,4].includes(m)?'spring':[5,6,7].includes(m)?'summer':'autumn';
@@ -29,6 +29,6 @@ export function effectiveWeather(region,now=new Date()){
  if(region.weather_mode==='garlean_seasonal')return garleanWeather(now);
  return {date:new Date(now).toISOString().slice(0,10),season:null,weather:region.weather,temperature_c:Number(region.temperature_c),temperature_f:Math.round(cToF(Number(region.temperature_c))),source:'dm_manual'};
 }
-export const validMapIcon=icon=>MAP_ICONS.includes(icon);
+export const validMapIcon=icon=>MAP_ICONS.includes(icon)||(typeof icon==='string'&&/^fa-[a-z0-9-]{1,29}$/.test(icon));
 export const validRouteType=type=>ROUTE_TYPES.includes(type);
 export const validWaypoints=points=>Array.isArray(points)&&points.length<=16&&points.every(p=>p&&typeof p==='object'&&Number.isFinite(p.x)&&p.x>=0&&p.x<=100&&Number.isFinite(p.y)&&p.y>=0&&p.y<=100);
