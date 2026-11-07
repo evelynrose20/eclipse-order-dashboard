@@ -20,6 +20,7 @@ import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
 import {senateRoute} from './senate.js';
+import {senatePoliticsRoute} from './senate-politics.js';
 import {governanceRoute} from './governance-live.js';
 import {commerceRoute} from './commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from './fronts.js';
