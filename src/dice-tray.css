@@ -1,32 +1,32 @@
 /* Compact dice console sized for the tactical rail. */
-.compact-dice-tray{display:grid;gap:13px;min-width:0;color:#f0dce7}
+.compact-dice-tray{display:grid;gap:13px;min-width:0;color:#e0e5e5}
 .dice-tray-heading{display:flex;align-items:start;justify-content:space-between;gap:6px;flex-wrap:wrap}
-.dice-tray-heading>div>span{font-size:10px;letter-spacing:.15em;font-weight:800;color:#dca8ba}
-.dice-tray-heading h3{margin:5px 0 0;font:normal 22px Georgia,serif;color:#f6e4e9}
-.dice-tray-expand{font-size:11px;color:#f0bdcf;background:transparent;border:0;padding:7px 0;white-space:nowrap;cursor:pointer}
+.dice-tray-heading>div>span{font-size:10px;letter-spacing:.15em;font-weight:800;color:#c6cfd0}
+.dice-tray-heading h3{margin:5px 0 0;font:normal 22px var(--imperial-heading, 'Arial Narrow', sans-serif);color:#e0e5e5}
+.dice-tray-expand{font-size:11px;color:#e0e5e5;background:transparent;border:0;padding:7px 0;white-space:nowrap;cursor:pointer}
 .dice-tray-expand:hover{text-decoration:underline}
 .dice-tray-preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.compact-dice-tray .dice-tray-preset{min-width:0;min-height:37px;padding:8px 5px;border:1px solid #684b60;border-radius:7px;background:#2b202c;color:#e0cbd5;font-size:11px;font-weight:600;white-space:normal;cursor:pointer}
-.compact-dice-tray .dice-tray-preset.active{background:#654156;border-color:#c493aa;color:#fff5f4}
-.compact-dice-tray .dice-tray-preset:hover{border-color:#d3a3b9}
+.compact-dice-tray .dice-tray-preset{min-width:0;min-height:37px;padding:8px 5px;border:1px solid #384651;border-radius:2px;background:#202a33;color:#c6cfd0;font-size:11px;font-weight:600;white-space:normal;cursor:pointer}
+.compact-dice-tray .dice-tray-preset.active{background:#923943;border-color:#b1bdc1;color:#fff5f4}
+.compact-dice-tray .dice-tray-preset:hover{border-color:#c6cfd0}
 .dice-tray-roll-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(62px,.55fr);gap:8px}
-.dice-tray-roll-fields label{display:grid;gap:5px;min-width:0;font-size:10px;letter-spacing:.04em;color:#c5acbb}
+.dice-tray-roll-fields label{display:grid;gap:5px;min-width:0;font-size:10px;letter-spacing:.04em;color:#c6cfd0}
 .dice-tray-roll-fields label.dice-tray-wide{grid-column:1/-1}
-.dice-tray-roll-fields input,.dice-tray-roll-fields select{width:100%;max-width:100%;min-width:0;box-sizing:border-box;border:1px solid #715263;border-radius:7px;background:#1c1922;color:#f4e4eb;padding:10px 8px;font-size:12px}
-.compact-dice-tray .dice-tray-roll-button{width:100%;min-height:45px;border:1px solid #c989a4;border-radius:8px;background:linear-gradient(110deg,#a65c7b,#78425d);color:#fff1f2;font-size:13px;font-weight:750;cursor:pointer}
-.compact-dice-tray .dice-tray-roll-button:not(:disabled):hover{background:#ae6685}
+.dice-tray-roll-fields input,.dice-tray-roll-fields select{width:100%;max-width:100%;min-width:0;box-sizing:border-box;border:1px solid #923943;border-radius:2px;background:#202a33;color:#e0e5e5;padding:10px 8px;font-size:12px}
+.compact-dice-tray .dice-tray-roll-button{width:100%;min-height:45px;border:1px solid #df8584;border-radius:2px;background:linear-gradient(110deg,#bd545c,#923943);color:#fff1f2;font-size:13px;font-weight:750;cursor:pointer}
+.compact-dice-tray .dice-tray-roll-button:not(:disabled):hover{background:#bd545c}
 .compact-dice-tray .dice-tray-roll-button:disabled{opacity:.52;cursor:not-allowed}
-.dice-tray-result{display:grid;justify-items:center;gap:6px;padding:17px 8px;background:#352636;border:1px solid #8f6076;border-radius:10px}
-.dice-tray-result>span{font-size:10px;letter-spacing:.15em;color:#d7b5c3}
-.dice-tray-result strong{font:normal 42px Georgia,serif;color:#f5d39e}
-.dice-tray-result small{font-size:11px;color:#cfbac7}
-.dice-tray-recent{display:grid;gap:7px;padding-top:13px;border-top:1px solid #584052}
+.dice-tray-result{display:grid;justify-items:center;gap:6px;padding:17px 8px;background:#29343e;border:1px solid #bd545c;border-radius:2px}
+.dice-tray-result>span{font-size:10px;letter-spacing:.15em;color:#c6cfd0}
+.dice-tray-result strong{font:normal 42px var(--imperial-heading, 'Arial Narrow', sans-serif);color:#f5d39e}
+.dice-tray-result small{font-size:11px;color:#c6cfd0}
+.dice-tray-recent{display:grid;gap:7px;padding-top:13px;border-top:1px solid #384651}
 .dice-tray-recent>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.dice-tray-recent>div:first-child strong{font-size:12px;color:#e6cdd8}
-.dice-tray-recent>div:first-child span{font-size:10px;color:#ac98a6}
-.dice-tray-history-row{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 10px;border:1px solid #4d3a4b;border-radius:6px;background:#251c28}
-.dice-tray-history-row span{font-size:11px;color:#cbb7c4;overflow-wrap:anywhere}
-.dice-tray-history-row strong{font-size:14px;color:#f0d1dd}
-.dice-tray-recent>p{margin:0;color:#a993a2;font-size:11px}
-.dice-tray-validation{margin:0;color:#f4b7bd;font-size:11px;line-height:1.5}
+.dice-tray-recent>div:first-child strong{font-size:12px;color:#e0e5e5}
+.dice-tray-recent>div:first-child span{font-size:10px;color:#b1bdc1}
+.dice-tray-history-row{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 10px;border:1px solid #384651;border-radius:2px;background:#202a33}
+.dice-tray-history-row span{font-size:11px;color:#c6cfd0;overflow-wrap:anywhere}
+.dice-tray-history-row strong{font-size:14px;color:#e0e5e5}
+.dice-tray-recent>p{margin:0;color:#b1bdc1;font-size:11px}
+.dice-tray-validation{margin:0;color:#c6cfd0;font-size:11px;line-height:1.5}
 .compact-dice-tray button:focus-visible{outline:2px solid #f2c8a5;outline-offset:2px}
