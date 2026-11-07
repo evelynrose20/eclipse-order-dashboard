@@ -67,6 +67,8 @@ async function main(){
   await pool.query(tradeEquipment);
   const payroll=await readFile(new URL('../sql/027_order_treasury_payroll.sql',import.meta.url),'utf8');
   await pool.query(payroll);
+  const fronts=await readFile(new URL('../sql/028_order_fronts.sql',import.meta.url),'utf8');
+  await pool.query(fronts);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
