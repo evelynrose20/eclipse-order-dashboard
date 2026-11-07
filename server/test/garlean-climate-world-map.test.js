@@ -43,7 +43,7 @@ test('map marker and transport paths use allowlisted safe data',()=>{
 test('map migration is repeatable, references existing sites and does not mutate canon',async()=>{
  const sql=await readFile(new URL('../sql/042_world_routes_garlean_weather.sql',import.meta.url),'utf8');
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_map_routes/);
- assert.match(sql,/INFORMATION_SCHEMA.COLUMNS/);
+ assert.match(sql,/information_schema\.COLUMNS/i);
  assert.match(sql,/garlean_seasonal/);
  assert.match(sql,/REFERENCES world_settlements\(id\)/);
  assert.doesNotMatch(sql,/INSERT INTO world_map_routes|DELETE FROM world_settlements|DROP TABLE/i);
