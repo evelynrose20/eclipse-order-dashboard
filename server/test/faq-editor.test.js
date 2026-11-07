@@ -10,7 +10,7 @@ function fake(role='domina'){
  const pool={execute:async(sql,args=[])=>{
   actions.push(sql);
   if(sql.includes('FROM account_sessions'))return [[{id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',account_role:role,auth_method:'discord'}]];
-  if(sql.includes('FROM order_public_faq'))return [[sample]];
+  if(sql.startsWith('SELECT')&&sql.includes('FROM order_public_faq'))return [[sample]];
   if(sql.startsWith('INSERT INTO order_public_faq'))return [{insertId:8}];
   return [{affectedRows:1}];
  }};
