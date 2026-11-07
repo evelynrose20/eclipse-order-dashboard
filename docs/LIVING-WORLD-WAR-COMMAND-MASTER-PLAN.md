@@ -1,6 +1,9 @@
 # ECLIPSE ORDER — Living World, Imperial Administration & War Command
 **Authoritative cross-chat project brief (2026-11-07).** This file preserves the design decisions and implementation roadmap. In a fresh conversation ask: **"Read docs/LIVING-WORLD-WAR-COMMAND-MASTER-PLAN.md in evelynrose20/eclipse-order-dashboard and continue the implementation from the roadmap."**
 
+**Working task checklist:** [[LIVING-WORLD-TODO]] (Obsidian) or [Living World TODO](LIVING-WORLD-TODO.md) (GitHub).
+**Vault home:** [Documentation index](00-START-HERE.md).
+
 ## Vision
 Build the Eclipse Order's FFXIV/Garlean RP into a configurable persistent living world, not a separate strategy game. New Cassia sits at the center of a regional and eventually realm-scale territorial, civilian, industrial, political and military simulation. Events, dice encounters, construction, crafting, trades, fronts, factions, settlements, and the Senate change shared world state. **Player-led RP generates outcomes; authorized DMs confirm significant outcomes.** Noncombat members can meaningfully contribute. Campaigns may last weeks or months.
 
