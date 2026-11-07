@@ -86,7 +86,7 @@ export async function senatePoliticsRoute(pool,req,path){
   const [coalitionMembers]=await pool.execute('SELECT coalition_id,party_id,status FROM order_senate_coalition_parties ORDER BY coalition_id,party_id');
   const [bills]=await pool.execute('SELECT b.id,b.title,b.description,b.category,b.state,b.opened_at,b.created_at,a.display_name AS sponsor_name,b.electorate,b.quorum_required FROM order_senate_bills b JOIN accounts a ON a.id=b.sponsor_id ORDER BY b.id DESC LIMIT 100');
   const [votes]=await pool.execute('SELECT bill_id,vote,COUNT(*) AS n FROM order_senate_ballots GROUP BY bill_id,vote');
-  const [headRows]=await pool.execute('SELECT head_number,title,account_id FROM order_senate_heads ORDER BY head_number');
+  const [headRows]=await pool.execute('SELECT h.head_number,h.title,h.account_id,a.display_name AS holder FROM order_senate_heads h LEFT JOIN accounts a ON a.id=h.account_id ORDER BY h.head_number');
   const [chair]=await pool.execute('SELECT display_name FROM accounts WHERE account_role="domina" AND is_active=1 AND approval_status="approved" ORDER BY id LIMIT 1');
   const [auditRows]=domina?await pool.execute('SELECT action,subject,detail,created_at FROM order_senate_audit ORDER BY id DESC LIMIT 80'):[[]];
   // Secret ballots: only aggregate totals are visible; never return voter identities.
@@ -94,8 +94,8 @@ export async function senatePoliticsRoute(pool,req,path){
    parties,seats,elections,election,candidates,results,ballot_count:ballotCount,has_voted:hasVoted,
    tallies:election?.phase==='confirmation'||['complete','cancelled'].includes(election?.phase)?tallies:[],
    coalitions:coalitions.map(c=>({...c,parties:coalitionMembers.filter(m=>m.coalition_id===c.id)})),
-   bills:bills.map(b=>({...b,yes:Number(votes.find(v=>v.bill_id===b.id&&v.vote==='yes')?.n||0),no:Number(votes.find(v=>v.bill_id===b.id&&v.vote==='no')?.n||0),abstain:Number(votes.find(v=>v.bill_id===b.id&&v.vote==='abstain')?.n||0)})),
-   heads:[{head_number:1,title:'Domina',holder:chair[0]?.display_name||'Vacant'},...headRows.map(h=>({head_number:h.head_number,title:h.title,holder:null,account_id:h.account_id}))],
+   bills:bills.map(b=>({...b,yes:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='yes')?.n||0),no:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='no')?.n||0),abstain:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='abstain')?.n||0)})),
+   heads:[{head_number:1,title:'Domina',holder:chair[0]?.display_name||'Vacant'},...headRows.map(h=>({head_number:h.head_number,title:h.title,holder:h.holder||null,account_id:h.account_id}))],
    history:auditRows});
  }
  // No live write action may occur before the Senate is actually convened.
@@ -222,7 +222,7 @@ export async function senatePoliticsRoute(pool,req,path){
     }else{
      if(!valid(b.reason,500))return fail(400,'rejection_reason_required');
      await db.execute('INSERT INTO order_senate_election_rejections(election_id,candidate_id,seat_number,reason) VALUES(?,?,?,?)',[electionId,seat.candidate_id,b.seat_number,b.reason.trim()]);
-     const [poolCandidates]=await db.execute('SELECT account_id FROM order_senate_candidates WHERE election_id=? AND party_id <=> ? ORDER BY nominated_at,account_id',[electionId,seat.party_id]);
+     const [poolCandidates]=await db.execute('SELECT c.account_id,COUNT(v.candidate_id) AS preferences FROM order_senate_candidates c LEFT JOIN order_senate_election_ballots v ON v.election_id=c.election_id AND v.candidate_id=c.account_id WHERE c.election_id=? AND c.party_id <=> ? GROUP BY c.account_id,c.nominated_at ORDER BY preferences DESC,c.nominated_at,c.account_id',[electionId,seat.party_id]);
      const [used]=await db.execute('SELECT candidate_id FROM order_senate_election_results WHERE election_id=? AND candidate_id IS NOT NULL',[electionId]);
      const [rejected]=await db.execute('SELECT candidate_id FROM order_senate_election_rejections WHERE election_id=?',[electionId]);
      const blocked=new Set([...used,...rejected].map(x=>x.candidate_id));
