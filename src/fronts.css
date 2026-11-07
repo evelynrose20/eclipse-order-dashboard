@@ -26,3 +26,18 @@
 .eo-fronts-cost-history strong{color:#f0c0c9;font-size:12px}
 .eo-fronts-cost-history small{color:#e1bda8;font-size:10px}
 @media(max-width:540px){.eo-fronts-cost-summary{grid-template-columns:1fr}}
+
+.eo-fronts-supply-board{display:grid;gap:13px;padding:17px;border:1px solid #786c57;border-radius:10px;background:linear-gradient(135deg,#37403455,#342936)}
+.eo-fronts-supply-board>p{font-size:12px;line-height:1.65;color:#cfb9c5;margin:0}
+.eo-fronts-supply-board h5{font-size:15px;color:#f0e2cc;margin:5px 0 0}
+.eo-fronts-supply-list{display:grid;gap:8px}
+.eo-fronts-supply-list>div{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#2b2a2c;border:1px solid #687b64;border-radius:9px;padding:11px 13px}
+.eo-fronts-supply-list>div>div{display:grid;gap:5px;flex:1;min-width:140px}
+.eo-fronts-supply-list strong{font-size:13px;color:#e4e9d5}
+.eo-fronts-supply-list small{font-size:11px;color:#c1b9b0}
+.eo-fronts-supply-list span{font-size:11px;font-weight:700}
+.eo-fronts-supply-list span.ready{color:#b6e2c0}
+.eo-fronts-supply-list span.missing{color:#efc2a5}
+.eo-fronts-supply-board>.eo-fronts-fields{align-items:end;grid-template-columns:minmax(0,1.4fr) minmax(110px,.6fr) auto}
+.eo-fronts-supply-board .eo-fronts-fields button{min-height:42px}
+@media(max-width:690px){.eo-fronts-supply-board>.eo-fronts-fields{grid-template-columns:1fr}}
