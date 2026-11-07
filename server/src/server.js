@@ -115,6 +115,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
   else if(pathname==='/governance/council'||pathname.startsWith('/governance/council/'))result=await governanceRoute(pool,req,pathname);
+  else if(pathname==='/governance/senate/politics'||pathname.startsWith('/governance/senate/parties')||pathname.startsWith('/governance/senate/elections')||pathname.startsWith('/governance/senate/coalitions'))result=await senatePoliticsRoute(pool,req,pathname);
   else if(pathname==='/governance/senate'||pathname.startsWith('/governance/senate/'))result=await senateRoute(pool,req,pathname);
   else if(pathname==='/construction'||pathname.startsWith('/construction/'))result=await constructionRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
