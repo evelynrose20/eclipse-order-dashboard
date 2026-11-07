@@ -1,10 +1,11 @@
 import React,{useMemo,useRef,useState} from 'react';
-import {smoothRoadPath,ROUTE_OPTIONS} from './WorldTerritoryMap.jsx';
+import {smoothRoadPath,ROUTE_OPTIONS,ICON_OPTIONS} from './WorldTerritoryMap.jsx';
 import './world-network-editor.css';
 
 const percent=v=>Math.max(0,Math.min(100,Math.round(v*100)/100));
 const coordinate=(e,ref)=>{const r=ref.current?.getBoundingClientRect();return r&&r.width&&r.height?{x:percent((e.clientX-r.left)*100/r.width),y:percent((e.clientY-r.top)*100/r.height)}:null};
 const format=t=>ROUTE_OPTIONS.find(r=>r[0]===t)?.[1]||'Road';
+const markerIcon=id=>'fa-solid fa-'+(ICON_OPTIONS.find(x=>x[0]===id)?.[2]||'house');
 const point=n=>({x:Number(n.map_x),y:Number(n.map_y)});
 const project=(p,a,b)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));return {x:a.x+dx*t,y:a.y+dy*t,d:Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t)}};
 const nearestPart=(p,points)=>points.slice(1).map((b,i)=>({...project(p,points[i],b),i})).sort((a,b)=>a.d-b.d)[0];
@@ -135,11 +136,12 @@ export default function WorldNetworkEditor({region,settlements=[],nodes=[],segme
   {notice&&<p className="wtm-note" role="status">{notice}</p>}
   <div className="wn-map" ref={map} onClick={clickMap} style={region.map_background_url?{backgroundImage:'linear-gradient(#15232ec9,#15232ec9),url("'+region.map_background_url+'")'}:{}}>
    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Connected road and railway network">
+    {mountains.filter(m=>Array.isArray(m.points)&&m.points.length>=2).map(m=><g className="wn-range" key={m.id}><path d={smoothRoadPath(m.points)}/><text x={m.points[Math.floor(m.points.length/2)].x} y={Math.max(3,m.points[Math.floor(m.points.length/2)].y-3)} textAnchor="middle">{m.name}</text></g>)}
     <NetworkPaths nodes={displayed} segments={segments} settlements={settlements} activeId={selected} onSegment={clickEdge}/>
     {startPoint&&endPoint&&tool==='connect'&&<path d={smoothRoadPath([startPoint,...bends,endPoint])} className="wn-draft"/>}
     {tool==='edit'&&edgePoints.length>1&&<path d={smoothRoadPath(edgePoints)} className="wn-draft"/>}
    </svg>
-   {settlements.map(s=><button className="wn-site" key={s.id} type="button" style={{left:s.map_x+'%',top:s.map_y+'%'}} onClick={e=>{e.stopPropagation();void tapSite(s)}} title={s.name}><i className="fa-solid fa-city" aria-hidden="true"/><span>{s.name}</span></button>)}
+   {settlements.map(s=><button className="wn-site" data-state={s.strategic_state||'peaceful'} key={s.id} type="button" style={{left:s.map_x+'%',top:s.map_y+'%'}} onClick={e=>{e.stopPropagation();void tapSite(s)}} title={s.name+' · '+(s.strategic_state||'peaceful')}><i className={markerIcon(s.map_icon)} aria-hidden="true"/><span>{s.name}<small>{(s.strategic_state||'peaceful').replaceAll('_',' ')}</small></span></button>)}
    {displayed.filter(n=>!n.settlement_id).map(n=>{const p=nodeXY(n);return <button type="button" key={n.id} className={'wn-node '+(isSame(selectedNode,n.id)?'selected ':'')+(isSame(start,n.id)||isSame(end,n.id)?'endpoint ':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.name|| (n.node_kind==='rail_switch'?'Rail switch':'Junction'))+' #'+n.id} onClick={e=>{e.stopPropagation();void tapNode(n)}} onPointerDown={e=>startDrag(e,n)} onPointerMove={moveDrag} onPointerUp={e=>void stopDrag(e,n)} onPointerCancel={()=>{drag.current=null;setWorkingNodes({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>})}
    {tool==='connect'&&bends.map((p,i)=><span className="wn-bend" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
   </div>
