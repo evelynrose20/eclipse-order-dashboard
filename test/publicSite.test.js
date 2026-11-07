@@ -21,7 +21,9 @@ test('public website includes original Order identity, sections, and accessible 
   assert.ok(site.includes(rank),rank);
  }
  assert.match(site,/aria-modal="true"/);
- assert.match(site,/aria-expanded=\{expandedFAQ===i\}/);
+ assert.match(site,/aria-expanded=\{expandedFAQ===entry.id\}/);
+ assert.match(site,/fetch\(RECRUITMENT_API\+'\/faq\/public'/);
+ assert.doesNotMatch(site,/const FAQ=\[/);
  assert.match(site,/role="tablist"/);
  assert.match(site,/onClick=\{closeMenu\}/);
  assert.match(site,/A Final Fantasy XIV roleplay community/);

@@ -1,5 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {readFCSettings,writeFCSetting} from './apiBridge.js';
+import FAQEditor from './FAQEditor.jsx';
+import './faq-editor.css';
 const FIELDS=[['welcome','Welcome announcement'],['house_rules','D&D and FC house rules'],['scene_guidelines','OOC safety and scene guidelines']];
 export default function FCSettings({role,request}){
  const [data,setData]=useState(null),[edited,setEdited]=useState({}),[working,setWorking]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState('');
@@ -44,5 +46,6 @@ export default function FCSettings({role,request}){
    </div>}
    <p className="muted">{(domina?recruitmentDraft:recruitment)==='closed'?'The Order is not accepting new members. Existing members can still sign in.':(domina?recruitmentDraft:recruitment)==='limited'?'Applications remain open, but entry is selective.':'The Order is accepting applications.'}</p>
    {domina&&<button type="button" className="btn primary" disabled={recruitmentSaving||(recruitment===recruitmentDraft&&(recruitmentDraft!=='closed'||(recruitmentReason===savedReason&&recruitmentReopens===savedReopens&&reopeningNote===savedReopeningNote)))} onClick={saveRecruitment}>{recruitmentSaving?'Saving…':'Update recruitment status'}</button>}</>}
- </section></>;
+ </section>
+ <FAQEditor request={request} canEdit={command}/></>;
 }

@@ -87,6 +87,8 @@ async function main(){
   await pool.query(senateChamber);
   const loreArchive=await readFile(new URL('../sql/037_order_lore_archive.sql',import.meta.url),'utf8');
   await pool.query(loreArchive);
+  const faqSchema=await readFile(new URL('../sql/038_garlean_origin_and_faq.sql',import.meta.url),'utf8');
+  await pool.query(faqSchema);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');

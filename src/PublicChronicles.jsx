@@ -7,9 +7,9 @@ const eraName=era=>ERAS.find(([id])=>id===era)?.[1]||era;
 const CHAPTERS=['thirteenth','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present'];
 // Published founding extracts remain readable even when the public archive cannot be reached.
 const FOUNDING_RECORDS=[
- {id:'origins-thirteenth',title:'The House Before the Flood',era:'thirteenth',kind:'history',published:true,summary:'The Order traces its beginnings to Elira’s noble household on the Thirteenth.',body:'The serpent-and-eclipse heraldry, the traditions of the household, and loyalties between survivors endured beyond the Flood of Darkness.'},
- {id:'carteneau-crossing',title:'A Passage into the Source',era:'arr',kind:'history',published:true,summary:'Elira crossed into the Source near Carteneau.',body:'In this era, the bonds of the household were informal relationships and loyalties. The Order had not yet established its later ranks.'},
- {id:'yanxia-order',title:'The Order Takes Shape',era:'stormblood',kind:'history',published:true,summary:'The Order’s formal hierarchy took shape in Yanxia.',body:'It was during Stormblood that the Eclipse Order established its ranks and organization. The earlier household should not be mistaken for the later syndicate.'},
+ {id:'origins-thirteenth',title:'Before the Garlean Order',era:'thirteenth',kind:'history',published:true,summary:'Elira’s life before the Order reaches back to the Thirteenth. The Eclipse Order itself was founded in Garlemald.',body:'Elira’s life before the Source belongs to her personal history. She would later establish the Eclipse Order as a Garlean organization under her own rule.'},
+ {id:'carteneau-crossing',title:'The Road to Garlemald',era:'arr',kind:'history',published:true,summary:'Elira crossed into the Source near Carteneau.',body:'The crossing preceded Elira’s establishment of the Garlean-founded Eclipse Order. The organization would serve her authority, not another throne.'},
+ {id:'yanxia-order',title:'The Garlean Order in Yanxia',era:'stormblood',kind:'history',published:true,summary:'The Garlean Order established its formal hierarchy and a base in Yanxia.',body:'The Order was founded in Garlemald. In Stormblood, its operations in Yanxia grew and its formal ranks were established. Yanxia was an expansion, not its birthplace.'},
  {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order.',body:'The Order’s losses scattered its members and ended the organization as it had been. Its survival into the present was never certain.'},
  {id:'dawntrail-return',title:'What Remains After Dawntrail',era:'dawntrail',kind:'history',published:true,summary:'The Order faces the consequences of its fall and Elira’s return.',body:'Old rivals, Garlean remnants and criminal families have their own reasons to welcome or oppose the Order’s return.'},
  {id:'new-cassia',title:'New Cassia',era:'present',kind:'place',published:true,summary:'Elira’s home in Ilsabard and the center of the Order’s new direction.',body:'An in-character home for stories of imperial politics, the underworld, and uneasy alliances.'}
@@ -41,8 +41,8 @@ export default function PublicChronicles(){
  return <section className="public-section imperial-chronicles" id="chronicles" aria-labelledby="chronicles-heading">
   <div className="public-section-inner">
    <div className="imperial-chronicles-head">
-    <div><div className="public-section-tag"><span>03</span><i/><span>THE WRITTEN RECORD</span></div><h2 id="chronicles-heading">From the Thirteenth.<br/><em>To New Cassia.</em></h2></div>
-    <p>The Order did not begin as an imperial syndicate. Its history spans a fallen world, a noble household, the rise of an organization, and the bitter cost of its survival.</p>
+    <div><div className="public-section-tag"><span>03</span><i/><span>THE WRITTEN RECORD</span></div><h2 id="chronicles-heading">From Garlemald.<br/><em>To New Cassia.</em></h2></div>
+    <p>Founded in Garlemald under Elira’s rule, the Eclipse Order outlived its imperial beginnings, expanded into Yanxia, and endured the cost of its own collapse.</p>
    </div>
    <div className="imperial-chronicles-frame">
     <div className="imperial-chronicles-timeline" aria-label="History of the Eclipse Order">
