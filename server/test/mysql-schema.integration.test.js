@@ -10,6 +10,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
+import {frontsRoute} from '../src/fronts.js';
 import {runDailyPayroll,treasuryRoute} from '../src/treasury.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
@@ -18,7 +19,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -362,6 +363,63 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(noBackPay.body.status,'already_paid');
   const [payRecords]=await admin.query('SELECT cycle_date,character_id,paid_amount FROM order_daily_payroll ORDER BY cycle_date,character_id');
   assert.equal(payRecords.length,4,'exactly one record per character and reset');
+  // Order fronts: both approvals gate operations, allocated FC stock stays real,
+  // and successful foreign trades divide actual gil between the Order and the front.
+  const openedFront=await frontsRoute(admin,request('POST',{
+   name:'CI Golden Claw Merchant',category:'merchant',location:'Goblet P41 W5',description:'A licensed trade front.',
+   ownership:'member',owner_character_id:char.body.id,license_terms:''}),'/fronts');
+  assert.equal(openedFront.status,200,JSON.stringify(openedFront.body));
+  const frontId=openedFront.body.id;
+  const beforeApproval=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:2,direction:'allocate',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
+  assert.equal(beforeApproval.status,403,'front cannot operate while its license is pending');
+  const ic=await frontsRoute(admin,request('POST',{stage:'ic',approved:true}),'/fronts/'+frontId+'/approve');
+  assert.equal(ic.body.status,'pending','IC approval alone does not permit trade');
+  const web=await frontsRoute(admin,request('POST',{stage:'website',approved:true}),'/fronts/'+frontId+'/approve');
+  assert.equal(web.body.status,'active','two approvals activate the licensed business');
+  const storefront=await frontsRoute(admin,request('POST',{
+   offer_type:'goods',material_id:'iron-ingot',name:'Ingot supply',description:'Official workshop stock',posted_price:18}),'/fronts/'+frontId+'/offerings');
+  assert.equal(storefront.status,200,JSON.stringify(storefront.body));
+  const assignment=await frontsRoute(admin,request('POST',{character_id:char.body.id,staff_role:'manager'}),'/fronts/'+frontId+'/staff');
+  assert.equal(assignment.status,200);
+  const allocate=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:3,direction:'allocate',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
+  assert.equal(allocate.status,200,JSON.stringify(allocate.body));
+  const frontStock=await frontsRoute(admin,request('GET'),'/fronts/'+frontId+'/stocks');
+  assert.equal(Number(frontStock.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),3);
+  const newFrontOrder=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Golden Claw ingots',description:'Settlement buying ingots',item_kind:'material',item_id:'iron-ingot',required_quantity:3,rep_per_unit:1,sale_value_per_unit:20}),'/commerce/contracts');
+  assert.equal(newFrontOrder.status,200,JSON.stringify(newFrontOrder.body));
+  const badFrontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:4,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
+  assert.equal(badFrontShipment.status,409,'cannot ship more than the contract requires');
+  const frontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:2,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
+  assert.equal(frontShipment.status,200,JSON.stringify(frontShipment.body));
+  assert.equal(frontShipment.body.order_income,12,'Order receives its thirty percent share of forty gil');
+  assert.equal(frontShipment.body.front_earnings,28,'front retains the remainder of trade revenue');
+  const frontDetails=await frontsRoute(admin,request('GET'),'/fronts/'+frontId);
+  assert.equal(Number(frontDetails.body.front.balance),28);
+  assert.equal(Number(frontDetails.body.stocks.find(s=>s.material_id==='iron-ingot').quantity),1);
+  const expense=await frontsRoute(admin,request('POST',{amount:5,description:'Market stall rent'}),'/fronts/'+frontId+'/expenses');
+  assert.equal(expense.status,200);
+  const [[balanceAfterExpense]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
+  assert.equal(Number(balanceAfterExpense.balance),23,'business expenses cannot spend the main Order treasury');
+  const frontOverspend=await frontsRoute(admin,request('POST',{amount:100,description:'Too expensive'}),'/fronts/'+frontId+'/expenses');
+  assert.equal(frontOverspend.status,409);
+  const suspend=await frontsRoute(admin,request('POST',{status:'suspended'}),'/fronts/'+frontId+'/status');
+  assert.equal(suspend.status,200);
+  const closedFrontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
+  assert.equal(closedFrontShipment.status,403,'suspended business cannot execute trades');
+  const reopen=await frontsRoute(admin,request('POST',{status:'active'}),'/fronts/'+frontId+'/status');
+  assert.equal(reopen.status,200);
+  const returned=await frontsRoute(admin,request('POST',{material_id:'iron-ingot',quantity:1,direction:'return',character_id:char.body.id}),'/fronts/'+frontId+'/stock');
+  assert.equal(returned.status,200);
+  const [[remainingFrontStock]]=await admin.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id="iron-ingot"',[frontId]);
+  assert.equal(Number(remainingFrontStock.quantity),0);
+  const [frontLedgers]=await admin.execute('SELECT kind,amount FROM order_front_ledger WHERE front_id=? ORDER BY id',[frontId]);
+  assert.deepEqual(frontLedgers.map(x=>x.kind),['trade_income','operating_expense']);
+  const [[newTreasuryBalance]]=await admin.execute('SELECT balance FROM order_treasury WHERE id=1');
+  assert.equal(Number(newTreasuryBalance.balance),12,'only real Order share enters funds available for daily pay');
+  await admin.query(await readFile(new URL('../sql/028_order_fronts.sql',import.meta.url),'utf8'));
+  const [[frontAfterMigration]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
+  assert.equal(Number(frontAfterMigration.balance),23,'rerunning setup preserves front profits');
+
 
 
 
