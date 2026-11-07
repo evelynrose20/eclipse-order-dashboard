@@ -142,6 +142,8 @@ export async function constructionRoute(pool,req,path){
    if(!projects.length||projects[0].state==='archived')return fail(404,'project_not_found');
    if(!command(user)&&projects[0].created_by!==user.id)return fail(403,'project_director_required');
    await conn.execute('DELETE FROM order_construction_event_links WHERE project_id=? AND event_id=?',[projectId,unlinkEvent[1]]);
+   const [remaining]=await conn.execute('SELECT event_id FROM order_construction_event_links WHERE project_id=? ORDER BY linked_at,event_id LIMIT 1',[projectId]);
+   await conn.execute('UPDATE order_construction_projects SET event_id=? WHERE id=? AND event_id=?',[remaining[0]?.event_id||null,projectId,unlinkEvent[1]]);
    return ok({status:'unlinked'});
   });
  }
