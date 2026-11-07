@@ -1,6 +1,8 @@
 import React,{useEffect,useState} from 'react';
 import './public-site.css';
 
+const RECRUITMENT_LABELS={open:'RECRUITMENT OPEN',limited:'LIMITED RECRUITMENT',closed:'RECRUITMENT CLOSED'};
+const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const NAV=[
  ['about','The Order'],
  ['history','Our History'],
@@ -41,6 +43,23 @@ export default function PublicSite(){
  const [mode,setMode]=useState(0);
  const [expandedFAQ,setExpandedFAQ]=useState(-1);
  const [addressCopied,setAddressCopied]=useState(false);
+ const [recruitment,setRecruitment]=useState(null);
+ useEffect(()=>{
+  let active=true;
+  const controller=new AbortController();
+  const load=async()=>{
+   try{
+    const response=await fetch(RECRUITMENT_API+'/recruitment',{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error('unavailable');
+    const result=await response.json();
+    if(active)setRecruitment(['open','limited','closed'].includes(result.status)?result.status:null);
+   }catch{if(active)setRecruitment(null)}
+  };
+  void load();
+  const onVisible=()=>{if(document.visibilityState==='visible')void load()};
+  document.addEventListener('visibilitychange',onVisible);
+  return()=>{active=false;controller.abort();document.removeEventListener('visibilitychange',onVisible)};
+ },[]);
  useEffect(()=>{
   document.title='The Eclipse Order — A Final Fantasy XIV Roleplay Free Company';
   const handleEscape=e=>{if(e.key==='Escape'){setLetterOpen(false);setMenuOpen(false)}};
@@ -48,12 +67,14 @@ export default function PublicSite(){
   return()=>window.removeEventListener('keydown',handleEscape);
  },[]);
  const closeMenu=()=>setMenuOpen(false);
+ const recruitmentLabel=RECRUITMENT_LABELS[recruitment]||'RECRUITMENT STATUS UNAVAILABLE';
+ const applicationsAccepted=recruitment==='open'||recruitment==='limited';
  return <div className="order-public">
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
    <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>The Eclipse Order</strong><small>FINAL FANTASY XIV · ROLEPLAY</small></span></a>
    <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
-   <div className="public-header-actions"><a className="public-recruitment-link" href="#membership"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</a><a className="public-portal-link" href="?portal">Member sign-in</a><a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a></div>
+   <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
   <main id="content">
@@ -66,7 +87,7 @@ export default function PublicSite(){
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">✦</span> BAD END FC · 18+ · CONSEQUENCE-DRIVEN RP</div>
      <div className="public-hero-notes"><span>STORY-FOCUSED ROLEPLAY</span><span>FINAL FANTASY XIV</span><span>MEMBER-RUN EVENTS</span></div>
-     <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</a></div>
+     <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership" className={'public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a></div>
     </div>
     <div className="public-scroll-cue" aria-hidden="true"><span>DESCEND INTO THE ORDER</span><i/></div>
    </section>
@@ -158,7 +179,7 @@ export default function PublicSite(){
        <span className="public-estate-corner top-left" aria-hidden="true"/><span className="public-estate-corner top-right" aria-hidden="true"/><span className="public-estate-corner bottom-left" aria-hidden="true"/><span className="public-estate-corner bottom-right" aria-hidden="true"/>
        <div className="public-estate-eyebrow">THE ORDER · IN THE REALM</div>
        {ESTATE.map(([label,value])=><div className="public-estate-field" key={label}><small>{label}</small><strong>{value}</strong></div>)}
-       <div className="public-estate-note"><span className="public-status-dot" aria-hidden="true"/> RECRUITMENT OPEN</div>
+       <div className={'public-estate-note public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</div>
        <button className="public-copy-address" type="button" onClick={async()=>{try{await navigator.clipboard.writeText('Dynamis · Seraph · The Goblet · Ward 5 · Plot 41');setAddressCopied(true)}catch{setAddressCopied(false)}}}>{addressCopied?'Address copied ✓':'Copy estate address'} <span aria-hidden="true">↗</span></button>
       </aside>
      </div>
@@ -199,8 +220,8 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
-     <SectionTag number="09">THE DOOR IS OPEN</SectionTag>
-     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p><a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a><span className="public-membership-note">Discord server membership and approval by Order command are both required before portal access is granted.</span></div>
+     <SectionTag number="09">{recruitment==='closed'?'THE DOOR IS CLOSED':recruitment==='limited'?'AN INVITATION BY CONSIDERATION':'THE DOOR IS OPEN'}</SectionTag>
+     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p>{applicationsAccepted?<a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a>:<span className="public-membership-closed">{recruitment==='closed'?'The Order is not accepting new members at present.':'Recruitment status is temporarily unavailable.'}</span>}<span className="public-membership-note">{recruitment==='closed'?'Existing members may continue to enter through the member portal.':recruitment==='limited'?'The Order is considering applications selectively. Discord membership and approval by Order command are required.':'Discord server membership and approval by Order command are both required before portal access is granted.'}</span></div>
       <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
     </div>

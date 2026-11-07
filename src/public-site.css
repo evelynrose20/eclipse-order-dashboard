@@ -350,3 +350,13 @@
  .public-fit-lore{padding:18px 17px}
  .public-fit-invitation{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Recruitment availability appears consistently throughout the public site. */
+.order-public .public-recruitment-closed{color:#dfa3a6!important}
+.order-public .public-recruitment-limited{color:#e4c391!important}
+.order-public .public-recruitment-unknown{color:#b9aaac!important}
+.order-public .public-recruitment-closed .public-status-dot{background:#b96770;box-shadow:0 0 0 3px #b967702b}
+.order-public .public-recruitment-limited .public-status-dot{background:#d1a96b;box-shadow:0 0 0 3px #d1a96b2b}
+.order-public .public-recruitment-unknown .public-status-dot{background:#847c84;box-shadow:none}
+.public-membership-closed{display:block;margin:20px 0 12px;max-width:470px;padding:15px 17px;border:1px solid #975b64;background:#37252bc4;color:#f1c2c4;font-size:13px;line-height:1.6}

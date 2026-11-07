@@ -22,6 +22,7 @@ const ERROR_MESSAGES={
  discord_only_login:'Please sign in using Discord.',
  discord_only_registration:'Membership requests begin with Discord.',
  account_not_approved:'The Order has not approved your membership.',
+ recruitment_closed:'The Order is not accepting new membership applications at present.',
  too_many_attempts:'Too many attempts. Try again later.'
 };
 async function request(path,{method='GET',token,body}={}){
@@ -39,8 +40,15 @@ export default function LocalAccounts(){
  const [reason,setReason]=useState(()=>new URLSearchParams(window.location.search).get('access')||'');
  const [busy,setBusy]=useState(false);
  const [adult,setAdult]=useState(false);
+ const [recruitment,setRecruitment]=useState(null);
+ useEffect(()=>{
+  let active=true;
+  request('/recruitment').then(r=>{if(active)setRecruitment(r.status)}).catch(()=>{if(active)setRecruitment(null)});
+  return()=>{active=false};
+ },[]);
  const processed=useRef(false);
  async function start(intent='login'){
+  if(intent==='join'&&recruitment==='closed'){setMessage(ERROR_MESSAGES.recruitment_closed);return}
   if(!adult){setMessage('Please confirm you are 18 or older and understand the Bad End FC premise.');return}
   setMessage('');setReason('');setBusy(true);
   try{
@@ -89,7 +97,8 @@ export default function LocalAccounts(){
    {message&&<p className="eo-message" role="status">{message}</p>}
    <div className="eo-discord-login">
     <button className="eo-discord-button" type="button" disabled={busy||!adult} onClick={()=>start('login')}>{busy?'Connecting…':'Continue with Discord'}</button>
-    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Order’s Discord</button>}
+    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&recruitment!=='closed'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Order’s Discord</button>}
+    {recruitment==='closed'&&<p className="eo-membership-wait">Recruitment is closed. Existing Order members may still sign in.</p>}
     {reason==='pending'&&<p className="eo-membership-wait">Already have an Order account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New membership requests require approval from Order leadership.</p>}
     <small>Members of the Order can enter using their connected Discord account.</small>
    </div>

@@ -14,7 +14,7 @@ const env={DISCORD_CLIENT_ID:'987654321098765432',DISCORD_CLIENT_SECRET:'private
 function request(method='GET',{token,body}={}){
  return {method,headers:token?{authorization:'Bearer '+token}:{},[Symbol.asyncIterator]:async function*(){if(body!==undefined)yield Buffer.from(JSON.stringify(body))}};
 }
-function setup({member=true,screening=false,approved=false,unavailable=false}={}){
+function setup({member=true,screening=false,approved=false,unavailable=false,recruitment='open'}={}){
  const states=new Map(),tickets=new Map(),links=new Map(),accounts=new Map(),sessions=new Map();
  accounts.set(uid,{id:uid,is_active:1,approval_status:'approved'});
  sessions.set(hashToken(authToken),uid);
@@ -23,6 +23,7 @@ function setup({member=true,screening=false,approved=false,unavailable=false}={}
  const calls=[];
  const pool={execute:async(sql,args=[])=>{
   calls.push({sql,args});
+  if(sql.includes("SELECT content FROM order_settings WHERE setting_key='recruitment_status'"))return [[{content:recruitment}]];
   if(sql.startsWith('SELECT a.id,a.email')){const account=sessions.get(args[0]);return [account?[{id:account,account_role:'domina',discord_user_id:discordId}]:[]]}
   if(sql.startsWith('DELETE FROM discord_oauth_states WHERE expires_at')||sql.startsWith('DELETE FROM discord_oauth_tickets WHERE expires_at'))return [{affectedRows:0}];
   if(sql.startsWith('SELECT discord_user_id FROM account_discord_links')){const row=[...links.values()].find(x=>x.account_id===args[0]);return [row?[row]:[]]}
@@ -157,4 +158,20 @@ test('unlinking Discord is disabled because no alternate login method exists',as
  const result=await call(m,'/auth/discord/unlink',request('POST',{token:authToken}));
  assert.equal(result.status,409);
  assert.equal(m.links.has(discordId),true);
+});
+
+test('closed recruitment blocks new Discord applications but existing linked members can sign in',async()=>{
+ const prospective=setup({recruitment:'closed'});
+ const blockedJoin=await call(prospective,'/auth/discord/start',request('POST',{body:{intent:'join',adult_confirmed:true}}));
+ assert.equal(blockedJoin.status,403);
+ assert.equal(blockedJoin.body.error,'recruitment_closed');
+ const {state}=await authorize(prospective);
+ const denied=await callback(prospective,state);
+ assert.equal(frag(denied.redirect,'discord_error'),'recruitment_closed');
+ assert.equal(prospective.accounts.size,1);
+
+ const existing=setup({approved:true,recruitment:'closed'});
+ const login=await authorize(existing);
+ const accepted=await callback(existing,login.state);
+ assert.ok(frag(accepted.redirect,'discord_ticket'));
 });
