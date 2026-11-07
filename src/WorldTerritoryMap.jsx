@@ -123,16 +123,14 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   if(suppressRef.current){suppressRef.current=false;return}
   onSelect(String(s.id));
   if(canEdit&&mode==='link'){
-   if(!routeStart){setRouteStart(Number(s.id));setRouteEnd(null);setNewRoutePoints([]);setNotice('Select the second station; then draw bends and save the route.');return}
-   if(Number(routeStart)===Number(s.id)){setRouteStart(null);setRouteEnd(null);return}
-   setRouteEnd(Number(s.id));setNotice('Route endpoints selected. Click the map to add bends, then save.');
+   chooseEndpoint(Number(s.id));
   }
  }
- async function saveRoute(payload,id=null){
+ async function saveRoute(payload,id=null,isGraph=false){
   if(!canEdit||busy)return;
   setBusy(true);setError('');setNotice('');
   try{
-   await request('/world-admin/routes'+(id?'/'+id:''),{method:id?'PUT':'POST',body:payload});
+   await request(isGraph?'/world-admin/network/segments/'+id:'/world-admin/routes'+(id?'/'+id:''),{method:id?'PUT':'POST',body:payload});
    await reload();
    setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);
    setSelectedRoute(null);setDraftWaypoints([]);setNotice(id?'Route changes saved.':'New route created.');
@@ -141,16 +139,17 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  async function deleteRoute(){
   if(!currentRoute||!canEdit||busy)return;
   setBusy(true);setError('');
-  try{await request('/world-admin/routes/'+currentRoute.id,{method:'DELETE'});await reload();setSelectedRoute(null);setDraftWaypoints([]);setNotice('Route deleted.')}
+  try{await request(graphSelected?'/world-admin/network/segments/'+currentRoute.id:'/world-admin/routes/'+currentRoute.id,{method:'DELETE'});await reload();setSelectedRoute(null);setDraftWaypoints([]);setNotice('Route deleted.')}
   catch(e){setError(e.message||'Unable to delete route.')}finally{setBusy(false)}
  }
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
-  if(mode==='link'&&routeStart&&routeEnd)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
+  if(junctionAction==='place'&&(mode==='link'||mode==='bend')){void createJunction(p);return}
+  if(mode==='link'&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
-   const line=polyline({...currentRoute,waypoints:old},byId);
+   const line=pointsForRoute(currentRoute,old);
    const dist=(pt,a,b)=>{const vx=b.x-a.x,vy=b.y-a.y,t=Math.max(0,Math.min(1,((pt.x-a.x)*vx+(pt.y-a.y)*vy)/(vx*vx+vy*vy||1)));return Math.hypot(pt.x-a.x-t*vx,pt.y-a.y-t*vy)};
    const segments=line.slice(1).map((point,i)=>({i,d:dist(p,line[i],point)}));
    const nearest=segments.sort((a,b)=>a.d-b.d)[0];
@@ -159,7 +158,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  }
  function selectRoad(r){
   if(mode==='move')return;
-  setSelectedRoute(r.id);setDraftWaypoints(normalizeWaypoints(r).map(p=>({...p})));
+  setSelectedRoute((r.from_node_id?'graph:':'legacy:')+r.id);setDraftWaypoints(normalizeWaypoints(r).map(p=>({...p})));setJunctionAction('');
   setRouteType(r.route_type);setRouteName(r.route_name||'');setRouteDirty(false);
   if(mode!=='bend'&&canEdit)setMode('bend');
  }
@@ -236,10 +235,10 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
     {previewPoints.length>=2&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(previewPoints)}/>}
    </svg>
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
-   {canEdit&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart&&routeEnd))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
+   {canEdit&&junctionAction!=='split'&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart!=null&&routeEnd!=null)||((mode==='link'||mode==='bend')&&junctionAction==='place'))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
-   {mode==='link'&&routeStart&&routeEnd&&newRoutePoints.map((p,i)=><span className="wtm-plan-point" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
+   {mode==='link'&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><span className="wtm-plan-point" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
 
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
@@ -264,7 +263,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}>Undo bend</button>
       <button disabled={busy} onClick={()=>{setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route draft discarded.')}}>Cancel draft</button>
     </>:<>
-      <button disabled={busy||!currentRoute||!routeDirty} onClick={()=>saveRoute(editableRoute,currentRoute.id)}>Save route changes</button>
+      <button disabled={busy||!currentRoute||!routeDirty} onClick={()=>saveRoute(editableRoute,currentRoute.id,graphSelected)}>Save route changes</button>
       <button disabled={busy||!currentRoute||!draftWaypoints.length} onClick={()=>{setDraftWaypoints(p=>p.slice(0,-1));setRouteDirty(true)}}>Remove last bend</button>
       <button disabled={busy||!currentRoute} onClick={()=>{selectRoad(currentRoute);setNotice('Unsaved route edits discarded.')}}>Reset edits</button>
       <button disabled={busy||!currentRoute} className="wtm-delete-route" onClick={deleteRoute}>Delete route</button>
