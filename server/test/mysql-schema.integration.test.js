@@ -475,7 +475,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const reservedList=await craftingRoute(admin,request('GET'),'/workshop/reserved');
   assert.equal(Number(reservedList.body.goods.find(g=>g.material_id==='iron-ingot').quantity),3);
   const otherPersonRelease=await craftingRoute(admin,recruitRequest('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:1}),'/workshop/reserved/release');
-  assert.equal(otherPersonRelease.status,403,'other members cannot release someone else's reserved craft');
+  assert.equal(otherPersonRelease.status,403,"other members cannot release someone else's reserved craft");
   const unauthorizedFrontTransfer=await frontsRoute(admin,recruitRequest('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:1}),'/fronts/'+frontId+'/reserved-stock');
   assert.equal(unauthorizedFrontTransfer.status,403,'front officer cannot seize another maker\'s reserved goods');
   const frontReservedTransfer=await frontsRoute(admin,request('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:2}),'/fronts/'+frontId+'/reserved-stock');
