@@ -14,6 +14,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
  const [current,setCurrent]=useState('');
  const [events,setEvents]=useState([]);
  const [repHistory,setRepHistory]=useState([]);
+ const [tradeContracts,setTradeContracts]=useState([]);
  const [repDraft,setRepDraft]=useState(null);
  const [accounts,setAccounts]=useState([]);
  const [encounters,setEncounters]=useState([]);
@@ -31,7 +32,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
   setFactions(rows||[]);
   setCurrent(old=>(rows||[]).some(x=>x.id===old)?old:rows?.[0]?.id||'');
  }
- useEffect(()=>{reload().catch(e=>setError(e.message));if(editable){request('/factions/accounts').then(data=>setAccounts(data.accounts||[])).catch(()=>{});request('/encounters').then(setEncounters).catch(()=>{})}},[]);
+ useEffect(()=>{request('/commerce').then(data=>setTradeContracts(data.contracts||[])).catch(()=>{});reload().catch(e=>setError(e.message));if(editable){request('/factions/accounts').then(data=>setAccounts(data.accounts||[])).catch(()=>{});request('/encounters').then(setEncounters).catch(()=>{})}},[]);
  useEffect(()=>{
   if(!current){setEvents([]);return}
   let active=true;
@@ -117,6 +118,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
      {chosen.image_reference_url&&<a className="faction-reference" href={chosen.image_reference_url} target="_blank" rel="noreferrer noopener">View portrait reference</a>}
      {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen});setNewFaction(false)}}>Edit dossier</button>{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
      {editable&&chosen.notes&&<section className="faction-command-notes"><h4>Order command notes</h4><p>{chosen.notes}</p></section>}
+     {tradeContracts.some(c=>c.faction_id===chosen.id)&&<section className="faction-trade-section"><span className="faction-eyebrow">THE MERCHANT NETWORK</span><h4>Trade agreements</h4><p>Completed deliveries improve this faction's standing toward the Order.</p>{tradeContracts.filter(c=>c.faction_id===chosen.id).map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{c.item_kind==='material'?c.material_name:c.equipment_name} · {c.status}</small></div><div><span>{c.delivered_quantity} / {c.required_quantity}</span><small>+{c.rep_per_unit} standing per item</small></div></article>)}</section>}
      <div className="faction-history-head"><div><span className="faction-eyebrow">THE CHANGING WORLD</span><h4>Faction history</h4></div>{editable&&<button type="button" className="btn secondary" onClick={()=>setEventDraft({title:'',details:'',occurred_on:''})}>+ Record development</button>}</div>
      {repHistory.length>0&&<div className="faction-timeline">{repHistory.map(e=><article className="faction-history-entry" key={'rep-'+e.id}><time>{new Date(e.created_at).toLocaleDateString()} · {e.target==='order_view'?'Order diplomacy':e.target==='faction_view'?'Faction diplomacy':'Personal reputation'} · {e.applied_delta>0?'+':''}{e.applied_delta}</time><strong>{e.event_title}</strong><p>{e.event_details}</p></article>)}</div>}
      {events.length?<div className="faction-timeline">{events.map(e=><article key={e.id} className="faction-history-entry"><time>{e.occurred_on?new Date(e.occurred_on).toLocaleDateString():new Date(e.created_at).toLocaleDateString()}</time><strong>{e.title}</strong><p>{e.details}</p></article>)}</div>:<p className="faction-history-empty">No general developments recorded yet.</p>}
