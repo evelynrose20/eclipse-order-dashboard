@@ -31,4 +31,8 @@ INSERT IGNORE INTO order_senate_seats(seat_number,account_id,appointed_at)
  AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='036_senate_governing_chamber')
  ON DUPLICATE KEY UPDATE account_id=COALESCE(order_senate_seats.account_id,VALUES(account_id)),
  appointed_at=COALESCE(order_senate_seats.appointed_at,VALUES(appointed_at));
+-- Correct only the untouched founding text; never overwrite a member-edited charter.
+UPDATE order_governance_charter
+ SET charter_text='Under the Domina, the Eclipse Order is governed by its appointed chamber. The Council serves until the Senate is convened. Once established, the Senate assumes the Council''s governing authority, with fifteen senatorial seats and three Heads of the Order. The Domina may suspend the Senate and restore the Council. The Order''s Charter governs the chamber''s proceedings and the authority of its officers.'
+ WHERE id=1 AND revision=1 AND charter_text='The Domina presides over five permanent Council offices. She appoints or removes officers. Ordinary Council decisions require quorum and more affirmative than opposing votes. Major matters require the charter major threshold. Reserved matters also require explicit Domina ratification. Empty Council seats do not lower these thresholds. In-character rulings cannot change real account roles, OOC consent, moderation, security, financial balances or gameplay permissions.';
 INSERT INTO schema_migrations(version) VALUES('036_senate_governing_chamber') ON DUPLICATE KEY UPDATE version=VALUES(version);
