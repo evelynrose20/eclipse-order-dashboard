@@ -516,7 +516,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(revised.status,200,'director can revise a private plan before publication');
   projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
   assert.match(projectBefore.body.project.description,/multi-session/);
-  const secondEpisodeId='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const secondEpisodeId='ffffffff-ffff-4fff-8fff-ffffffffffff';
   await admin.execute('INSERT INTO order_encounters(id,name,notes,themes,created_by,description) VALUES(?,?,?,JSON_ARRAY(),?,?)',
    [secondEpisodeId,'Observatory: The Raising','',id,'Later chapter of the reconstruction plot']);
   const linkedEpisode=await constructionRoute(admin,request('POST',{event_id:secondEpisodeId}),'/construction/'+projectId+'/events');
