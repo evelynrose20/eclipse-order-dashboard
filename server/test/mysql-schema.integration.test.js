@@ -57,6 +57,15 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/037_order_lore_archive.sql',import.meta.url),'utf8'));
   const [loreAgain]=await admin.query('SELECT id FROM order_lore_entries');
   assert.equal(loreAgain.length,chronicles.length,'repeat installation retains lore');
+  const [politicalTables]=await admin.query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('order_senate_parties','order_senate_party_members','order_senate_elections','order_senate_candidates','order_senate_election_ballots','order_senate_election_results','order_senate_election_rejections','order_senate_coalitions','order_senate_coalition_parties')");
+  assert.equal(politicalTables.length,9,'Senate political tables are installed');
+  const [partyColumn]=await admin.query("SHOW COLUMNS FROM order_senate_seats LIKE 'party_id'");
+  assert.equal(partyColumn.length,1,'Senate seats preserve political affiliation');
+  const [[partyCount]]=await admin.query('SELECT COUNT(*) AS n FROM order_senate_parties');
+  assert.equal(Number(partyCount.n),0,'No sample parties are installed in the production database');
+  await admin.query(await readFile(new URL('../sql/040_senate_politics.sql',import.meta.url),'utf8'));
+  const [partyColumnAgain]=await admin.query("SHOW COLUMNS FROM order_senate_seats LIKE 'party_id'");
+  assert.equal(partyColumnAgain.length,1,'Repeating setup does not duplicate the party column');
   const [senateSeats]=await admin.query('SELECT seat_number FROM order_senate_seats ORDER BY seat_number');
   const [senateHeads]=await admin.query('SELECT head_number FROM order_senate_heads ORDER BY head_number');
   assert.equal(senateSeats.length,15,'Senate has exactly fifteen senator positions');
