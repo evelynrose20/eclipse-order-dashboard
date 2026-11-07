@@ -35,6 +35,6 @@ export default function PlayerBattleView(){
   </header>
   {error&&<div className="alert" role="alert">{error}</div>}
   {chosen?<BattleMap key={chosen.id} encounter={chosen} canDirect={false} playerView onRefresh={()=>{}} onError={setError}/>:
-   <div className="encounter-studio-empty"><span aria-hidden="true">✦</span><h3>{loading?'Opening the battle map…':'No battle in progress'}</h3><p>{loading?'':'The map will appear here when an encounter begins.'}</p></div>}
+   <div className="encounter-studio-empty"><span aria-hidden="true"><i className="fa-solid fa-dice-d20"/></span><h3>{loading?'Opening the battle map…':'No battle in progress'}</h3><p>{loading?'':'The map will appear here when an encounter begins.'}</p></div>}
  </div>;
 }
