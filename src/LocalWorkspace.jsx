@@ -81,6 +81,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['events','Events & signups','◷'],
   ['construction','Construction Projects','⚒'],
   ['factions','Factions & diplomacy','✧'],
+  ['world','World Administration','▧'],
   ['lore','Order Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
