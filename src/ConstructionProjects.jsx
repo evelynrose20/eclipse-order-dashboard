@@ -93,7 +93,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
   <span className="eo-construction-project-icon" aria-hidden="true">⌘</span><span><strong>{entry.name}</strong><small>{entry.event_name||'Order construction campaign'}</small><em>{entry.stage_count} stage{Number(entry.stage_count)===1?'':'s'} · {entry.state}</em></span>
  </button>;
  return <section className="eo-construction">
-  <header className="eo-construction-hero"><div><span>THE ECLIPSE ORDER · LONG-FORM OPERATIONS</span><h2>Construction & Restoration</h2><p>Turn crafting into a living storyline. Plan a restoration, a new structure, or a major Order undertaking and let materials arrive over many events.</p></div><span className="eo-construction-emblem" aria-hidden="true">⚒</span></header>
+  <header className="eo-construction-hero"><div><span>THE ECLIPSE ORDER · LONG-FORM OPERATIONS</span><h2>Construction & Restoration</h2><p>Turn crafting into a living storyline. Plan a restoration, a new structure, or a major Order undertaking and let materials arrive over many events.</p></div><span className="eo-construction-emblem" aria-hidden="true"><i className="fa-solid fa-hammer"/></span></header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
   {notice&&<p className="eo-construction-notice" role="status">{notice}</p>}
   <div className="eo-construction-toolbar"><div><span>ONGOING STORYLINES</span><strong>{projects.filter(p=>p.state==='open').length} active · {projects.length} recorded</strong></div>{mayCreate&&<button type="button" onClick={beginDraft}>+ Plan a construction storyline</button>}</div>
