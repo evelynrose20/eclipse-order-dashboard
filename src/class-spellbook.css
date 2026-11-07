@@ -1,0 +1,7 @@
+/* Character job spellbook: retained independently of the retired class editor. */
+.class-spellbook{margin-top:18px}.class-spellbook h3{margin:19px 0 12px}
+.spell-resource{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#29343e;border:1px solid #596872;border-radius:2px;padding:14px}.spell-resource strong{font-size:17px}.spell-resource span{font-size:12px;color:#b1bdc1;flex:1}
+.class-feature-grid,.class-spell-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.class-feature-grid article,.class-spell-grid article{padding:13px;background:#202a33;border:1px solid #384651;border-radius:2px}.class-feature-grid small,.class-spell-grid small{display:block;font-size:11px;color:#b1bdc1;margin-top:4px}.class-feature-grid p,.class-spell-grid p{white-space:pre-wrap;color:#c6cfd0;font-size:12px;line-height:1.5}.class-spell-grid button{margin-top:8px}
+.spell-future-list{display:grid;gap:6px}.spell-future-list>div{display:flex;gap:12px;background:#202a33;padding:10px 12px;border-radius:2px;align-items:center}.spell-future-list span{flex:1}.spell-future-list small{color:#b1bdc1}
+@media(max-width:850px){.homebrew-row,.homebrew-row.spell{grid-template-columns:repeat(2,minmax(0,1fr))}.homebrew-row-description{grid-column:1/-1}.homebrew-row .mini-btn{justify-self:start}}
