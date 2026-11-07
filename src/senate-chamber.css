@@ -1,0 +1,150 @@
+/* GARLEAN SENATE — command chamber, iron and crimson, with restrained
+   party colors that communicate factions rather than becoming the theme. */
+.pol-shell{
+ --pol-bg:#0B111A;--pol-plate:#151D27;--pol-plate2:#1B2631;--pol-edge:#364552;
+ --pol-crimson:#B34650;--pol-gold:#C0A06E;--pol-ink:#E4E8E8;--pol-muted:#93A3B1;
+ color:var(--pol-ink);background:linear-gradient(135deg,#121A24,#070D15);
+ border:1px solid #485661;box-shadow:0 14px 45px #04081055;min-width:0;
+ font-family:var(--imperial-ui,'IBM Plex Sans',sans-serif);
+}
+.pol-shell *{box-sizing:border-box}
+.pol-layout{display:grid;grid-template-columns:172px minmax(0,1fr);min-width:0}
+.pol-rail{border-right:1px solid var(--pol-edge);background:linear-gradient(180deg,#161E27,#0B111A);display:flex;flex-direction:column;padding:14px 0;align-self:stretch;gap:3px}
+.pol-rail-title{font:800 10px var(--imperial-ui,sans-serif);letter-spacing:.17em;color:#9AA8AC;padding:14px 18px 18px}
+.pol-rail button{border:0;border-left:3px solid transparent;background:transparent;color:#AEBCC7;text-align:left;display:flex;align-items:center;gap:12px;padding:14px 14px;font-weight:750;letter-spacing:.045em;font-size:12px;cursor:pointer}
+.pol-rail button span{color:#778899;font:800 13px var(--imperial-heading,Impact,sans-serif)}
+.pol-rail button:hover{color:#fff;background:#24303D}
+.pol-rail button.active{background:linear-gradient(90deg,#403031,#202831);border-left-color:var(--pol-gold);color:#E7C58D}
+.pol-rail button.active span{color:#D3B37E}
+.pol-main{display:grid;align-content:start;gap:17px;min-width:0;padding:24px}
+.pol-masthead{display:flex;justify-content:space-between;align-items:center;gap:18px;min-width:0;border-bottom:1px solid #3B4B59;padding-bottom:18px}
+.pol-kicker{font:800 10px var(--imperial-ui,sans-serif);letter-spacing:.17em;color:var(--pol-gold)}
+.pol-masthead h3{font:800 clamp(27px,3.1vw,43px)/.97 var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:.045em;color:#F0EEE9;margin:10px 0}
+.pol-masthead p{font-size:12px;color:#A9B5BC;margin:0}
+.pol-operational{flex:none;letter-spacing:.12em;font-size:9px;font-weight:800;color:#D3BC9B;border:1px solid #856C50;padding:9px 12px;background:#322A24}
+.pol-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #46535D;background:#111925}
+.pol-stats>div{padding:17px 18px;display:grid;gap:8px;border-right:1px solid #3A4753;min-width:0}
+.pol-stats>div:last-child{border-right:0}
+.pol-stats span,.pol-stats small{color:#98A9B5;font-size:10px;letter-spacing:.06em;overflow-wrap:anywhere}
+.pol-stats>div>span{font-weight:800;letter-spacing:.09em;color:#C4A373}
+.pol-stats strong{font:800 clamp(20px,2vw,30px) var(--imperial-heading,'Arial Narrow',sans-serif);color:#F0EFED;overflow-wrap:anywhere}
+.pol-stats strong small{font-size:15px;color:#8F9DA9}
+.pol-chamber-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;min-width:0}
+.pol-panel{min-width:0;background:linear-gradient(140deg,#141C27,#0E1520);border:1px solid #40515D}
+.pol-panel>header{display:flex;justify-content:space-between;gap:12px;align-items:center;min-height:43px;background:#141D27;border-bottom:1px solid #374754;padding:12px 17px}
+.pol-panel>header strong{font:800 12px var(--imperial-ui,sans-serif);letter-spacing:.1em;color:#D8BB85}
+.pol-panel>header small{color:#8295A5;font-size:10px}
+.pol-panel>header button{background:transparent;border:1px solid #68583E;color:#E0C48B;font-size:10px;padding:8px 11px;font-weight:800;cursor:pointer}
+.pol-panel>header button:hover{border-color:#D5B57D}
+.pol-seat-map{display:flex;flex-direction:column}
+.pol-heads{text-align:center;padding:17px 16px 3px}
+.pol-heads>span{font-weight:800;letter-spacing:.19em;font-size:9px;color:#BDA16E}
+.pol-heads>div{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.pol-heads>div>div{min-width:95px;max-width:170px;border-top:2px solid #9A7674;background:#222630;display:grid;gap:4px;padding:9px 12px}
+.pol-heads>div>div:first-child{border-top-color:#CCAD6F}
+.pol-heads>div span{color:#D9B77C;font-size:16px}
+.pol-heads>div strong{font:800 13px var(--imperial-heading,'Arial Narrow',sans-serif);color:#F4E8D5;text-transform:uppercase}
+.pol-heads>div small{font-size:10px;color:#879BA7;overflow-wrap:anywhere}
+.pol-arc{position:relative;height:275px;min-height:275px;margin:12px 17px 0;border-bottom:1px solid #3B4B58}
+.pol-arc:before{content:'';position:absolute;left:8%;right:8%;top:1%;height:85%;border-top:1px solid #526271;border-radius:50% 50% 0 0;opacity:.5}
+.pol-seat{position:absolute;width:18px;height:18px;border:2px solid #0D141E;border-radius:50%;box-shadow:0 0 0 1px #7F88904F;cursor:pointer;transform:translate(-50%,0);display:grid;place-items:center;padding:0;color:#C2C8CE}
+.pol-seat:hover,.pol-seat-active{outline:2px solid #D8B778;outline-offset:3px;z-index:2}
+.pol-majority{position:absolute;top:56%;left:0;right:0;text-align:center;pointer-events:none;display:grid;gap:3px}
+.pol-majority strong{font:800 21px var(--imperial-heading,Impact,sans-serif);color:#CFAD70;letter-spacing:.07em}
+.pol-majority small{font-size:9px;letter-spacing:.1em;color:#879AA8}
+.pol-seat-caption{padding:12px 18px 18px;font-size:11px;color:#B1BFCA;line-height:1.5;display:grid;gap:5px}
+.pol-seat-caption small{color:#778C99;font-size:10px}
+.pol-table-header{display:grid;grid-template-columns:minmax(110px,1fr) 74px 36px 40px;gap:10px;padding:11px 15px;color:#7F94A5;font-size:9px;letter-spacing:.13em;font-weight:800}
+.pol-table-header>span:nth-child(n+3){text-align:right}
+.pol-party-row{border:0!important;border-top:1px solid #263644!important;border-radius:0!important;background:#121B27!important;display:grid;grid-template-columns:5px minmax(85px,1fr) 74px 36px 40px;gap:10px;align-items:center;padding:13px 15px!important;text-align:left;width:100%;color:#E7ECEF!important;cursor:pointer}
+.pol-party-row:hover,.pol-party-row.selected{background:#22303D!important}
+.pol-party-strip{height:29px}
+.pol-party-label{display:grid;gap:3px;min-width:0}
+.pol-party-label strong{font:800 17px var(--imperial-heading,Impact,sans-serif)}
+.pol-party-label small{font-size:10px;color:#8C9AA8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pol-share{height:7px;background:#283542;border-radius:0;overflow:hidden}
+.pol-share>span{display:block;height:100%}
+.pol-count{font:800 22px var(--imperial-heading,Impact,sans-serif);text-align:right}
+.pol-percent{text-align:right;color:#9BAFBB;font-size:10px}
+.pol-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pol-mini-grid>div{background:#1B2630;border-left:3px solid #9E4B52;padding:16px;display:grid;gap:7px}
+.pol-mini-grid span{font-size:10px;font-weight:800;letter-spacing:.08em;color:#99A9B8}
+.pol-mini-grid strong{font:800 28px var(--imperial-heading,Impact,sans-serif);color:#E8E8E5}
+.pol-mini-grid small{color:#90A1AF;font-size:10px}
+.pol-bill{display:grid;grid-template-columns:40px minmax(0,1.3fr) minmax(150px,.8fr);gap:15px;align-items:center;padding:19px;border-top:1px solid #2D3D4A}
+.pol-bill:first-of-type{border-top:0}
+.pol-bill-mark{border:1px solid #705D3E;background:#2B2825;color:#D8B87E;display:grid;place-items:center;font-size:20px;height:40px}
+.pol-bill-copy strong{font-size:13px;color:#F0EFED;line-height:1.4}
+.pol-bill-copy small{display:block;margin-top:5px;font-size:10px;color:#8498A7}
+.pol-bill-copy p{margin:8px 0 0;font-size:11px;line-height:1.5;color:#99A9B7}
+.pol-votebar>div:first-child{display:flex;justify-content:space-between;font-size:10px;color:#BAC5C9;gap:7px;margin-bottom:7px}
+.pol-votebar>div:first-child span:first-child{color:#6DD0B7}.pol-votebar>div:first-child span:last-child{color:#E5868C}
+.pol-votetrack{height:8px;background:#2B3440;display:flex;overflow:hidden}
+.pol-votetrack i{display:block;height:100%;min-width:0}
+.pol-preview-banner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:#483A23;border-bottom:2px solid #C29B55;padding:14px 19px;color:#F2DEB9}
+.pol-preview-banner strong{font:800 13px var(--imperial-heading,Impact,sans-serif);letter-spacing:.1em}
+.pol-preview-banner span{font-size:11px}
+.pol-error,.pol-notice{margin:12px 17px 0;padding:10px 14px;font-size:12px;border-left:3px solid #D46C72;background:#3A2930;color:#F4C8C8}
+.pol-notice{border-left-color:#5EBEA3;background:#20352E;color:#CAE6D6}
+.pol-empty{font-size:12px;color:#9DADBA;padding:18px;line-height:1.65}
+.pol-party-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px}
+.pol-party-card{border:1px solid #506070;border-top:4px solid;padding:18px;display:grid;gap:8px;background:#1A242F}
+.pol-party-card h4{font:800 26px var(--imperial-heading,Impact,sans-serif);letter-spacing:.03em;color:#EFECE6;margin:0}
+.pol-party-card p,.pol-coalitions p{color:#B7C4CB;font-size:12px;line-height:1.6;margin:0}
+.pol-party-card small{color:#8599A6}
+.pol-party-badge{display:inline-flex;justify-self:start;padding:5px 9px;font:800 12px var(--imperial-heading,Impact,sans-serif);color:#0E141B}
+.pol-party-card button,.pol-form button,.pol-actions button,.pol-reject button,.pol-coalitions button,.pol-primary{justify-self:start;background:#813640!important;border:1px solid #BD6A6C!important;color:#F7E9E5!important;padding:10px 15px!important;font-size:11px!important;letter-spacing:.06em;font-weight:800;cursor:pointer;border-radius:0!important}
+.pol-party-card button:hover,.pol-form button:hover,.pol-primary:hover{background:#AE4550!important}
+.pol-shell button:disabled{opacity:.48;cursor:not-allowed}
+.pol-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
+.pol-form label{display:grid;gap:7px;color:#CFD6D7;font-size:11px;letter-spacing:.04em}
+.pol-form .wide{grid-column:1/-1}
+.pol-form :is(input,textarea,select){width:100%;min-width:0;background:#17222D;color:#F1EBE6;border:1px solid #687887;border-radius:0;padding:10px;font:500 13px var(--imperial-ui,sans-serif)}
+.pol-form input[type=color]{padding:3px;height:40px;width:72px}
+.pol-form textarea{resize:vertical}
+.pol-form button{grid-column:1/-1}
+.pol-phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:19px}
+.pol-phases>div{background:#202C39;border-top:3px solid #4D5E6C;padding:13px 9px;display:grid;gap:9px}
+.pol-phases>div span{font:800 22px var(--imperial-heading,Impact,sans-serif);color:#657789}
+.pol-phases>div strong{font:800 12px var(--imperial-heading,Impact,sans-serif);text-transform:uppercase;color:#BBC7CE}
+.pol-phases>div.active{background:#553039;border-top-color:#E08081}.pol-phases>div.active span{color:#ECA4A0}
+.pol-phases>div.done{border-top-color:#7CA996}
+.pol-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px}
+.pol-actions small{color:#899CA8;font-size:10px}
+.pol-candidates{display:grid;gap:8px;padding:17px}
+.pol-candidates>div{border-left:3px solid #86634B;background:#202B35;padding:12px 15px}
+.pol-candidates strong{color:#EBE6DE;display:block}.pol-candidates small{color:#BD9D73;font-size:10px}
+.pol-candidates p{color:#AABAC3;font-size:12px;margin:6px 0 0}
+.pol-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:15px}
+.pol-results>div{background:#202B36;border:1px solid #475868;padding:12px;display:grid;gap:6px}
+.pol-results>div>span{color:#C7A673;font-size:10px;font-weight:800;letter-spacing:.1em}
+.pol-results strong{font:800 18px var(--imperial-heading,Impact,sans-serif)}
+.pol-results small{color:#9EB0B8;font-size:11px}
+.pol-reject{display:grid;gap:8px}
+.pol-reject input{background:#121F2B;border:1px solid #66717A;color:#EFEFEF;padding:10px;font-size:12px}
+.pol-coalitions{padding:17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pol-coalitions article{border:1px solid #66737A;border-left:4px solid #B44B53;background:#1D2934;padding:17px;display:grid;align-content:start;gap:10px}
+.pol-coalitions h4{font:800 26px var(--imperial-heading,Impact,sans-serif);color:#EAE6E0;margin:0}
+.pol-coalitions article>strong{font:800 24px var(--imperial-heading,Impact,sans-serif);color:#DBC399}
+.pol-coalition-members{display:flex;flex-wrap:wrap;gap:6px}
+.pol-coalition-members span{background:#2E3A45;border:1px solid #62717C;color:#BACBD2;padding:5px 8px;font-size:10px}
+.pol-majority-tag{color:#8ED8C1;font-size:10px;font-weight:800;letter-spacing:.08em}
+.pol-history{display:grid}
+.pol-history>div{border-bottom:1px solid #384957;padding:15px 19px;display:grid;gap:6px}
+.pol-history strong{font-size:13px}.pol-history small{color:#98AAB7;font-size:11px}
+.sen-preview-open{margin:12px 0;border:1px solid #B39360;background:#3A3329;color:#EED9B1;font-weight:800;letter-spacing:.05em;padding:12px 19px;cursor:pointer}
+.sen-preview-open:hover{background:#4D4332}
+.sen-dormant>small{display:block;color:#9EABB1;margin:7px 0}
+.sen-management{background:#131A23;border:1px solid #455661;padding:11px 16px}
+.sen-management>summary{cursor:pointer;list-style:inside;font-weight:800;font-size:12px;letter-spacing:.06em;color:#D5BA8B;text-transform:uppercase;padding:10px}
+.sen-management[open] .sen-stats{margin:18px 0}
+@media(max-width:1130px){.pol-layout{grid-template-columns:145px minmax(0,1fr)}.pol-main{padding:16px}.pol-party-row{grid-template-columns:4px minmax(75px,1fr) 55px 30px 35px;gap:6px}.pol-table-header{grid-template-columns:minmax(90px,1fr) 55px 30px 35px;gap:6px}}
+@media(max-width:900px){.pol-layout{grid-template-columns:1fr}.pol-rail{flex-direction:row;align-items:center;overflow-x:auto;border-bottom:1px solid #41515E;border-right:0;padding:4px 6px;gap:3px}.pol-rail-title{display:none}.pol-rail button{white-space:nowrap;padding:11px 12px}.pol-chamber-grid{grid-template-columns:1fr}.pol-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pol-mini-grid{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:620px){.pol-main{padding:11px}.pol-masthead{align-items:start;flex-direction:column}.pol-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pol-stats>div{padding:13px}.pol-stats strong{font-size:22px}.pol-bill{grid-template-columns:32px 1fr}.pol-votebar{grid-column:2}.pol-party-cards,.pol-coalitions,.pol-results,.pol-form{grid-template-columns:1fr}.pol-form .wide{grid-column:1}.pol-mini-grid{grid-template-columns:1fr}.pol-phases{grid-template-columns:repeat(3,minmax(0,1fr))}.pol-heads>div>div{min-width:80px;padding:8px}.pol-table-header{font-size:8px}}
+
+.pol-tally-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:17px}
+.pol-tally-grid>div{display:grid;grid-template-columns:5px minmax(0,1fr);gap:2px 11px;padding:13px;background:#202D39;border:1px solid #4F5D68}
+.pol-tally-grid>div>span{grid-row:span 2}
+.pol-tally-grid strong{color:#F1ECE7;font-size:12px}
+.pol-tally-grid small{color:#9CABBA;font-size:11px}
+@media(max-width:620px){.pol-tally-grid{grid-template-columns:1fr}}

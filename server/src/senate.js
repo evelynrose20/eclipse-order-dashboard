@@ -17,6 +17,7 @@ export async function senateRoute(pool,req,path){
  if(!settings)return fail(503,'senate_setup_required');
  const enabled=!!settings.enabled;
  if(path==='/governance/senate'&&req.method==='GET'){
+  const [electedTerms]=await pool.execute('SELECT id FROM order_senate_elections WHERE phase="complete" LIMIT 1');
   const [seats]=await pool.execute('SELECT s.seat_number,s.account_id,a.display_name AS holder FROM order_senate_seats s LEFT JOIN accounts a ON a.id=s.account_id ORDER BY s.seat_number');
   const [appointedHeads]=await pool.execute('SELECT h.head_number,h.title,h.account_id,a.display_name AS holder FROM order_senate_heads h LEFT JOIN accounts a ON a.id=h.account_id ORDER BY h.head_number');
   const [chair]=await pool.execute('SELECT id,display_name FROM accounts WHERE account_role="domina" AND is_active=1 AND approval_status="approved" ORDER BY id LIMIT 1');
@@ -26,7 +27,7 @@ export async function senateRoute(pool,req,path){
   const [electorate]=await pool.execute('SELECT e.bill_id,e.account_id FROM order_senate_electorate e JOIN order_senate_bills b ON b.id=e.bill_id ORDER BY b.id DESC LIMIT 5000');
   const member=domina||seats.some(s=>s.account_id===actor.id)||heads.some(h=>h.account_id===actor.id);
   const [history]=domina?await pool.execute('SELECT l.id,l.action,l.subject,l.detail,l.created_at,a.display_name AS actor_name FROM order_senate_audit l JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 100'):[[]];
-  return ok({enabled,quorum_percent:Number(settings.quorum_percent),can_manage:domina,is_senator:member,seat_capacity:SENATE_SEATS,head_capacity:SENATE_HEADS,seats:enabled||domina?seats:[],heads:enabled||domina?heads:[],bills:enabled||domina?bills.map(b=>{const entries=ballots.filter(v=>Number(v.bill_id)===Number(b.id));const r=senateResult(entries.map(v=>v.vote),b.electorate,b.quorum_required);return {...b,...r,can_vote:b.state==='open'&&electorate.some(v=>Number(v.bill_id)===Number(b.id)&&v.account_id===actor.id),my_vote:entries.find(v=>v.account_id===actor.id)?.vote||null,ballots:domina?entries.map(v=>({account_id:v.account_id,vote:v.vote})):undefined}}):[],history:domina?history:[]});
+  return ok({enabled,elected_senate:electedTerms.length>0,quorum_percent:Number(settings.quorum_percent),can_manage:domina,is_senator:member,seat_capacity:SENATE_SEATS,head_capacity:SENATE_HEADS,seats:enabled||domina?seats:[],heads:enabled||domina?heads:[],bills:enabled||domina?bills.map(b=>{const entries=ballots.filter(v=>Number(v.bill_id)===Number(b.id));const r=senateResult(entries.map(v=>v.vote),b.electorate,b.quorum_required);return {...b,...r,can_vote:b.state==='open'&&electorate.some(v=>Number(v.bill_id)===Number(b.id)&&v.account_id===actor.id),my_vote:entries.find(v=>v.account_id===actor.id)?.vote||null,ballots:domina?entries.map(v=>({account_id:v.account_id,vote:v.vote})):undefined}}):[],history:domina?history:[]});
  }
  if(path==='/governance/senate/settings'&&req.method==='PUT'){
   if(!domina)return fail(403,'domina_required');
@@ -41,6 +42,8 @@ export async function senateRoute(pool,req,path){
  if(!enabled)return fail(409,'senate_disabled');
  if(path==='/governance/senate/senators'&&req.method==='PUT'){
   if(!domina)return fail(403,'domina_required');
+  const [elected]=await pool.execute('SELECT id FROM order_senate_elections WHERE phase="complete" LIMIT 1');
+  if(elected.length)return fail(409,'elected_seats_managed_by_elections');
   const b=await read(req);
   if(!Number.isInteger(b?.seat_number)||b.seat_number<1||b.seat_number>SENATE_SEATS||
     (b.account_id!==null&&!uuid(b.account_id)))return fail(400,'invalid_senate_seat');
