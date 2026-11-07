@@ -72,6 +72,22 @@ CREATE TABLE IF NOT EXISTS order_front_ledger (
  FOREIGN KEY(source_delivery_id) REFERENCES fc_trade_deliveries(id),
  FOREIGN KEY(by_account) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS order_front_change_requests (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ front_id BIGINT UNSIGNED NOT NULL,
+ request_type ENUM('location','category','expansion','restricted_service') NOT NULL,
+ requested_value VARCHAR(400) NOT NULL,
+ justification VARCHAR(900) NOT NULL DEFAULT '',
+ state ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+ requested_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ reviewed_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ reviewed_at DATETIME NULL,
+ INDEX ix_front_changes(front_id,state),
+ FOREIGN KEY(front_id) REFERENCES order_fronts(id),
+ FOREIGN KEY(requested_by) REFERENCES accounts(id),
+ FOREIGN KEY(reviewed_by) REFERENCES accounts(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SET @has_front_delivery := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_trade_deliveries' AND COLUMN_NAME='front_id');
 SET @front_delivery_sql := IF(@has_front_delivery=0,'ALTER TABLE fc_trade_deliveries ADD COLUMN front_id BIGINT UNSIGNED NULL','SELECT 1');
 PREPARE front_stmt FROM @front_delivery_sql; EXECUTE front_stmt; DEALLOCATE PREPARE front_stmt;
