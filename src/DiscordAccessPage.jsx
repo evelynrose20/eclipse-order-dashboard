@@ -36,7 +36,7 @@ const CONTENT={
 export default function DiscordAccessPage({reason,onRetry,onJoin,busy,adult,onAdultChange,onBack}){
  const detail=CONTENT[reason]||CONTENT.discord_server_check_unavailable;
  return <div className="eo-discord-access">
-  <div className="eo-discord-access-art" aria-hidden="true"><span>✦</span></div>
+  <div className="eo-discord-access-art" aria-hidden="true"><span><i className="fa-solid fa-shield-halved"/></span></div>
   <div className="eo-discord-access-inner">
    <span className="eo-discord-access-eyebrow">THE ECLIPSE ORDER / {detail.label}</span>
    <h1>{detail.title}</h1>
