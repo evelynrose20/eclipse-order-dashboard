@@ -16,7 +16,6 @@ import ConstructionProjects from './ConstructionProjects.jsx';
 import DiscordAccountConnection from './DiscordAccountConnection.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
 
-import HomebrewClasses from './HomebrewClasses.jsx';
 
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
@@ -77,7 +76,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['sheet','Character dossiers','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
   ...(!playerPreview?[['governance','Governance','♛']]:[]),
-  ...(!playerPreview&&canManage(profile.role)?[['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
   ['construction','Construction Projects','⚒'],
@@ -152,7 +150,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
     </>}
     {tab==='lore'&&<LoreArchive request={request} admin={!playerPreview}/>}
     {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
-    {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
