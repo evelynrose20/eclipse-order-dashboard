@@ -11,6 +11,7 @@ import {factionRoute} from '../src/factions.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from '../src/fronts.js';
+import {constructionRoute} from '../src/construction.js';
 import {runDailyPayroll,treasuryRoute} from '../src/treasury.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
@@ -19,7 +20,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -493,6 +494,55 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/031_character_reserved_goods.sql',import.meta.url),'utf8'));
   const [[savedReserved]]=await admin.execute("SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id='iron-ingot'",[char.body.id]);
   assert.equal(Number(savedReserved.quantity),0,'re-running migrations preserves consumed reserved balances');
+  // Preplan a long-form event storyline before it is opened to players.
+  const plan=await constructionRoute(admin,request('POST',{
+   name:'Rebuild the Star Observatory',description:'A long-term construction arc across Order events.',location:'Goblet',
+   event_id:eventId,stages:[
+    {name:'Clear the ruins',description:'Recover the old foundations',requirements:[{material_id:'iron-ingot',quantity:2}]},
+    {name:'Raise the observatory',description:'Fit the structure and roof',requirements:[{material_id:'iron-ingot',quantity:1}]}
+   ]}),'/construction');
+  assert.equal(plan.status,200,JSON.stringify(plan.body));
+  const projectId=plan.body.id;
+  const projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.equal(projectBefore.body.project.state,'draft');
+  const hidden=await constructionRoute(admin,recruitRequest('GET'),'/construction/'+projectId);
+  assert.equal(hidden.status,404,'private storyline stays hidden until published');
+  const premature=await constructionRoute(admin,request('POST',{requirement_id:projectBefore.body.project.stages[0].requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(premature.status,409,'draft projects cannot receive materials');
+  const activated=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/activate');
+  assert.equal(activated.body.state,'open');
+  const first=projectBefore.body.project.stages[0],second=projectBefore.body.project.stages[1];
+  const locked=await constructionRoute(admin,request('POST',{requirement_id:second.requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(locked.status,409,'future story phases cannot accept stock early');
+  const unauthorized=await constructionRoute(admin,recruitRequest('POST',{requirement_id:first.requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(unauthorized.status,403,'cannot supply a project using a character owned by someone else');
+  const earlySignOff=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
+  assert.equal(earlySignOff.status,409,'director cannot skip construction supplies');
+  const contribution=await constructionRoute(admin,request('POST',{requirement_id:first.requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(contribution.status,200,JSON.stringify(contribution.body));
+  const overfilled=await constructionRoute(admin,request('POST',{requirement_id:first.requirements[0].id,character_id:char.body.id,quantity:2,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(overfilled.status,409,'cannot submit more than remaining target');
+  const secondDelivery=await constructionRoute(admin,request('POST',{requirement_id:first.requirements[0].id,character_id:char.body.id,quantity:1,source:'shared'}),'/construction/'+projectId+'/contribute');
+  assert.equal(secondDelivery.status,200);
+  const nextStage=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
+  assert.equal(nextStage.body.state,'next_stage');
+  const repeated=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+first.id+'/complete');
+  assert.equal(repeated.status,409,'stage advances only once');
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',6) ON DUPLICATE KEY UPDATE quantity=6");
+  const freshReserved=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:1,character_id:char.body.id,destination:'reserved'}),'/workshop/craft');
+  assert.equal(freshReserved.status,200);
+  const protectedContribution=await constructionRoute(admin,request('POST',{requirement_id:second.requirements[0].id,character_id:char.body.id,quantity:1,source:'reserved'}),'/construction/'+projectId+'/contribute');
+  assert.equal(protectedContribution.status,200,'player intentionally contributes their locked craft');
+  const finish=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/stages/'+second.id+'/complete');
+  assert.equal(finish.body.state,'completed');
+  const finalProject=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.equal(finalProject.body.project.history.length,3);
+  assert.equal(finalProject.body.project.state,'completed');
+  assert.equal(finalProject.body.project.event_id,eventId);
+  await admin.query(await readFile(new URL('../sql/032_construction_projects.sql',import.meta.url),'utf8'));
+  const [[persisted]]=await admin.execute('SELECT COUNT(*) AS n FROM order_construction_contributions WHERE project_id=?',[projectId]);
+  assert.equal(Number(persisted.n),3,'repeat setup preserves long-running construction history');
+
 
 
 
