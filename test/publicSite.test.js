@@ -35,12 +35,13 @@ test('homepage reads only public recruitment state without private accounts or f
  assert.match(style,/@media\(prefers-reduced-motion:reduce\)/);
 });
 
-test('estate card clearly separates real in-game address from mountainous IC refuge',()=>{
+test('estate card clearly distinguishes the in-game estate from New Cassia in Ilsabard',()=>{
  for(const label of ["['WORLD','Dynamis']","['DATA CENTER','Seraph']","['RESIDENTIAL DISTRICT','The Goblet']","['WARD','5']","['PLOT','41']"])
   assert.ok(site.includes(label),label);
  assert.match(site,/id="visit"/);
- assert.match(site,/THE MOUNTAIN SANCTUARY/);
+ assert.match(site,/NEW CASSIA · ILSABARD/);
  assert.match(site,/IN-CHARACTER HOME/);
+ assert.match(site,/href="\?lore"/);
  assert.match(site,/Copy estate address/);
  assert.match(site,/navigator\.clipboard\.writeText/);
  assert.match(style,/\.public-estate-corner\.top-left/);
