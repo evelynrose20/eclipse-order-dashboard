@@ -14,6 +14,8 @@ const GROUPS=[
  {id:'home',name:'YOUR SPACE',hint:'Start here'},
  {id:'characters',name:'CHARACTERS',hint:'Rosters and dossiers'},
  {id:'activities',name:'OPERATIONS',hint:'Events and encounters'},
+ {id:'world',name:'WORLD & TERRITORY',hint:'Regions and settlements'},
+ {id:'economy',name:'INDUSTRY & LOGISTICS',hint:'Trade and production'},
  {id:'community',name:'COMMUNITY',hint:'Profiles and connections'},
  {id:'administration',name:'ORDER MANAGEMENT',hint:'Staff and records'}
 ];
