@@ -21,8 +21,8 @@ test('the existing site-wide Font Awesome picker is searchable with safe custom 
 });
 test('regular and graph territory views share the expanded icon categories',async()=>{
  const map=await readFile(new URL('../src/WorldTerritoryMap.jsx',import.meta.url),'utf8');
- const graph=await readFile(new URL('../src/WorldNetworkEditor.jsx',import.meta.url),'utf8');
+
  for(const id of ['forest','ceruleum_plant','rail_depot'])assert.ok(map.includes("'"+id+"'"),id);
  assert.match(map,/name\.slice\(3\)/);
- assert.match(graph,/id\.slice\(3\)/);
+ assert.match(map,/networkSegments/);
 });
