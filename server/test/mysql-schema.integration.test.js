@@ -16,7 +16,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -189,6 +189,21 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(gardenState.body.plots.find(p=>p.id===1).helpers_today),1);
   const [[hellshade]]=await admin.query("SELECT category FROM fc_materials WHERE id='hellshade-bloom'");
   assert.equal(hellshade.category,'botanical');
+  const [categoryRows]=await admin.query('SELECT id,name FROM fc_recipe_categories');
+  assert.ok(categoryRows.some(c=>c.id==='refining'));
+  const [[ironCategory]]=await admin.query("SELECT category_id FROM fc_recipes WHERE id='smelt-iron'");
+  assert.equal(ironCategory.category_id,'refining');
+  const [[tonicCategory]]=await admin.query("SELECT category_id FROM fc_recipes WHERE id='herbal-tonic'");
+  assert.equal(tonicCategory.category_id,'tonics');
+  const categoryCreated=await craftingRoute(admin,request('POST',{id:'furnishings',name:'Furnishings',description:'Estate furnishings',sort_order:50}),'/workshop/catalog/categories');
+  assert.equal(categoryCreated.status,200,JSON.stringify(categoryCreated.body));
+  const movedRecipe=await craftingRoute(admin,request('PUT',{category_id:'furnishings'}),'/workshop/catalog/recipes/smelt-iron/category');
+  assert.equal(movedRecipe.status,200);
+  await admin.query(await readFile(new URL('../sql/025_recipe_categories.sql',import.meta.url),'utf8'));
+  const [[preservedCategory]]=await admin.query("SELECT category_id FROM fc_recipes WHERE id='smelt-iron'");
+  assert.equal(preservedCategory.category_id,'furnishings','rerunning migration must not overwrite a chosen recipe category');
+  const returnedRecipe=await craftingRoute(admin,request('PUT',{category_id:'refining'}),'/workshop/catalog/recipes/smelt-iron/category');
+  assert.equal(returnedRecipe.status,200);
   const [[dustRecipe]]=await admin.query("SELECT minimum_level FROM fc_recipes WHERE id='demon-dust'");
   assert.equal(dustRecipe.minimum_level,12);
   const repeatCare=await craftingRoute(admin,request('POST',{character_id:char.body.id,action:'tend'}),'/workshop/garden/1/care');
@@ -206,7 +221,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
 
   const newMaterial=await craftingRoute(admin,request('POST',{id:'gloom-moss',name:'Gloom Moss',category:'botanical',description:'A fictional shade garden crop.'}),'/workshop/catalog/materials');
   assert.equal(newMaterial.status,200,JSON.stringify(newMaterial.body));
-  const newRecipe=await craftingRoute(admin,request('POST',{id:'moss-balm',name:'Moss Balm',description:'Fantasy medicinal crafting.',output_material:'herbal-tonic',output_quantity:1,minimum_level:1,inputs:[{material_id:'gloom-moss',quantity:2}]}),'/workshop/catalog/recipes');
+  const newRecipe=await craftingRoute(admin,request('POST',{id:'moss-balm',name:'Moss Balm',description:'Fantasy medicinal crafting.',output_material:'herbal-tonic',output_quantity:1,minimum_level:1,category_id:'tonics',inputs:[{material_id:'gloom-moss',quantity:2}]}),'/workshop/catalog/recipes');
   assert.equal(newRecipe.status,200,JSON.stringify(newRecipe.body));
   const [[recipeEntry]]=await admin.query("SELECT name FROM fc_recipes WHERE id='moss-balm'");
   assert.equal(recipeEntry.name,'Moss Balm');
