@@ -43,7 +43,9 @@ updated: 2026-11-07
 - [x] Register the Eclipse Order itself as a selectable, database-backed governing/control/support faction.
 - [x] Add Secure, Abandoned, and Destroyed settlement conditions without changing owner/controller.
 - [x] Add explicit route drafting, a selectable existing-route registry, draggable/insertable bends, editing route types and railway cartographic tracks.
-- [ ] Reusable road junctions/intersections independent of settlements and true railway station/track topology.
+- [x] Persistent shared road junctions and rail switches: split existing routes and attach new route segments; preserve old route IDs and waypoints.
+- [x] Reusable SVG icon catalog and searchable marker picker (lumberyards, sawmills, logging camps, drill rigs, rail terminals), reused in the dashboard navigation.
+- [ ] Full map-graph topology: cross-region routes, automatic junction discovery/snap, railway station platforms, switch direction and grade crossings.
 - [ ] Draw, resize and version **ownership polygons / borders**.
 - [ ] Public/secret map layers and role-based intelligence visibility.
 - [ ] Multiple supporting factions, separate beneficiaries/protectorates and territorial history.
