@@ -376,6 +376,22 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(ic.body.status,'pending','IC approval alone does not permit trade');
   const web=await frontsRoute(admin,request('POST',{stage:'website',approved:true}),'/fronts/'+frontId+'/approve');
   assert.equal(web.body.status,'active','two approvals activate the licensed business');
+  const notLicensed=await frontsRoute(admin,request('POST',{offer_type:'service',name:'Masked Consultation',description:'Private occult consultation',posted_price:15,restricted:true}),'/fronts/'+frontId+'/offerings');
+  assert.equal(notLicensed.status,403,'restricted services require explicit additional approval');
+  const serviceRequest=await frontsRoute(admin,request('POST',{request_type:'restricted_service',requested_value:'Masked Consultation',justification:'Private consultations at the licensed front.'}),'/fronts/'+frontId+'/changes');
+  assert.equal(serviceRequest.status,200,JSON.stringify(serviceRequest.body));
+  const reviewService=await frontsRoute(admin,request('POST',{decision:'approved'}),'/fronts/'+frontId+'/changes/'+serviceRequest.body.id+'/review');
+  assert.equal(reviewService.status,200);
+  const serviceApproved=await frontsRoute(admin,request('POST',{offer_type:'service',name:'Masked Consultation',description:'Private occult consultation',posted_price:15,restricted:true}),'/fronts/'+frontId+'/offerings');
+  assert.equal(serviceApproved.status,200,JSON.stringify(serviceApproved.body));
+  const doubleApproval=await frontsRoute(admin,request('POST',{decision:'approved'}),'/fronts/'+frontId+'/changes/'+serviceRequest.body.id+'/review');
+  assert.equal(doubleApproval.status,409);
+  const newLocation=await frontsRoute(admin,request('POST',{request_type:'location',requested_value:'Goblet Plot 41 Ward 5',justification:'Moving to the approved Goblet estate.'}),'/fronts/'+frontId+'/changes');
+  assert.equal(newLocation.status,200);
+  const locationApproved=await frontsRoute(admin,request('POST',{decision:'approved'}),'/fronts/'+frontId+'/changes/'+newLocation.body.id+'/review');
+  assert.equal(locationApproved.status,200);
+  const [[movedFront]]=await admin.execute('SELECT location FROM order_fronts WHERE id=?',[frontId]);
+  assert.equal(movedFront.location,'Goblet Plot 41 Ward 5');
   const storefront=await frontsRoute(admin,request('POST',{
    offer_type:'goods',material_id:'iron-ingot',name:'Ingot supply',description:'Official workshop stock',posted_price:18}),'/fronts/'+frontId+'/offerings');
   assert.equal(storefront.status,200,JSON.stringify(storefront.body));
