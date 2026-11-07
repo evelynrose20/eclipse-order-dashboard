@@ -19,6 +19,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
  });
  try{
   for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql']){
+   // Reproduce a MariaDB installation where an older table already owns the generic
+   // fk_wallet_character name. The treasury migration must still succeed.
+   if(filename==='027_order_treasury_payroll.sql'){
+    await admin.query("CREATE TABLE IF NOT EXISTS ci_existing_fk_name (character_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL, CONSTRAINT fk_wallet_character FOREIGN KEY(character_id) REFERENCES characters(id)) ENGINE=InnoDB");
+   }
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
