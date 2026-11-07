@@ -3,9 +3,9 @@ import {addCombatant,editCombatant,deleteCombatant,adjustCombatantHP,listMonster
 import './combatant-workspace.css';
 
 const SIDES=[
- {id:'player',name:'Player characters',short:'Players',symbol:'●'},
- {id:'ally',name:'NPC allies',short:'NPC allies',symbol:'✦'},
- {id:'npc',name:'Enemies',short:'Enemies',symbol:'◆'}
+ {id:'player',name:'Player characters',short:'Players',symbol:'user'},
+ {id:'ally',name:'NPC allies',short:'NPC allies',symbol:'user-shield'},
+ {id:'npc',name:'Enemies',short:'Enemies',symbol:'skull'}
 ];
 const CONDITIONS=['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious','Exhaustion'];
 const freshTemplate=()=>({name:'',challenge:'Custom',hit_points:20,armor_class:10,initiative_bonus:0,actions:'',notes:''});
@@ -97,11 +97,11 @@ export default function CombatantWorkspace({encounter,characters=[],canDirect,wo
   </div>
   <div className="combat-roster-summary" role="group" aria-label="Combatant sides">
    <button type="button" className={'combat-summary-tile '+(filter==='all'?'active':'')} aria-pressed={filter==='all'} onClick={()=>setFilter('all')}><span>All combatants</span><strong>{combatants.length}</strong></button>
-   {SIDES.map(side=><button type="button" key={side.id} className={'combat-summary-tile side-'+side.id+' '+(filter===side.id?'active':'')} aria-pressed={filter===side.id} onClick={()=>setFilter(side.id)}><span>{side.symbol} {side.name}</span><strong>{counts[side.id]}</strong></button>)}
+   {SIDES.map(side=><button type="button" key={side.id} className={'combat-summary-tile side-'+side.id+' '+(filter===side.id?'active':'')} aria-pressed={filter===side.id} onClick={()=>setFilter(side.id)}><span><i className={'fa-solid fa-'+side.symbol}/> {side.name}</span><strong>{counts[side.id]}</strong></button>)}
   </div>
   {canDirect&&adding&&<form className="combat-add-panel" onSubmit={submitCombatant}>
    <div className="combat-panel-title"><h3>Add to encounter</h3><span>Controlled by the DM unless linked to a player character</span></div>
-   <div className="combat-side-picker" role="group" aria-label="Combatant type">{SIDES.map(side=><button key={side.id} type="button" className={'combat-side-choice side-'+side.id+' '+(kind===side.id?'selected':'')} aria-pressed={kind===side.id} onClick={()=>setKind(side.id)}><span>{side.symbol}</span><strong>{side.name}</strong></button>)}</div>
+   <div className="combat-side-picker" role="group" aria-label="Combatant type">{SIDES.map(side=><button key={side.id} type="button" className={'combat-side-choice side-'+side.id+' '+(kind===side.id?'selected':'')} aria-pressed={kind===side.id} onClick={()=>setKind(side.id)}><span><i className={'fa-solid fa-'+side.symbol}/></span><strong>{side.name}</strong></button>)}</div>
    <div className="combat-add-fields">
     {kind==='player'?<label>Player character<select required value={charId} onChange={e=>{const v=e.target.value;const c=characters.find(x=>x.id===v);setCharId(v);if(c){setHp(c.max_hp||c.hp||20);setAc(c.armor_class||10)}}}><option value="">Select character</option>{characters.filter(c=>c.view_mode!=='bound'&&c.player_user_id).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>:<label>Name<input required maxLength={120} placeholder={kind==='ally'?'e.g. Order Guardian':'e.g. Ashen Marauder'} value={name} onChange={e=>setName(e.target.value)}/></label>}
     <label>Initiative<input required type="number" min="-100" max="100" value={initiative} onChange={e=>setInitiative(e.target.value)}/></label>
