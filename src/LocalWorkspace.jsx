@@ -20,6 +20,7 @@ import HomebrewClasses from './HomebrewClasses.jsx';
 
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
+import LoreArchive from './LoreArchive.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
 import './dashboard.css';
 import './local-accounts.css';
@@ -80,6 +81,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['events','Events & signups','◷'],
   ['construction','Construction Projects','⚒'],
   ['factions','Factions & diplomacy','✧'],
+  ['lore','Order Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
   ['fronts','Order Fronts','♛'],
@@ -147,6 +149,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} request={request} onRefresh={load} classCatalog={classCatalog} userId={profile.id}/>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
+    {tab==='lore'&&<LoreArchive request={request} admin={!playerPreview}/>}
     {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
