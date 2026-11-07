@@ -169,8 +169,19 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   }catch(e){setError(e.message||'Unable to save this connection.')}finally{setBusy(false)}
  }
  async function createJunction(p){
-  const candidate=networkNodes.find(n=>!n.settlement_id&&Math.hypot(Number(n.map_x)-p.x,Number(n.map_y)-p.y)<1.8);
-  if(candidate){setNotice('This junction already exists. Select it as an endpoint.');setJunctionAction('');return}
+  const candidate=networkNodes.find(n=>{const at=graphPoint(graphNodes.get(Number(n.id)));return at&&Math.hypot(at.x-p.x,at.y-p.y)<2});
+  if(candidate){setNotice('A connection point already exists here. Choose it as your endpoint.');setJunctionAction('');return}
+  if(displayed.some(site=>Math.hypot(Number(site.map_x)-p.x,Number(site.map_y)-p.y)<2)){setNotice('Choose the settlement directly when planning a route.');setJunctionAction('');return}
+  const nearest=networkSegments.map(edge=>{
+   const line=graphPoints(edge);
+   const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
+   return {edge,distance:projected??Infinity};
+  }).sort((a,b)=>a.distance-b.distance)[0];
+  if(nearest&&nearest.distance<2){
+   const snapped=await mutation('/world-admin/network/segments/'+nearest.edge.id+'/split','POST',p,'Junction snapped to the existing route.');
+   if(snapped?.id)setJunctionAction('');
+   return;
+  }
   const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
   if(data?.id)setJunctionAction('');
  }
@@ -285,10 +296,10 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    </svg>
    <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b><i className="fa-solid fa-compass"/></b><small>S</small></div>
    <svg className="wtm-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Regional road network">
-     {networkSegments.map(route=>{const points=graphPoints(route),p=smoothRoadPath(points);return points.length<2?null:<g key={'graph-'+route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute==='graph:'+route.id?' selected':'')}><path d={p} className="wtm-road-base"/><path d={p} className="wtm-road-top"/>{route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}<path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/></g>})}
+     {networkSegments.map(route=>{const points=graphPoints(route),p=smoothRoadPath(points);return points.length<2?null:<g key={'graph-'+route.id} className={'wtm-road wtm-road-'+route.route_type+' '+routeClass(route.route_type)+(selectedRoute==='graph:'+route.id?' selected':'')}><path d={p} className="wtm-road-base"/><path d={p} className="wtm-road-top"/>{route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}<path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/></g>})}
     {segments.map(route=>{
      const points=segmentPts(route),p=smoothRoadPath(points);
-     return <g key={route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute==='legacy:'+route.id?' selected':'')}>
+     return <g key={route.id} className={'wtm-road wtm-road-'+route.route_type+' '+routeClass(route.route_type)+(selectedRoute==='legacy:'+route.id?' selected':'')}>
       <path d={p} className="wtm-road-base"/>
       <path d={p} className="wtm-road-top"/>
       {route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}
