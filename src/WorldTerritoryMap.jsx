@@ -304,12 +304,16 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {mode==='link'&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><span className="wtm-plan-point" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
 
+   {(mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
+    const p=graphPoint(graphNodes.get(Number(n.id)));
+    return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(mode==='link')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
+   })}
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart&&routeEnd?'Click the map for bends, then save. Nothing is created until you save.':routeStart?'Select the destination location.':'Select a starting location.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
+   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
 
   </div>}
   {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
@@ -320,7 +324,14 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
     <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
    </div>
-   <p className="wtm-route-help">{mode==='link'?'Click two locations, then add optional bends by clicking along the intended path. The preview is unsaved until you confirm.': 'Choose an existing road or railway from the list. Click to insert a bend at the nearest segment, then drag its square handles. Existing routes are unchanged until saved.'}</p>
+   <p className="wtm-route-help">{mode==='link'?'Select two settlements or junctions on this map, add optional bends and save. To branch from a road, use Branch from route first.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
+   <div className="wtm-junction-tools">
+    <button type="button" className={junctionAction==='place'?'active':''} disabled={busy} onClick={()=>{setJunctionAction(v=>v==='place'?'':'place');setNotice('Click on the same map to place a junction.');}}><i className="fa-solid fa-location-dot"/> Place junction</button>
+    <button type="button" className={junctionAction==='split'?'active':''} disabled={busy||!networkSegments.length} onClick={()=>{setJunctionAction(v=>v==='split'?'':'split');setNotice('Click an existing route directly to create a shared junction.');}}><i className="fa-solid fa-code-branch"/> Branch from route</button>
+    {routes.length>0&&<button type="button" disabled={busy} onClick={importLegacyRoutes}><i className="fa-solid fa-link"/> Connect {routes.length} older routes</button>}
+    {junctionAction&&<button type="button" onClick={()=>setJunctionAction('')}>Done placing junctions</button>}
+    <small>New roads keep the original smooth bends. Choose a junction while planning a route; drag it with Move places.</small>
+   </div>
    <div className="wtm-route-actions">
     {mode==='link'?<>
       <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>Save new route</button>
