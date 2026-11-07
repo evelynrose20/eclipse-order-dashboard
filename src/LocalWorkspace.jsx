@@ -23,6 +23,7 @@ import GovernancePreview from './GovernancePreview.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
 import './dashboard.css';
 import './local-accounts.css';
+import './portal-controls.css';
 
 const memberIdentity=member=>{
  const label=String(member?.discord_username||member?.display_name||'').trim();
