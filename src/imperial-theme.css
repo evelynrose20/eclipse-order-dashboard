@@ -505,3 +505,10 @@
  .app-shell.eo-local :is(.eo-commerce-hero,.eo-fronts-hero,.eo-construction-hero,.eo-treasury-hero){padding:23px}
  .app-shell.eo-local :is(.eo-fronts-section,.eo-construction-detail,.eo-treasury-panel){min-width:0}
 }
+
+
+/* Shared heraldry across navigation, authentication, and the public masthead. */
+.app-shell.eo-local .order-nav-brand-icon{display:grid;place-items:center}
+.app-shell.eo-local .order-nav-emblem{width:29px;height:33px;display:block;color:#e6d1c7}
+.eo-local .eo-mark{display:grid;place-items:center;width:42px;height:47px;background:#292e35;border:1px solid #b65a60;clip-path:polygon(50% 0,100% 18%,100% 73%,50% 100%,0 73%,0 18%)}
+.eo-local .eo-login-emblem{width:32px;height:37px;color:#e4d1c5}
