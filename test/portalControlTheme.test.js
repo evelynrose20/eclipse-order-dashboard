@@ -25,3 +25,9 @@ test('governance navigation no longer advertises a demo',()=>{
  assert.doesNotMatch(navigation,/Council and approval demo/);
  assert.match(navigation,/governing chamber and charter/);
 });
+
+test('class catalog uses the searchable picker instead of long browser dropdown',()=>{
+ const classes=readFileSync(new URL('../src/HomebrewClasses.jsx',import.meta.url),'utf8');
+ assert.match(classes,/SearchPicker value=\{id\} onChange=\{selectClass\}/);
+ assert.match(classes,/category:"FFXIV jobs"/);
+});
