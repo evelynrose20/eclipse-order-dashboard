@@ -17,6 +17,7 @@ import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
 import {senateRoute} from './senate.js';
+import {governanceRoute} from './governance-live.js';
 import {commerceRoute} from './commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from './fronts.js';
 import {treasuryRoute,runDailyPayroll} from './treasury.js';
@@ -106,6 +107,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
+  else if(pathname==='/governance/council'||pathname.startsWith('/governance/council/'))result=await governanceRoute(pool,req,pathname);
   else if(pathname==='/governance/senate'||pathname.startsWith('/governance/senate/'))result=await senateRoute(pool,req,pathname);
   else if(pathname==='/construction'||pathname.startsWith('/construction/'))result=await constructionRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
