@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import SearchPicker from './SearchPicker.jsx';
 import './homebrew-classes.css';
 
 const ABILITIES=['str','dex','con','int','wis','cha'];
@@ -31,7 +32,7 @@ export default function HomebrewClasses({classes,onRefresh,request}){
  }
  return <div className="homebrew-workspace">
   <section className="panel"><div className="panel-heading"><div><h2>Class Workshop · FFXIV Jobs</h2><p>Adapted FFXIV jobs use 20 character levels, with tabletop techniques and spells. Existing legacy classes remain available for older characters. Saving affects future unlock checks; it does not reset character XP or levels.</p></div></div>
-   <div className="class-library-toolbar"><label className="field"><span>EDIT CLASS</span><select value={id} onChange={e=>selectClass(e.target.value)}><option value="">Choose a class</option><optgroup label="FFXIV jobs (levels 1–20)">{ffxivEntries.map(([key,c])=><option value={key} key={key}>{c.name}</option>)}</optgroup><optgroup label="Original legacy classes">{legacyEntries.map(([key,c])=><option value={key} key={key}>{c.name} · Legacy</option>)}</optgroup>{customEntries.length>0&&<optgroup label="Custom classes">{customEntries.map(([key,c])=><option value={key} key={key}>{c.name}</option>)}</optgroup>}</select></label>
+   <div className="class-library-toolbar"><label className="field"><span>EDIT CLASS</span><SearchPicker value={id} onChange={selectClass} ariaLabel="Choose class to edit" placeholder="Search classes and jobs…" options={[...ffxivEntries.map(([key,c])=>({id:key,name:c.name,category:"FFXIV jobs"})),...legacyEntries.map(([key,c])=>({id:key,name:c.name,category:"Legacy classes"})),...customEntries.map(([key,c])=>({id:key,name:c.name,category:"Custom classes"}))]}/></label>
     <label className="field"><span>NEW CLASS ID</span><input value={newId} onChange={e=>setNewId(e.target.value)} placeholder="e.g. rune-knight" maxLength={40}/></label>
     <button type="button" className="btn secondary" onClick={newClass}>Create new class</button>
    </div>

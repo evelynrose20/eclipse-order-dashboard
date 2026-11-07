@@ -21,7 +21,7 @@ const DESCRIPTIONS={
  scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
- governance:'Council and approval demo',classes:'Classes and spellbooks',
+ governance:'The Order’s governing chamber and charter',classes:'Classes and spellbooks',
  settings:'Rules and records'
 };
 
