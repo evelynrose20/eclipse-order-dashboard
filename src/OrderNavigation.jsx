@@ -25,7 +25,7 @@ const DESCRIPTIONS={
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'The Order’s governing chamber and charter',
- settings:'Rules and records',lore:'The Order’s history, figures and places'
+ settings:'Rules and records',lore:'The Order’s history, figures and places',world:'Territories, climate, civilians and supplies'
 };
 
 export const getNavSection=(id)=>GROUPS.find(g=>g.id===SECTION_MAP[id])?.name||'WORKSPACE';
