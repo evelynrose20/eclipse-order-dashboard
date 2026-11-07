@@ -32,5 +32,7 @@ test('dedicated public route and leadership editor are linked',async()=>{
  const publicSite=await readFile(new URL('../../src/PublicSite.jsx',import.meta.url),'utf8');
  assert.match(app,/has\('lore'\)/);
  assert.match(member,/tab==='lore'/);
- assert.match(publicSite,/href="\?lore"/);
+ assert.match(publicSite,/<PublicChronicles\/>/);
+ const embedded=await readFile(new URL('../../src/PublicChronicles.jsx',import.meta.url),'utf8');
+ assert.match(embedded,/href="\?lore"/);
 });
