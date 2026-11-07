@@ -90,11 +90,11 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     </header>
     <nav className="event-tabs encounter-studio-tabs" aria-label="DM tools">
      {[
-      ['map','Battle Map','▦'],['combat','Initiative','⚔'],['dice','Dice & Rolls','⚄'],
-      ['setup','Combatants','♟'],['signups','Party','♜'],['overview','Event Overview','◇'],
-      ...(canDirect?[['planning','Event Editor','✎']]:[])
+      ['map','Battle Map','map'],['combat','Initiative','shield-halved'],['dice','Dice & Rolls','dice-d20'],
+      ['setup','Combatants','users'],['signups','Party','people-group'],['overview','Event Overview','calendar-days'],
+      ...(canDirect?[['planning','Event Editor','pen-to-square']]:[])
      ].map(([id,name,icon])=><button key={id} type="button" className={'event-tab '+(section===id?'active':'')} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>
-      <span aria-hidden="true">{icon}</span>{name}{id==='signups'&&canDirect&&selected.pending_count>0&&<span className="event-tab-count">{selected.pending_count}</span>}
+      <span aria-hidden="true"><i className={'fa-solid fa-'+icon}/></span>{name}{id==='signups'&&canDirect&&selected.pending_count>0&&<span className="event-tab-count">{selected.pending_count}</span>}
      </button>)}
     </nav>
     {section==='overview'&&<><EventSummary event={selected} playerFacing={playerFacing} canDirect={canDirect}
@@ -104,7 +104,7 @@ export default function Encounters({role,userId,characters,onOpenProfile,onRefre
     {section==='signups'&&<EventSignups key={selected.id} event={selected} previewOnly={previewOnly} ownOnly={playerFacing} characters={characters}
       userId={userId} canDirect={canDirect} working={working} action={action} refresh={refresh}/>}
     {section==='setup'&&<section className="panel event-setup-intro"><h2>Combat preparation</h2><p>Prepare bosses, enemies, NPCs and the approved party before event night. Keep this encounter in Draft while setting it up.</p>
-    {canDirect&&<div className="encounter-actions">{selected.status==='draft'&&<><button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}>⚄ Roll initiative</button><button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start combat now? Event preparation will be locked.'))action(()=>encounterTurn(chosenId,'start'))}}>Start combat</button></>}</div>}
+    {canDirect&&<div className="encounter-actions">{selected.status==='draft'&&<><button className="btn secondary" disabled={working||!selected.combatants.length} onClick={()=>action(()=>rollAllInitiative(chosenId))}><i className="fa-solid fa-dice-d20"/> Roll initiative</button><button className="btn primary" disabled={working||!selected.combatants.length} onClick={()=>{if(window.confirm('Start combat now? Event preparation will be locked.'))action(()=>encounterTurn(chosenId,'start'))}}>Start combat</button></>}</div>}
     <div className="event-setup-stats"><span>{selected.combatants.filter(c=>c.kind==='player').length} players assigned</span><span>{selected.combatants.filter(c=>c.kind==='ally').length} NPC allies</span><span>{selected.combatants.filter(c=>c.kind==='npc').length} enemies / NPCs</span></div></section>}
     {section==='map'&&<div className="encounter-studio-map-layout"><BattleMap key={selected.id} encounter={selected} canDirect={canDirect} onRefresh={refresh} onError={setError}/>
      <aside className="encounter-studio-battle-rail"><div className="encounter-rail-tabs"><button type="button" className={railMode==='turns'?'active':''} aria-pressed={railMode==='turns'} onClick={()=>{setRailMode('turns');setRailOpen(true)}}>Initiative</button><button type="button" className={railMode==='dice'?'active':''} aria-pressed={railMode==='dice'} onClick={()=>{setRailMode('dice');setRailOpen(true)}}>Dice</button><button type="button" onClick={()=>setRailOpen(v=>!v)} aria-label={railOpen?'Collapse sidebar':'Expand sidebar'}>{railOpen?'‹':'›'}</button></div>
