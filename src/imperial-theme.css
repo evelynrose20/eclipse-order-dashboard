@@ -367,3 +367,141 @@
  .order-public .public-fit-card h3{font-size:25px}
 }
 @media(prefers-reduced-motion:reduce){.order-public *, .eo-local *, .lore-root *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* COMMAND OPERATIONS — module-wide styling, preserving their controls and mechanics.
+   These are the actual workspaces: trade, crafting, fronts, construction,
+   treasury, events, encounters, dossiers, factions and governance.
+*/
+.app-shell.eo-local :is(
+ .eo-commerce-hero,.eo-fronts-hero,.eo-construction-hero,.eo-treasury-hero,
+ .eo-trade-hero,.fc-play-banner,.order-event-board-intro,.encounter-studio-hero,
+ .dossier-hero,.inline-sheet-top,.faction-header,.gov-heading
+){
+ background:linear-gradient(105deg,#343b42 0,#1d252d 60%,#151c23 100%);
+ border:1px solid #798186;border-left:5px solid #b63b46;border-top:2px solid #b63b46;
+ border-radius:0;box-shadow:inset 0 1px 0 #dce1df17,0 14px 40px #0004;
+ position:relative;overflow:hidden;
+}
+.app-shell.eo-local :is(
+ .eo-commerce-hero,.eo-fronts-hero,.eo-construction-hero,.eo-treasury-hero,
+ .eo-trade-hero,.fc-play-banner,.order-event-board-intro,.encounter-studio-hero,
+ .dossier-hero,.inline-sheet-top
+):before{
+ content:'';position:absolute;top:0;right:0;width:25%;height:100%;
+ background:repeating-linear-gradient(135deg,#c3c8c808 0 2px,transparent 2px 12px);
+ pointer-events:none;opacity:.7;
+}
+.app-shell.eo-local :is(
+ .eo-commerce-hero h2,.eo-fronts-hero h2,.eo-construction-hero h2,
+ .eo-treasury-hero h2,.eo-trade-hero h2,.fc-workshop-heading h2,
+ .fc-scene-title,.order-event-heading h2,.encounter-studio-aside-header h2,
+ .encounter-studio-header h2,.faction-header h2,.gov-heading h2,
+ .dossier-person h2,.inline-sheet-top h2,.homebrew-workspace h2,
+ .eo-fronts-section-head h3,.eo-construction-section-heading h3,
+ .eo-equipment-heading h2
+){
+ font-family:var(--imperial-heading);font-weight:800;font-style:normal;
+ letter-spacing:.045em;text-transform:uppercase;
+ color:#f0ede7;line-height:1.04;
+}
+.app-shell.eo-local :is(
+ .eo-commerce-hero h2,.eo-fronts-hero h2,.eo-construction-hero h2,
+ .eo-treasury-hero h2,.eo-trade-hero h2,.fc-workshop-heading h2,
+ .order-event-heading h2,.dossier-person h2
+){font-size:clamp(34px,3.4vw,53px)}
+.app-shell.eo-local :is(
+ .eo-commerce-hero span,.eo-fronts-hero span,.eo-construction-hero>div>span,
+ .eo-treasury-eyebrow,.fc-play-eyebrow,.order-event-eyebrow,
+ .faction-eyebrow,.gov-kicker,.dossier-eyebrow,.eo-construction-main-head>span,
+ .eo-fronts-section-head span,.eo-trade-hero span
+){color:#e18a85;font-family:var(--imperial-ui);font-size:10px;letter-spacing:.15em;font-weight:800}
+.app-shell.eo-local :is(
+ .eo-commerce-hero p,.eo-fronts-hero p,.eo-construction-hero p,
+ .eo-treasury-hero p,.eo-trade-hero p,.order-event-heading p,
+ .dossier-person p
+){font-family:var(--imperial-ui);font-size:13px;color:#bec9ca;line-height:1.7}
+.app-shell.eo-local :is(
+ .eo-fronts-hero-mark,.eo-construction-emblem,.eo-treasury-crest,
+ .eo-trade-heraldry,.dossier-emblem,.eo-gear-symbol
+){color:#d45c62;text-shadow:none}
+.app-shell.eo-local :is(
+ .eo-fronts-stats>div,.eo-treasury-vitals>div,.fc-workshop-stats>div,
+ .eo-commerce-grid>article,.eo-contract-card,.eo-fronts-section,
+ .eo-fronts-directory,.eo-fronts-detail,.eo-trade-route,.eo-trade-manifest,
+ .eo-construction-directory,.eo-construction-detail,.eo-construction-project,
+ .eo-construction-stage,.eo-treasury-panel,.eo-treasury-balance,
+ .fc-action-card,.fc-stock-card,.fc-play-overview,.fc-scene,
+ .fc-recipe-index,.fc-craft-bench,.faction-list-item,.faction-detail,
+ .order-event-board-frame,.order-event-posting,.order-event-detail,
+ .encounter-sidebar,.encounter-choice,.dossier-frame,.dossier-story-card,
+ .inline-sheet-nav,.inline-job-preview,.homebrew-editor,.gov-panel,
+ .sen-stats div,.sen-roster>div
+){
+ background:linear-gradient(145deg,#242d35,#161e26);
+ border-color:#65737a;
+ border-radius:0;
+ box-shadow:none;
+}
+.app-shell.eo-local :is(
+ .fc-workshop-tabs button,.eo-commerce-navigation button,.eo-fronts-tabs button,
+ .eo-treasury-tabs button,.fc-play-nav button,.eo-trade-controls button,
+ .gov-tabs button,.inline-sheet-nav button,.encounter-studio-tabs button,
+ .faction-list-item,.order-event-posting
+){
+ background:#202a33;border:1px solid #64727a;
+ border-radius:0;color:#c5d0d1;
+ font-family:var(--imperial-ui);font-weight:700;
+}
+.app-shell.eo-local :is(
+ .fc-workshop-tabs button.selected,.eo-commerce-navigation button.selected,
+ .eo-fronts-tabs button.active,.eo-treasury-tabs button.current,
+ .fc-play-nav button.active,.eo-trade-controls button.active,
+ .gov-tabs button.selected,.inline-sheet-nav button.active,
+ .encounter-studio-tabs button.active,.faction-list-item.selected,
+ .order-event-posting.selected
+){
+ background:linear-gradient(90deg,#70303b,#292f38);
+ color:#fff1e9;border-color:#b65a60;
+ box-shadow:inset 4px 0 0 #e67074;
+}
+.app-shell.eo-local :is(
+ .eo-fronts-actions button,.eo-construction-toolbar button,
+ .eo-treasury-tabs button,.fc-garden-actions button,.fc-garden-upgrade button,
+ .fc-harvest-button,.fc-start-button,.eo-commerce-toolbar button,
+ .eo-contract-controls button,.gov-button,.sen-settings button,.sen-voting button,
+ .sen-bill-actions button,.faction-controls button,.order-event-join-button,
+ .inline-sheet-actions button,.dossier-edit
+){border-radius:0;font-weight:800;letter-spacing:.025em}
+.app-shell.eo-local :is(
+ .eo-fronts-modal,.eo-construction-builder,.eo-commerce-modal,.faction-modal,
+ .fc-catalog-dialog,.eo-construction-overlay>div
+){border:2px solid #767d80;border-top:5px solid #ac3b46;border-radius:0;background:#1c252d}
+.app-shell.eo-local :is(
+ .eo-fronts-status,.eo-trade-status,.faction-relation,.dossier-tags span,
+ .gov-status,.sen-state,.order-event-posting-stamp
+){border-radius:0;letter-spacing:.08em}
+.app-shell.eo-local :is(
+ .eo-fronts-section-head,.eo-construction-main-head,.eo-treasury-ledger-head,
+ .fc-workshop-subtitle,.order-event-list-label,.faction-history-head
+){border-bottom:1px solid #65727a;padding-bottom:13px}
+.app-shell.eo-local :is(
+ .eo-commerce-grid,.eo-fronts-layout,.eo-trade-layout,.eo-construction-layout,
+ .eo-treasury-grid,.faction-layout,.encounter-layout
+){min-width:0}
+.app-shell.eo-local :is(
+ .inline-sheet-editor,.dossier-root,.eo-fronts,.eo-construction,.eo-treasury,
+ .eo-commerce,.fc-workshop,.faction-workspace,.order-event-board,.gov-root
+){color:#dce1df}
+.app-shell.eo-local :is(.dossier-emblem,.order-event-sigil,.faction-symbol){
+ border:1px solid #a36468;background:#54313a;
+ clip-path:polygon(50% 0,100% 20%,100% 78%,50% 100%,0 78%,0 20%);
+ border-radius:0
+}
+.app-shell.eo-local .order-event-board-frame{border:2px solid #677782;box-shadow:0 20px 40px #0004}
+.app-shell.eo-local :is(.eo-trade-progress,.fc-progress,.fc-bed-meter,.faction-rep-track){background:#111b23}
+.app-shell.eo-local :is(.eo-trade-progress>div,.fc-progress>div,.faction-rep-fill){background:#b3454f}
+@media(max-width:760px){
+ .app-shell.eo-local :is(.eo-commerce-hero,.eo-fronts-hero,.eo-construction-hero,.eo-treasury-hero){padding:23px}
+ .app-shell.eo-local :is(.eo-fronts-section,.eo-construction-detail,.eo-treasury-panel){min-width:0}
+}
