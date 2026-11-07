@@ -14,6 +14,17 @@ CREATE TABLE IF NOT EXISTS order_construction_projects (
  FOREIGN KEY(event_id) REFERENCES order_encounters(id) ON DELETE SET NULL,
  FOREIGN KEY(created_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS order_construction_event_links (
+ project_id BIGINT UNSIGNED NOT NULL,
+ event_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ linked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(project_id,event_id),
+ FOREIGN KEY(project_id) REFERENCES order_construction_projects(id) ON DELETE CASCADE,
+ FOREIGN KEY(event_id) REFERENCES order_encounters(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Preserve the primary event association for pre-existing projects.
+INSERT IGNORE INTO order_construction_event_links(project_id,event_id)
+ SELECT id,event_id FROM order_construction_projects WHERE event_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS order_construction_stages (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  project_id BIGINT UNSIGNED NOT NULL,
