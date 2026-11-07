@@ -24,7 +24,7 @@ async function audit(db,actor,action,entity,id,detail=''){
 }
 async function nodesInRegion(db,ids,region){
  if(ids.some(id=>!integer(id)))return [];
- const [rows]=await db.execute('SELECT id,region_id,node_kind,map_x,map_y FROM world_route_nodes WHERE id IN (?,?) AND region_id=?',[ids[0],ids[1],region]);
+ const [rows]=await db.execute('SELECT n.id,n.region_id,n.node_kind,COALESCE(s.map_x,n.map_x) AS map_x,COALESCE(s.map_y,n.map_y) AS map_y FROM world_route_nodes n LEFT JOIN world_settlements s ON s.id=n.settlement_id WHERE n.id IN (?,?) AND n.region_id=?',[ids[0],ids[1],region]);
  return rows;
 }
 function compatible(node,kind){
@@ -71,6 +71,8 @@ export async function transportNetworkRoute(pool,req,path,actor){
     if(!sites.length)return fail(400,'node_settlement_region_mismatch');
    }
    if(id){
+    const [connected]=await db.execute('SELECT route_type FROM world_route_segments WHERE from_node_id=? OR to_node_id=?',[id,id]);
+    if(connected.some(edge=>!compatible({node_kind:b.node_kind},edge.route_type)))return fail(409,'junction_type_conflicts_with_connected_routes');
     // Bound settlement nodes follow the settlement map position and can't be
     // changed separately from their canonical settlement record.
     const [result]=await db.execute('UPDATE world_route_nodes SET name=?,node_kind=?,map_x=?,map_y=? WHERE id=? AND region_id=? AND settlement_id IS NULL',[b.name,b.node_kind,b.map_x,b.map_y,id,b.region_id]);
