@@ -30,7 +30,7 @@ export default function CharacterDossier({
  const klass=classCatalog[character.class_id];
  return <div className="dossier-root">
   <header className="dossier-hero">
-   <div className="dossier-emblem" aria-hidden="true">✦</div>
+   <div className="dossier-emblem" aria-hidden="true"><i className="fa-solid fa-scroll"/></div>
    <div className="dossier-person">
     <div className="dossier-eyebrow">THE ECLIPSE ORDER <span> / </span> CHARACTER DOSSIER</div>
     <h2>{summary.name}</h2>
