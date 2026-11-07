@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {transportNetworkRoute} from './transport-network.js';
 import {handleTransportGraph} from './world-route-network.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
 
@@ -43,12 +44,16 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
   const [routes]=await pool.execute('SELECT id,region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,name,points FROM world_map_mountain_ranges ORDER BY id');
+  // Display settlement-bound terminals at their current mapped position.
+  const [networkNodes]=await pool.execute('SELECT n.id,n.region_id,n.settlement_id,COALESCE(s.name,n.name) AS name,n.node_kind,COALESCE(s.map_x,n.map_x) AS map_x,COALESCE(s.map_y,n.map_y) AS map_y FROM world_route_nodes n LEFT JOIN world_settlements s ON s.id=n.settlement_id ORDER BY n.id');
+  const [networkSegments]=await pool.execute('SELECT id,region_id,from_node_id,to_node_id,route_type,route_name,waypoints,legacy_route_id FROM world_route_segments ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
   return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
+ if(path.startsWith('/world-admin/transport/'))return transportNetworkRoute(pool,req,path,actor.id);
  let match;
  // Map-only state changes never rewrite the settlement's civilian records.
  if((match=/^\/world-admin\/settlements\/(\d+)\/state$/.exec(path))&&req.method==='POST'){
@@ -145,7 +150,9 @@ async function worldAdministrationRouteCore(pool,req,path){
   return transact(pool,async db=>{
    const [reg]=await db.execute('SELECT id FROM world_regions WHERE id=?',[b.region_id]);if(!reg.length)return fail(404,'region_not_found');
    if(!await referencesExist(db,b))return fail(400,'invalid_faction_reference');
-   const [r]=await db.execute('INSERT INTO world_settlements('+fields.join(',')+') VALUES('+fields.map(()=>'?').join(',')+')',values(b,fields));await audit(db,actor.id,'create','settlement',r.insertId,b.name);return ok({id:r.insertId});
+   const [r]=await db.execute('INSERT INTO world_settlements('+fields.join(',')+') VALUES('+fields.map(()=>'?').join(',')+')',values(b,fields));
+   await db.execute('INSERT INTO world_route_nodes(region_id,settlement_id,name,node_kind,map_x,map_y,created_by) VALUES(?,?,?,\'terminal\',?,?,?)',[b.region_id,r.insertId,b.name,b.map_x,b.map_y,actor.id]);
+   await audit(db,actor.id,'create','settlement',r.insertId,b.name);return ok({id:r.insertId});
   });
  }
  if((match=/^\/world-admin\/settlements\/(\d+)$/.exec(path))&&req.method==='PUT'){
