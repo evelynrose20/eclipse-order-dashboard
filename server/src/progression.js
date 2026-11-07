@@ -1,4 +1,4 @@
-// Eclipse Order's lightweight homebrew D20 progression rules.
+// Eclipse Order's tabletop character progression rules.
 // 27-point creation budget, scores 8–15; class controls core combat profile.
 export const ABILITIES=['str','dex','con','int','wis','cha'];
 export const SCORE_COST={8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9};
