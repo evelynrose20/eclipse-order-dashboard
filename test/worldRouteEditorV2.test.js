@@ -26,9 +26,9 @@ test('route planning is preview-first with explicit save and cancellation',async
  assert.match(map,/Save new route/);
  assert.match(map,/Cancel draft/);
  assert.match(map,/wtm-planned-route/);
- assert.match(map,/setRouteEnd\(Number\(s\.id\)\)/);
+ assert.match(map,/setRouteEnd\(Number\(id\)\)/);
  assert.doesNotMatch(map,/void saveRoute/);
- assert.match(map,/Route endpoints selected/);
+ assert.match(map,/Endpoints connected in the draft/);
  assert.match(map,/e\.stopPropagation\(\);mapClick\(e\)/);
 });
 test('existing roads are editable by route list with waypoint insertion and reset',async()=>{
@@ -53,12 +53,12 @@ test('map uses Font Awesome web-font icons and accepts production and civic mark
   load('server/src/garlean-climate.js'),load('index.html'),load('src/world-territory-map.css')
  ]);
  assert.match(html,/font-awesome\/6\.7\.2\/css\/all\.min\.css/);
- assert.match(map,/fa-solid fa-/);
- assert.match(map,/<i className=\{iconFor\(s\.map_icon\)\}\/>/);
+ assert.match(map,/import SiteIcon/);
+ assert.match(map,/<SiteIcon name=\{iconFor\(s\.map_icon\)\}\/>/);
  for(const marker of ['lumber_yard','logging_camp','sawmill','quarry','workshop','warehouse','rail_station']){
-  assert.ok(map.includes("'"+marker+"'"),'frontend: '+marker);
+  assert.ok((await load('src/SiteIcon.jsx')).includes("'"+marker+"'"),'frontend: '+marker);
   assert.ok(server.includes("'"+marker+"'"),'server: '+marker);
  }
- assert.match(form,/ICON_OPTIONS\.map/);
+ assert.match(form,/<SiteMarkerPicker/);
  assert.match(css,/Font Awesome 6 Free/);
 });
