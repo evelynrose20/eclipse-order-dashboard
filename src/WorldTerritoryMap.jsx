@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 export const ICON_OPTIONS=[['settlement','Settlement','⌂'],['capital','Capital','♛'],['village','Village','⌂'],['mine','Mine','⛏'],['factory','Factory','⚙'],['refinery','Refinery','⚗'],['fortress','Fortress','⬟'],['outpost','Outpost','⚑'],['farm','Farm','♧'],['port','Port','⚓'],['depot','Depot','▣'],['ruins','Ruins','⌁'],['landmark','Landmark','✦']];
+export const STATUS_OPTIONS=[['peaceful','Peaceful'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
 const iconFor=name=>ICON_OPTIONS.find(x=>x[0]===name)?.[2]||'⌂';
 const pct=n=>Math.min(100,Math.max(0,Math.round(Number(n)*100)/100));
@@ -28,15 +29,17 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,settlements,routes=[],mountains=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
+ const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setSelectedRoute(null);setDraftWaypoints([]);setError('');setNotice('')},[region?.id]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setError('');setNotice('')},[region?.id]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const currentRoute=routes.find(r=>Number(r.id)===Number(selectedRoute));
+ const currentMountain=mountains.find(m=>String(m.id)===mountainId);
  const segmentPts=r=>polyline(r,byId);
  const activePoints=currentRoute? [byId.get(Number(currentRoute.from_settlement_id)),...draftWaypoints.map(p=>({x:p.x,y:p.y})),byId.get(Number(currentRoute.to_settlement_id))].filter(Boolean).map(p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)})) : [];
  const coords=e=>{const rect=mapRef.current?.getBoundingClientRect();if(!rect||!rect.width||!rect.height)return null;return {x:pct((e.clientX-rect.left)*100/rect.width),y:pct((e.clientY-rect.top)*100/rect.height)}};
@@ -72,6 +75,33 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
   setBusy(true);setError('');setNotice('');
   try{await request('/world-admin/settlements/'+s.id+'/map',{method:'POST',body:{map_x:Number(s.map_x),map_y:Number(s.map_y),map_icon:value}});await reload();setNotice('Map symbol changed.')}
   catch(e){setError(e.message||'Symbol could not be saved.')}finally{setBusy(false)}
+ }
+ async function changeState(value){
+  const s=displayed.find(x=>String(x.id)===String(selected));
+  if(!s||!canEdit||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{await request('/world-admin/settlements/'+s.id+'/state',{method:'POST',body:{strategic_state:value}});await reload();setNotice('Territory state updated.')}
+  catch(e){setError(e.message||'Territory state could not be saved.')}finally{setBusy(false)}
+ }
+ function selectMountain(id){
+  setMountainId(id);
+  const existing=mountains.find(m=>String(m.id)===id);
+  setMountainName(existing?.name||'');
+  setMountainPoints(existing?.points?.map(p=>({...p}))||[]);
+ }
+ async function saveMountain(){
+  if(!canEdit||busy||!mountainName.trim()||mountainPoints.length<2)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),name:mountainName.trim(),points:mountainPoints}});
+   await reload();selectMountain('');setNotice('Mountain range saved.');
+  }catch(e){setError(e.message||'Mountain range could not be saved.')}finally{setBusy(false)}
+ }
+ async function deleteMountain(){
+  if(!canEdit||!mountainId||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{await request('/world-admin/mountains/'+mountainId,{method:'DELETE'});await reload();selectMountain('');setNotice('Mountain range removed.')}
+  catch(e){setError(e.message||'Mountain range could not be deleted.')}finally{setBusy(false)}
  }
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
@@ -126,7 +156,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Draw roads'],['bend','Edit roads']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setNotice('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Draw roads'],['bend','Edit roads'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setNotice('');if(id==='mountains')selectMountain('')}}>{name}</button>)}
    </div>
    {mode==='link'&&<><label>Route type<select value={routeType} onChange={e=>setRouteType(e.target.value)}>{ROUTE_OPTIONS.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label><label>Road name<input value={routeName} maxLength={120} placeholder="Optional" onChange={e=>setRouteName(e.target.value)}/></label></>}
   </div>}
@@ -149,6 +179,23 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
     <rect width="900" height="560" fill="url(#wtm-map-vignette)"/>
     <path d="M20 18h55 M20 18v55 M880 18h-55 M880 18v55 M20 542h55 M20 542v-55 M880 542h-55 M880 542v-55" stroke="#d1bd96" opacity=".45" strokeWidth="2" fill="none"/>
    </svg>
+   <svg className="wtm-mountains" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Named mountain ranges">
+    {mountains.map(m=>{
+     const pts=Array.isArray(m.points)?m.points:[];
+     if(pts.length<2)return null;
+     const path=smoothRoadPath(pts),mid=pts[Math.floor(pts.length/2)];
+     return <g key={m.id} className="wtm-range" aria-label={m.name}>
+      <path d={path} className="wtm-range-shadow"/>
+      <path d={path} className="wtm-range-ridge"/>
+      {pts.map((p,i)=><path key={i} d={'M '+(p.x-1.3)+' '+(p.y+1.2)+' L '+p.x+' '+(p.y-1.6)+' L '+(p.x+1.3)+' '+(p.y+1.2)} className="wtm-range-peak"/>)}
+      <text x={mid.x} y={Math.max(4,mid.y-3)} textAnchor="middle" className="wtm-range-label">{m.name}</text>
+     </g>;
+    })}
+    {mode==='mountains'&&mountainPoints.length>0&&<g className="wtm-range-draft">
+     <path d={mountainPoints.length>=2?smoothRoadPath(mountainPoints):''} className="wtm-range-draft-path"/>
+     {mountainPoints.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="1.15" fill="#f2cd8b" stroke="#19232c" strokeWidth=".5"/>)}
+    </g>}
+   </svg>
    <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b>✥</b><small>S</small></div>
    <svg className="wtm-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Regional road network">
     {segments.map(route=>{
@@ -161,7 +208,8 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#eac78e" strokeWidth=".55" vectorEffect="non-scaling-stroke" strokeDasharray="4 4"/>}
    </svg>
-   {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={()=>selectPin(s)} title={s.name} aria-label={s.name+' ('+s.map_icon+')'}><span className="wtm-pin-icon" aria-hidden="true">{iconFor(s.map_icon)}</span><span className="wtm-pin-name">{s.name}</span></button>)}
+   {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={()=>selectPin(s)} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')><span className="wtm-pin-icon" aria-hidden="true">{iconFor(s.map_icon)}</span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
+   {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {canEdit&&mode==='bend'&&currentRoute&&<div className="wtm-bend-layer" onClick={e=>{const p=coords(e);if(p)setDraftWaypoints(w=>[...w,p].slice(0,16))}} title="Click to add a curve bend"/>}
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
@@ -169,10 +217,19 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart?'Select the destination icon.':'Select two settlement icons to connect them.'):mode==='bend'?'Select a road, then click the map to add bend handles. Drag handles to shape the road.':'Inspect settlements and roads; choose an editing tool to make changes.'}</span>
+   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart?'Select the destination icon.':'Select two settlement icons to connect them.'):mode==='bend'?'Select a road, then click the map to add bend handles. Drag handles to shape the road.':'Inspect settlements and roads; choose an editing tool to make changes.'}</span>
    {mode==='bend'&&currentRoute&&<div className="wtm-actions"><button type="button" disabled={busy} onClick={()=>setDraftWaypoints(w=>w.slice(0,-1))}>Undo bend</button><button type="button" disabled={busy} onClick={()=>saveRoute({region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:currentRoute.route_type,route_name:currentRoute.route_name,waypoints:draftWaypoints},currentRoute.id)}>Save road</button><button type="button" disabled={busy} onClick={deleteRoute}>Delete road</button></div>}
   </div>}
-  {canEdit&&active&&<div className="wtm-symbol"><label>Map icon<select value={active.map_icon||'settlement'} onChange={e=>changeIcon(e.target.value)} disabled={busy}>{ICON_OPTIONS.map(([id,name,symbol])=><option value={id} key={id}>{symbol} {name}</option>)}</select></label><small>Icons are independent of faction affiliation.</small></div>}
-  <div className="wtm-legend"><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
+  {canEdit&&mode==='mountains'&&<div className="wtm-mountain-editor">
+   <label>Mountain range<select value={mountainId} onChange={e=>selectMountain(e.target.value)}><option value="">+ New mountain range</option>{mountains.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+   <label>Range name<input maxLength={120} value={mountainName} placeholder="e.g. Northern Peaks" onChange={e=>setMountainName(e.target.value)}/></label>
+   <span>{mountainPoints.length} ridge points</span>
+   <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints(p=>p.slice(0,-1))}>Undo point</button>
+   <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints([])}>Redraw</button>
+   <button type="button" disabled={busy||mountainPoints.length<2||!mountainName.trim()} onClick={saveMountain}>Save range</button>
+   {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
+  </div>}
+  {canEdit&&active&&<div className="wtm-symbol"><label>Map icon<select value={active.map_icon||'settlement'} onChange={e=>changeIcon(e.target.value)} disabled={busy}>{ICON_OPTIONS.map(([id,name,symbol])=><option value={id} key={id}>{symbol} {name}</option>)}</select></label><label>Territorial state<select value={active.strategic_state||'peaceful'} onChange={e=>changeState(e.target.value)} disabled={busy}>{STATUS_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><small>Status is visible on every map marker, including without selecting it.</small></div>}
+  <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
  </div>;
 }
