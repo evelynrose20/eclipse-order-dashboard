@@ -14,10 +14,11 @@ tags: [eclipse-order, documentation]
 
 1. **[[LIVING-WORLD-WAR-COMMAND-MASTER-PLAN]]** — full design specification, gameplay architecture, safety and milestones.
 2. **[[LIVING-WORLD-TODO]]** — actionable tasks with checked/pending status. Update after each merged PR.
-3. **[[ROADMAP]]** — original site release-readiness record. This is a *separate* historical checklist.
-4. **[[OPERATIONS]]** — production deployment, backup and permission checks.
-5. **[[WINDOWS-SELF-HOSTING]]** — current Windows API and MySQL hosting.
-6. **[[TESTING-WITHOUT-PLAYERS]]** — test gates.
+3. **[[WORLD-ADMIN-TROUBLESHOOTING]]** — editing and Windows API repairs.
+4. **[[ROADMAP]]** — original site release-readiness record. This is a *separate* historical checklist.
+5. **[[OPERATIONS]]** — production deployment, backup and permission checks.
+6. **[[WINDOWS-SELF-HOSTING]]** — current Windows API and MySQL hosting.
+7. **[[TESTING-WITHOUT-PLAYERS]]** — test gates.
 
 ## Site and RP systems
 
