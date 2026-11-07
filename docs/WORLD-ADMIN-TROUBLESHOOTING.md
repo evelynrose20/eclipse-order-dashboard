@@ -33,11 +33,11 @@ Only authorized command staff may edit world state; public/member reads must not
 
 ## Connected road and railway editor (migration 045)
 
-The **Network & junctions** tool uses `world_route_nodes` and `world_route_segments`. The optional **Convert older routes** action transactionally imports the old `world_map_routes` records as network edges and removes those originals only after successful import. It retains route names, types, bends and endpoint links. Back up production MySQL before invoking it.
+The original smooth **Plan a route / Edit routes** tools use `world_route_nodes` and `world_route_segments`. The optional **Connect older routes** action transactionally imports the old `world_map_routes` records as network edges and removes those originals only after successful import. It retains route names, types, bends and endpoint links. Back up production MySQL before invoking it.
 
 After pulling the matching frontend and Windows API revisions, run `npm run setup:local` in `server/` and restart the Windows service. Verify all versions 041 through **045_world_transport_graph** exist in `schema_migrations`.
 
-In the map, choose **Network & junctions**. **Connect** joins settlements or existing junctions; **Place junction** snaps near nodes/sites/roads; **Split / branch** creates a durable shared vertex on an existing edge; **Move junction** moves all attached route ends; **Edit route** saves the name, transport type and bends. Railway splits automatically create rail switch nodes. Nodes with attached edges cannot be deleted.
+In the original territory map, choose **Plan a route** or **Edit routes**. **Plan a route** joins settlements or existing junctions; **Place junction** snaps onto existing nodes/sites/roads; **Branch from route** splits an existing graph segment into a shared vertex; **Move places** drags a junction while preserving attached route endpoints; **Edit routes** uses the original curved route and bend controls. Railway splits automatically create rail switch nodes. Nodes with attached edges cannot be deleted.
 
 Map routes are drawn using SVG paths because they are editable geographic geometry; user-facing icons use the Font Awesome CSS/web-font library, not SVG icons.
 
