@@ -2,6 +2,7 @@ import {generateToken,hashToken,hashPassword} from './credentials.js';
 import {randomUUID} from 'node:crypto';
 import {checkGuildMember,guildConfiguration,joinGuild,validSnowflake} from './discord-guild.js';
 import {resolveSession} from './auth.js';
+import {getRecruitmentStatus} from './recruitment.js';
 
 const SESSION_HOURS=12;
 const STATE_MINUTES=10;
@@ -103,6 +104,9 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   const session=await resolveSession(pool,request,{allowUnlinked:true});
   if(request.headers.authorization&&!session)return fail(401,'not_authenticated');
   const target=session?.id||null;
+  // An existing member may sign in while recruitment is closed; only a
+  // new Discord invite request is disallowed.
+  if(intent==='join'&&!target&&await getRecruitmentStatus(pool)==='closed')return fail(403,'recruitment_closed');
   if(target){
    const [linked]=await pool.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=? LIMIT 1',[target]);
    if(linked.length)return fail(409,'discord_already_linked');
@@ -126,6 +130,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   try{identity=await fetchDiscordIdentity(config,code,httpFetch)}catch{return redirect(config,{discord_error:'discord_unavailable'})}
   let membership=await checkGuildMember(identity.id,{env,httpFetch,useCache:false});
   if(rows[0].intent==='join'&&membership==='not_member'){
+   if(await getRecruitmentStatus(pool)==='closed')return redirect(config,{discord_error:'recruitment_closed'});
    if(!String(identity.scope).split(' ').includes('guilds.join'))return redirect(config,{discord_error:'discord_join_denied'});
    membership=await joinGuild(identity.id,identity.accessToken,{env,httpFetch});
   }
@@ -138,6 +143,7 @@ export async function discordRoute(pool,request,path,{env=process.env,httpFetch=
   if(target&&linked.length&&linked[0].account_id!==target)return redirect(config,{discord_error:'discord_identity_taken'});
   let account=target||linked[0]?.account_id||null;
   if(!account){
+   if(await getRecruitmentStatus(pool)==='closed')return redirect(config,{discord_error:'recruitment_closed'});
    // Provision the pending account and Discord link atomically; a failed link cannot orphan an account.
    const newAccountId=randomUUID();
    const secret=await hashPassword(generateToken());
