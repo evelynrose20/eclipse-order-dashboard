@@ -3,6 +3,11 @@ import {resolveSession} from './auth.js';
 const ok=body=>({status:200,body});
 const fail=(status,error)=>({status,body:{error}});
 const command=user=>['domina','high_command'].includes(user.account_role);
+async function isClawOfficer(conn,actor){
+ if(command(actor))return true;
+ const [rows]=await conn.execute('SELECT 1 FROM account_order_ranks WHERE account_id=? AND track="golden_claws" AND rank_code IN ("high_claw","gilded_talon") LIMIT 1',[actor.id]);
+ return rows.length>0;
+}
 const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value);
 const str=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.trim().length<=max;
 const optional=(value,max)=>typeof value==='string'&&value.length<=max;
@@ -26,7 +31,7 @@ async function characterOwner(conn,characterId,actorId){
 async function managedFront(conn,frontId,actor,{lock=false}={}){
  const [rows]=await conn.execute('SELECT f.*,c.player_account_id AS owner_account_id FROM order_fronts f LEFT JOIN characters c ON c.id=f.owner_character_id WHERE f.id=?'+(lock?' FOR UPDATE':''),[frontId]);
  const front=rows[0];if(!front)return null;
- if(command(actor)||front.owner_account_id===actor.id)return front;
+ if(command(actor)||actor.front_officer||front.owner_account_id===actor.id)return front;
  const [members]=await conn.execute('SELECT 1 FROM order_front_staff fs JOIN characters c ON c.id=fs.character_id WHERE fs.front_id=? AND c.player_account_id=? AND fs.staff_role="manager" LIMIT 1',[frontId,actor.id]);
  return members.length?front:null;
 }
@@ -58,7 +63,7 @@ export async function applyFrontTrade(conn,{frontId,deliveryId,revenue,accountId
  return ok({retained});
 }
 export async function authorizeFrontTrade(conn,frontId,actor,{materialId,quantity,characterId}){
- const front=await managedFront(conn,frontId,actor,{lock:true});
+ const front=await managedFront(conn,frontId,{...actor,front_officer:await isClawOfficer(conn,actor)},{lock:true});
  if(!front||front.status!=='active'){
   const [workers]=await conn.execute('SELECT 1 FROM order_fronts f JOIN order_front_staff fs ON fs.front_id=f.id JOIN characters c ON c.id=fs.character_id WHERE f.id=? AND f.status="active" AND c.player_account_id=? LIMIT 1',[frontId,actor.id]);
   if(!workers.length)return fail(403,'front_not_authorized');
@@ -77,21 +82,23 @@ export async function frontsRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
  const isCommand=command(actor);
+ const isOfficer=await isClawOfficer(pool,actor);
+ actor.front_officer=isOfficer;
  if(path==='/fronts'&&req.method==='GET'){
   const [rows]=await pool.execute('SELECT f.*,c.character_name AS owner_name,c.player_account_id AS owner_account_id, a.display_name AS founder_name FROM order_fronts f LEFT JOIN characters c ON c.id=f.owner_character_id JOIN accounts a ON a.id=f.created_by ORDER BY f.created_at DESC,f.id DESC');
   const [staff]=await pool.execute('SELECT fs.front_id,fs.staff_role FROM order_front_staff fs JOIN characters c ON c.id=fs.character_id WHERE c.player_account_id=?',[actor.id]);
   const permitted=new Set(staff.map(s=>Number(s.front_id)));
   const managers=new Set(staff.filter(s=>s.staff_role==='manager').map(s=>Number(s.front_id)));
-  return ok({fronts:rows.filter(f=>isCommand||f.status==='active'||f.owner_account_id===actor.id||permitted.has(Number(f.id))).map(f=>{
-   const manage=isCommand||f.owner_account_id===actor.id||managers.has(Number(f.id));
-   return {id:f.id,name:f.name,category:f.category,location:f.location,description:f.description,ownership:f.ownership,owner_name:f.owner_name,owner_character_id:manage?f.owner_character_id:null,status:f.status,ic_approved:!!f.ic_approved,site_approved:!!f.site_approved,order_share_percent:manage?Number(f.order_share_percent):null,balance:manage?Number(f.balance):null,can_manage:manage,can_ship:isCommand||f.owner_account_id===actor.id||permitted.has(Number(f.id)),created_at:f.created_at};
+  return ok({fronts:rows.filter(f=>isOfficer||f.status==='active'||f.owner_account_id===actor.id||permitted.has(Number(f.id))).map(f=>{
+   const manage=isOfficer||f.owner_account_id===actor.id||managers.has(Number(f.id));
+   return {id:f.id,name:f.name,category:f.category,location:f.location,description:f.description,ownership:f.ownership,owner_name:f.owner_name,owner_character_id:manage?f.owner_character_id:null,status:f.status,ic_approved:!!f.ic_approved,site_approved:!!f.site_approved,order_share_percent:manage?Number(f.order_share_percent):null,balance:manage?Number(f.balance):null,can_manage:manage,can_ship:isOfficer||f.owner_account_id===actor.id||permitted.has(Number(f.id)),created_at:f.created_at};
   })});
  }
  if(path==='/fronts'&&req.method==='POST'){
   const b=await read(req);
   if(!str(b?.name,110)||!categories.includes(b.category)||!str(b.location,150)||!optional(b.description,1200)||
    !['member','order'].includes(b.ownership)||!optional(b.license_terms||'',900))return fail(400,'invalid_front_application');
-  if(b.ownership==='order'&&!isCommand)return fail(403,'command_required');
+  if(b.ownership==='order'&&!isOfficer)return fail(403,'front_officer_required');
   return atomic(pool,async conn=>{
    let ownerId=null;
    if(b.ownership==='member'){
@@ -113,7 +120,7 @@ export async function frontsRoute(pool,req,path){
   if(!front||front.status!=='active')return fail(404,'front_not_active');
   const [authorization]=await pool.execute('SELECT 1 FROM order_fronts f LEFT JOIN characters owner ON owner.id=f.owner_character_id WHERE f.id=? AND owner.player_account_id=? UNION SELECT 1 FROM order_front_staff s JOIN characters c ON c.id=s.character_id WHERE s.front_id=? AND c.player_account_id=? LIMIT 1',
    [frontId,actor.id,frontId,actor.id]);
-  if(!isCommand&&!authorization.length)return fail(403,'front_not_authorized');
+  if(!isOfficer&&!authorization.length)return fail(403,'front_not_authorized');
   const [stocks]=await pool.execute('SELECT material_id,quantity FROM order_front_stock WHERE front_id=? ORDER BY material_id',[frontId]);
   return ok({stocks});
  }
@@ -121,7 +128,7 @@ export async function frontsRoute(pool,req,path){
   const [rows]=await pool.execute('SELECT f.*,c.character_name AS owner_name,c.player_account_id AS owner_account_id FROM order_fronts f LEFT JOIN characters c ON c.id=f.owner_character_id WHERE f.id=?',[frontId]);
   const front=rows[0];if(!front)return fail(404,'front_not_found');
   const [isStaff]=await pool.execute('SELECT fs.staff_role FROM order_front_staff fs JOIN characters c ON c.id=fs.character_id WHERE fs.front_id=? AND c.player_account_id=? LIMIT 1',[frontId,actor.id]);
-  const manage=isCommand||front.owner_account_id===actor.id||isStaff.some(s=>s.staff_role==='manager');
+  const manage=isOfficer||front.owner_account_id===actor.id||isStaff.some(s=>s.staff_role==='manager');
   if(front.status!=='active'&&!manage)return fail(404,'front_not_found');
   const [[offers],[staff],[stocks],[ledger],[changes]] = await Promise.all([
    pool.execute('SELECT o.id,o.offer_type,o.material_id,o.name,o.description,o.posted_price,o.restricted,o.is_active FROM order_front_offerings o WHERE o.front_id=? ORDER BY o.id DESC',[frontId]),
@@ -133,9 +140,10 @@ export async function frontsRoute(pool,req,path){
   return ok({front:{...front,balance:manage?Number(front.balance):null,order_share_percent:manage?Number(front.order_share_percent):null,license_terms:manage?front.license_terms:null,can_manage:manage,ic_approved:!!front.ic_approved,site_approved:!!front.site_approved},offers:offers.filter(o=>manage||o.is_active),staff,stocks,ledger,change_requests:changes});
  }
  if(action==='approve'&&req.method==='POST'){
-  if(!isCommand)return fail(403,'command_required');
   const b=await read(req);
   if(!['ic','website'].includes(b?.stage)||typeof b?.approved!=='boolean')return fail(400,'invalid_approval');
+  if(b.stage==='website'&&!isCommand)return fail(403,'website_command_required');
+  if(b.stage==='ic'&&!isOfficer)return fail(403,'front_officer_required');
   return atomic(pool,async conn=>{
    const [rows]=await conn.execute('SELECT id,status,ic_approved,site_approved FROM order_fronts WHERE id=? FOR UPDATE',[frontId]);
    if(!rows.length)return fail(404,'front_not_found');
@@ -148,8 +156,8 @@ export async function frontsRoute(pool,req,path){
   });
  }
  if(action==='status'&&req.method==='POST'){
-  if(!isCommand)return fail(403,'command_required');
   const b=await read(req);if(!['active','suspended','closed'].includes(b?.status))return fail(400,'invalid_front_status');
+  if(!isOfficer||b.status==='closed'&&!isCommand)return fail(403,'front_officer_required');
   return atomic(pool,async conn=>{
    const [[f]]=await conn.execute('SELECT ic_approved,site_approved,status FROM order_fronts WHERE id=? FOR UPDATE',[frontId]);
    if(!f)return fail(404,'front_not_found');
