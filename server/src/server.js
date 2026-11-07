@@ -120,6 +120,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/governance/senate'||pathname.startsWith('/governance/senate/'))result=await senateRoute(pool,req,pathname);
   else if(pathname==='/construction'||pathname.startsWith('/construction/'))result=await constructionRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
+  else if(pathname==='/world-admin'||pathname.startsWith('/world-admin/'))result=await worldAdministrationRoute(pool,req,pathname);
   else if(pathname==='/factions'||pathname.startsWith('/factions/'))result=await factionRoute(pool,req,pathname);
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
