@@ -9,6 +9,7 @@ import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {craftingRoute} from '../src/crafting.js';
+import {commerceRoute} from '../src/commerce.js';
 
 test('MySQL 8 schemas install together and retain existing Domina on re-run', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'}, async()=>{
  const admin=createPool({
@@ -16,7 +17,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql']){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
    await admin.query(sql);
   }
@@ -271,6 +272,50 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [updated]=await admin.execute('SELECT sheet_json FROM characters WHERE id=?',[char.body.id]);
   const newSheet=typeof updated[0].sheet_json==='string'?JSON.parse(updated[0].sheet_json):updated[0].sheet_json;
   assert.equal(newSheet.experience,300);
+  // End-to-end trading and gear: shared inputs -> character equipment -> equipped slot -> faction reputation.
+  const initialCommerce=await commerceRoute(admin,request('GET'),'/commerce');
+  assert.equal(initialCommerce.status,200);
+  assert.ok(initialCommerce.body.templates.some(t=>t.id==='field-pick'));
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ingot',25) ON DUPLICATE KEY UPDATE quantity=25");
+  const ownPick=await commerceRoute(admin,request('POST',{template_id:'field-pick',character_id:char.body.id}),'/commerce/craft');
+  assert.equal(ownPick.status,200,JSON.stringify(ownPick.body));
+  const pickId=ownPick.body.item_id;
+  const pickInventory=await commerceRoute(admin,request('GET'),'/commerce/characters/'+char.body.id+'/equipment');
+  assert.equal(pickInventory.status,200);
+  assert.equal(pickInventory.body.items.some(item=>Number(item.id)===pickId),true);
+  const equipped=await commerceRoute(admin,request('POST',{equipped:true}),'/commerce/characters/'+char.body.id+'/equipment/'+pickId+'/equip');
+  assert.equal(equipped.status,200);
+  const equipmentAfter=await commerceRoute(admin,request('GET'),'/commerce/characters/'+char.body.id+'/equipment');
+  assert.equal(equipmentAfter.body.bonuses.tool,1);
+  const contract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Supply settlement metal',description:'Deliver metal to local makers.',item_kind:'material',item_id:'iron-ingot',required_quantity:4,rep_per_unit:2}),'/commerce/contracts');
+  assert.equal(contract.status,200,JSON.stringify(contract.body));
+  const firstDelivery=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:3}),'/commerce/contracts/'+contract.body.id+'/deliver');
+  assert.equal(firstDelivery.status,200,JSON.stringify(firstDelivery.body));
+  assert.equal(firstDelivery.body.reputation_change,6);
+  const overDelivery=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:2}),'/commerce/contracts/'+contract.body.id+'/deliver');
+  assert.equal(overDelivery.status,409,'cannot exceed contract remaining amount');
+  const completed=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1}),'/commerce/contracts/'+contract.body.id+'/deliver');
+  assert.equal(completed.status,200);
+  assert.equal(completed.body.complete,true);
+  const deliverTwice=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1}),'/commerce/contracts/'+contract.body.id+'/deliver');
+  assert.equal(deliverTwice.status,409,'completed contract must not double reward');
+  const gearContract=await commerceRoute(admin,request('POST',{faction_id:'test-hamlet',title:'Settlement tools',description:'Deliver a crafted mining pick.',item_kind:'equipment',item_id:'field-pick',required_quantity:1,rep_per_unit:3}),'/commerce/contracts');
+  assert.equal(gearContract.status,200);
+  const cannotTradeEquipped=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,equipment_item_id:pickId}),'/commerce/contracts/'+gearContract.body.id+'/deliver');
+  assert.equal(cannotTradeEquipped.status,409,'cannot trade currently equipped tool');
+  const unequip=await commerceRoute(admin,request('POST',{equipped:false}),'/commerce/characters/'+char.body.id+'/equipment/'+pickId+'/equip');
+  assert.equal(unequip.status,200);
+  const handedOver=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,equipment_item_id:pickId}),'/commerce/contracts/'+gearContract.body.id+'/deliver');
+  assert.equal(handedOver.status,200,JSON.stringify(handedOver.body));
+  assert.equal(handedOver.body.reputation_change,3);
+  const [[consumedItem]]=await admin.execute('SELECT status,equipped FROM character_equipment_items WHERE id=?',[pickId]);
+  assert.equal(consumedItem.status,'traded');
+  assert.equal(Number(consumedItem.equipped),0);
+  const [[tradeReputation]]=await admin.execute("SELECT faction_view FROM order_faction_reputation WHERE faction_id='test-hamlet'");
+  assert.equal(Number(tradeReputation.faction_view),11);
+  const [tradeLog]=await admin.execute("SELECT applied_delta FROM faction_reputation_changes WHERE faction_id='test-hamlet' AND target='faction_view' ORDER BY id");
+  assert.deepEqual(tradeLog.map(e=>Number(e.applied_delta)),[6,2,3]);
+
 
 
  }finally{await admin.end();}
