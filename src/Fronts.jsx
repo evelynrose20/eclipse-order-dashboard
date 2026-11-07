@@ -11,6 +11,8 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
  const [selected,setSelected]=useState(null);
  const [detail,setDetail]=useState(null);
  const [materials,setMaterials]=useState([]);
+ const [reservedGoods,setReservedGoods]=useState([]);
+ const [reservedTransfer,setReservedTransfer]=useState({character_id:'',material_id:'',quantity:1});
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [busy,setBusy]=useState(false);
@@ -29,8 +31,8 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
  const siteCommand=canApproveSite&&!readOnly;
  const ownCharacters=characters.filter(c=>(c.player_user_id||c.player_account_id)===userId);
  async function refresh(preferred=selected){
-  const [directory,workshop]=await Promise.all([request('/fronts'),request('/workshop')]);
-  setRegistry(directory.fronts||[]);setMaterials(workshop.materials||[]);
+  const [directory,workshop,reserved]=await Promise.all([request('/fronts'),request('/workshop'),request('/workshop/reserved')]);
+  setRegistry(directory.fronts||[]);setMaterials(workshop.materials||[]);setReservedGoods(reserved.goods||[]);
   const next=preferred||(directory.fronts||[])[0]?.id;
   if(next){const f=(directory.fronts||[]).find(x=>String(x.id)===String(next));if(f){
    setSelected(f.id);
@@ -80,6 +82,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
  };
  const addStaff=()=>act('/fronts/'+selected+'/staff',staff,'Employee roster updated.');
  const moveStock=()=>act('/fronts/'+selected+'/stock',{...stock,quantity:Number(stock.quantity)},'Front stock and shared FC stores reconciled.');
+ const deliverReserved=()=>act('/fronts/'+selected+'/reserved-stock',{...reservedTransfer,quantity:Number(reservedTransfer.quantity)},'Your reserved crafted goods have been delivered to this front.');
  const saveSupplies=()=>act('/fronts/'+selected+'/supply-requirements',{material_id:supplyDraft.material_id,daily_quantity:Number(supplyDraft.daily_quantity)},'Daily material requirement updated.');
  const saveCosts=async()=>{
   const b=costDraft;const result=await act('/fronts/'+selected+'/operating-costs',{daily_rent:Number(b.daily_rent),daily_upkeep:Number(b.daily_upkeep)},'Daily operating costs updated for the next reset.');
@@ -129,6 +132,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
     {tab==='stock'&&manage&&<div className="eo-fronts-section"><div className="eo-fronts-section-head"><div><span>PHYSICAL STOCK LEDGER</span><h4>Allocated supplies</h4></div></div>
      <div className="eo-fronts-stock-list">{detail.stocks?.map(row=><div key={row.material_id}><strong>{row.name}</strong><span>{row.quantity} units held at this front</span><small>{sharedStock(row.material_id)} in FC central stores</small></div>)}{!detail.stocks?.length&&<p>There are no goods allocated to this front yet.</p>}</div>
      {active&&<div className="eo-fronts-form"><h5>Move stock between the FC and this front</h5><div className="eo-fronts-fields"><label>Material<select value={stock.material_id} onChange={e=>setStock({...stock,material_id:e.target.value})}><option value="">Choose material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label><label>Direction<select value={stock.direction} onChange={e=>setStock({...stock,direction:e.target.value})}><option value="allocate">FC stores → front</option><option value="return">Front → FC stores</option></select></label><label>Units<input type="number" min="1" max="100000" value={stock.quantity} onChange={e=>setStock({...stock,quantity:e.target.value})}/></label><label>Working character<select value={stock.character_id} onChange={e=>setStock({...stock,character_id:e.target.value})}><option value="">Choose character sheet</option>{ownCharacters.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name}</option>)}</select></label></div><button disabled={busy||!stock.material_id||!stock.character_id} type="button" onClick={moveStock}>Confirm stock transfer</button></div>}
+     {active&&<div className="eo-fronts-form eo-front-reserved-transfer"><h5>Deliver your protected crafted goods</h5><p>Goods reserved in the Workshop belong to their maker until delivered here. They do not appear in the FC's general stockpile.</p><div className="eo-fronts-fields"><label>Your character<select value={reservedTransfer.character_id} onChange={e=>setReservedTransfer({...reservedTransfer,character_id:e.target.value,material_id:''})}><option value="">Choose character</option>{ownCharacters.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name}</option>)}</select></label><label>Reserved batch<select value={reservedTransfer.material_id} onChange={e=>setReservedTransfer({...reservedTransfer,material_id:e.target.value})}><option value="">Select reserved material</option>{reservedGoods.filter(g=>g.character_id===reservedTransfer.character_id).map(g=><option value={g.material_id} key={g.material_id}>{g.name} · {g.quantity} held</option>)}</select></label><label>Quantity<input type="number" min="1" max="100" value={reservedTransfer.quantity} onChange={e=>setReservedTransfer({...reservedTransfer,quantity:e.target.value})}/></label></div><button type="button" disabled={busy||!reservedTransfer.character_id||!reservedTransfer.material_id||Number(reservedTransfer.quantity)<1||Number(reservedTransfer.quantity)>Number(reservedGoods.find(g=>g.character_id===reservedTransfer.character_id&&g.material_id===reservedTransfer.material_id)?.quantity||0)} onClick={deliverReserved}>Deliver reserved batch</button></div>}
      <p className="eo-fronts-notice">Allocated stock moves out of the shared FC inventory. Front shipments from the Merchant Exchange consume these allocated units, preventing double-counting.</p>
     </div>}
     {tab==='staff'&&manage&&<div className="eo-fronts-section"><div className="eo-fronts-section-head"><div><span>THE WORKFORCE</span><h4>Employees & Managers</h4></div></div>
