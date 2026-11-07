@@ -209,8 +209,9 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
      {mountainPoints.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="1.15" fill="#f2cd8b" stroke="#19232c" strokeWidth=".5"/>)}
     </g>}
    </svg>
-   <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b>✥</b><small>S</small></div>
+   <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b><i className="fa-solid fa-compass"/></b><small>S</small></div>
    <svg className="wtm-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Regional road network">
+     <NetworkPaths nodes={networkNodes} segments={networkSegments} settlements={displayed}/>
     {segments.map(route=>{
      const points=segmentPts(route),p=smoothRoadPath(points);
      return <g key={route.id} className={'wtm-road '+routeClass(route.route_type)+(selectedRoute===route.id?' selected':'')}>
