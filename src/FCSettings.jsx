@@ -6,12 +6,15 @@ export default function FCSettings({role,request}){
  const command=['domina','high_command'].includes(role);
  const domina=role==='domina';
  const [recruitment,setRecruitment]=useState(null),[recruitmentDraft,setRecruitmentDraft]=useState('open');
+ const [recruitmentReason,setRecruitmentReason]=useState(''),[recruitmentReopens,setRecruitmentReopens]=useState('');
+ const [savedReason,setSavedReason]=useState(''),[savedReopens,setSavedReopens]=useState('');
+ const [reopeningNote,setReopeningNote]=useState(''),[savedReopeningNote,setSavedReopeningNote]=useState('');
  const [recruitmentError,setRecruitmentError]=useState(''),[recruitmentNotice,setRecruitmentNotice]=useState(''),[recruitmentSaving,setRecruitmentSaving]=useState(false);
- useEffect(()=>{let active=true;request('/recruitment').then(result=>{if(active){setRecruitment(result.status);setRecruitmentDraft(result.status)}}).catch(()=>{if(active)setRecruitmentError('Recruitment status could not be loaded.')});return()=>{active=false}},[request]);
+ useEffect(()=>{let active=true;request('/recruitment').then(result=>{if(active){setRecruitment(result.status);setRecruitmentDraft(result.status);setRecruitmentReason(result.reason||'');setRecruitmentReopens(result.reopens_on||'');setSavedReason(result.reason||'');setSavedReopens(result.reopens_on||'');setReopeningNote(result.reopening_note||'');setSavedReopeningNote(result.reopening_note||'')}}).catch(()=>{if(active)setRecruitmentError('Recruitment status could not be loaded.')});return()=>{active=false}},[request]);
  async function saveRecruitment(){
-  if(!domina||!recruitment||recruitment===recruitmentDraft)return;
+  if(!domina||!recruitment)return;
   setRecruitmentSaving(true);setRecruitmentError('');setRecruitmentNotice('');
-  try{const result=await request('/recruitment',{method:'PUT',body:{status:recruitmentDraft}});setRecruitment(result.status);setRecruitmentNotice('Recruitment is now '+result.status+'. The public site has been updated.')}
+  try{const result=await request('/recruitment',{method:'PUT',body:{status:recruitmentDraft,reason:recruitmentReason,reopens_on:recruitmentReopens||null,reopening_note:reopeningNote}});setRecruitment(result.status);setRecruitmentReason(result.reason||'');setRecruitmentReopens(result.reopens_on||'');setSavedReason(result.reason||'');setSavedReopens(result.reopens_on||'');setRecruitmentNotice('Recruitment is now '+result.status+'. The public site has been updated.')}
   catch(e){setRecruitmentError(e.message||'Unable to update recruitment.')}
   finally{setRecruitmentSaving(false)}
  }
@@ -33,7 +36,13 @@ export default function FCSettings({role,request}){
   {recruitmentError&&<div className="alert" role="alert">{recruitmentError}</div>}
   {recruitmentNotice&&<p role="status" className="eo-recruitment-saved">{recruitmentNotice}</p>}
   {recruitment&&<><label className="field"><span>RECRUITMENT STATUS</span><select disabled={!domina||recruitmentSaving} value={domina?recruitmentDraft:recruitment} onChange={e=>setRecruitmentDraft(e.target.value)}><option value="open">Open — Accept applications</option><option value="limited">Limited — Selective recruitment</option><option value="closed">Closed — No new applications</option></select></label>
+   {(domina?recruitmentDraft:recruitment)==='closed'&&<div className="eo-recruitment-details">
+    <label className="field"><span>PUBLIC REASON FOR CLOSURE</span>{domina?<textarea rows={4} maxLength={600} value={recruitmentReason} onChange={e=>setRecruitmentReason(e.target.value)} placeholder="Tell visitors why the Order is not accepting new members."/>:<p className="muted">{recruitmentReason||'No reason has been announced.'}</p>}</label>
+    <label className="field"><span>EXPECTED REOPENING DATE (OPTIONAL)</span>{domina?<input type="date" value={recruitmentReopens} onChange={e=>setRecruitmentReopens(e.target.value)}/>:<p className="muted">{recruitmentReopens||'Not yet announced'}</p>}</label>
+    <label className="field"><span>EXPECTED REOPENING MESSAGE (OPTIONAL)</span>{domina?<input maxLength={200} value={reopeningNote} onChange={e=>setReopeningNote(e.target.value)} placeholder="For example: After our next story chapter."/>:<p className="muted">{reopeningNote||'Not yet announced'}</p>}</label>
+    <p className="muted">An expected date is an announcement, not an automatic reopening. Recruitment stays closed until the Domina changes its status.</p>
+   </div>}
    <p className="muted">{(domina?recruitmentDraft:recruitment)==='closed'?'The Order is not accepting new members. Existing members can still sign in.':(domina?recruitmentDraft:recruitment)==='limited'?'Applications remain open, but entry is selective.':'The Order is accepting applications.'}</p>
-   {domina&&<button type="button" className="btn primary" disabled={recruitmentSaving||recruitment===recruitmentDraft} onClick={saveRecruitment}>{recruitmentSaving?'Saving…':'Update recruitment status'}</button>}</>}
+   {domina&&<button type="button" className="btn primary" disabled={recruitmentSaving||(recruitment===recruitmentDraft&&(recruitmentDraft!=='closed'||(recruitmentReason===savedReason&&recruitmentReopens===savedReopens&&reopeningNote===savedReopeningNote)))} onClick={saveRecruitment}>{recruitmentSaving?'Saving…':'Update recruitment status'}</button>}</>}
  </section></>;
 }
