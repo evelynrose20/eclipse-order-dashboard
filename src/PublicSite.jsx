@@ -118,7 +118,7 @@ export default function PublicSite(){
    <PublicChronicles/>
    <section className="public-section public-hierarchy" id="ranks">
     <div className="public-section-inner">
-     <SectionTag number="05">THE ORDER OF THE SERPENT</SectionTag>
+     <SectionTag number="04">THE ORDER OF THE SERPENT</SectionTag>
      <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>The Order is not a single ladder. Its leadership, specialized branches, membership standing, and bonds of service are distinct.</p></div>
      <div className="public-command-tree">
       <div className="public-command-crest" aria-hidden="true">✦</div>
@@ -138,7 +138,7 @@ export default function PublicSite(){
    </section>
    <section className="public-section public-play" id="roleplay">
     <div className="public-section-inner">
-     <SectionTag number="04">HOW WE ROLEPLAY</SectionTag>
+     <SectionTag number="05">HOW WE ROLEPLAY</SectionTag>
      <div className="public-section-heading"><div><h2>A world beyond<br/><em>the character sheet.</em></h2></div><p>Roleplay happens in-game. Our companion portal gives the shared story a place to keep its characters, assignments, and encounters together.</p></div>
      <div className="public-play-stage">
       <div className="public-play-tabs" role="tablist" aria-label="Roleplay experiences">{MODES.map((item,i)=><button role="tab" id={'mode-tab-'+i} aria-controls="mode-panel" aria-selected={mode===i} type="button" className={mode===i?'active':''} key={item.name} onClick={()=>setMode(i)}><span>{item.mark}</span>{item.name}</button>)}</div>
