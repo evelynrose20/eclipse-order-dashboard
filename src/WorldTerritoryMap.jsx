@@ -35,13 +35,16 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
+ const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setError('');setNotice('')},[region?.id]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setError('');setNotice('')},[region?.id]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
+ const selectedNode=networkNodes.find(n=>Number(n.id)===Number(selectedJunction)&&!n.settlement_id);
+ const attachedSegments=selectedNode?networkSegments.filter(r=>Number(r.from_node_id)===Number(selectedNode.id)||Number(r.to_node_id)===Number(selectedNode.id)):[];
  const graphSelected=String(selectedRoute||'').startsWith('graph:');
  const currentRoute=graphSelected?networkSegments.find(r=>String(r.id)===String(selectedRoute).slice(6)):routes.find(r=>String(r.id)===String(selectedRoute).replace('legacy:',''));
  const graphPoint=node=>{if(!node)return null;const site=byId.get(Number(node.settlement_id));return site?{x:Number(site.map_x),y:Number(site.map_y)}:{x:Number(node.map_x),y:Number(node.map_y)}};
@@ -191,15 +194,39 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   const result=await mutation('/world-admin/network/segments/'+route.id+'/split','POST',p,'Shared junction inserted. Plan a route from it to create a branch.');
   if(result?.id){setJunctionAction('');setMode('link');chooseEndpoint(-Number(result.id))}
  }
+
+ function selectJunction(n){
+  if(!canEdit)return;
+  setSelectedJunction(Number(n.id));
+  setJunctionDraft({name:n.name||'',node_kind:n.node_kind||'junction',x:Number(n.map_x),y:Number(n.map_y)});
+  setNotice('Junction selected. Move it on the map or edit and save below.');
+ }
+ async function saveJunction(){
+  if(!selectedNode||!junctionDraft)return;
+  const x=Number(junctionDraft.x),y=Number(junctionDraft.y);
+  if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>100||y<0||y>100){setError('Junction coordinates must be between 0 and 100.');return}
+  await mutation('/world-admin/network/nodes/'+selectedNode.id,'PUT',{x,y,node_kind:junctionDraft.node_kind,name:junctionDraft.name.trim()},'Junction details saved.');
+ }
+ async function deleteJunction(){
+  if(!selectedNode||busy)return;
+  const count=attachedSegments.length;
+  const warning=count?'Delete this junction AND its '+count+' connected route segment'+(count===1?'':'s')+'? Those roads/rails will be deleted. Other locations and routes remain.':'Delete this unused junction?';
+  if(!window.confirm(warning))return;
+  const path='/world-admin/network/nodes/'+selectedNode.id;
+  const result=count?await mutation(path+'/remove','POST',{delete_connected_segments:true},'Junction and attached segments deleted.'):await mutation(path,'DELETE',undefined,'Unused junction deleted.');
+  if(result){setSelectedJunction(null);setJunctionDraft(null);setRouteStart(null);setRouteEnd(null);setSelectedRoute(null)}
+ }
  function junctionPointerDown(e,n){
   if(mode!=='move'||busy||!canEdit||n.settlement_id)return;
   e.preventDefault();e.stopPropagation();
-  dragRef.current={junction:Number(n.id),moved:false};
+  selectJunction(n);
+  dragRef.current={junction:Number(n.id),moved:false,start:coords(e)};
   e.currentTarget.setPointerCapture(e.pointerId);
  }
  function junctionPointerMove(e){
   if(dragRef.current?.junction===undefined)return;
   const p=coords(e);if(!p)return;
+  if(dragRef.current.start&&Math.hypot(p.x-dragRef.current.start.x,p.y-dragRef.current.start.y)<.2)return;
   dragRef.current.moved=true;
   const id=dragRef.current.junction;
   setJunctionPositions(old=>({...old,[id]:{map_x:p.x,map_y:p.y}}));
@@ -207,9 +234,11 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  async function junctionPointerUp(e,n){
   if(dragRef.current?.junction===undefined)return;
   const moved=dragRef.current.moved;dragRef.current=null;
+  if(moved)suppressRef.current=true;
   if(!moved)return;
   const p=coords(e);if(!p){setJunctionPositions({});return}
-  await mutation('/world-admin/network/nodes/'+n.id,'PUT',{x:p.x,y:p.y,node_kind:n.node_kind,name:n.name||''},'Junction moved; all attached routes remain connected.');
+  const result=await mutation('/world-admin/network/nodes/'+n.id,'PUT',{x:p.x,y:p.y,node_kind:n.node_kind,name:n.name||''},'Junction moved; attached routes updated.');
+  if(result)setJunctionDraft(old=>old?{...old,x:p.x,y:p.y}:old);
   setJunctionPositions({});
  }
  async function importLegacyRoutes(){
@@ -317,7 +346,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
 
    {(mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
-    return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(mode==='link')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
+    return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(mode==='link'&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
