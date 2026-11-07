@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {splitRoutePoints} from './route-geometry.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
 
 const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
@@ -40,12 +41,13 @@ async function worldAdministrationRouteCore(pool,req,path){
   const now=new Date();
   const effective=regions.map(r=>({...r,effective_weather:effectiveWeather(r,now)}));
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
-  const [routes]=await pool.execute('SELECT id,region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
+  const [routes]=await pool.execute('SELECT id,region_id,from_settlement_id,to_settlement_id,from_junction_id,to_junction_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,name,points FROM world_map_mountain_ranges ORDER BY id');
+  const [junctions]=await pool.execute('SELECT id,region_id,name,junction_type,map_x,map_y FROM world_map_junctions ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
-  return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
+  return ok({can_edit:command,regions:effective,settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>(r.from_settlement_id===null||safe.some(s=>s.id===r.from_settlement_id))&&(r.to_settlement_id===null||safe.some(s=>s.id===r.to_settlement_id))).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),junctions:junctions.filter(j=>command||routes.some(r=>r.from_junction_id===j.id||r.to_junction_id===j.id)),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
  let match;
@@ -103,23 +105,103 @@ async function worldAdministrationRouteCore(pool,req,path){
    return ok({saved:true});
   });
  }
+
+ // Typed graph endpoints keep settlement ownership independent from roads.
+ const endpoint=b=>['from','to'].map(side=>({
+  settlement:b[side+'_settlement_id']??null,junction:b[side+'_junction_id']??null
+ }));
+ const routeFields=b=>b&&num(b.region_id,1,Number.MAX_SAFE_INTEGER,true)&&validRouteType(b.route_type)&&text(b.route_name,120)&&validWaypoints(b.waypoints)&&
+  endpoint(b).every(e=>(e.settlement===null)!==(e.junction===null)&&
+   (e.settlement===null||num(e.settlement,1,Number.MAX_SAFE_INTEGER,true))&&
+   (e.junction===null||num(e.junction,1,Number.MAX_SAFE_INTEGER,true)))&&
+  !((b.from_settlement_id??null)===(b.to_settlement_id??null)&&(b.from_junction_id??null)===(b.to_junction_id??null));
+ async function routeNodesValid(db,b){
+  const e=endpoint(b);if(!e.length)return false;
+  for(const side of e){
+   if(side.settlement!==null){
+    const [rows]=await db.execute('SELECT id FROM world_settlements WHERE id=? AND region_id=?',[side.settlement,b.region_id]);
+    if(!rows.length)return false;
+   }else{
+    const [rows]=await db.execute('SELECT junction_type FROM world_map_junctions WHERE id=? AND region_id=?',[side.junction,b.region_id]);
+    if(!rows.length||!['multimodal',b.route_type==='rail'?'rail':'road'].includes(rows[0].junction_type))return false;
+   }
+  }
+  return true;
+ }
+ const routeColumns=['region_id','from_settlement_id','to_settlement_id','from_junction_id','to_junction_id','route_type','route_name','waypoints'];
+ const routeValues=b=>[b.region_id,b.from_settlement_id??null,b.to_settlement_id??null,b.from_junction_id??null,b.to_junction_id??null,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints)];
+ // Junction positions may be independently edited, but deletion refuses any
+ // connected route rather than silently destroying transportation history.
+ const junctionMatch=/^\/world-admin\/junctions(?:\/(\d+))?$/.exec(path);
+ if(junctionMatch&&['POST','PUT','DELETE'].includes(req.method)){
+  const id=junctionMatch[1]?Number(junctionMatch[1]):null;
+  if(req.method==='DELETE'){
+   if(!id)return fail(400,'junction_id_required');
+   return transact(pool,async db=>{
+    const [[used]]=await db.execute('SELECT COUNT(*) AS total FROM world_map_routes WHERE from_junction_id=? OR to_junction_id=?',[id,id]);
+    if(Number(used.total)>0)return fail(409,'junction_has_connected_routes');
+    const [removed]=await db.execute('DELETE FROM world_map_junctions WHERE id=?',[id]);
+    if(!removed.affectedRows)return fail(404,'junction_not_found');
+    await audit(db,actor.id,'junction_delete','junction',id);
+    return ok({saved:true});
+   });
+  }
+  if((req.method==='PUT')!==Boolean(id))return fail(400,'invalid_junction_request');
+  const b=await read(req);
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.map_x,0,100)||!num(b?.map_y,0,100)||!text(b?.name,120)||!['road','rail','multimodal'].includes(b?.junction_type))return fail(400,'invalid_junction');
+  return transact(pool,async db=>{
+   const [regions]=await db.execute('SELECT id FROM world_regions WHERE id=?',[b.region_id]);
+   if(!regions.length)return fail(404,'region_not_found');
+   if(id){
+    const [r]=await db.execute('UPDATE world_map_junctions SET name=?,junction_type=?,map_x=?,map_y=? WHERE id=? AND region_id=?',[b.name.trim(),b.junction_type,b.map_x,b.map_y,id,b.region_id]);
+    if(!r.affectedRows)return fail(404,'junction_not_found');
+    await audit(db,actor.id,'junction_update','junction',id,b.name.trim());return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_map_junctions(region_id,name,junction_type,map_x,map_y,created_by) VALUES(?,?,?,?,?,?)',[b.region_id,b.name.trim(),b.junction_type,b.map_x,b.map_y,actor.id]);
+   await audit(db,actor.id,'junction_create','junction',r.insertId,b.name.trim());return ok({id:r.insertId});
+  });
+ }
+ // Split a saved road/rail exactly at the requested point, preserving all
+ // existing bends on both sides and joining at a persisted graph node.
+ if((match=/^\/world-admin\/routes\/(\d+)\/split$/.exec(path))&&req.method==='POST'){
+  const id=Number(match[1]),b=await read(req);
+  if(!num(b?.x,0,100)||!num(b?.y,0,100))return fail(400,'invalid_split_position');
+  return transact(pool,async db=>{
+   const [rows]=await db.execute('SELECT * FROM world_map_routes WHERE id=? FOR UPDATE',[id]);
+   if(!rows.length)return fail(404,'route_not_found');
+   const old=rows[0];
+   const pointOf=async side=>{
+    const sid=old[side+'_settlement_id'],jid=old[side+'_junction_id'];
+    const [nodes]=sid!==null?await db.execute('SELECT map_x,map_y FROM world_settlements WHERE id=?',[sid]):await db.execute('SELECT map_x,map_y FROM world_map_junctions WHERE id=?',[jid]);
+    return nodes.length?{x:Number(nodes[0].map_x),y:Number(nodes[0].map_y)}:null;
+   };
+   const from=await pointOf('from'),to=await pointOf('to');
+   const bends=(typeof old.waypoints==='string'?JSON.parse(old.waypoints):old.waypoints||[]).map(p=>({x:Number(p.x),y:Number(p.y)}));
+   const split=from&&to?splitRoutePoints(from,bends,to,{x:b.x,y:b.y}):null;
+   if(!split)return fail(400,'split_must_touch_interior_of_route');
+   const [node]=await db.execute('INSERT INTO world_map_junctions(region_id,name,junction_type,map_x,map_y,created_by) VALUES(?,?,?,?,?,?)',[old.region_id,'',old.route_type==='rail'?'rail':'road',split.junction.x,split.junction.y,actor.id]);
+   const jid=node.insertId;
+   await db.execute('UPDATE world_map_routes SET to_settlement_id=NULL,to_junction_id=?,waypoints=? WHERE id=?',[jid,JSON.stringify(split.before),id]);
+   const [second]=await db.execute('INSERT INTO world_map_routes(region_id,from_settlement_id,to_settlement_id,from_junction_id,to_junction_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?,?)',[old.region_id,null,old.to_settlement_id,jid,old.to_junction_id,old.route_type,old.route_name,JSON.stringify(split.after),actor.id]);
+   await audit(db,actor.id,'junction_split','route',id,'Junction '+jid+'; new segment '+second.insertId);
+   return ok({junction_id:jid,route_ids:[id,second.insertId],point:split.junction});
+  });
+ }
  if(path==='/world-admin/routes'&&req.method==='POST'){
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.from_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.to_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||b.from_settlement_id===b.to_settlement_id||!validRouteType(b.route_type)||!text(b.route_name,120)||!validWaypoints(b.waypoints))return fail(400,'invalid_route');
+  if(!routeFields(b))return fail(400,'invalid_route');
   return transact(pool,async db=>{
-   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND id IN (?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id]);
-   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_region');
-   const [r]=await db.execute('INSERT INTO world_map_routes(region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),actor.id]);
+   if(!await routeNodesValid(db,b))return fail(400,'route_endpoint_mismatch');
+   const [r]=await db.execute('INSERT INTO world_map_routes('+routeColumns.join(',')+',created_by) VALUES('+routeColumns.map(()=>'?').join(',')+',?)',[...routeValues(b),actor.id]);
    await audit(db,actor.id,'route_create','route',r.insertId,b.route_name||b.route_type);return ok({id:r.insertId});
   });
  }
  if((match=/^\/world-admin\/routes\/(\d+)$/.exec(path))&&req.method==='PUT'){
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.from_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.to_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||b.from_settlement_id===b.to_settlement_id||!validRouteType(b.route_type)||!text(b.route_name,120)||!validWaypoints(b.waypoints))return fail(400,'invalid_route');
+  if(!routeFields(b))return fail(400,'invalid_route');
   return transact(pool,async db=>{
-   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND id IN (?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id]);
-   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_region');
-   const [r]=await db.execute('UPDATE world_map_routes SET region_id=?,from_settlement_id=?,to_settlement_id=?,route_type=?,route_name=?,waypoints=? WHERE id=?',[b.region_id,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),Number(match[1])]);
+   if(!await routeNodesValid(db,b))return fail(400,'route_endpoint_mismatch');
+   const [r]=await db.execute('UPDATE world_map_routes SET '+routeColumns.map(c=>c+'=?').join(',')+' WHERE id=?',[...routeValues(b),Number(match[1])]);
    if(!r.affectedRows)return fail(404,'route_not_found');
    await audit(db,actor.id,'route_update','route',Number(match[1]),b.route_name||b.route_type);return ok({saved:true});
   });
