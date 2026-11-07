@@ -356,6 +356,21 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
 
   </div>}
+  {canEdit&&selectedNode&&(mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
+   <div className="wtm-route-heading"><strong><i className="fa-solid fa-circle-nodes"/> JUNCTION #{selectedNode.id}</strong><span>{attachedSegments.length} CONNECTED SEGMENTS</span></div>
+   <div className="wtm-junction-fields">
+    <label>Name<input maxLength={120} value={junctionDraft.name} onChange={e=>setJunctionDraft(v=>({...v,name:e.target.value}))}/></label>
+    <label>Type<select value={junctionDraft.node_kind} onChange={e=>setJunctionDraft(v=>({...v,node_kind:e.target.value}))}><option value="junction">Road junction</option><option value="rail_switch">Rail switch</option><option value="terminal">Terminal</option></select></label>
+    <label>Map X<input type="number" min="0" max="100" step=".01" value={junctionDraft.x} onChange={e=>setJunctionDraft(v=>({...v,x:e.target.value}))}/></label>
+    <label>Map Y<input type="number" min="0" max="100" step=".01" value={junctionDraft.y} onChange={e=>setJunctionDraft(v=>({...v,y:e.target.value}))}/></label>
+   </div>
+   <div className="wtm-route-actions">
+    <button type="button" disabled={busy} onClick={saveJunction}><i className="fa-solid fa-floppy-disk"/> Save junction</button>
+    <button type="button" disabled={busy} onClick={()=>{setSelectedJunction(null);setJunctionDraft(null)}}>Close</button>
+    <button type="button" disabled={busy} className="wtm-delete-route" onClick={deleteJunction}><i className="fa-solid fa-trash-can"/> Delete junction</button>
+   </div>
+   {attachedSegments.length>0&&<p className="wtm-junction-warning">Deleting this junction also deletes its {attachedSegments.length} connected route segment{attachedSegments.length===1?'':'s'}. Moving or renaming preserves all connections.</p>}
+  </section>}
   {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{mode==='link'?'PLAN A NEW CONNECTION':'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
