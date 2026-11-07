@@ -16,6 +16,7 @@ import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
 import {commerceRoute} from './commerce.js';
+import {frontsRoute} from './fronts.js';
 import {treasuryRoute,runDailyPayroll} from './treasury.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
@@ -100,6 +101,7 @@ const server=http.createServer(async(req,res)=>{
   if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
+  else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
