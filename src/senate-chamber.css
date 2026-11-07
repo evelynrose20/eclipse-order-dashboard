@@ -141,3 +141,10 @@
 @media(max-width:1130px){.pol-layout{grid-template-columns:145px minmax(0,1fr)}.pol-main{padding:16px}.pol-party-row{grid-template-columns:4px minmax(75px,1fr) 55px 30px 35px;gap:6px}.pol-table-header{grid-template-columns:minmax(90px,1fr) 55px 30px 35px;gap:6px}}
 @media(max-width:900px){.pol-layout{grid-template-columns:1fr}.pol-rail{flex-direction:row;align-items:center;overflow-x:auto;border-bottom:1px solid #41515E;border-right:0;padding:4px 6px;gap:3px}.pol-rail-title{display:none}.pol-rail button{white-space:nowrap;padding:11px 12px}.pol-chamber-grid{grid-template-columns:1fr}.pol-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pol-mini-grid{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:620px){.pol-main{padding:11px}.pol-masthead{align-items:start;flex-direction:column}.pol-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pol-stats>div{padding:13px}.pol-stats strong{font-size:22px}.pol-bill{grid-template-columns:32px 1fr}.pol-votebar{grid-column:2}.pol-party-cards,.pol-coalitions,.pol-results,.pol-form{grid-template-columns:1fr}.pol-form .wide{grid-column:1}.pol-mini-grid{grid-template-columns:1fr}.pol-phases{grid-template-columns:repeat(3,minmax(0,1fr))}.pol-heads>div>div{min-width:80px;padding:8px}.pol-table-header{font-size:8px}}
+
+.pol-tally-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:17px}
+.pol-tally-grid>div{display:grid;grid-template-columns:5px minmax(0,1fr);gap:2px 11px;padding:13px;background:#202D39;border:1px solid #4F5D68}
+.pol-tally-grid>div>span{grid-row:span 2}
+.pol-tally-grid strong{color:#F1ECE7;font-size:12px}
+.pol-tally-grid small{color:#9CABBA;font-size:11px}
+@media(max-width:620px){.pol-tally-grid{grid-template-columns:1fr}}
