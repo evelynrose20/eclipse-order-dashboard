@@ -11,6 +11,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  const [project,setProject]=useState(null),[materials,setMaterials]=useState([]);
  const [reserved,setReserved]=useState([]),[events,setEvents]=useState([]);
  const [draft,setDraft]=useState(null),[editingId,setEditingId]=useState(null),[activeStage,setActiveStage]=useState('');
+ const [linkedEventId,setLinkedEventId]=useState('');
  const [characterId,setCharacterId]=useState('');
  const [delivery,setDelivery]=useState({requirement_id:'',quantity:1,source:'reserved'});
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -35,6 +36,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
    setProject(details.project);setProjectId(String(chosen.id));
   }else{setProject(null);setProjectId('')}
  }
+ useEffect(()=>{if(canCreate)request('/construction/events').then(result=>setEvents(result.events||[])).catch(()=>{})},[canCreate]);
  useEffect(()=>{load(initialEventId?'':projectId).then(()=>{
   if(initialEventId)request('/construction').then(async catalog=>{
    const linked=(catalog.projects||[]).find(p=>p.event_id===initialEventId);
@@ -70,6 +72,12 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
   const result=await execute(editingId?'/construction/'+editingId:'/construction',body,editingId?'Draft construction plan updated.':'Construction storyline saved as a private draft.',editingId?'PUT':'POST',editingId||'created');
   if(result){setDraft(null);setEditingId(null);setActiveStage('')}
  }
+ const linkEvent=async()=>{
+  if(!project||!linkedEventId)return;
+  const result=await execute('/construction/'+project.id+'/events',{event_id:linkedEventId},'Event linked to this construction storyline.');
+  if(result)setLinkedEventId('');
+ };
+ const unlinkEvent=eventId=>execute('/construction/'+project.id+'/events/'+eventId,null,'Event disconnected from the construction storyline.','DELETE');
  const stageAction=(action)=>execute('/construction/'+project.id+'/'+action,null,{
   activate:'Construction drive published; the first stage now accepts contributions.',
   pause:'Contributions paused.',
@@ -93,6 +101,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
    <main className="eo-construction-detail">
     {project?<>
      <header className="eo-construction-main-head"><span>OFFICIAL ORDER COMMISSION · {project.state.toUpperCase()}</span><h3>{project.name}</h3><p>{project.description||'An ongoing material and construction undertaking of the Eclipse Order.'}</p><div className="eo-construction-meta"><span>{project.location||'Location to be announced'}</span>{project.event_name&&<span>Linked event: {project.event_name}</span>}</div></header>
+     <section className="eo-construction-events"><div><span>EVENT CONNECTIONS</span><h4>One construction arc, many gatherings</h4><p>Link future events to this same undertaking. Its supplies and stage progress carry forward across every session.</p></div><div className="eo-construction-linked-events">{(project.linked_events||[]).map(e=><div key={e.event_id}><strong>{e.name}</strong>{project.can_edit&&!readOnly&&<button type="button" disabled={busy} onClick={()=>unlinkEvent(e.event_id)}>Unlink</button>}</div>)}{!project.linked_events?.length&&<small>No event linked yet. The construction project can still run independently.</small>}</div>{project.can_edit&&!readOnly&&!['archived'].includes(project.state)&&<div className="eo-construction-event-add"><select aria-label="Link another event" value={linkedEventId} onChange={e=>setLinkedEventId(e.target.value)}><option value="">Choose another event</option>{events.filter(e=>!project.linked_events?.some(link=>link.event_id===e.id)).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select><button type="button" disabled={!linkedEventId||busy} onClick={linkEvent}>Link event</button></div>}</section>
      <div className="eo-construction-progress"><div><span>PROJECT SUPPLIES</span><strong>{num(done)} / {num(total)} delivered</strong></div><div className="eo-construction-bar"><span style={{width:percent(done,total)+'%'}}/></div><small>{percent(done,total)}% of all material targets met · storyline stages advance separately</small></div>
      {project.can_edit&&!readOnly&&<div className="eo-construction-command">
       {project.state==='draft'&&<button type="button" disabled={busy} onClick={editDraft}>Edit private plan</button>}{project.state==='draft'&&<button type="button" disabled={busy} onClick={()=>stageAction('activate')}>Open the drive to members</button>}
