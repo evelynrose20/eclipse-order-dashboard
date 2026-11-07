@@ -19,7 +19,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -464,6 +464,36 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(missingSupplyCycle.unitsMissing,2,'missing crafted goods are recorded, never replaced by gil');
   const [[frontAfterMigration]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
   assert.equal(Number(frontAfterMigration.balance),20,'migration rerun preserves the balance after the second real daily rent and upkeep deduction');
+  // Protect crafted batches from FC consumption until their maker explicitly routes them.
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',20) ON DUPLICATE KEY UPDATE quantity=20");
+  const [[sharedBefore]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
+  const reservedCraft=await craftingRoute(admin,request('POST',{recipe_id:'smelt-iron',quantity:3,character_id:char.body.id,destination:'reserved'}),'/workshop/craft');
+  assert.equal(reservedCraft.status,200,JSON.stringify(reservedCraft.body));
+  assert.equal(reservedCraft.body.produced,3);
+  const [[sharedAfter]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
+  assert.equal(Number(sharedAfter.quantity),Number(sharedBefore.quantity),'reserved output never enters shared FC stores');
+  const reservedList=await craftingRoute(admin,request('GET'),'/workshop/reserved');
+  assert.equal(Number(reservedList.body.goods.find(g=>g.material_id==='iron-ingot').quantity),3);
+  const otherPersonRelease=await craftingRoute(admin,recruitRequest('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:1}),'/workshop/reserved/release');
+  assert.equal(otherPersonRelease.status,403,'other members cannot release someone else's reserved craft');
+  const unauthorizedFrontTransfer=await frontsRoute(admin,recruitRequest('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:1}),'/fronts/'+frontId+'/reserved-stock');
+  assert.equal(unauthorizedFrontTransfer.status,403,'front officer cannot seize another maker\'s reserved goods');
+  const frontReservedTransfer=await frontsRoute(admin,request('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:2}),'/fronts/'+frontId+'/reserved-stock');
+  assert.equal(frontReservedTransfer.status,200,JSON.stringify(frontReservedTransfer.body));
+  const [[lockedRemaining]]=await admin.execute("SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id='iron-ingot'",[char.body.id]);
+  assert.equal(Number(lockedRemaining.quantity),1);
+  const [[newFrontStock]]=await admin.execute("SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id='iron-ingot'",[frontId]);
+  assert.equal(Number(newFrontStock.quantity),2);
+  const overdrawReserved=await frontsRoute(admin,request('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:2}),'/fronts/'+frontId+'/reserved-stock');
+  assert.equal(overdrawReserved.status,409,'reserved batches cannot be double-delivered');
+  const voluntaryRelease=await craftingRoute(admin,request('POST',{character_id:char.body.id,material_id:'iron-ingot',quantity:1}),'/workshop/reserved/release');
+  assert.equal(voluntaryRelease.status,200);
+  const [[sharedReleased]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
+  assert.equal(Number(sharedReleased.quantity),Number(sharedBefore.quantity)+1,'only deliberate release increases shared stock');
+  await admin.query(await readFile(new URL('../sql/031_character_reserved_goods.sql',import.meta.url),'utf8'));
+  const [[savedReserved]]=await admin.execute("SELECT quantity FROM character_reserved_materials WHERE character_id=? AND material_id='iron-ingot'",[char.body.id]);
+  assert.equal(Number(savedReserved.quantity),0,'re-running migrations preserves consumed reserved balances');
+
 
 
 
