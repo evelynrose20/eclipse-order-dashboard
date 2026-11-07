@@ -353,6 +353,22 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'crafted',quantity:qty,produced,destination:body.destination||'shared'});
   });
  }
+ const replantPath=/^\/workshop\/garden\/(\d+)\/replant$/.exec(path);
+ if(replantPath&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const plotId=Number(replantPath[1]),b=await read(req);
+  if(!Number.isInteger(plotId)||plotId<1||plotId>255||!validId(b?.crop_material)||typeof b?.discard_growth!=='boolean')return fail(400,'invalid_garden_replant');
+  return withTransaction(pool,async conn=>{
+   const [plots]=await conn.execute('SELECT crop_material,growth FROM fc_garden_plots WHERE id=? FOR UPDATE',[plotId]);
+   if(!plots.length)return fail(404,'plot_not_found');
+   const [materials]=await conn.execute("SELECT id FROM fc_materials WHERE id=? AND category IN ('herb','botanical')",[b.crop_material]);
+   if(!materials.length)return fail(400,'not_a_garden_crop');
+   if(plots[0].crop_material===b.crop_material)return fail(409,'already_planted');
+   if(Number(plots[0].growth)>0&&!b.discard_growth)return fail(409,'crop_still_growing');
+   await conn.execute('UPDATE fc_garden_plots SET crop_material=?,growth=0,health=80 WHERE id=?',[b.crop_material,plotId]);
+   return ok({status:'replanted',plot_id:plotId,crop_material:b.crop_material});
+  });
+ }
  const plotPath=/^\/workshop\/garden\/(\d+)\/(care|harvest)$/.exec(path);
  if(plotPath&&req.method==='POST'){
   const plotId=Number(plotPath[1]),action=plotPath[2],body=await read(req);
