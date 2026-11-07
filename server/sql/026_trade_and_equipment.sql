@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS fc_trade_deliveries (
  CONSTRAINT fk_delivery_character FOREIGN KEY(character_id) REFERENCES characters(id),
  CONSTRAINT fk_delivery_item FOREIGN KEY(equipment_item_id) REFERENCES character_equipment_items(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Record foreign-market stock withdrawals in the same shared inventory audit trail.
+ALTER TABLE fc_material_ledger MODIFY COLUMN activity ENUM('gather','harvest','craft_input','craft_output','upgrade','trade') NOT NULL;
 INSERT IGNORE INTO fc_equipment_templates(id,name,description,slot,minimum_level,attack_bonus,defense_bonus,tool_bonus) VALUES
  ('iron-sabre','Iron Sabre','A basic blade forged for patrols and foreign contracts.','weapon',3,1,0,0),
  ('iron-vest','Ironwork Vest','Protective clothing fitted with light metal plates.','armor',3,0,1,0),
