@@ -7,3 +7,14 @@
 .map-icon-picker-grid button i{font-size:21px;color:#dcb879}
 .map-icon-picker-grid button.selected{border-color:#e4c48d;background:#4b3940}
 .map-icon-picker-grid button:focus-visible,.map-icon-picker-trigger:focus-visible{outline:2px solid #f0cc91;outline-offset:2px}
+
+.map-icon-picker-menu{display:grid;gap:9px;position:relative;z-index:15;background:#172633;border:1px solid #7d796b;padding:10px;box-shadow:0 12px 30px #0009;border-radius:3px}
+.map-icon-picker-search,.map-icon-picker-custom input{background:#111e2a;border:1px solid #657787;color:#ede9e0;padding:9px 11px;min-height:36px;width:100%;font-size:12px;border-radius:3px}
+.map-icon-picker-grid{margin:0;max-height:260px}
+.map-icon-picker-empty{font-size:11px;color:#bfc8cc;margin:2px}
+.map-icon-picker-custom{display:grid;gap:8px;border-top:1px solid #485864;padding-top:10px}
+.map-icon-picker-custom label{display:grid;gap:6px;color:#d9c6aa;font-size:11px;font-weight:700}
+.map-icon-picker-custom button{justify-self:start;background:#344653;border:1px solid #a88c62;color:#eddec6;padding:9px 12px;cursor:pointer;font-size:11px;border-radius:3px}
+.map-icon-picker-custom button:disabled{opacity:.48;cursor:not-allowed}
+.map-icon-picker-custom a{color:#d8c091;text-decoration:underline;font-size:11px;justify-self:start}
+.map-icon-picker-custom a:focus-visible,.map-icon-picker-custom button:focus-visible,.map-icon-picker-search:focus-visible,.map-icon-picker-custom input:focus-visible{outline:2px solid #efc988;outline-offset:2px}
