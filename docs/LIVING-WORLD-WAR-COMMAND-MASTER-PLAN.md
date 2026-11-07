@@ -48,3 +48,12 @@ F. Inactive Senate and no active war: all existing Council and event systems sti
 ## How to resume
 Repository: https://github.com/evelynrose20/eclipse-order-dashboard
 Read this file first; also inspect latest schema and src/WorldAdministration.jsx / server/src/world-administration.js (when present). Continue from the last merged phase and its tests. Don't assume future roadmap is already implemented; compare code and document status in a new chat. User wants GitHub changes merged to main after CI, not merely design discussion.
+
+
+## Update — Garlean weather and visual roads (2026-11-07)
+- Real-world **calendar** dates now drive a deterministic fictional Garlean climate, with intensely cold/snowy winters and relatively mild-to-warm spring/summer/autumn. Temperature is displayed in **Fahrenheit**. It is NOT a live weather report for a real city. Existing Celsius storage feeds heating calculations internally; DM can override seasonal weather by selecting manual mode. Climate does not automatically advance food consumption or unrest.
+- Map markers are assigned configurable icon categories (capital, village, mine, refinery, factory, outpost, fortress, port, depot, ruins, etc.). Map editing lets staff drag and persist positions without replacing unrelated civilian record fields.
+- Region road records have two settlement endpoints and optional editable map bends; types include road, trail, rail, skyway and waterway. Road links are visual and foundational: no automated distance, ETA, or convoy shipment pathfinding yet.
+- World Administration's selectors use the rest of the portal's shared dropdown theme.
+- Migration: `server/sql/042_world_routes_garlean_weather.sql`; UI: `src/WorldTerritoryMap.jsx`; climate model: `server/src/garlean-climate.js`.
+- **Still planned:** real territory polygon drawing, multi-layer political borders, weather-adjusted logistics, route graph/pathfinding, transport scheduling, industrial production, monthly diet diversity based on actual food-group deliveries, simulation ticks and DM approvals.

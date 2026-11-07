@@ -95,6 +95,8 @@ async function main(){
   await pool.query(senatePolitics);
   const worldFoundation=await readFile(new URL('../sql/041_world_administration_foundation.sql',import.meta.url),'utf8');
   await pool.query(worldFoundation);
+  const worldMapClimate=await readFile(new URL('../sql/042_world_routes_garlean_weather.sql',import.meta.url),'utf8');
+  await pool.query(worldMapClimate);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
