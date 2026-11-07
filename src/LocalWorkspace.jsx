@@ -20,6 +20,7 @@ import HomebrewClasses from './HomebrewClasses.jsx';
 
 import CharacterDossier from './CharacterDossier.jsx';
 import GovernancePreview from './GovernancePreview.jsx';
+import LoreArchive from './LoreArchive.jsx';
 import OrderNavigation,{getNavSection} from './OrderNavigation.jsx';
 import './dashboard.css';
 import './local-accounts.css';
