@@ -1,13 +1,15 @@
 import React,{useEffect,useState} from 'react';
 import './commerce.css';
+import './treasury.css';
 
 const SLOT_LABELS={weapon:'Weapon',armor:'Armor',tool:'Tool',accessory:'Accessory'};
 export default function CharacterEquipment({character,request,canEquip=false}){
  const [data,setData]=useState(null);
+ const [wallet,setWallet]=useState(null);
  const [error,setError]=useState('');
  const [busy,setBusy]=useState(false);
  async function reload(){setData(await request('/commerce/characters/'+character.id+'/equipment'))}
- useEffect(()=>{setData(null);setError('');reload().catch(e=>setError(e.message))},[character.id]);
+ useEffect(()=>{setData(null);setWallet(null);setError('');reload().catch(e=>setError(e.message));request('/treasury/characters/'+character.id).then(setWallet).catch(()=>{})},[character.id]);
  async function toggle(item){
   setBusy(true);setError('');
   try{await request('/commerce/characters/'+character.id+'/equipment/'+item.id+'/equip',{method:'POST',body:{equipped:!item.equipped}});await reload()}
@@ -18,6 +20,7 @@ export default function CharacterEquipment({character,request,canEquip=false}){
  const bonuses=data?.bonuses||{attack:0,defense:0,tool:0};
  return <section className="eo-equipment-sheet">
   <div className="eo-equipment-heading"><div><span>CRAFTED FOR THIS CHARACTER</span><h4>Equipment & Armory</h4></div><small>Individual items · one per slot</small></div>
+  <div className="eo-character-wallet"><div><strong>Personal gil purse</strong><strong className="eo-character-wallet-balance">{Number(wallet?.balance||0).toLocaleString()} gil</strong></div><p>Daily wages and approved mission rewards are deposited here from the Order treasury.</p>{wallet?.history?.[0]&&<small>Last payment: +{wallet.history[0].amount} gil · {wallet.history[0].kind.replaceAll('_',' ')}</small>}</div>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
   {!data&&!error&&<p>Opening equipment inventory…</p>}
   {data&&<>
