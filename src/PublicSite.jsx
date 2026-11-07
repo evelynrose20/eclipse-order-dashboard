@@ -44,6 +44,7 @@ export default function PublicSite(){
  const [expandedFAQ,setExpandedFAQ]=useState(-1);
  const [addressCopied,setAddressCopied]=useState(false);
  const [recruitment,setRecruitment]=useState(null);
+ const [recruitmentReason,setRecruitmentReason]=useState(''),[recruitmentReopens,setRecruitmentReopens]=useState(null);
  useEffect(()=>{
   let active=true;
   const controller=new AbortController();
@@ -52,8 +53,8 @@ export default function PublicSite(){
     const response=await fetch(RECRUITMENT_API+'/recruitment',{cache:'no-store',signal:controller.signal});
     if(!response.ok)throw new Error('unavailable');
     const result=await response.json();
-    if(active)setRecruitment(['open','limited','closed'].includes(result.status)?result.status:null);
-   }catch{if(active)setRecruitment(null)}
+    if(active){setRecruitment(['open','limited','closed'].includes(result.status)?result.status:null);setRecruitmentReason(result.reason||'');setRecruitmentReopens(result.reopens_on||null)}
+   }catch{if(active){setRecruitment(null);setRecruitmentReason('');setRecruitmentReopens(null)}}
   };
   void load();
   const onVisible=()=>{if(document.visibilityState==='visible')void load()};
@@ -221,7 +222,7 @@ export default function PublicSite(){
    <section className="public-section public-membership" id="membership">
     <div className="public-section-inner">
      <SectionTag number="09">{recruitment==='closed'?'THE DOOR IS CLOSED':recruitment==='limited'?'AN INVITATION BY CONSIDERATION':'THE DOOR IS OPEN'}</SectionTag>
-     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p>{applicationsAccepted?<a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a>:<span className="public-membership-closed">{recruitment==='closed'?'The Order is not accepting new members at present.':'Recruitment status is temporarily unavailable.'}</span>}<span className="public-membership-note">{recruitment==='closed'?'Existing members may continue to enter through the member portal.':recruitment==='limited'?'The Order is considering applications selectively. Discord membership and approval by Order command are required.':'Discord server membership and approval by Order command are both required before portal access is granted.'}</span></div>
+     <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p>{applicationsAccepted?<a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a>:<span className="public-membership-closed">{recruitment==='closed'?'The Order is not accepting new members at present.':'Recruitment status is temporarily unavailable.'}</span>}{recruitment==='closed'&&<div className="public-recruitment-announcement" role="status"><strong>Notice from the Order</strong><p>{recruitmentReason||'Recruitment is presently closed.'}</p>{recruitmentReopens&&<p className="public-reopening-date"><span>Anticipated reopening</span> <time dateTime={recruitmentReopens}>{new Date(recruitmentReopens+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</time></p>}</div>}<span className="public-membership-note">{recruitment==='closed'?'Existing members may continue to enter through the member portal.':recruitment==='limited'?'The Order is considering applications selectively. Discord membership and approval by Order command are required.':'Discord server membership and approval by Order command are both required before portal access is granted.'}</span></div>
       <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
     </div>
