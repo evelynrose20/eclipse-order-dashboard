@@ -17,8 +17,8 @@ export async function senateRoute(pool,req,path){
  if(path==='/governance/senate'&&req.method==='GET'){
   const [senators]=await pool.execute('SELECT s.account_id,a.display_name,s.active,s.joined_at,s.removed_at FROM order_senators s JOIN accounts a ON a.id=s.account_id ORDER BY s.active DESC,a.display_name');
   const [bills]=await pool.execute('SELECT b.*,a.display_name AS sponsor_name FROM order_senate_bills b JOIN accounts a ON a.id=b.sponsor_id ORDER BY b.id DESC LIMIT 120');
-  const [ballots]=await pool.execute('SELECT bill_id,account_id,vote FROM order_senate_ballots WHERE bill_id IN (SELECT id FROM order_senate_bills ORDER BY id DESC LIMIT 120)');
-  const [electorate]=await pool.execute('SELECT bill_id,account_id FROM order_senate_electorate WHERE bill_id IN (SELECT id FROM order_senate_bills ORDER BY id DESC LIMIT 120)');
+  const [ballots]=await pool.execute('SELECT v.bill_id,v.account_id,v.vote FROM order_senate_ballots v JOIN order_senate_bills b ON b.id=v.bill_id ORDER BY b.id DESC LIMIT 5000');
+  const [electorate]=await pool.execute('SELECT e.bill_id,e.account_id FROM order_senate_electorate e JOIN order_senate_bills b ON b.id=e.bill_id ORDER BY b.id DESC LIMIT 5000');
   const member=senators.some(s=>s.account_id===actor.id&&s.active);
   const [history]=domina?await pool.execute('SELECT l.id,l.action,l.subject,l.detail,l.created_at,a.display_name AS actor_name FROM order_senate_audit l JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 100'):[[]];
   return ok({enabled,quorum_percent:Number(settings.quorum_percent),can_manage:domina,is_senator:member,senators:enabled||domina?senators:[],bills:enabled||domina?bills.map(b=>{const entries=ballots.filter(v=>Number(v.bill_id)===Number(b.id));const r=senateResult(entries.map(v=>v.vote),b.electorate,b.quorum_required);return {...b,...r,can_vote:b.state==='open'&&electorate.some(v=>Number(v.bill_id)===Number(b.id)&&v.account_id===actor.id),my_vote:entries.find(v=>v.account_id===actor.id)?.vote||null,ballots:domina?entries.map(v=>({account_id:v.account_id,vote:v.vote})):undefined}}):[],history:domina?history:[]});
