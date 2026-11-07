@@ -136,3 +136,5 @@ updated: 2026-11-07
 - No hidden edits to player or business-front inventory.
 - Major territorial/civic/military losses require authorization; never run punitive offline cascades.
 - Keep **world state**, **site control**, **government**, **support**, and **faction reputation** distinct.
+
+- [x] Graph road/rail junctions, legacy route import and Font Awesome map icon gallery; see implementation PR.
