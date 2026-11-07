@@ -26,8 +26,9 @@ const statusLabel=event=>{
 };
 const statusClass=event=>event.status==='active'?'live':event.status==='finished'?'closed':'open';
 
-export default function EventBoard({userId,characters,onOpenProfile,previewOnly=false,isStaff=false}){
+export default function EventBoard({userId,characters,onOpenProfile,onOpenConstruction,request,previewOnly=false,isStaff=false}){
  const [events,setEvents]=useState([]);
+ const [constructionProjects,setConstructionProjects]=useState([]);
  const [selectedId,setSelectedId]=useState('');
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
@@ -35,6 +36,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
  const [showSignups,setShowSignups]=useState(false);
  const [check,setCheck]=useState(null);
  const selected=events.find(e=>e.id===selectedId)||null;
+ const linkedConstruction=constructionProjects.filter(p=>p.event_id===selectedId&&p.state!=='draft'&&p.state!=='archived');
  const ownCharacters=useMemo(()=>characters.filter(c=>c.player_user_id===userId),[characters,userId]);
  async function refresh(){
   const all=await listEncounters();
@@ -42,6 +44,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
   setEvents(visible);
   setSelectedId(previous=>visible.some(e=>e.id===previous)?previous:visible[0]?.id||'');
  }
+ useEffect(()=>{if(request)request('/construction').then(r=>setConstructionProjects(r.projects||[])).catch(()=>{})},[request]);
  useEffect(()=>{
   let alive=true;
   const reload=async()=>{try{const all=await listEncounters();if(!alive)return;const visible=all.filter(e=>e.published&&!e.archived_at);setEvents(visible);setSelectedId(previous=>visible.some(e=>e.id===previous)?previous:visible[0]?.id||'');setError('')}catch(e){if(alive)setError(e.message)}finally{if(alive)setLoading(false)}};
@@ -95,6 +98,7 @@ export default function EventBoard({userId,characters,onOpenProfile,previewOnly=
       <section className="order-event-story">
        <h4>The posting</h4><p>{selected.description||'Details will be announced soon.'}</p>
       </section>
+      {linkedConstruction.length>0&&<section className="order-event-construction"><span>THE ORDER'S WORKS</span><h4>Construction objectives</h4><p>This event is linked to a longer building or restoration effort. Crafted goods carry the work forward between gatherings.</p>{linkedConstruction.map(p=><button type="button" key={p.id} onClick={()=>onOpenConstruction?.(selectedId)}><strong>{p.name}</strong><small>{p.stage_count} phase${''} · {p.state}</small><em>View supply objectives</em></button>)}</section>}
       {readEventStory(selected.event_story).chapters.length>0&&<section className="order-event-chapters"><h4>Chapters</h4><div>{readEventStory(selected.event_story).chapters.map((chapter,index)=><article className="order-event-chapter" key={index}><span className="order-event-chapter-number">{index+1}</span><div><strong>{chapter.title}</strong>{readEventStory(selected.event_story).type==='fc_msq'&&<span className="order-event-chapter-msq">FC MSQ</span>}{chapter.description&&<p>{chapter.description}</p>}</div><span className="order-event-chapter-difficulty">D{chapter.difficulty}</span></article>)}</div></section>}
       {Array.isArray(selected.themes)&&selected.themes.length>0&&<section className="order-event-themes"><h4>Event themes</h4><div>{selected.themes.map(id=><span key={id}>{themeName(id)}</span>)}</div></section>}
       {check?.missing_themes?.length>0&&<div className="order-event-guidance"><p>This event includes themes outside your current RP preferences.</p><button className="btn secondary" onClick={onOpenProfile} type="button">Review my RP preferences</button></div>}
