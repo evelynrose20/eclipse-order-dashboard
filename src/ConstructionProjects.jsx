@@ -39,7 +39,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  useEffect(()=>{if(canCreate)request('/construction/events').then(result=>setEvents(result.events||[])).catch(()=>{})},[canCreate]);
  useEffect(()=>{load(initialEventId?'':projectId).then(()=>{
   if(initialEventId)request('/construction').then(async catalog=>{
-   const linked=(catalog.projects||[]).find(p=>p.event_id===initialEventId);
+   const linked=(catalog.projects||[]).find(p=>(p.event_ids||[p.event_id]).includes(initialEventId));
    if(linked){const result=await request('/construction/'+linked.id);setProject(result.project);setProjectId(String(linked.id))}
   }).catch(()=>{})
  }).catch(e=>setError(e.message))},[]);
