@@ -5,7 +5,7 @@ import './world-network-editor.css';
 const percent=v=>Math.max(0,Math.min(100,Math.round(v*100)/100));
 const coordinate=(e,ref)=>{const r=ref.current?.getBoundingClientRect();return r&&r.width&&r.height?{x:percent((e.clientX-r.left)*100/r.width),y:percent((e.clientY-r.top)*100/r.height)}:null};
 const format=t=>ROUTE_OPTIONS.find(r=>r[0]===t)?.[1]||'Road';
-const markerIcon=id=>'fa-solid fa-'+(ICON_OPTIONS.find(x=>x[0]===id)?.[2]||'house');
+const markerIcon=id=>'fa-solid fa-'+(ICON_OPTIONS.find(x=>x[0]===id)?.[2]||(/^(fa-[a-z0-9-]{1,29})$/.test(id||'')?id.slice(3):'house'));
 const point=n=>({x:Number(n.map_x),y:Number(n.map_y)});
 const project=(p,a,b)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));return {x:a.x+dx*t,y:a.y+dy*t,d:Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t)}};
 const nearestPart=(p,points)=>points.slice(1).map((b,i)=>({...project(p,points[i],b),i})).sort((a,b)=>a.d-b.d)[0];
