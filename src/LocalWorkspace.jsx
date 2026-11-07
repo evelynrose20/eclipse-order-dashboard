@@ -145,7 +145,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='governance'&&!playerPreview&&admin&&<GovernancePreview currentUser={profile}/>}
     {tab==='classes'&&!playerPreview&&admin&&<HomebrewClasses classes={classCatalog} onRefresh={reloadClasses} request={request}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
-    {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
+    {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
