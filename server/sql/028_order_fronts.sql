@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS order_front_offerings (
  name VARCHAR(120) NOT NULL,
  description VARCHAR(500) NOT NULL DEFAULT '',
  posted_price INT UNSIGNED NOT NULL DEFAULT 0,
+ restricted TINYINT(1) NOT NULL DEFAULT 0,
  is_active TINYINT(1) NOT NULL DEFAULT 1,
  FOREIGN KEY(front_id) REFERENCES order_fronts(id),
  FOREIGN KEY(material_id) REFERENCES fc_materials(id),
