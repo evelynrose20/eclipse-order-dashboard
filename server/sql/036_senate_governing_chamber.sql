@@ -28,6 +28,7 @@ INSERT IGNORE INTO order_senate_seats(seat_number,account_id,appointed_at)
   FROM order_senators WHERE active=1
  ) ranked
  WHERE ranked.seat_number<=15
+ AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='036_senate_governing_chamber')
  ON DUPLICATE KEY UPDATE account_id=COALESCE(order_senate_seats.account_id,VALUES(account_id)),
  appointed_at=COALESCE(order_senate_seats.appointed_at,VALUES(appointed_at));
 INSERT INTO schema_migrations(version) VALUES('036_senate_governing_chamber') ON DUPLICATE KEY UPDATE version=VALUES(version);
