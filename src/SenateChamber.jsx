@@ -14,7 +14,7 @@ function Dots({seats,parties,onSelect,active}){
   {sorted.map((seat,i)=>{
    // Three shallow semi-circular rows, fitted to 15 places.
    const row=Math.floor(i/5),column=i%5;
-   const x=12+column*19+(row===1?6:row===2?12:0);
+   const x=11+column*17+(row===1?6:row===2?10:0);
    const y=15+row*27+Math.abs(column-2)*6;
    const party=parties.find(p=>id(p.id)===id(seat.party_id));
    return <button type="button" className={'pol-seat '+(active===seat.seat_number?'pol-seat-active':'')} style={{left:x+'%',top:y+'%',backgroundColor:seat.account_id?(party?.color||'#86919C'):'#313943'}} key={seat.seat_number}
@@ -49,6 +49,7 @@ export default function SenateChamber({request,preview=false,senate,onRefresh}){
  const [live,setLive]=useState(null),[section,setSection]=useState('chamber'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [selectedSeat,setSelectedSeat]=useState(null),[selectedParty,setSelectedParty]=useState(null),[samplePhase,setSamplePhase]=useState('campaign');
  const [partyForm,setPartyForm]=useState(FORM_PARTY),[coalitionForm,setCoalitionForm]=useState(FORM_COALITION);
+ const [editingParty,setEditingParty]=useState(null),[partyChanges,setPartyChanges]=useState(FORM_PARTY);
  const [electionName,setElectionName]=useState(''),[termDays,setTermDays]=useState(90),[statement,setStatement]=useState(''),[voteParty,setVoteParty]=useState(''),[voteCandidate,setVoteCandidate]=useState(''),[rejecting,setRejecting]=useState(null),[reason,setReason]=useState('');
  const load=async()=>{const result=await request('/governance/senate/politics');setLive(result);return result};
  useEffect(()=>{if(!preview)load().catch(e=>setError(e.message||'The chamber is unavailable.'))},[preview]);
@@ -74,6 +75,14 @@ export default function SenateChamber({request,preview=false,senate,onRefresh}){
   finally{setBusy(false)}
  }
  const submitParty=async e=>{e.preventDefault();if(await change('/governance/senate/parties',partyForm,'Party founded.'))setPartyForm(FORM_PARTY)};
+ const saveParty=async e=>{
+  e.preventDefault();if(!canWrite||!editingParty)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/governance/senate/parties/'+editingParty+'/edit',{method:'POST',body:{name:partyChanges.name,manifesto:partyChanges.manifesto,color:partyChanges.color}});
+   await load();setEditingParty(null);setNotice('Party platform updated.');
+  }catch(e){setError(e.message||'Unable to revise the party.')}finally{setBusy(false)}
+ };
  const submitCoalition=async e=>{e.preventDefault();if(await change('/governance/senate/coalitions',coalitionForm,'Coalition proposal recorded.'))setCoalitionForm(FORM_COALITION)};
  const createElection=async e=>{e.preventDefault();if(await change('/governance/senate/elections',{title:electionName,term_days:termDays},'Electoral registration opened.'))setElectionName('')};
  const nextPhase=async()=>change('/governance/senate/elections/'+election.id+'/advance',{},'Election phase advanced.');
@@ -121,9 +130,11 @@ export default function SenateChamber({request,preview=false,senate,onRefresh}){
       <div className="pol-party-cards">{parties.map(p=><article key={p.id} className="pol-party-card" style={{borderTopColor:p.color}}><span className="pol-party-badge" style={{backgroundColor:p.color}}>{p.abbreviation}</span><h4>{p.name}</h4><p>{p.manifesto}</p><small>Leader: {p.leader_name} · Members: {p.members} · Seats: {counts[String(p.id)]||0}</small>
        {canWrite&&Number(data.my_party_id)!==Number(p.id)&&!data.my_party_id&&<button disabled={busy} onClick={()=>change('/governance/senate/parties/'+p.id+'/join',{},'Joined the party.')}>Join party</button>}
        {canWrite&&Number(data.my_party_id)===Number(p.id)&&p.leader_id!==data.actor_id&&<button disabled={busy} onClick={()=>change('/governance/senate/parties/'+p.id+'/leave',{},'Left the party.')}>Leave party</button>}
+       {canWrite&&(p.leader_id===data.actor_id||data.can_manage)&&<button disabled={busy} onClick={()=>{setEditingParty(p.id);setPartyChanges({name:p.name,manifesto:p.manifesto,color:p.color})}}>Edit party platform</button>}
       </article>)}</div>
       {!parties.length&&<p className="pol-empty">No parties have been founded.</p>}
      </section>
+     {canWrite&&editingParty&&<section className="pol-panel"><header><strong>REVISE PARTY PLATFORM</strong><button onClick={()=>setEditingParty(null)}>CANCEL</button></header><form className="pol-form" onSubmit={saveParty}><label>Party name<input required maxLength={100} value={partyChanges.name} onChange={e=>setPartyChanges({...partyChanges,name:e.target.value})}/></label><label>Party color<input type="color" value={partyChanges.color} onChange={e=>setPartyChanges({...partyChanges,color:e.target.value})}/></label><label className="wide">Manifesto<textarea required rows={4} maxLength={5000} value={partyChanges.manifesto} onChange={e=>setPartyChanges({...partyChanges,manifesto:e.target.value})}/></label><button disabled={busy}>Save party platform</button></form></section>}
      {canWrite&&<section className="pol-panel"><header><strong>FOUND A PARTY</strong><small>One party membership per account</small></header>
       {data.my_party_id?<p className="pol-empty">You belong to {myParty?.name||'a party'}. Leave it before founding another.</p>:<form className="pol-form" onSubmit={submitParty}><label>Official name<input maxLength={100} required value={partyForm.name} onChange={e=>setPartyForm({...partyForm,name:e.target.value})}/></label><label>Abbreviation<input pattern="[A-Z0-9-]{2,12}" maxLength={12} required value={partyForm.abbreviation} onChange={e=>setPartyForm({...partyForm,abbreviation:e.target.value.toUpperCase()})}/></label><label>Party color<input type="color" value={partyForm.color} onChange={e=>setPartyForm({...partyForm,color:e.target.value})}/></label><label className="wide">Platform and manifesto<textarea required rows={4} maxLength={5000} value={partyForm.manifesto} onChange={e=>setPartyForm({...partyForm,manifesto:e.target.value})}/></label><button disabled={busy}>Register party</button></form>}
      </section>}
@@ -141,6 +152,7 @@ export default function SenateChamber({request,preview=false,senate,onRefresh}){
      {election&&<section className="pol-panel"><header><strong>REGISTERED CANDIDATES</strong><small>{data.candidates?.length||0} nominations</small></header><div className="pol-candidates">{data.candidates?.map(c=><div key={c.account_id}><strong>{c.candidate_name}</strong><small>{parties.find(p=>Number(p.id)===Number(c.party_id))?.name||'Independent'}</small><p>{c.statement}</p></div>)}{!data.candidates?.length&&<p className="pol-empty">No candidates registered yet.</p>}</div></section>}
      {canWrite&&election?.phase==='voting'&&!data.has_voted&&<section className="pol-panel"><header><strong>YOUR SECRET BALLOT</strong><small>One ballot per approved member</small></header><form className="pol-form" onSubmit={async e=>{e.preventDefault();await change('/governance/senate/elections/'+election.id+'/vote',{party_id:voteParty==='independent'?null:Number(voteParty),candidate_id:voteCandidate||null},'Your ballot has been recorded.')}}><label>Choose slate<select required value={voteParty} onChange={e=>{setVoteParty(e.target.value);setVoteCandidate('')}}><option value="">Choose a party or independents</option>{eligibleSlates.map(([k,pid])=><option key={k} value={pid===null?'independent':String(pid)}>{parties.find(p=>Number(p.id)===Number(pid))?.name||'Independents'}</option>)}</select></label><label>Preferred candidate<select value={voteCandidate} onChange={e=>setVoteCandidate(e.target.value)} required={voteParty==='independent'}><option value="">No candidate preference</option>{candidatesForVote.map(c=><option value={c.account_id} key={c.account_id}>{c.candidate_name}</option>)}</select></label><button disabled={busy||!voteParty}>Cast ballot</button></form></section>}
      {data.has_voted&&<p className="pol-notice">Your private ballot has been recorded. Individual votes are never displayed publicly.</p>}
+     {election&&['confirmation','complete'].includes(election.phase)&&data.tallies?.length>0&&<section className="pol-panel"><header><strong>ELECTION RESULTS / PARTY VOTE</strong><small>{data.ballot_count} ballots recorded</small></header><div className="pol-tally-grid">{data.tallies.map((t,i)=>{const party=parties.find(p=>Number(p.id)===Number(t.party_id));const won=data.results.filter(r=>String(r.party_id??'independent')===String(t.party_id??'independent')&&r.candidate_id).length;return <div key={party?.id||'independent'}><span style={{backgroundColor:party?.color||'#89949E'}}/><strong>{party?.name||'Independent candidates'}</strong><small>{t.votes} votes · {won} seats provisionally allocated</small></div>})}</div></section>}
      {election&&['confirmation','complete'].includes(election.phase)&&<section className="pol-panel"><header><strong>PROVISIONAL SENATE / CONFIRMATIONS</strong><small>Domina confirmation required</small></header><div className="pol-results">{data.results.map(r=><div key={r.seat_number}><span>SEAT {String(r.seat_number).padStart(2,'0')}</span><strong>{r.candidate_name||'Vacant'}</strong><small>{parties.find(p=>Number(p.id)===Number(r.party_id))?.name||'Independent'} · {label(r.state)}</small>{canManage&&r.state==='pending'&&<div className="pol-actions"><button disabled={busy} onClick={()=>confirm(r.seat_number,'confirm')}>Confirm</button><button disabled={busy} onClick={()=>setRejecting(rejecting===r.seat_number?null:r.seat_number)}>Reject</button></div>}{canManage&&rejecting===r.seat_number&&<div className="pol-reject"><input maxLength={500} placeholder="Required in-character reason" value={reason} onChange={e=>setReason(e.target.value)}/><button disabled={!reason.trim()||busy} onClick={()=>confirm(r.seat_number,'reject')}>Record rejection</button></div>}</div>)}</div></section>}
     </>}
     {section==='coalitions'&&<>
