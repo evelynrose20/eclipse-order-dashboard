@@ -6,7 +6,7 @@ const files=[
  'SearchPicker','battlemap','character-dossier','combatant-workspace','commerce',
  'construction','dashboard','dice-tray','discord-access-page','discord-account',
  'encounter-dice','encounter-studio','encounters','event-board','event-planning',
- 'factions','fronts','governance-preview','homebrew-classes','inline-sheet',
+ 'factions','fronts','governance-preview','class-spellbook','inline-sheet',
  'local-accounts','lore-archive','order-navigation','order-sheets',
  'portal-controls','public-chronicles','public-site','rp-platform','rp-profile',
  'senate','shared-login','treasury','workshop'
