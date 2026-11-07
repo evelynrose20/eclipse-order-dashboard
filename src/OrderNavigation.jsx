@@ -1,6 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
 import OrderEmblem from './OrderEmblem.jsx';
+import SiteIcon from './SiteIcon.jsx';
+const ICONS={overview:'layout-dashboard',roster:'users',sheet:'scroll-text',scenes:'map',encounters:'swords',events:'calendar-days',construction:'hammer',factions:'shield',world:'map',workshop:'wrench',trade:'truck',fronts:'store',treasury:'landmark',profile:'users',directory:'users',transitions:'scroll-text',members:'users',governance:'landmark',lore:'scroll-text',settings:'settings'};
 
 const SECTION_MAP={
  overview:'home',
@@ -57,7 +59,7 @@ export default function OrderNavigation({
     <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}>×</button>
    </div>
    <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Order command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
-   <label className="order-nav-search"><span className="order-nav-search-mark" aria-hidden="true">⌕</span><input type="search" aria-label="Find a page" placeholder="Find a page…" value={filter} onChange={e=>setFilter(e.target.value)}/>{filter&&<button type="button" onClick={()=>setFilter('')} aria-label="Clear navigation search">×</button>}</label>
+   <label className="order-nav-search"><span className="order-nav-search-mark" aria-hidden="true"><SiteIcon name="search" size={16}/></span><input type="search" aria-label="Find a page" placeholder="Find a page…" value={filter} onChange={e=>setFilter(e.target.value)}/>{filter&&<button type="button" onClick={()=>setFilter('')} aria-label="Clear navigation search">×</button>}</label>
    <nav className="order-nav-groups" aria-label="Primary navigation">
     {groups.length===0&&<p className="order-nav-empty">No matching pages.</p>}
     {groups.map(group=><section className="order-nav-group" key={group.id} aria-label={group.name}>
@@ -65,7 +67,7 @@ export default function OrderNavigation({
       <span>{group.name}</span><span aria-hidden="true">{query?'−':closed[group.id]?'+':'−'}</span>
      </button>
      {(query||!closed[group.id])&&<div className="order-nav-items">{group.items.map(([id,label,symbol])=><button type="button" key={id} className={'order-nav-item '+(active===id?'active':'')} aria-current={active===id?'page':undefined} title={label} onClick={()=>visit(id)}>
-      <span className="order-nav-symbol" aria-hidden="true">{symbol}</span>
+      <span className="order-nav-symbol" aria-hidden="true"><SiteIcon name={ICONS[id]||"circle-dot"} size={18}/></span>
       <span className="order-nav-text"><strong>{label}</strong><small>{DESCRIPTIONS[id]||''}</small></span>
       {active===id&&<span className="order-nav-current" aria-hidden="true"/>}
      </button>)}</div>}
