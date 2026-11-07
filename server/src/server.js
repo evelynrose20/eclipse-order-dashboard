@@ -16,6 +16,7 @@ import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {craftingRoute} from './crafting.js';
 import {commerceRoute} from './commerce.js';
+import {treasuryRoute,runDailyPayroll} from './treasury.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
 const port=Number(process.env.API_PORT||3182);
@@ -99,6 +100,7 @@ const server=http.createServer(async(req,res)=>{
   if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
+  else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
   else if(pathname==='/workshop'||pathname.startsWith('/workshop/'))result=await craftingRoute(pool,req,pathname);
   else if(pathname==='/factions'||pathname.startsWith('/factions/'))result=await factionRoute(pool,req,pathname);
@@ -145,7 +147,21 @@ server.listen(port,host,()=>{
  console.log('[Eclipse Order API] Local website origin: '+localOrigin);
  console.log('[Eclipse Order API] Public routing '+(isPublic?'ENABLED for '+publicHost:'DISABLED')+'.');
 });
+// Daily fictional payroll is processed by the Windows API, with a persisted cycle key.
+ // A restart cannot create duplicate salary, and a brief downtime catches up at most one reset.
+let payrollTickRunning=false;
+const payrollTick=async()=>{
+ if(!pool||payrollTickRunning)return;
+ payrollTickRunning=true;
+ try{const r=await runDailyPayroll(pool,new Date());if(r?.body?.status==='paid')console.log('[Eclipse Order API] Daily payroll processed:',r.body.cycle,'distributed:',r.body.paid_total)}
+ catch(e){console.warn('[Eclipse Order API] Payroll check unavailable:',e?.code||'database_unavailable')}
+ finally{payrollTickRunning=false}
+};
+const payrollTimer=setInterval(()=>void payrollTick(),60000);
+payrollTimer.unref();
+if(pool)void payrollTick();
 const close=async()=>{
+  clearInterval(payrollTimer);
   server.close();
   if(pool) await pool.end().catch(()=>{});
 };
