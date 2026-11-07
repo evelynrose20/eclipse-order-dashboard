@@ -1,3 +1,4 @@
+import SearchPicker from './SearchPicker';
 import React,{useEffect,useMemo,useState} from 'react';
 import './inline-sheet.css';
 import {xpForLevel} from './progressionRules.js';
@@ -88,11 +89,7 @@ export default function InlineSheetEditor({character,canCommand,members=[],userI
    <SectionTitle number="01" title="Identity and job" description="Choose a job for new characters, then establish their background and place within the Order."/>
    <div className="inline-sheet-grid">
     <label className="inline-field"><span>Combat job</span>
-     <select required={firstCreation} value={form.class_id||''} disabled={!firstCreation} onChange={pickJob}>
-      <option value="">Choose a job</option>
-      {!job&&form.class_id&&<option value={form.class_id}>{form.class_name||form.class_id} · Existing / unavailable</option>}
-      {groups.map(group=><optgroup label={group.label} key={group.id}>{group.jobs.map(([id,c])=><option key={id} value={id}>{c.name}</option>)}</optgroup>)}
-     </select>
+     <SearchPicker value={form.class_id||''} disabled={!firstCreation} required={firstCreation} ariaLabel="Combat job" placeholder="Choose a job" groupByCategory options={[...groups.flatMap(group=>group.jobs.map(([id,c])=>({id,name:c.name,category:group.label,description:c.description||''}))),...(!job&&form.class_id?[{id:form.class_id,name:form.class_name||form.class_id,category:'Existing / unavailable'}]:[])]} onChange={value=>{if(firstCreation)set('class_id',value)}}/>
      <small className="inline-help">{firstCreation?'Job is chosen at creation and cannot be changed through ordinary sheet editing.':'Existing characters keep their original job to protect progression and learned abilities.'}</small>
     </label>
     <div className="inline-job-level"><span>Progression</span><strong>Level {firstCreation?1:form.level||1} <small>/ 20</small></strong><small>{firstCreation?'Starts at 0 XP · Earn XP through events':Number(form.level)>=20?'Maximum level reached':(Number(form.experience)||0).toLocaleString()+' XP · Next level '+xpForLevel((Number(form.level)||1)+1).toLocaleString()+' XP'}</small></div>
