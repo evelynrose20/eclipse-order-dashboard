@@ -44,7 +44,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
  async function persistMarker(s,p){
   if(!canEdit||busy)return;
   setBusy(true);setError('');setNotice('');
-  try{await request('/world-admin/settlements/'+s.id+'/map',{method:'PATCH',body:{map_x:p.x,map_y:p.y,map_icon:s.map_icon||'settlement'}});await reload();setNotice('Location saved.')}
+  try{await request('/world-admin/settlements/'+s.id+'/map',{method:'POST',body:{map_x:p.x,map_y:p.y,map_icon:s.map_icon||'settlement'}});await reload();setNotice('Location saved.')}
   catch(e){setPositions({});setError(e.message||'Map position could not be saved.')}finally{setBusy(false)}
  }
  function pointerDown(e,s){
@@ -70,7 +70,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
  async function changeIcon(value){
   const s=displayed.find(s=>String(s.id)===String(selected));if(!s||!canEdit||busy)return;
   setBusy(true);setError('');setNotice('');
-  try{await request('/world-admin/settlements/'+s.id+'/map',{method:'PATCH',body:{map_x:Number(s.map_x),map_y:Number(s.map_y),map_icon:value}});await reload();setNotice('Map symbol changed.')}
+  try{await request('/world-admin/settlements/'+s.id+'/map',{method:'POST',body:{map_x:Number(s.map_x),map_y:Number(s.map_y),map_icon:value}});await reload();setNotice('Map symbol changed.')}
   catch(e){setError(e.message||'Symbol could not be saved.')}finally{setBusy(false)}
  }
  function selectPin(s){
@@ -145,8 +145,6 @@ export default function WorldTerritoryMap({region,settlements,routes=[],canEdit=
     <path d="M-20 150 105 80 201 130 276 40 390 124 514 50 638 124 725 40 904 102V0H0Z" fill="url(#wtm-ridge)" opacity=".72"/>
     <path d="M-25 300 95 235 172 298 281 195 361 245 468 180 559 267 660 210 755 278 927 191V575H-25Z" fill="#273f45" opacity=".58"/>
     <path d="M0 425 143 359 260 419 350 312 468 350 560 306 663 372 770 320 906 379V560H0Z" fill="#1c333d" opacity=".7"/>
-    <path d="M-10 120 C 140 150 205 280 355 252 S 605 325 914 505" stroke="#728a90" strokeWidth="31" opacity=".16" fill="none"/>
-    <path d="M-10 120 C 140 150 205 280 355 252 S 605 325 914 505" stroke="#86a1a9" strokeWidth="5" opacity=".28" fill="none"/>
     <rect width="900" height="560" fill="url(#wtm-map-contour)"/>
     <rect width="900" height="560" fill="url(#wtm-map-vignette)"/>
     <path d="M20 18h55 M20 18v55 M880 18h-55 M880 18v55 M20 542h55 M20 542v-55 M880 542h-55 M880 542v-55" stroke="#d1bd96" opacity=".45" strokeWidth="2" fill="none"/>
