@@ -100,6 +100,16 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'saved'});
   });
  }
+ const recipeCategory=/^\/workshop\/catalog\/recipes\/([a-z0-9-]+)\/category$/.exec(path);
+ if(recipeCategory&&req.method==='PUT'){
+  if(!command)return fail(403,'command_required');
+  const b=await read(req);
+  if(!validId(b?.category_id))return fail(400,'invalid_recipe_category');
+  const [category]=await pool.execute('SELECT id FROM fc_recipe_categories WHERE id=?',[b.category_id]);
+  if(!category.length)return fail(400,'invalid_recipe_category');
+  const [updated]=await pool.execute('UPDATE fc_recipes SET category_id=? WHERE id=?',[b.category_id,recipeCategory[1]]);
+  return updated.affectedRows?ok({status:'saved'}):fail(404,'recipe_not_found');
+ }
  const recipeLevel=/^\/workshop\/catalog\/recipes\/([a-z0-9-]+)\/level$/.exec(path);
  if(recipeLevel&&req.method==='PUT'){
   if(!command)return fail(403,'command_required');
@@ -189,18 +199,19 @@ export async function craftingRoute(pool,req,path){
   });
  }
  if(path==='/workshop'&&req.method==='GET'){
-  const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions],[todayCare],[teamCare]] = await Promise.all([
+  const [[materials],[recipes],[inputs],[plots],[garden],[ledger],[expeditions],[todayCare],[teamCare],[categories]] = await Promise.all([
    pool.query('SELECT m.id,m.name,m.category,m.description,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY FIELD(m.category,"ore","herb","botanical","refined","supply"),m.name'),
-   pool.query('SELECT id,name,description,output_material,output_quantity,minimum_level FROM fc_recipes ORDER BY name'),
+   pool.query('SELECT id,name,description,output_material,output_quantity,minimum_level,category_id FROM fc_recipes ORDER BY name'),
    pool.query('SELECT recipe_id,material_id,quantity FROM fc_recipe_inputs ORDER BY recipe_id,material_id'),
    pool.query('SELECT id,crop_material,growth,health,harvests FROM fc_garden_plots ORDER BY id'),
    pool.query('SELECT level FROM fc_garden WHERE id=1'),
    pool.query('SELECT l.id,l.material_id,m.name,l.delta,l.activity,l.note,l.created_at,a.display_name FROM fc_material_ledger l JOIN fc_materials m ON m.id=l.material_id JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 30'),
    pool.execute('SELECT id,zone_id,material_id,quantity,created_at FROM fc_gathering_runs WHERE account_id=? AND expedition_day=UTC_DATE() ORDER BY id DESC',[user.id]),
    pool.execute('SELECT plot_id,action FROM fc_garden_care WHERE account_id=? AND care_date=UTC_DATE()',[user.id]),
-   pool.query('SELECT plot_id,COUNT(*) AS helpers FROM fc_garden_care WHERE care_date=UTC_DATE() GROUP BY plot_id')
+   pool.query('SELECT plot_id,COUNT(*) AS helpers FROM fc_garden_care WHERE care_date=UTC_DATE() GROUP BY plot_id'),
+   pool.query('SELECT id,name,description,sort_order FROM fc_recipe_categories ORDER BY sort_order,name')
   ]);
-  return ok({materials,recipes:recipes.map(r=>({...r,inputs:inputs.filter(i=>i.recipe_id===r.id)})),plots:plots.map(plot=>({...plot,cared_today:todayCare.some(c=>Number(c.plot_id)===Number(plot.id)),helpers_today:Number(teamCare.find(c=>Number(c.plot_id)===Number(plot.id))?.helpers||0)})),garden:garden[0]||{level:1},ledger,expeditions,expedition_limit:5});
+  return ok({materials,categories,recipes:recipes.map(r=>({...r,inputs:inputs.filter(i=>i.recipe_id===r.id)})),plots:plots.map(plot=>({...plot,cared_today:todayCare.some(c=>Number(c.plot_id)===Number(plot.id)),helpers_today:Number(teamCare.find(c=>Number(c.plot_id)===Number(plot.id))?.helpers||0)})),garden:garden[0]||{level:1},ledger,expeditions,expedition_limit:5});
  }
  if(path==='/workshop/gather'&&req.method==='POST'){
   const body=await read(req);
@@ -251,18 +262,30 @@ export async function craftingRoute(pool,req,path){
    return ok({status:'created'});
   }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'material_exists');throw e}
  }
+ if(path==='/workshop/catalog/categories'&&req.method==='POST'){
+  if(!command)return fail(403,'command_required');
+  const b=await read(req);
+  if(!validId(b?.id)||!label(b?.name,90)||typeof b.description!=='string'||b.description.length>240||
+    !Number.isInteger(b.sort_order)||b.sort_order<0||b.sort_order>999)return fail(400,'invalid_recipe_category');
+  try{
+   await pool.execute('INSERT INTO fc_recipe_categories(id,name,description,sort_order) VALUES(?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.sort_order]);
+   return ok({status:'created'});
+  }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'category_exists');throw e}
+ }
  if(path==='/workshop/catalog/recipes'&&req.method==='POST'){
   if(!command)return fail(403,'command_required');
   const b=await read(req);
-  if(!validId(b?.id)||!label(b?.name,110)||typeof b?.description!=='string'||b.description.length>450||!validId(b?.output_material)||!amount(b?.output_quantity)||!Number.isInteger(b?.minimum_level)||b.minimum_level<1||b.minimum_level>100||
+  if(!validId(b?.id)||!label(b?.name,110)||typeof b?.description!=='string'||b.description.length>450||!validId(b?.output_material)||!validId(b?.category_id)||!amount(b?.output_quantity)||!Number.isInteger(b?.minimum_level)||b.minimum_level<1||b.minimum_level>100||
     !Array.isArray(b?.inputs)||b.inputs.length<1||b.inputs.length>12||
     b.inputs.some(i=>!validId(i.material_id)||!amount(i.quantity))||
     new Set(b.inputs.map(i=>i.material_id)).size!==b.inputs.length||
     b.inputs.some(i=>i.material_id===b.output_material))return fail(400,'invalid_recipe');
   return withTransaction(pool,async conn=>{
+   const [category]=await conn.execute('SELECT id FROM fc_recipe_categories WHERE id=?',[b.category_id]);
+   if(!category.length)return fail(400,'invalid_recipe_category');
    const [existing]=await conn.execute('SELECT id FROM fc_materials WHERE id IN ('+Array(b.inputs.length+1).fill('?').join(',')+')',[b.output_material,...b.inputs.map(i=>i.material_id)]);
    if(existing.length!==b.inputs.length+1)return fail(400,'unknown_material');
-   try{await conn.execute('INSERT INTO fc_recipes(id,name,description,output_material,output_quantity,minimum_level) VALUES(?,?,?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.output_material,b.output_quantity,b.minimum_level])}
+   try{await conn.execute('INSERT INTO fc_recipes(id,name,description,output_material,output_quantity,minimum_level,category_id) VALUES(?,?,?,?,?,?,?)',[b.id,b.name.trim(),b.description.trim(),b.output_material,b.output_quantity,b.minimum_level,b.category_id])}
    catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'recipe_exists');throw e}
    for(const i of b.inputs)await conn.execute('INSERT INTO fc_recipe_inputs(recipe_id,material_id,quantity) VALUES(?,?,?)',[b.id,i.material_id,i.quantity]);
    return ok({status:'created'});
