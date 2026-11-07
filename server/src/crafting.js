@@ -311,7 +311,7 @@ export async function craftingRoute(pool,req,path){
    const capacity=Number(garden[0].level)+1;
    if(plots.length>=capacity)return fail(409,'garden_capacity_reached');
    const newId=plots.length?Math.max(...plots.map(p=>Number(p.id)))+1:1;
-   await conn.execute('INSERT INTO fc_garden_plots(id,crop_material) VALUES(?,?)',[newId,b.crop_material]);
+   await conn.execute('INSERT INTO fc_garden_plots(id,crop_material,last_growth_at) VALUES(?,?,UTC_TIMESTAMP())',[newId,b.crop_material]);
    return ok({status:'planted',plot_id:newId});
   });
  }
