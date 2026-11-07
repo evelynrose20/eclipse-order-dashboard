@@ -292,6 +292,9 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const firstDelivery=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:3}),'/commerce/contracts/'+contract.body.id+'/deliver');
   assert.equal(firstDelivery.status,200,JSON.stringify(firstDelivery.body));
   assert.equal(firstDelivery.body.reputation_change,6);
+  const traderHistory=await commerceRoute(admin,request('GET'),'/commerce');
+  const memberDelivery=traderHistory.body.deliveries.find(d=>Number(d.contract_id)===Number(contract.body.id));
+  assert.equal(memberDelivery.is_mine,true,'own executed trades must be identifiable to the signed-in member');
   const overDelivery=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:2}),'/commerce/contracts/'+contract.body.id+'/deliver');
   assert.equal(overDelivery.status,409,'cannot exceed contract remaining amount');
   const completed=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1}),'/commerce/contracts/'+contract.body.id+'/deliver');
