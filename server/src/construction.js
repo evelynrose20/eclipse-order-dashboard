@@ -81,6 +81,41 @@ export async function constructionRoute(pool,req,path){
   const project=await projectDetail(pool,projectId,user);
   return project?ok({project}):fail(404,'project_not_found');
  }
+ if(!action&&req.method==='PUT'){
+  if(!canCreate)return fail(403,'event_staff_required');
+  const b=await read(req);
+  if(!label(b?.name,150)||!optional(b.description,12000)||!optional(b.location,160)||
+   (b.event_id!==null&&b.event_id!==undefined&&!uuid(b.event_id))||
+   !Array.isArray(b.stages)||b.stages.length<1||b.stages.length>20||
+   b.stages.some(s=>!label(s.name,130)||!optional(s.description,1400)||!Array.isArray(s.requirements)||s.requirements.length<1||s.requirements.length>20||
+    s.requirements.some(r=>typeof r.material_id!=='string'||!count(r.quantity))||
+    new Set(s.requirements.map(r=>r.material_id)).size!==s.requirements.length))return fail(400,'invalid_construction_plan');
+  return tx(pool,async conn=>{
+   const [projects]=await conn.execute('SELECT id,state,created_by FROM order_construction_projects WHERE id=? FOR UPDATE',[projectId]);
+   if(!projects.length)return fail(404,'project_not_found');
+   if(!command(user)&&projects[0].created_by!==user.id)return fail(403,'project_director_required');
+   if(projects[0].state!=='draft')return fail(409,'published_project_cannot_be_rewritten');
+   if(b.event_id){
+    const [events]=await conn.execute('SELECT created_by FROM order_encounters WHERE id=? AND archived_at IS NULL',[b.event_id]);
+    if(!events.length||(!command(user)&&events[0].created_by!==user.id))return fail(403,'event_director_required');
+   }
+   const unique=[...new Set(b.stages.flatMap(stage=>stage.requirements.map(req=>req.material_id)))];
+   const [known]=await conn.query('SELECT id FROM fc_materials WHERE id IN ('+unique.map(()=>'?').join(',')+')',unique);
+   if(known.length!==unique.length)return fail(400,'unknown_material');
+   await conn.execute('DELETE FROM order_construction_requirements WHERE stage_id IN (SELECT id FROM order_construction_stages WHERE project_id=?)',[projectId]);
+   await conn.execute('DELETE FROM order_construction_stages WHERE project_id=?',[projectId]);
+   await conn.execute('UPDATE order_construction_projects SET name=?,description=?,location=?,event_id=? WHERE id=?',
+    [b.name.trim(),b.description.trim(),b.location.trim(),b.event_id||null,projectId]);
+   for(let i=0;i<b.stages.length;i++){
+    const stage=b.stages[i];
+    const [row]=await conn.execute('INSERT INTO order_construction_stages(project_id,position,name,description,status) VALUES(?,?,?,?,"locked")',
+     [projectId,i+1,stage.name.trim(),stage.description.trim()]);
+    for(const requirement of stage.requirements)await conn.execute('INSERT INTO order_construction_requirements(stage_id,material_id,required_quantity) VALUES(?,?,?)',
+     [row.insertId,requirement.material_id,requirement.quantity]);
+   }
+   return ok({status:'saved',id:projectId});
+  });
+ }
  if(action==='contribute'&&req.method==='POST'){
   const b=await read(req);
   if(!id(b?.requirement_id)||!uuid(b?.character_id)||!count(b?.quantity)||
