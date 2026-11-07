@@ -4,7 +4,7 @@ import './workshop.css';
 
 
 const ICON={ore:'mountain',herb:'leaf',botanical:'seedling',refined:'flask',supply:'boxes-stacked'};
-const RECIPE_ICONS={weapons:'sword',armor:'shield-halved',tools:'hammer',accessories:'gem',refining:'gears',alchemy:'flask',tonics:'vial',provisions:'box',other:'scroll'};
+const RECIPE_ICONS={weapons:'khanda',armor:'shield-halved',tools:'hammer',accessories:'gem',refining:'gears',alchemy:'flask',tonics:'vial',provisions:'box',other:'scroll'};
 const slug=value=>value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 -]/g,'').trim().replace(/\s+/g,'-').slice(0,48);
 const CATEGORIES=['ore','herb','botanical','refined','supply'];
 const initialMaterial={name:'',category:'herb',description:''};
