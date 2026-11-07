@@ -10,5 +10,6 @@ export default function App(){
  const path=window.location.pathname.replace(/\/+$/,'')||'/';
  const memberRoute=new URLSearchParams(window.location.search).has('portal')||path==='/portal'||path==='/app'||path.startsWith('/portal/');
  if(memberRoute)return <LocalAccounts/>;
+ if(new URLSearchParams(window.location.search).has('lore'))return <LoreArchive/>;
  return <PublicSite/>;
 }
