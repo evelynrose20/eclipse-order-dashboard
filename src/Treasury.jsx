@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react';
 import './treasury.css';
 
 const money=n=>Number(n||0).toLocaleString()+' gil';
-const cycleLabel=s=>s?new Date(s+'T12:00:00Z').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'Not run yet';
+const cycleLabel=s=>s?new Date(String(s).slice(0,10)+'T12:00:00Z').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'Not run yet';
 
 export default function Treasury({request,characters=[],canManage=false,readOnly=false}){
  const [data,setData]=useState(null),[missions,setMissions]=useState(null);
