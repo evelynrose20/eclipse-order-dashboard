@@ -1,9 +1,9 @@
 -- World map edit tools, transport routes and Garlean calendar-weather.
--- Existing regions retain manual weather until the owner enables the Garlean model.
+-- Calendar-based Garlean weather is displayed by default. Manual override remains available.
 USE eclipse_order;
 
 SET @region_mode_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='world_regions' AND COLUMN_NAME='weather_mode');
-SET @sql := IF(@region_mode_exists=0,"ALTER TABLE world_regions ADD COLUMN weather_mode ENUM('manual','garlean_seasonal') NOT NULL DEFAULT 'manual'","SELECT 1");
+SET @sql := IF(@region_mode_exists=0,"ALTER TABLE world_regions ADD COLUMN weather_mode ENUM('manual','garlean_seasonal') NOT NULL DEFAULT 'garlean_seasonal'","SELECT 1");
 PREPARE change_region FROM @sql; EXECUTE change_region; DEALLOCATE PREPARE change_region;
 
 SET @icon_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='world_settlements' AND COLUMN_NAME='map_icon');
