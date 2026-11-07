@@ -111,7 +111,7 @@ export default function SenateChamber({request,preview=false,senate,onRefresh}){
     {section==='chamber'&&<>
      <div className="pol-chamber-grid">
       <section className="pol-panel pol-seat-map"><header><strong>THE CHAMBER</strong><small>{total} / 15 senatorial seats filled</small></header>
-       <div className="pol-heads"><span>HEADS OF THE ORDER</span><div>{data.heads?.map(h=><div key={h.head_number}><span>{h.head_number===1?'◆':'◇'}</span><strong>{h.title}</strong><small>{h.holder||'Unappointed'}</small></div>)}</div></div>
+       <div className="pol-heads"><span>HEADS OF THE ORDER</span><div>{data.heads?.map(h=><div key={h.head_number}><span><i className={'fa-solid fa-'+(h.head_number===1?'crown':'landmark')}/></span><strong>{h.title}</strong><small>{h.holder||'Unappointed'}</small></div>)}</div></div>
        <Dots seats={seats} parties={parties} active={selectedSeat} onSelect={setSelectedSeat}/>
        <div className="pol-seat-caption">{focusedSeat?'SEAT '+String(focusedSeat.seat_number).padStart(2,'0')+' · '+(focusedSeat.holder||'Vacant'):'Select a seat to see its holder and party.'}<small>Three Heads are shown separately; they also participate in full-chamber voting.</small></div>
       </section>
