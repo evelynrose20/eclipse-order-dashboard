@@ -5,9 +5,19 @@ import './public-chronicles.css';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const eraName=era=>ERAS.find(([id])=>id===era)?.[1]||era;
 const CHAPTERS=['thirteenth','arr','heavensward','stormblood','shadowbringers','endwalker','dawntrail','present'];
+// Published founding extracts remain readable even when the public archive cannot be reached.
+const FOUNDING_RECORDS=[
+ {id:'origins-thirteenth',title:'The House Before the Flood',era:'thirteenth',kind:'history',published:true,summary:'The Order traces its beginnings to Elira’s noble household on the Thirteenth.',body:'The serpent-and-eclipse heraldry, the traditions of the household, and loyalties between survivors endured beyond the Flood of Darkness.'},
+ {id:'carteneau-crossing',title:'A Passage into the Source',era:'arr',kind:'history',published:true,summary:'Elira crossed into the Source near Carteneau.',body:'In this era, the bonds of the household were informal relationships and loyalties. The Order had not yet established its later ranks.'},
+ {id:'yanxia-order',title:'The Order Takes Shape',era:'stormblood',kind:'history',published:true,summary:'The Order’s formal hierarchy took shape in Yanxia.',body:'It was during Stormblood that the Eclipse Order established its ranks and organization. The earlier household should not be mistaken for the later syndicate.'},
+ {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order.',body:'The Order’s losses scattered its members and ended the organization as it had been. Its survival into the present was never certain.'},
+ {id:'dawntrail-return',title:'What Remains After Dawntrail',era:'dawntrail',kind:'history',published:true,summary:'The Order faces the consequences of its fall and Elira’s return.',body:'Old rivals, Garlean remnants and criminal families have their own reasons to welcome or oppose the Order’s return.'},
+ {id:'new-cassia',title:'New Cassia',era:'present',kind:'place',published:true,summary:'Elira’s home in Ilsabard and the center of the Order’s new direction.',body:'An in-character home for stories of imperial politics, the underworld, and uneasy alliances.'}
+];
+
 const excerpts=body=>String(body||'').split(/\n\s*\n/).filter(Boolean);
 export default function PublicChronicles(){
- const [entries,setEntries]=useState([]),[state,setState]=useState('loading'),[selected,setSelected]=useState(null);
+ const [entries,setEntries]=useState(FOUNDING_RECORDS),[state,setState]=useState('loading'),[selected,setSelected]=useState(null);
  useEffect(()=>{
   let active=true;const controller=new AbortController();
   async function load(){
@@ -48,8 +58,8 @@ export default function PublicChronicles(){
      })}
     </div>
     <div className="imperial-chronicles-reading" aria-live="polite">
-     {state==='loading'?<p className="imperial-chronicles-message">Opening the chronicles…</p>:
-      state==='unavailable'?<div className="imperial-chronicles-message"><h3>The chronicle is temporarily unavailable.</h3><p>Its pages may be read when the Order's archive is restored.</p></div>:
+     {state==='loading'?<article><span className="imperial-record-kicker">THE FOUNDING RECORD</span><h3>{current?.title||'The Order remembers.'}</h3>{current?.summary&&<p className="imperial-record-lead">{current.summary}</p>}<div className="imperial-record-text">{excerpts(current?.body).map((p,i)=><p key={i}>{p}</p>)}</div></article>:
+      state==='unavailable'?<article><span className="imperial-record-kicker">THE FOUNDING RECORD</span><h3>{current?.title||'The Order remembers.'}</h3>{current?.summary&&<p className="imperial-record-lead">{current.summary}</p>}<div className="imperial-record-text">{excerpts(current?.body).map((p,i)=><p key={i}>{p}</p>)}</div><small className="imperial-chronicles-stale">The complete chronicle is available when the Order’s archives reopen.</small></article>:
       current?<article key={current.id}><span className="imperial-record-kicker">{eraName(current.era)} · ORDER CHRONICLE</span><h3>{current.title}</h3>{current.summary&&<p className="imperial-record-lead">{current.summary}</p>}<div className="imperial-record-text">{excerpts(current.body).map((p,i)=><p key={i}>{p}</p>)}</div></article>:
       <p className="imperial-chronicles-message">The record awaits its first published chapter.</p>}
      {newCassia&&<aside className="imperial-cassia-feature"><span>THE ORDER'S PRESENT HOME</span><h4>{newCassia.title}</h4><p>{newCassia.summary||newCassia.body}</p><button type="button" onClick={()=>setSelected(newCassia.id)}>Read the New Cassia record <span aria-hidden="true">↗</span></button></aside>}
