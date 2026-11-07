@@ -6,7 +6,7 @@ const remain=offer=>Math.max(0,Number(offer.required_quantity)-Number(offer.deli
 const fmt=value=>Number(value||0).toLocaleString();
 const shortDate=value=>new Date(value).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 const ICONS={ore:'⛏',herb:'❦',botanical:'✿',refined:'◆',supply:'▣',weapon:'⚔',armor:'⬡',tool:'⚒',accessory:'✧'};
-const draftNew=()=>({title:'',description:'',faction_id:'',item_kind:'material',item_id:'',required_quantity:10,rep_per_unit:2});
+const draftNew=()=>({title:'',description:'',faction_id:'',item_kind:'material',item_id:'',required_quantity:10,rep_per_unit:2,sale_value_per_unit:10});
 const classify=(item,materials,templates)=>{
  if(item.item_kind==='material')return materials.find(m=>m.id===item.material_id)?.category||'supply';
  return templates.find(t=>t.id===item.equipment_template_id)?.slot||'tool';
@@ -32,6 +32,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  const [equipmentItemId,setEquipmentItemId]=useState('');
  const [review,setReview]=useState(false);
  const [createDraft,setCreateDraft]=useState(null);
+ const [priceEdit,setPriceEdit]=useState(null);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
@@ -83,6 +84,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  const validDeliver=Boolean(character)&&!readOnly&&!busy&&order?.status==='open'&&
   (order.item_kind==='material'?desired<=maxDeliverable:eligible.some(i=>String(i.id)===String(equipmentItemId)));
  const reward=Math.min(100,desired*Number(order?.rep_per_unit||0));
+ const saleIncome=desired*Number(order?.sale_value_per_unit||0);
  const demand=open.reduce((n,c)=>n+remain(c),0);
  const routeCount=new Set(open.map(c=>c.faction_id)).size;
  const groupedHistory=transactions.filter(t=>tradeScope==='all'||t.is_mine).slice(0,80);
@@ -95,7 +97,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   try{
    const result=await request('/commerce/contracts/'+order.id+'/deliver',{method:'POST',body:{character_id:characterId,quantity:desired,...(order.item_kind==='equipment'?{equipment_item_id:Number(equipmentItemId)}:{})}});
    const updates=await Promise.allSettled([refresh(),onTradeComplete?.()]);
-   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. Faction standing +'+result.reputation_change+'.'+(updates.some(x=>x.status==='rejected')?' Refresh the exchange to see updated balances.':''));
+   setNotice('Shipment confirmed: '+fmt(result.quantity)+' '+nameOf(order,materials,templates)+' delivered to '+order.faction_name+'. The Order earned '+fmt(result.order_income)+' gil and faction standing +'+result.reputation_change+'.'+(updates.some(x=>x.status==='rejected')?' Refresh the exchange to see updated balances.':''));
    setEquipmentItemId('');setQuantity(1);
   }catch(e){setError(e.message||String(e))}
   finally{setBusy(false)}
@@ -105,10 +107,16 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   setBusy(true);setError('');
   try{
    const b=createDraft;
-   await request('/commerce/contracts',{method:'POST',body:{...b,required_quantity:Number(b.required_quantity),rep_per_unit:Number(b.rep_per_unit)}});
+   await request('/commerce/contracts',{method:'POST',body:{...b,required_quantity:Number(b.required_quantity),rep_per_unit:Number(b.rep_per_unit),sale_value_per_unit:Number(b.sale_value_per_unit)}});
    await refresh();setCreateDraft(null);setNotice('The new purchase request has been posted to the exchange.');setView('market');
   }catch(e){setError(e.message||String(e))}
   finally{setBusy(false)}
+ }
+ async function savePrice(){
+  if(!priceEdit||!Number.isInteger(Number(priceEdit.value))||Number(priceEdit.value)<0||Number(priceEdit.value)>100000)return;
+  setBusy(true);setError('');
+  try{await request('/commerce/contracts/'+priceEdit.id+'/price',{method:'POST',body:{sale_value_per_unit:Number(priceEdit.value)}});await refresh();setPriceEdit(null);setNotice('Trade value updated. Future delivered goods will fund Order wages.')}
+  catch(e){setError(e.message||String(e))}finally{setBusy(false)}
  }
  async function statusChange(c){
   setBusy(true);setError('');
@@ -161,13 +169,13 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
        <p>{order.description||'Deliver the requested goods to improve this partner’s standing toward the Order.'}</p>
        {order.item_kind==='material'?<div className="eo-exchange-ticket-amount"><label>Quantity to deliver<input type="number" min="1" max={Math.min(100,remain(order))} value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><div><span>Available in FC stores</span><strong>{fmt(availableStock(order.material_id))}</strong><small>Up to {fmt(maxDeliverable)} can be sent now</small></div><button type="button" disabled={!maxDeliverable} onClick={()=>setQuantity(maxDeliverable)}>Max</button></div>:
         <label className="eo-exchange-equipment-picker">Crafted item<select value={equipmentItemId} onChange={e=>setEquipmentItemId(e.target.value)}><option value="">Select unequipped equipment</option>{eligible.map(i=><option key={i.id} value={i.id}>{i.name} · Item #{i.id}</option>)}</select><small>{eligible.length} eligible item{eligible.length===1?'':'s'} in this character's bag</small></label>}
-       <div className="eo-exchange-ticket-summary"><div><span>Offer</span><strong>+{order.rep_per_unit} standing / item</strong></div><div><span>Shipment</span><strong>{desired} item{desired===1?'':'s'}</strong></div><div><span>Estimated standing gain</span><strong className="positive">+{reward}*</strong></div></div>
-       <small className="eo-exchange-reward-note">*Reputation is capped at +100 for each partner. Actual gain may be lower near that cap.</small>
+       <div className="eo-exchange-ticket-summary"><div><span>Offer</span><strong>+{order.rep_per_unit} standing / item</strong></div><div><span>Shipment</span><strong>{desired} item{desired===1?'':'s'}</strong></div><div><span>Estimated standing gain</span><strong className="positive">+{reward}*</strong></div><div><span>Gil paid to the Order treasury</span><strong className="positive">+{fmt(saleIncome)} gil</strong></div></div>
+       {Number(order.sale_value_per_unit||0)===0&&<small className="eo-exchange-reward-note">This older trade agreement has no gil sale value yet. Order command can set one below. Reputation still applies.</small>}<small className="eo-exchange-reward-note">*Reputation is capped at +100 for each partner. Actual gain may be lower near that cap.</small>
        <button type="button" className="eo-exchange-sell" disabled={!validDeliver} onClick={()=>setReview(true)}>Review shipment</button>
        {!character&&<p className="eo-exchange-help">Select your character sheet above to trade.</p>}
        {character&&order.item_kind==='material'&&!maxDeliverable&&<p className="eo-exchange-help">The FC stores need more of this material. Gather or craft it in Workshop & Garden.</p>}
        {character&&order.item_kind==='equipment'&&!eligible.length&&<p className="eo-exchange-help">Craft this item in the existing Workshop, then leave it unequipped to trade.</p>}
-       {canManage&&!readOnly&&<button type="button" className="eo-exchange-pause" disabled={busy} onClick={()=>statusChange(order)}>{order.status==='paused'?'Reopen order':'Pause this order'}</button>}
+       {canManage&&!readOnly&&<button type="button" className="eo-exchange-pause" disabled={busy} onClick={()=>setPriceEdit({id:order.id,value:order.sale_value_per_unit||0,title:order.title})}>Set gil / unit</button>}{canManage&&!readOnly&&<button type="button" className="eo-exchange-pause" disabled={busy} onClick={()=>statusChange(order)}>{order.status==='paused'?'Reopen order':'Pause this order'}</button>}
       </div>}
      </>:<div className="eo-exchange-no-goods"><strong>Choose goods to inspect demand</strong><p>Buyers and available shipments appear here.</p></div>}
     </section>
@@ -175,14 +183,15 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
   </>}
   {view==='orders'&&<section className="eo-exchange-orders-page"><div><h3>All purchase requests</h3><p>Active and fulfilled orders from the Order's foreign trade partners. Select any open order to trade on the market.</p></div><div className="eo-exchange-orders-scroll"><table><thead><tr><th>Good</th><th>Buyer</th><th>Filled</th><th>Standing / item</th><th>Status</th><th></th></tr></thead><tbody>{contracts.map(c=><tr key={c.id}><td><strong>{nameOf(c,materials,templates)}</strong><small>{c.title}</small></td><td>{c.faction_name}</td><td>{fmt(c.delivered_quantity)} / {fmt(c.required_quantity)}</td><td className="positive">+{c.rep_per_unit}</td><td><span className={'eo-exchange-order-status '+c.status}>{c.status}</span></td><td>{c.status==='open'?<button type="button" onClick={()=>{setView('market');setSearch('');setCategory('all');setMarketScope('all');setStockOnly(false);setSelectedItem(goodsId(c));setSelectedOrder(c.id)}}>Trade</button>:canManage&&!readOnly&&c.status==='paused'?<button type="button" disabled={busy} onClick={()=>statusChange(c)}>Reopen</button>:null}</td></tr>)}</tbody></table>{!contracts.length&&<p className="eo-exchange-help">No purchase requests yet.</p>}</div></section>}
   {view==='trades'&&<section className="eo-exchange-orders-page"><div className="eo-exchange-trades-head"><div><h3>Executed deliveries</h3><p>Actual shipments recorded by the server. These are the completed trades that affected faction standing.</p></div><div className="eo-exchange-trades-filters"><button type="button" className={tradeScope==='all'?'current':''} onClick={()=>setTradeScope('all')}>FC trades</button><button type="button" className={tradeScope==='mine'?'current':''} onClick={()=>setTradeScope('mine')}>My deliveries</button></div></div><div className="eo-exchange-orders-scroll"><table><thead><tr><th>Date</th><th>Delivering member</th><th>Buyer / good</th><th>Quantity</th><th>Standing gained</th></tr></thead><tbody>{groupedHistory.map(t=>{const c=contracts.find(c=>String(c.id)===String(t.contract_id));return <tr key={t.id}><td>{shortDate(t.created_at)}</td><td>{t.display_name}</td><td><strong>{c?.faction_name||'Trade partner'}</strong><small>{c?nameOf(c,materials,templates):'Contract #'+t.contract_id}</small></td><td>{fmt(t.quantity)}</td><td className="positive">+{t.reputation_change}</td></tr>})}</tbody></table>{!groupedHistory.length&&<p className="eo-exchange-help">{tradeScope==='mine'?'You have not delivered goods yet.':'No deliveries have been made yet.'}</p>}</div></section>}
-  {review&&order&&<div className="eo-commerce-modal-mask"><section className="eo-exchange-review" role="dialog" aria-modal="true" aria-label="Confirm shipment"><span>CONFIRM DELIVERY</span><h3>Review your shipment</h3><p>This will permanently transfer goods out of the FC stockpile or your character's equipment bag.</p><dl><div><dt>Buyer</dt><dd>{order.faction_name}</dd></div><div><dt>Goods</dt><dd>{nameOf(order,materials,templates)}</dd></div><div><dt>Quantity</dt><dd>{desired}</dd></div><div><dt>Standing reward</dt><dd>Up to +{reward}</dd></div></dl><div className="eo-exchange-review-actions"><button type="button" disabled={busy} onClick={()=>setReview(false)}>Cancel</button><button type="button" disabled={!validDeliver} onClick={commit}>{busy?'Sending…':'Confirm and deliver'}</button></div></section></div>}
-  {createDraft&&<div className="eo-commerce-modal-mask"><section className="eo-commerce-modal" role="dialog" aria-modal="true" aria-label="Post a buy order"><header><h3>Post a foreign buy order</h3><button type="button" aria-label="Close" onClick={()=>{setCreateDraft(null);setError('')}}>×</button></header>{error&&<p className="alert">{error}</p>}<p className="eo-exchange-help">Specify what a faction or settlement wants to buy. Members can fill this request with FC materials or crafted equipment.</p>
+  {review&&order&&<div className="eo-commerce-modal-mask"><section className="eo-exchange-review" role="dialog" aria-modal="true" aria-label="Confirm shipment"><span>CONFIRM DELIVERY</span><h3>Review your shipment</h3><p>This will permanently transfer goods out of the FC stockpile or your character's equipment bag.</p><dl><div><dt>Buyer</dt><dd>{order.faction_name}</dd></div><div><dt>Goods</dt><dd>{nameOf(order,materials,templates)}</dd></div><div><dt>Quantity</dt><dd>{desired}</dd></div><div><dt>Standing reward</dt><dd>Up to +{reward}</dd></div><div><dt>Order treasury revenue</dt><dd>+{fmt(saleIncome)} gil</dd></div></dl><div className="eo-exchange-review-actions"><button type="button" disabled={busy} onClick={()=>setReview(false)}>Cancel</button><button type="button" disabled={!validDeliver} onClick={commit}>{busy?'Sending…':'Confirm and deliver'}</button></div></section></div>}
+  {priceEdit&&<div className="eo-commerce-modal-mask"><section className="eo-exchange-review" role="dialog" aria-modal="true" aria-label="Set trade sale value"><span>TRADE PRICING</span><h3>{priceEdit.title}</h3><p>Choose how much gil the buying faction pays into the FC treasury per accepted item. This applies only to future deliveries.</p><label>Gil per item<input type="number" min="0" max="100000" value={priceEdit.value} onChange={e=>setPriceEdit({...priceEdit,value:e.target.value})}/></label><div className="eo-exchange-review-actions"><button type="button" onClick={()=>setPriceEdit(null)}>Cancel</button><button type="button" disabled={busy||Number(priceEdit.value)<0||Number(priceEdit.value)>100000} onClick={savePrice}>Save price</button></div></section></div>}
+ {createDraft&&<div className="eo-commerce-modal-mask"><section className="eo-commerce-modal" role="dialog" aria-modal="true" aria-label="Post a buy order"><header><h3>Post a foreign buy order</h3><button type="button" aria-label="Close" onClick={()=>{setCreateDraft(null);setError('')}}>×</button></header>{error&&<p className="alert">{error}</p>}<p className="eo-exchange-help">Specify what a faction or settlement wants to buy. Members can fill this request with FC materials or crafted equipment.</p>
    <label>Buying faction or settlement<select value={createDraft.faction_id} onChange={e=>setCreateDraft({...createDraft,faction_id:e.target.value})}><option value="">Choose buyer</option>{factions.map(f=><option key={f.id} value={f.id}>{f.name} · {f.faction_scope==='settlement'?'Settlement':'Faction'}</option>)}</select></label>
    <label>Order title<input maxLength={130} value={createDraft.title} onChange={e=>setCreateDraft({...createDraft,title:e.target.value})}/></label>
    <label>Order details<textarea maxLength={600} value={createDraft.description} onChange={e=>setCreateDraft({...createDraft,description:e.target.value})}/></label>
    <label>Goods type<select value={createDraft.item_kind} onChange={e=>setCreateDraft({...createDraft,item_kind:e.target.value,item_id:''})}><option value="material">FC shared materials / provisions</option><option value="equipment">Crafted weapon, armor or tool</option></select></label>
    <label>Good requested<select value={createDraft.item_id} onChange={e=>setCreateDraft({...createDraft,item_id:e.target.value})}><option value="">Select goods</option>{(createDraft.item_kind==='material'?materials:templates).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-   <div className="eo-commerce-three"><label>Units requested<input type="number" min="1" max="100000" value={createDraft.required_quantity} onChange={e=>setCreateDraft({...createDraft,required_quantity:e.target.value})}/></label><label>Standing per item<input type="number" min="1" max="20" value={createDraft.rep_per_unit} onChange={e=>setCreateDraft({...createDraft,rep_per_unit:e.target.value})}/></label></div>
+   <div className="eo-commerce-three"><label>Units requested<input type="number" min="1" max="100000" value={createDraft.required_quantity} onChange={e=>setCreateDraft({...createDraft,required_quantity:e.target.value})}/></label><label>Standing per item<input type="number" min="1" max="20" value={createDraft.rep_per_unit} onChange={e=>setCreateDraft({...createDraft,rep_per_unit:e.target.value})}/></label><label>Gil paid to FC per item<input type="number" min="0" max="100000" value={createDraft.sale_value_per_unit} onChange={e=>setCreateDraft({...createDraft,sale_value_per_unit:e.target.value})}/></label></div>
    <button type="button" className="btn primary" disabled={busy||!createDraft.faction_id||!createDraft.item_id||!createDraft.title.trim()} onClick={createOrder}>Publish buy order</button></section></div>}
  </section>;
 }
