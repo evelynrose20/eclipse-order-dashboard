@@ -433,7 +433,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[balanceAfterExpense]]=await admin.execute('SELECT balance FROM order_fronts WHERE id=?',[frontId]);
   assert.equal(Number(balanceAfterExpense.balance),23,'upkeep is charged from the front, not a player or Order treasury');
   const [[playerMoney]]=await admin.execute('SELECT balance FROM character_wallets WHERE character_id=?',[char.body.id]);
-  assert.equal(Number(playerMoney.balance),12,'front overhead never deducts character wallets');
+  assert.equal(Number(playerMoney.balance),13,'front overhead never deducts the wallet, including the prior one-gil low-funds payroll');
   const suspend=await frontsRoute(admin,request('POST',{status:'suspended'}),'/fronts/'+frontId+'/status');
   assert.equal(suspend.status,200);
   const closedFrontShipment=await commerceRoute(admin,request('POST',{character_id:char.body.id,quantity:1,front_id:frontId}),'/commerce/contracts/'+newFrontOrder.body.id+'/deliver');
