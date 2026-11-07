@@ -9,7 +9,7 @@ export async function localRequest(path,{method='GET',body}={}){
  try{response=await fetch(BASE+path,{
   method,headers:{Authorization:'Bearer '+token,...(body!==undefined?{'Content-Type':'application/json'}:{})},
   ...(body!==undefined?{body:JSON.stringify(body)}:{}),cache:'no-store'
- });}catch{throw contextualApiError('database_unavailable',{path,method,status:0})}
+ });}catch{const error=contextualApiError('database_unavailable',{path,method,status:0});error.message+=' Failed action: '+method+' '+path+'. Check the deployed Windows API version, service status and browser Network tab.';throw error}
  const data=response.status===204?{}:await response.json().catch(()=>null);
  if(!response.ok)throw contextualApiError(data?.error||'request_failed',{status:response.status,path,method});
  return data;
