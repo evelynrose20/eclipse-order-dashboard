@@ -6,6 +6,7 @@ const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,
 const NAV=[
  ['about','The Order'],
  ['history','Our History'],
+
  ['ranks','Hierarchy'],
  ['roleplay','Roleplay'],
  ['bad-end','Bad End RP'],
@@ -74,7 +75,7 @@ export default function PublicSite(){
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
    <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>The Eclipse Order</strong><small>FINAL FANTASY XIV · ROLEPLAY</small></span></a>
-   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
+   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a href="?lore" onClick={closeMenu}>Chronicles</a><a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
    <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
@@ -172,9 +173,9 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="07">FIND THE ORDER</SectionTag>
      <div className="public-visit-grid">
-      <div className="public-visit-story"><h2>Two places.<br/><em>One hidden home.</em></h2><p className="public-lead">The Order’s doors can be found in Eorzea. Its true in-character refuge lies farther away, high among the mountains.</p><p>Use the estate address to find us in Final Fantasy XIV. Our mountain sanctuary belongs to the Order’s roleplay setting; the residential plot is the place to visit in-game.</p>
-       <a href="#membership" className="public-text-link">How to join us <span aria-hidden="true">↗</span></a>
-       <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>THE MOUNTAIN SANCTUARY</strong><small>IN-CHARACTER HOME OF THE ECLIPSE ORDER</small></div></div>
+      <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is Elira’s home and the heart of the Order’s renewed ambitions.</p><p>Here, Garlean remnants, criminal families and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
+       <a href="?lore" className="public-text-link">Explore the Order’s chronicles <span aria-hidden="true">↗</span></a>
+       <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>NEW CASSIA · ILSABARD</strong><small>THE ORDER’S IN-CHARACTER HOME</small></div></div>
       </div>
       <aside className="public-estate-card" aria-label="The Eclipse Order in-game estate address">
        <span className="public-estate-corner top-left" aria-hidden="true"/><span className="public-estate-corner top-right" aria-hidden="true"/><span className="public-estate-corner bottom-left" aria-hidden="true"/><span className="public-estate-corner bottom-right" aria-hidden="true"/>
@@ -234,7 +235,7 @@ export default function PublicSite(){
      <div className="public-faq-list">{FAQ.map((entry,i)=><div key={entry.q} className={'public-faq-item '+(expandedFAQ===i?'open':'')}><button type="button" aria-expanded={expandedFAQ===i} onClick={()=>setExpandedFAQ(expandedFAQ===i?-1:i)}><span>{entry.q}</span><span aria-hidden="true">{expandedFAQ===i?'−':'+'}</span></button>{expandedFAQ===i&&<p>{entry.a}</p>}</div>)}</div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="?lore">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
