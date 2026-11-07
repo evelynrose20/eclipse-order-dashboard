@@ -170,3 +170,12 @@ button.fc-craft-ingredient.staged{background:#3a4b41;border-color:#9fd1ad;box-sh
 .fc-bed-plant.hellshade{color:#af87d6;text-shadow:0 0 18px #b572e6,0 0 44px #a62f5c,0 0 3px #ffd0d8}
 .fc-bed-plant.hellshade.stage-grown{color:#c49ae7;text-shadow:0 0 20px #bd7de9,0 0 52px #b52862}
 .fc-garden-helpers{color:#bfa6d0;font-size:11px;letter-spacing:.02em}
+
+/* Distinct recipe professions within the Order workshop. */
+.fc-craft-categories{display:flex;align-items:stretch;gap:9px;flex-wrap:wrap}
+.fc-craft-categories button{display:inline-flex;align-items:center;justify-content:space-between;gap:12px;min-width:135px;max-width:100%;padding:12px 15px;border:1px solid #735368;border-radius:9px;background:#342637;color:#e1c4d4;font-size:12px;font-weight:700;cursor:pointer}
+.fc-craft-categories button.chosen{background:#624055;border-color:#e2a6c2;color:#fff0f6;box-shadow:inset 0 -2px 0 #e2a6c2}
+.fc-craft-categories button small{font-size:11px;color:#cbadc0;background:#1e172455;padding:3px 7px;border-radius:20px}
+.fc-recipe-management{display:flex;flex-wrap:wrap;gap:8px}
+.fc-empty-recipes{font-size:12px;color:#baa5b2;line-height:1.6;padding:15px;border:1px dashed #6e5164;border-radius:9px}
+@media(max-width:550px){.fc-craft-categories button{flex:1 1 45%;min-width:0}}
