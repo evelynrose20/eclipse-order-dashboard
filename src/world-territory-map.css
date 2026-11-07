@@ -186,3 +186,8 @@
 .wtm-route-actions button.wtm-delete-route{border-color:#c86d77;color:#f0c1c4;background:#50303b}
 .wtm-route-actions button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:670px){.wtm-route-grid{grid-template-columns:1fr}.wtm-route-editor{padding:12px}}
+
+/* Font Awesome is loaded as a web font, while topographic paths remain SVG geometry. */
+.wtm-pin-icon > .fa-solid{display:inline-block;font-family:'Font Awesome 6 Free';font-weight:900;font-size:17px;line-height:1;transform:rotate(-45deg);font-style:normal}
+.wtm-pin[data-type='capital'] .wtm-pin-icon > .fa-solid{font-size:21px}
+.wtm-symbol select{min-width:180px}
