@@ -8,6 +8,7 @@ import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
 import Factions from './Factions.jsx';
+import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
 import Treasury from './Treasury.jsx';
