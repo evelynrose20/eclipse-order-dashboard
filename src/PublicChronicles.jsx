@@ -41,7 +41,7 @@ export default function PublicChronicles(){
  return <section className="public-section imperial-chronicles" id="chronicles" aria-labelledby="chronicles-heading">
   <div className="public-section-inner">
    <div className="imperial-chronicles-head">
-    <div><div className="public-section-tag"><span>03</span><i/><span>THE WRITTEN RECORD</span></div><h2 id="chronicles-heading">From the Thirteenth.<br/><em>To New Cassia.</em></h2></div>
+    <div><div className="public-section-tag"><span>03</span><i/><span>THE WRITTEN RECORD</span></div><h2 id="chronicles-heading">From Garlemald.<br/><em>To New Cassia.</em></h2></div>
     <p>Founded in Garlemald under Elira’s rule, the Eclipse Order outlived its imperial beginnings, expanded into Yanxia, and endured the cost of its own collapse.</p>
    </div>
    <div className="imperial-chronicles-frame">
