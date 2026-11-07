@@ -160,7 +160,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='profile'&&<><DiscordAccountConnection request={request} readOnly={playerPreview}/><ProfileConsent readOnly={playerPreview}/></>}
     {tab==='directory'&&<MemberRPDirectory/>}
     {tab==='transitions'&&<CharacterTransitions key={playerPreview?'player':'staff'} readOnly={playerPreview} characters={visibleCharacters} role={playerPreview?'member':profile.role} userId={profile.id} onRefresh={load}/>}
-    {tab==='settings'&&<FCSettings role={playerPreview?'member':profile.role}/>}
+    {tab==='settings'&&<FCSettings role={playerPreview?'member':profile.role} request={request}/>}
    </div>
   </main>
  </div>;
