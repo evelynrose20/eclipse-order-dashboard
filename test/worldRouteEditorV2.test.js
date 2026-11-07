@@ -26,9 +26,9 @@ test('route planning is preview-first with explicit save and cancellation',async
  assert.match(map,/Save new route/);
  assert.match(map,/Cancel draft/);
  assert.match(map,/wtm-planned-route/);
- assert.match(map,/setRouteEnd\(Number\(s\.id\)\)/);
+ assert.match(map,/setRouteEnd\(next\)/);
  assert.doesNotMatch(map,/void saveRoute/);
- assert.match(map,/Route endpoints selected/);
+ assert.match(map,/Connected endpoints ready/);
  assert.match(map,/e\.stopPropagation\(\);mapClick\(e\)/);
 });
 test('existing roads are editable by route list with waypoint insertion and reset',async()=>{
