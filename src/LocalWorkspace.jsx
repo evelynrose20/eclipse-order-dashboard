@@ -73,7 +73,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['roster','Character roster','▦'],
   ['sheet','Character dossiers','◇'],
   ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
-  ...(!playerPreview?[['governance','Governance & Senate','♛']]:[]),
+  ...(!playerPreview?[['governance','Governance','♛']]:[]),
   ...(!playerPreview&&canManage(profile.role)?[['classes','Homebrew classes','✧']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
