@@ -22,6 +22,7 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const effectiveHousing=clamp(Number(settlement.housing||0)+(svc.public_works||0));
  const effectiveMedical=clamp(Number(settlement.medical_access||0)+(svc.clinic||0));
  const effectiveFoodAccess=clamp(Number(settlement.food_access||0)+(svc.food_storage||0));
+ const effectiveWaterAccess=clamp(Number(settlement.water_access??50)+(svc.water||0));
  const effectiveSecurity=clamp(Number(settlement.security_score||0)+effects.defense_bonus);
  const food=stock.filter(s=>s.resource_kind==='food').reduce((sum,s)=>sum+Number(s.quantity),0);
  const fuel=stock.filter(s=>s.resource_kind==='fuel').reduce((sum,s)=>sum+Number(s.quantity),0);
@@ -43,11 +44,11 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const chill=clamp((100-coverage)*temperatureDemand+(heatNeed>fuel?(heatNeed-fuel)/Math.max(1,heatNeed)*coverage:0));
  const dehydration=waterNeed>water?clamp((waterNeed-water)/Math.max(1,waterNeed)*100):0;
  const medicalShortage=medicineNeed>medicine?clamp((medicineNeed-medicine)/Math.max(0.001,medicineNeed)*100):0;
- const service=Math.round((100-effectiveHousing)*.12+(100-effectiveMedical)*.10+(100-effectiveFoodAccess)*.10+(100-effectiveSecurity)*.06);
+ const service=Math.round((100-effectiveHousing)*.12+(100-effectiveMedical)*.10+(100-effectiveFoodAccess)*.10+(100-effectiveSecurity)*.06+(100-effectiveWaterAccess)*.06);
  const pressure=population>0?clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service):0;
  const risk=population>0?clamp(pressure*.7+Number(settlement.unrest)*.3):0;
  const warnings=[...(foodNeed>0&&foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(effectiveHousing<60?['housing_public_works_needed']:[]),...(effectiveMedical<60?['clinic_support_needed']:[]),...(effectiveSecurity<45?['public_safety_support_needed']:[])];
- return {effective_security:effectiveSecurity,effective_housing:effectiveHousing,effective_medical_access:effectiveMedical,effective_food_access:effectiveFoodAccess,effective_insulation:effectiveInsulation,food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
+ return {effective_security:effectiveSecurity,effective_housing:effectiveHousing,effective_medical_access:effectiveMedical,effective_food_access:effectiveFoodAccess,effective_water_access:effectiveWaterAccess,effective_insulation:effectiveInsulation,food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
 }
 export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[],upgrades=[]){
  const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets,upgrades);
