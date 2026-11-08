@@ -116,7 +116,7 @@ export async function handleRailInfrastructure(pool,req,path,actor){
   const match=/^\/world-admin\/rail\/links(?:\/(\d+))?$/.exec(path),linkId=match?.[1]?Number(match[1]):null;
   if(!match||req.method==='POST'&&linkId||req.method!=='POST'&&!linkId)return fail(400,'invalid_rail_link');
   const b=req.method==='DELETE'?null:await body(req);
-  if(b&&(!id(b.from_station_id)||!id(b.to_station_id)||Number(b.from_station_id)===Number(b.to_station_id)||!named(b.name,140)||!named(b.notes,1200)||!statuses.includes(b.status)||typeof b.freight_enabled!=='boolean'||typeof b.bidirectional!=='boolean'))return fail(400,'invalid_rail_link');
+  if(req.method!=='DELETE'&&(!b||!id(b.from_station_id)||!id(b.to_station_id)||Number(b.from_station_id)===Number(b.to_station_id)||!named(b.name,140)||!named(b.notes,1200)||!statuses.includes(b.status)||typeof b.freight_enabled!=='boolean'||typeof b.bidirectional!=='boolean'))return fail(400,'invalid_rail_link');
   return tx(pool,async db=>{
    if(req.method==='DELETE'){
     const [removed]=await db.execute('DELETE FROM world_rail_interzone_links WHERE id=?',[linkId]);
@@ -126,7 +126,7 @@ export async function handleRailInfrastructure(pool,req,path,actor){
    const [stations]=await db.execute('SELECT id,region_id,zone_id FROM world_rail_stations WHERE id IN (?,?)',[b.from_station_id,b.to_station_id]);
    if(stations.length!==2)return fail(400,'rail_link_station_missing');
    if(same(stations[0],stations[1].region_id,stations[1].zone_id))return fail(400,'rail_link_requires_distinct_zones');
-   const [from,to]=[Number(b.from_station_id),Number(b.to_station_id)].sort((x,y)=>x-y);
+   const from=Number(b.from_station_id),to=Number(b.to_station_id);
    const values=[from,to,b.name.trim(),b.status,b.bidirectional?1:0,b.freight_enabled?1:0,b.notes];
    if(req.method==='PUT'){
     const [existing]=await db.execute('SELECT id FROM world_rail_interzone_links WHERE id=?',[linkId]);if(!existing.length)return fail(404,'rail_link_not_found');
