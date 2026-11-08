@@ -1,0 +1,52 @@
+import React,{useEffect,useMemo,useState} from 'react';
+
+const fmt=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:1});
+const nameCase=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+export default function NpcSettlementsPanel({request,factions=[],onChanged}){
+ const [data,setData]=useState(null),[selected,setSelected]=useState(''),[search,setSearch]=useState(''),[onlyActive,setOnlyActive]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ async function load(){const response=await request('/world-admin/simulation');setData(response);setSelected(prev=>response.settlements.some(s=>String(s.id)===prev&&s.ownership==='npc')?prev:String(response.settlements.find(s=>s.ownership==='npc')?.id||''));}
+ useEffect(()=>{load().catch(e=>setError(e.message||'Unable to load NPC settlements'))},[]);
+ const npcs=(data?.settlements||[]).filter(s=>s.ownership==='npc');
+ const filtered=npcs.filter(s=>(!onlyActive||s.mode==='automatic'&&!s.paused)&&[s.name,s.region_name,factions.find(f=>f.id===s.controlling_faction_id)?.name].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const current=npcs.find(s=>String(s.id)===selected)||filtered[0];
+ async function update(settings){
+  setBusy(true);setError('');setNotice('');
+  try{await request('/world-admin/simulation/'+current.id+'/settings',{method:'PUT',body:settings});await load();await onChanged?.();setNotice('Simulation settings saved. Changes take effect at the next scheduled check.')}
+  catch(e){setError(e.message||'Could not save simulation settings')}finally{setBusy(false)}
+ }
+ const history=(current?.history||[]).slice().reverse();
+ const bounds=history.reduce((m,h)=>Math.max(m,Number(h.population_after)),Math.max(1,Number(current?.population||0)));
+ if(!data)return <section className="wa-panel"><h3>NPC settlements</h3><p>{error||'Loading NPC simulation records…'}</p></section>;
+ return <div className="wa-npc-world">
+  <div className="wa-npc-heading"><div><span className="wa-kicker">LIVING WORLD · AUTONOMOUS FACTIONS</span><h3>NPC Settlements</h3><p>Watch independent communities develop without mixing them into the Order's administrative workload.</p></div><button type="button" onClick={()=>load().catch(e=>setError(e.message))}><i className="fa-solid fa-rotate" aria-hidden="true"/> Refresh</button></div>
+  {error&&<p className="wa-error" role="alert">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
+  <div className="wa-npc-summary">
+   <div><small>NPC settlements</small><strong>{npcs.length}</strong></div><div><small>Autonomous</small><strong>{npcs.filter(s=>s.mode==='automatic'&&!s.paused).length}</strong></div>
+   <div><small>Total residents</small><strong>{fmt(npcs.reduce((sum,s)=>sum+Number(s.population),0))}</strong></div>
+   <div><small>Active projects</small><strong>{npcs.reduce((n,s)=>n+s.projects.filter(p=>p.status==='building').length,0)}</strong></div>
+  </div>
+  <div className="wa-npc-layout">
+   <aside className="wa-npc-directory" aria-label="NPC settlement directory">
+    <div className="wa-npc-filters"><input aria-label="Search NPC settlements" placeholder="Search settlements or factions…" value={search} onChange={e=>setSearch(e.target.value)}/><label><input type="checkbox" checked={onlyActive} onChange={e=>setOnlyActive(e.target.checked)}/> Simulating only</label></div>
+    <div className="wa-npc-list">{filtered.map(s=><button type="button" key={s.id} className={current?.id===s.id?'selected':''} onClick={()=>setSelected(String(s.id))}><span><strong>{s.name}</strong><small>{factions.find(f=>f.id===s.controlling_faction_id)?.name||'NPC faction'} · {s.region_name}</small></span><span className="wa-npc-list-right"><strong>{fmt(s.population)}</strong><small>{s.paused?'Paused':s.mode==='automatic'?'Simulating':'Off'}</small></span></button>)}{!filtered.length&&<p className="wa-empty">No matching NPC-controlled settlements. Assign a controlling faction other than the Eclipse Order to classify a settlement as NPC-run.</p>}</div>
+   </aside>
+   <section className="wa-npc-details" aria-label="NPC settlement details">
+    {!current?<div className="wa-empty">Select an NPC settlement to inspect its growth and construction history.</div>:<>
+     <div className="wa-npc-details-head"><div><span className="wa-kicker">{current.region_name} · {factions.find(f=>f.id===current.controlling_faction_id)?.name||'NPC faction'}</span><h3>{current.name}</h3><p>{current.mode==='automatic'&&!current.paused?'Autonomous settlement simulation active':current.paused?'Simulation paused':'Simulation disabled'}</p></div><span className="wa-npc-pill">{current.cadence==='slow'?'Slow':current.cadence==='fast'?'Fast':'Daily'}</span></div>
+     <div className="wa-npc-stats"><div><small>Residents</small><strong>{fmt(current.population)}</strong></div><div><small>Available housing</small><strong>{fmt(Math.max(0,Number(current.housing_capacity)-Number(current.population)))}</strong></div><div><small>Employment</small><strong>{fmt(current.workforce)}</strong></div><div><small>Stability</small><strong>{fmt(current.civil_stability)}/100</strong></div></div>
+     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Population trend</h4><span>Recent simulation cycles</span></div>
+      <div className="wa-npc-bars" role="img" aria-label={'Population history for '+current.name}>{history.length?history.map(h=><div title={h.cycle_date+': '+fmt(h.population_after)+' residents'} key={h.id} style={{height:Math.max(5,Number(h.population_after)/bounds*100)+'%'}}/>):<p>No simulation cycles recorded yet.</p>}</div>
+      <p className="wa-npc-subtle">Last cycle: {current.last_cycle_key||'Not yet simulated'}. No catch-up bursts after downtime.</p>
+     </div>
+     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Economy & services</h4><span>NPC-owned reserves (not Order inventory)</span></div><div className="wa-npc-supplies">{[['Food',current.food_units],['Water',current.water_units],['Fuel',current.fuel_units],['Medicine',current.medicine_units]].map(([label,value])=><div key={label}><span>{label}</span><strong>{fmt(value)}</strong></div>)}</div></div>
+     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Construction & development</h4><span>{fmt(current.development_points)} development points</span></div>{current.projects.length?current.projects.slice(0,8).map(p=><div className="wa-npc-project" key={p.id}><div><strong>{p.name}</strong><small>{nameCase(p.kind)} · {nameCase(p.status)}</small></div><div className="wa-npc-project-progress"><div style={{width:p.progress+'%'}}/></div><strong>{p.progress}%</strong></div>):<p className="wa-npc-subtle">No construction activity recorded yet.</p>}</div>
+     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Settlement journal</h4><span>{current.history.length} recent entries</span></div>{current.history.length?current.history.slice(0,12).map(h=><div className="wa-npc-journal" key={h.id}><small>{h.cycle_date} · {nameCase(h.event_type)}</small><strong>{h.headline}</strong><span>Population {fmt(h.population_before)} → {fmt(h.population_after)} · Stability {h.condition_before} → {h.condition_after}</span></div>):<p className="wa-npc-subtle">The first autonomous tick will create the first journal entry.</p>}</div>
+     <div className="wa-npc-section wa-npc-settings"><div className="wa-npc-section-title"><h4>Simulation settings</h4><span>Staff only</span></div><p className="wa-npc-subtle">NPC-controlled settlements simulate automatically by default. No riots, deaths, territory transfers or Order supply withdrawals are triggered.</p>
+      <div className="wa-npc-settings-row"><label>Simulation<select value={current.mode} disabled={busy} onChange={e=>update({mode:e.target.value,cadence:current.cadence,paused:current.paused})}><option value="automatic">Automatic</option><option value="off">Off</option></select></label><label>Cadence<select value={current.cadence} disabled={busy} onChange={e=>update({mode:current.mode,cadence:e.target.value,paused:current.paused})}><option value="slow">Slow · every 3 days</option><option value="normal">Normal · daily</option><option value="fast">Fast · every 6 hours</option></select></label><label>Pause<select value={current.paused?'yes':'no'} disabled={busy} onChange={e=>update({mode:current.mode,cadence:current.cadence,paused:e.target.value==='yes'})}><option value="no">Running</option><option value="yes">Paused</option></select></label></div>
+     </div>
+    </>}
+   </section>
+  </div>
+ </div>;
+}
