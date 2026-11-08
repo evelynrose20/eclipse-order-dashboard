@@ -31,7 +31,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],industryLocations=[],onSelectIndustry=()=>{},railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -420,6 +420,15 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     {previewPoints.length>=2&&drawing&&<path className={'wtm-planned-route '+(mode==='track'?'wtm-track-preview':'')} d={smoothRoadPath(previewPoints)}/>}
    {mode==='track'&&tracePoints.length>=2&&<path className="wtm-track-trace" d={smoothRoadPath(tracePoints)}/> }
    </svg>
+   {industryLocations.map(site=><button key={'industry-'+site.id} type="button"
+      className="wtm-industry-pin"
+      style={{left:site.map_x+'%',top:site.map_y+'%'}}
+      title={site.name+' · '+site.site_type+' (open industry)'}
+      aria-label={'Industrial site: '+site.name+', '+site.site_type}
+      onClick={e=>{e.stopPropagation();onSelectIndustry(site.id)}}>
+      <span className="wtm-industry-pin-symbol" aria-hidden="true"><i className={'fa-solid fa-'+({farm:'wheat-awn',orchard:'apple-whole',mine:'pickaxe',quarry:'mountain',lumberyard:'tree',fishery:'fish',refinery:'flask',factory:'industry',power_plant:'bolt',workshop:'hammer',outpost:'shield-halved'}[site.site_type]||'industry')}/></span>
+      <span className="wtm-industry-pin-name">{site.name}</span>
+     </button>)}
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
 
 
