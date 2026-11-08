@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
 import {createPool} from 'mysql2/promise';
 import {generateToken,hashToken} from '../src/credentials.js';
 import {characterRoute} from '../src/characters.js';
@@ -236,11 +237,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(remainingHerbs.quantity),485,'aid debits shared stock exactly once');
   const [[civicHerbs]]=await admin.execute('SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code=?',[mineId,'wild-herbs']);
   assert.equal(Number(civicHerbs.quantity),15,'aid credits real civilian stock exactly once');
-  for(const b of [
-   {item_code:'ci-rations',item_label:'Emergency rations',resource_kind:'food',food_group:'grain',quantity_delta:400,reason:'Test supplies'},
-   {item_code:'ci-water',item_label:'Clean water',resource_kind:'water',food_group:null,quantity_delta:350,reason:'Test supplies'},
-   {item_code:'ci-fuel',item_label:'Heating fuel',resource_kind:'fuel',food_group:null,quantity_delta:400,reason:'Test supplies'}]){
-   const movement=await worldAdministrationRoute(admin,request('POST',b),'/world-admin/civic/'+mineId+'/stock');
+  // Use audited real shared inventory for civilian provisions.
+  await admin.execute("INSERT IGNORE INTO fc_materials(id,name,category,description) VALUES('ci-rations','CI Rations','supply','Fixture'),('ci-water','CI Water','supply','Fixture'),('ci-fuel','CI Fuel','supply','Fixture')");
+  for(const [material_id,quantity,resource_kind,food_group] of [
+   ['ci-rations',400,'food','grain'],['ci-water',350,'water',null],['ci-fuel',400,'fuel',null]]){
+   await admin.execute('INSERT INTO fc_material_stock(material_id,quantity) VALUES(?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity)',[material_id,quantity]);
+   const movement=await worldAdministrationRoute(admin,request('POST',{material_id,quantity,resource_kind,food_group,request_key:randomUUID()}),'/world-admin/civic/'+mineId+'/transfer');
    assert.equal(movement.status,200,JSON.stringify(movement.body));
   }
   const civicOff=await worldAdministrationRoute(admin,request('POST',{cycle_date:'2026-11-08'}),'/world-admin/civic/'+mineId+'/run');
