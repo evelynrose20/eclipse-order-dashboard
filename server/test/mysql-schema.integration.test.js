@@ -378,8 +378,9 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.deepEqual(allowedInterzone.body.link_ids,[Number(interzone.body.id)]);
   const badLink=await worldAdministrationRoute(admin,request('POST',{...interzonePayload,to_station_id:Number(target.body.id)}),'/world-admin/rail/links');
   assert.equal(badLink.status,400,'interzone link cannot join two stations in one zone');
-  const railState=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
-  assert.ok(railState.body.rail_stations.some(s=>Number(s.id)===Number(origin.body.id)&&s.freight_ready));
+  const [[legacyRailStation]]=await admin.execute('SELECT id,freight_enabled,status FROM world_rail_stations WHERE id=?',[origin.body.id]);
+  assert.equal(Number(legacyRailStation.id),Number(origin.body.id),'legacy rail station data remains stored after menu transition');
+  assert.equal(legacyRailStation.status,'operational');
  const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
   assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
