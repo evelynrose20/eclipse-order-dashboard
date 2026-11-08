@@ -7,7 +7,7 @@ const blankStation=(region,zone)=>({region_id:Number(region),zone_id:Number(zone
 const blankPlatform=id=>({station_id:Number(id),code:'',kind:'freight',track_length:1,capacity:0,status:'planned'});
 const blankSwitch=()=>({node_id:'',entry_segment_id:'',exit_segment_id:'',status:'open',notes:''});
 const blankCross=(region,zone,p)=>({region_id:Number(region),zone_id:Number(zone),rail_segment_id:'',road_segment_id:'',name:'',map_x:p?.x??50,map_y:p?.y??50,control_type:'gated',status:'planned',notes:''});
-export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint}){
+export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint,focus,onFocusHandled}){
  const [oldRoute,setOldRoute]=useState('');
  const [freightFrom,setFreightFrom]=useState(''),[freightTo,setFreightTo]=useState(''),[freightPreview,setFreightPreview]=useState(null);
  const [tab,setTab]=useState('stations'),[record,setRecord]=useState(null),[editing,setEditing]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
@@ -20,6 +20,14 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const pairs=useMemo(()=>{const id=Number(editing?.node_id);return rails.filter(e=>Number(e.from_node_id)===id||Number(e.to_node_id)===id)},[rails,editing?.node_id]);
  useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('');setFreightFrom('');setFreightTo('');setFreightPreview(null)},[regionId,zoneId]);
  useEffect(()=>{if(point&&tab==='crossings'&&editing)setEditing(old=>old?{...old,map_x:point.x,map_y:point.y}:old)},[point?.x,point?.y,tab]);
+ useEffect(()=>{
+  if(!focus?.kind||focus.id==null)return;
+  const items=focus.kind==='stations'?stations:focus.kind==='switches'?switches:focus.kind==='crossings'?crossings:platforms;
+  const item=items.find(x=>Number(x.id)===Number(focus.id));
+  if(item){setTab(focus.kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
+  onFocusHandled?.();
+ },[focus?.kind,focus?.id]);
+
  const update=(key,value)=>setEditing(old=>({...old,[key]:value}));
  const labelEdge=e=>e.route_name||('Track #'+e.id);
  function start(kind,existing=null){
