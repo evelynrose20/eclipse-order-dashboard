@@ -44,8 +44,8 @@ export default function ThrallChamber({request}){
   {notice&&<div className="chamber-notice" role="status">{notice}</div>}
   {machine&&<>
    <div className="chamber-stats">
-    <div><small>UPPER RESERVOIR</small><strong>{machine.upper_volume} <em>/ {machine.upper_capacity}</em></strong><span>Fictional units</span></div>
-    <div><small>LOWER RESERVOIR</small><strong>{machine.lower_volume} <em>/ {machine.lower_capacity}</em></strong><span>Fictional units</span></div>
+    <div><small>UPPER RESERVOIR</small><strong>{machine.upper_volume} <em>/ {machine.upper_capacity}</em></strong><span>Units</span></div>
+    <div><small>LOWER RESERVOIR</small><strong>{machine.lower_volume} <em>/ {machine.lower_capacity}</em></strong><span>Units</span></div>
     <div><small>ARCHIVED BATCHES</small><strong>{data.batches.length}</strong><span>Most recent records</span></div>
     <div><small>CHAMBER REVISION</small><strong>{machine.revision}</strong><span>Persisted server state</span></div>
    </div>
@@ -70,7 +70,7 @@ export default function ThrallChamber({request}){
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">A character must occupy the chair before the system can run. The chair must be offline before seating a character. These controls update the fictional in-world machine record. They do not operate any physical equipment.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. The chair must be offline before seating a character. Machine state and activity are saved to the Order ledger.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
@@ -106,7 +106,7 @@ export default function ThrallChamber({request}){
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
        <small>{c.id==='lower'?(lowerTypes[machine.lower_material_type]||'Unclassified'):c.material} · {pct}% of capacity</small>
        {canManage&&<div className="chamber-record">
-        <button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('run_cycle',{channel:c.id},'Timed fictional cycle completed; inventory and ledger updated.')}>Run collection cycle</button>
+        <button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('run_cycle',{channel:c.id},'Collection cycle complete. Reservoirs and activity ledger updated.')}>Run collection cycle</button>
         <button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button>
        </div>}
       </div>;
@@ -120,7 +120,7 @@ export default function ThrallChamber({request}){
    {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Batch placed into alchemical inventory.')){setShowBatch(false);setView('inventory')}}}>
     <div className="chamber-heading"><div><span>ALCHEMICAL STORAGE</span><h3>Decant reservoir batch</h3></div><button type="button" onClick={()=>setShowBatch(false)} aria-label="Close">✕</button></div>
     <label>Reservoir<select value={batch.channel} onChange={e=>setBatch(v=>({...v,channel:e.target.value,quantity:Math.min(v.quantity,Number(machine[e.target.value+'_volume']))}))}>{channels.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
-    <label>Quantity (fictional units)<input required type="number" min="1" max={machine[batch.channel+'_volume']} value={batch.quantity} onChange={e=>setBatch(v=>({...v,quantity:e.target.value}))}/></label>
+    <label>Quantity (units)<input required type="number" min="1" max={machine[batch.channel+'_volume']} value={batch.quantity} onChange={e=>setBatch(v=>({...v,quantity:e.target.value}))}/></label>
     <label>Alchemical classification<input maxLength="80" value={batch.classification} onChange={e=>setBatch(v=>({...v,classification:e.target.value}))}/></label>
     <label>Research notes<textarea maxLength="500" value={batch.notes} onChange={e=>setBatch(v=>({...v,notes:e.target.value}))}/></label>
     <div className="chamber-actions"><button type="button" onClick={()=>setShowBatch(false)}>Cancel</button><button disabled={busy} type="submit">Store batch</button></div>
