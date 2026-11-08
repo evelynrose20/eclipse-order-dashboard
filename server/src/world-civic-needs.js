@@ -14,7 +14,7 @@ async function body(req){const chunks=[];let n=0;for await(const chunk of req){n
 async function tx(pool,fn){const c=await pool.getConnection();try{await c.beginTransaction();const result=await fn(c);if(result.status===200)await c.commit();else await c.rollback();return result}catch(e){await c.rollback().catch(()=>{});throw e}finally{c.release()}}
 async function log(db,actor,action,id,detail=''){await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor,action,'civic',id,detail.slice(0,350)])}
 const settingsDefault={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:3,grace_cycles:2,enabled_mode:'off',paused:0};
-function readings(settlement,profile,stock,history,regionTempF=32){
+function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=[]){
  const population=Number(settlement.population);
  const food=stock.filter(s=>s.resource_kind==='food').reduce((sum,s)=>sum+Number(s.quantity),0);
  const fuel=stock.filter(s=>s.resource_kind==='fuel').reduce((sum,s)=>sum+Number(s.quantity),0);
@@ -26,23 +26,24 @@ function readings(settlement,profile,stock,history,regionTempF=32){
  const exposure=Number(settlement.weather_exposure)/100;
  const insulation=Number(settlement.insulation)/100;
  const temperatureDemand=Math.max(0,65-regionTempF)/65;
- const heatNeed=population*Number(profile.heat_daily_per_resident)*temperatureDemand*(1-insulation*.65)*(0.6+exposure*.8);
+ const coverage=heatingAssets.length?Math.min(100,heatingAssets.reduce((n,a)=>n+(a.status==='offline'?0:Number(a.coverage_pct)*Number(a.condition_pct)/100),0)):Number(settlement.heating_coverage);
+ const heatNeed=population*Number(profile.heat_daily_per_resident)*temperatureDemand*(1-insulation*.65)*(0.6+exposure*.8)*(coverage/100);
  const foodDays=foodNeed?food/foodNeed:0;
  const heatDays=heatNeed?fuel/heatNeed:null;
  const seen=new Set(history.filter(h=>h.resource_kind==='food'&&Number(h.quantity_delta)>0&&h.food_group).map(h=>h.food_group));
  const deficit=foodNeed>food?clamp((foodNeed-food)/Math.max(1,foodNeed)*100):0;
  const monotony=seen.size<Number(profile.minimum_variety)?clamp((Number(profile.minimum_variety)-seen.size)*12):0;
- const chill=heatNeed>fuel?clamp((heatNeed-fuel)/Math.max(1,heatNeed)*100):0;
+ const chill=clamp((100-coverage)*temperatureDemand+(heatNeed>fuel?(heatNeed-fuel)/Math.max(1,heatNeed)*coverage:0));
  const dehydration=waterNeed>water?clamp((waterNeed-water)/Math.max(1,waterNeed)*100):0;
  const medicalShortage=medicineNeed>medicine?clamp((medicineNeed-medicine)/Math.max(0.001,medicineNeed)*100):0;
  const service=Math.round((100-Number(settlement.housing))*.12+(100-Number(settlement.medical_access))*.10+(100-Number(settlement.food_access))*.10);
  const pressure=clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service);
  const risk=clamp(pressure*.7+Number(settlement.unrest)*.3);
- const warnings=[...(foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[])];
- return {food_stock:food,fuel_stock:fuel,water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings};
+ const warnings=[...(foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[])];
+ return {food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings};
 }
-export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0){
- const metrics=readings(settlement,profile,stock,history,temperatureF);
+export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[]){
+ const metrics=readings(settlement,profile,stock,history,temperatureF,heatingAssets);
  const eligible=profile.enabled_mode==='managed'||profile.enabled_mode==='detailed';
  const afterGrace=cycles>=Number(profile.grace_cycles);
  const beforeStability=Number(settlement.civil_stability),beforeUnrest=Number(settlement.unrest);
@@ -55,12 +56,13 @@ async function context(db,id,lock=false,cycleDate=null){
  if(!settlement)return null;
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[id]);
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
+ const [heatingAssets]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE settlement_id=? ORDER BY id',[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
  const [climate]=await climateForRegions(db,[region],cycleDate?new Date(cycleDate+'T12:00:00Z'):new Date());
  const tempF=climate.effective_weather.temperature_f;
- return {settlement,region_mode:region.simulation_mode,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
+ return {settlement,heatingAssets,region_mode:region.simulation_mode,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
 export async function handleCivicNeeds(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
@@ -78,7 +80,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
   const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles)});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets)});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
