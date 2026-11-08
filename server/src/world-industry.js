@@ -102,7 +102,7 @@ export async function industryRoute(pool,req,path,actor){
   const b=await body(req),error=validateIndustryConfiguration(b?.configuration)||validateIndustryRules(b?.rules);
   if(error)return fail(400,error);
   const fake={status:b.facility?.status||'operational',level:Number(b.facility?.level||1),capacity_pct:Number(b.facility?.capacity_pct??100),workforce:Number(b.facility?.workforce||0),heat_available:Number(b.facility?.heat_available||0),power_available:Number(b.facility?.power_available||0)};
-  return ok({preview:industryProductionPreview(fake,b.configuration,b.rules,b.stock||{},{population:0,stability:80,security:50})});
+  return ok({preview:industryProductionPreview(fake,b.configuration,b.rules,b.stock||{},{population:0,stability:80,security:50,weather:b.facility?.weather||'clear',temperature_f:Number(b.facility?.temperature_f??32),industry_category:b.category||'other'})});
  }
  if(path==='/world-admin/industry/sites'&&req.method==='POST'){
   const b=await body(req);
