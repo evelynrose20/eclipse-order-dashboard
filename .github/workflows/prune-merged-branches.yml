@@ -1,0 +1,40 @@
+name: Prune merged dashboard branches
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  prune-merged:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const branches = await github.paginate(github.rest.repos.listBranches, {owner, repo, per_page: 100});
+            const closed = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'closed', per_page: 100});
+            const open = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'open', per_page: 100});
+            const active = new Set(open.map(p => p.head.ref));
+            const mergedByHead = new Set(closed.filter(p => p.merged_at).map(p => p.head.ref + '@' + p.head.sha));
+            let deleted = 0, retained = 0;
+            for (const b of branches) {
+              if (b.name === 'main' || b.protected || active.has(b.name)) { retained++; continue; }
+              const isMergedPr = mergedByHead.has(b.name + '@' + b.commit.sha);
+              let isAncestor = false;
+              if (!isMergedPr) {
+                const comparison = await github.rest.repos.compareCommits({owner, repo, base: 'main', head: b.name});
+                isAncestor = comparison.data.ahead_by === 0;
+              }
+              if (!isMergedPr && !isAncestor) {
+                core.info('RETAIN unmerged ' + b.name + ' at ' + b.commit.sha);
+                retained++;
+                continue;
+              }
+              core.info('DELETE merged ' + b.name + ' at ' + b.commit.sha);
+              await github.rest.git.deleteRef({owner, repo, ref: 'heads/' + b.name});
+              deleted++;
+            }
+            core.notice('Merged branch cleanup: deleted ' + deleted + '; retained ' + retained + ' (protected, active or unmerged).');

@@ -56,18 +56,22 @@ updated: 2026-11-07
 
 ## P2 — Garlean climate and civilian needs
 
+> [!important] P2 feature branch review (2026-11-08)
+> A draft implementation on `feature/garlean-civic-needs-p2` adds configurable monthly Garlean climate curves, dated DM weather events/forecast, a separate staff-owned civilian stock ledger, monthly food group history, cohort registration, adjustable simulation thresholds, explicit preview/commit, bounded civic score changes, idempotent settlement/date cycles and an incident approval queue. All writes are command-only and audited. **The code implementation passes CI, including MySQL schema tests; live Windows/browser acceptance remains separate.** Added atomic transfers from unreserved shared Order workshop stock to civilian stores, without touching player- or front-reserved stock. Implemented manual recurring aid contracts from unreserved shared stock and cohort editing; still outstanding: front/character-owner-approved transfers, unattended delivery dispatch (intentionally off), live browser acceptance and essential-service consumption; settlement-specific weather microzones and weather-adjusted transport; practical MySQL/browser/permission acceptance, including backing up production before migration. No scheduled auto-ticks, surprise confiscation, automatic riots or player punishment are introduced.
+
+
 - [x] Real-calendar, deterministic fictional Garlean seasonal temperature and conditions.
 - [x] Fahrenheit presentation with seasonal/manual weather selection.
 - [x] Civic outlook preview: food shortage, diet monotony, heat demand and unrest risk.
-- [ ] Per-region configurable seasonal climate curves, microclimates and DM weather events.
-- [ ] Forecast/outlook history, climate profiles and insulation/fuel/heat model.
-- [ ] **Real** item-based food deliveries and storage, category diversity over rolling monthly windows.
-- [ ] Population cohorts, employment, housing, public health and essential services.
-- [ ] Civilian heating infrastructure and fuel consumed from real stockpiles.
-- [ ] Configurable food adequacy/variety thresholds and seasonal civic satisfaction.
-- [ ] Simulated unrest states (grievances/petitions/strikes); DM approval for major outcomes.
-- [ ] Opt-in narrative, managed and detailed simulation; safe grace periods, caps, pause, idempotent reset jobs.
-- [ ] Alerts for shortages, cold weather, public works and relief opportunities.
+- [x] Per-region configurable seasonal climate curves, microclimates and DM weather events.
+- [x] Climate profile, ten-day forecast, dated event overrides, recorded civic-cycle outlook/temperature history, and insulation/fuel/heating-facility model.
+- [x] **Real** item-based civilian deliveries and storage, shared-Order-stock atomic transfers, category diversity over rolling monthly windows. Personal/front stock remains reserved unless separately authorized.
+- [x] Editable population cohorts, employment, housing, public health and essential water/medicine consumption.
+- [x] Editable heating facilities (operational/damaged/offline), climate-adjusted coverage and fuel consumed from civilian stockpiles.
+- [x] Configurable food/variety thresholds, seasonal heating demand and bounded civic stability pressure.
+- [x] Civic unrest-risk scoring and optional grievance/petition/strike proposals with explicit DM approval. No major outcome is automatic.
+- [x] Opt-in off/narrative/managed/detailed modes, safe grace periods, caps, pause, dated idempotent **staff-triggered** cycle commits. No unattended punitive reset jobs; manual authorization is intentional.
+- [x] Staff-facing alerts for essentials shortages, cold snaps, heating/public-works deficits and relief needs.
 
 ## P3 — Sites, industry and projects
 

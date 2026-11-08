@@ -22,7 +22,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -181,6 +181,59 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const newPort=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Port',map_x:75,map_y:65,map_icon:'port'}),'/world-admin/settlements');
   assert.equal(newPort.status,200,JSON.stringify(newPort.body));
   const portId=Number(newPort.body.id);
+  // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
+  const cohortPayload={label:'Civilian families',residents:90,employed:20,housing_quality:70,medical_access:65,water_access:80};
+  const cohort=await worldAdministrationRoute(admin,request('POST',cohortPayload),'/world-admin/civic/'+mineId+'/cohorts');
+  assert.equal(cohort.status,200,JSON.stringify(cohort.body));
+  const revisedCohort=await worldAdministrationRoute(admin,request('PUT',{...cohortPayload,residents:100}),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
+  assert.equal(revisedCohort.status,200,JSON.stringify(revisedCohort.body));
+  const invalidCohort=await worldAdministrationRoute(admin,request('PUT',{...cohortPayload,residents:151}),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
+  assert.equal(invalidCohort.status,409,'cohorts cannot exceed recorded population');
+  const initialProfile={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:2,grace_cycles:0,enabled_mode:'managed',paused:false};
+  const civicProfile=await worldAdministrationRoute(admin,request('PUT',initialProfile),'/world-admin/civic/'+mineId+'/profile');
+  assert.equal(civicProfile.status,200,JSON.stringify(civicProfile.body));
+  await admin.execute('INSERT INTO fc_material_stock(material_id,quantity) VALUES(?,500) ON DUPLICATE KEY UPDATE quantity=500',['wild-herbs']);
+  const relief={name:'Weekly healing supplies',material_id:'wild-herbs',resource_kind:'medicine',food_group:null,quantity:15,frequency:'weekly',active:true};
+  const aid=await worldAdministrationRoute(admin,request('POST',relief),'/world-admin/civic/'+mineId+'/aid');
+  assert.equal(aid.status,200,JSON.stringify(aid.body));
+  const dispatchPath='/world-admin/civic/'+mineId+'/aid/'+aid.body.id+'/dispatch';
+  const civilianAidDispatch=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-08'}),dispatchPath);
+  assert.equal(civilianAidDispatch.status,200,JSON.stringify(civilianAidDispatch.body));
+  const duplicateAid=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-08'}),dispatchPath);
+  assert.equal(duplicateAid.status,200);
+  assert.equal(duplicateAid.body.already_dispatched,true);
+  const prematureAid=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-09'}),dispatchPath);
+  assert.equal(prematureAid.status,409,'weekly aid cannot dispatch again next day');
+  const [[remainingHerbs]]=await admin.execute('SELECT quantity FROM fc_material_stock WHERE material_id=?',['wild-herbs']);
+  assert.equal(Number(remainingHerbs.quantity),485,'aid debits shared stock exactly once');
+  const [[civicHerbs]]=await admin.execute('SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code=?',[mineId,'wild-herbs']);
+  assert.equal(Number(civicHerbs.quantity),15,'aid credits real civilian stock exactly once');
+  for(const b of [
+   {item_code:'ci-rations',item_label:'Emergency rations',resource_kind:'food',food_group:'grain',quantity_delta:400,reason:'Test supplies'},
+   {item_code:'ci-water',item_label:'Clean water',resource_kind:'water',food_group:null,quantity_delta:350,reason:'Test supplies'},
+   {item_code:'ci-fuel',item_label:'Heating fuel',resource_kind:'fuel',food_group:null,quantity_delta:400,reason:'Test supplies'}]){
+   const movement=await worldAdministrationRoute(admin,request('POST',b),'/world-admin/civic/'+mineId+'/stock');
+   assert.equal(movement.status,200,JSON.stringify(movement.body));
+  }
+  const civicOff=await worldAdministrationRoute(admin,request('POST',{cycle_date:'2026-11-08'}),'/world-admin/civic/'+mineId+'/run');
+  assert.equal(civicOff.status,409,'three opt-ins gate consumption');
+  const regionManaged=await worldAdministrationRoute(admin,request('PUT',{...worldRegion,simulation_mode:'managed'}),'/world-admin/regions/'+wrid);
+  assert.equal(regionManaged.status,200);
+  const settlementManaged=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,simulation_enabled:true}),'/world-admin/settlements/'+mineId);
+  assert.equal(settlementManaged.status,200);
+  const beforePreview=await worldAdministrationRoute(admin,request('POST',{cycle_date:'2026-11-08'}),'/world-admin/civic/'+mineId+'/preview');
+  assert.equal(beforePreview.status,200,JSON.stringify(beforePreview.body));
+  const cycleRun=await worldAdministrationRoute(admin,request('POST',{cycle_date:'2026-11-08'}),'/world-admin/civic/'+mineId+'/run');
+  assert.equal(cycleRun.status,200,JSON.stringify(cycleRun.body));
+  const duplicatedCycle=await worldAdministrationRoute(admin,request('POST',{cycle_date:'2026-11-08'}),'/world-admin/civic/'+mineId+'/run');
+  assert.equal(duplicatedCycle.status,409,'one cycle per settlement per day');
+  const [[afterCivicWater]]=await admin.execute('SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code=?',[mineId,'ci-water']);
+  assert.equal(Number(afterCivicWater.quantity),200,'water stock consumed once from civilian inventory');
+  const removedCohort=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
+  assert.equal(removedCohort.status,200,JSON.stringify(removedCohort.body));
+  // Prevent unrelated map tests from depending on the simulation configuration.
+  await admin.execute("UPDATE world_regions SET simulation_mode='off' WHERE id=?",[wrid]);
+  await admin.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=?,simulation_enabled=0 WHERE id=?',[24,60,80,5,mineId]);
   const moved=await worldAdministrationRoute(admin,request('POST',{map_x:44,map_y:52,map_icon:'refinery'}),'/world-admin/settlements/'+mineId+'/map');
   assert.equal(moved.status,200,JSON.stringify(moved.body));
   const [[afterMap]]=await admin.execute('SELECT map_x,map_icon,population,food_days FROM world_settlements WHERE id=?',[mineId]);
