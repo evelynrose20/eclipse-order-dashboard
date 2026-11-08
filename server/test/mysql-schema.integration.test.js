@@ -188,6 +188,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const blockedResidents=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
   assert.equal(blockedResidents.status,409,'population cannot increase without available homes');
   const structurePath='/world-admin/settlements/'+emptyId+'/upgrades';
+  const upgradesInitialGet=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(upgradesInitialGet.status,200,JSON.stringify(upgradesInitialGet.body));
+  assert.equal(upgradesInitialGet.body.housing_capacity,0,'upgrade GET should read only actual settlement columns');
+
   const building={name:'New residential quarter',category:'housing',status:'building',condition_pct:100,level:1,housing_bonus:30,service_bonus:0,defense_bonus:0,notes:'Initial accommodation'};
   const newBuilding=await worldAdministrationRoute(admin,request('POST',building),structurePath);
   assert.equal(newBuilding.status,200,JSON.stringify(newBuilding.body));
