@@ -19,7 +19,11 @@ export async function mayEnterThralls(pool,actor){
 
 
 const ok=body=>({status:200,body});
-const manager=a=>['domina','high_command','handler'].includes(a.account_role);
+async function manager(pool,actor){
+ if(['domina','high_command','handler'].includes(actor.account_role))return true;
+ const [rows]=await pool.execute("SELECT 1 FROM account_order_ranks WHERE account_id=? AND track='household' LIMIT 1",[actor.id]);
+ return rows.length>0;
+}
 async function readBody(req){
  const chunks=[];let size=0;
  for await(const chunk of req){size+=chunk.length;if(size>4096)return null;chunks.push(chunk)}
@@ -35,10 +39,10 @@ export async function thrallsRoute(pool,req,path){
   const [[machine]]=await pool.execute('SELECT * FROM order_thrall_chamber WHERE id=1');
   const [batches]=await pool.execute('SELECT id,material,quantity,classification,notes,created_at FROM order_thrall_chamber_batches ORDER BY id DESC LIMIT 80');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
-  return ok({machine,batches,history,can_manage:manager(actor)});
+  return ok({machine,batches,history,can_manage:await manager(pool,actor)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
- if(!manager(actor))return forbidden(403,'staff_required');
+ if(!await manager(pool,actor))return forbidden(403,'household_or_staff_required');
  const data=await readBody(req);
  if(!data||typeof data!=='object')return forbidden(400,'invalid_request');
  const action=data.action;
