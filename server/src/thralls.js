@@ -48,10 +48,11 @@ export function dailyCapacity(channel,prefs){
  return 0;
 }
 export function dailyBalance(prefs,used={}){
+ const consumption=used||{};
  const upperMax=dailyCapacity('upper',prefs),lowerMax=dailyCapacity('lower',prefs);
  return {
-  upper:{maximum:upperMax,used:Math.min(upperMax,Number(used.upper_used||0)),remaining:Math.max(0,upperMax-Number(used.upper_used||0))},
-  lower:{maximum:lowerMax,used:Math.min(lowerMax,Number(used.lower_used||0)),remaining:Math.max(0,lowerMax-Number(used.lower_used||0))}
+  upper:{maximum:upperMax,used:Math.min(upperMax,Number(consumption.upper_used||0)),remaining:Math.max(0,upperMax-Number(consumption.upper_used||0))},
+  lower:{maximum:lowerMax,used:Math.min(lowerMax,Number(consumption.lower_used||0)),remaining:Math.max(0,lowerMax-Number(consumption.lower_used||0))}
  };
 }
 // A deliberately fictional, low-volume game abstraction. Not a model of human physiology.
