@@ -7,10 +7,9 @@ const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grai
 export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [tab,setTab]=useState('overview');
- const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults),[cohort,setCohort]=useState({label:'',residents:0,employed:0,housing_quality:50,medical_access:50,water_access:50});
+ const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults);
  const [event,setEvent]=useState({kind:'petition',title:'',detail:''}),[cycleDate,setCycleDate]=useState(today()),[proposed,setProposed]=useState(null);
  const [profile,setProfile]=useState(null);
- const [editingCohort,setEditingCohort]=useState(null);
  const [aid,setAid]=useState({name:'',material_id:'',resource_kind:'food',food_group:'grain',quantity:1,frequency:'weekly',active:true});
  const [aidEditing,setAidEditing]=useState(null);
  const [heater,setHeater]=useState({name:'',coverage_pct:25,condition_pct:100,status:'operational',notes:''});
@@ -39,7 +38,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   {empty&&<div className="wa-civic-empty"><i className="fa-solid fa-house-circle-xmark"/><div><strong>No residents — no provisions required</strong><p>This settlement has no civilian food, water, heating or medical consumption. Construct housing before residents can move in. Existing stock is preserved.</p></div><button type="button" onClick={()=>setTab('upgrades')}>Add housing</button></div>}
   {tab==='overview'&&<div className="wa-civic-dashboard">
    <div className="wa-civic-values">{[['Food stock',format(p.food_stock)],['Fuel stock',format(p.fuel_stock)],['Water stock',format(p.water_stock)],['Medical stock',format(p.medicine_stock)],['Diet groups / 30 days',empty?'—':p.food_groups_30d.length],['Heating coverage',p.heating_coverage_effective+'%'],['Civic pressure',empty?'—':p.pressure+'/100']].map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>
-   <div className="wa-civic-overview-actions"><h3>Settlement administration</h3><p>{empty?'Develop the settlement with housing and essential infrastructure before accepting residents.':p.warnings.length?p.warnings.map(x=>x.replaceAll('_',' ')).join(' · '):'No immediate civilian warnings.'}</p><button type="button" onClick={()=>setTab('upgrades')}>Manage structures</button><button type="button" onClick={()=>setTab('people')}>Manage residents</button>{!empty&&<button type="button" onClick={()=>setTab('supplies')}>Review provisions</button>}</div>
+   <div className="wa-civic-overview-actions"><h3>Settlement administration</h3><p>{empty?'Develop the settlement with housing and essential infrastructure before accepting residents.':p.warnings.length?p.warnings.map(x=>x.replaceAll('_',' ')).join(' · '):'No immediate civilian warnings.'}</p><button type="button" onClick={()=>setTab('upgrades')}>Manage structures</button><button type="button" onClick={()=>setTab('people')}>View population</button>{!empty&&<button type="button" onClick={()=>setTab('supplies')}>Review provisions</button>}</div>
   </div>}
   {tab==='supplies'&&<div className="wa-civic-workspace"><div className="wa-workspace-heading"><h3>Settlement provisions</h3><p>{empty?'No residents are consuming goods. Supplies are optional until settlement is inhabited.':'Manage audited food, fuel, clean water and medicine stores.'}</p></div>
   <h3>Deliver from shared Order workshop stores</h3>
@@ -92,13 +91,17 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   </form></details>}
   </div>}
   {tab==='people'&&<div className="wa-civic-workspace">
-  <h3>Population groups and services</h3>
-  <div className="wa-civic-values">{data.cohorts.map(c=><div key={c.id}><span>{c.label} · {format(c.employed)} employed</span><strong>{format(c.residents)} residents</strong>{canEdit&&<span><button type="button" disabled={busy} onClick={()=>{setEditingCohort(c.id);setCohort({...c})}}>Edit</button> <button type="button" disabled={busy} onClick={()=>{if(window.confirm('Remove this cohort? Civilian population totals will not be changed.'))mutate('/cohorts/'+c.id,'DELETE',null,'Cohort removed.')}}>Remove</button></span>}</div>)}</div>
-  {canEdit&&<details className="wa-civic-form"><summary><i className="fa-solid fa-plus" aria-hidden="true"/> Add population group</summary><form className="wa-fields" onSubmit={e=>{e.preventDefault();mutate(editingCohort?'/cohorts/'+editingCohort:'/cohorts',editingCohort?'PUT':'POST',{...cohort,residents:num(cohort.residents),employed:num(cohort.employed),housing_quality:num(cohort.housing_quality),medical_access:num(cohort.medical_access),water_access:num(cohort.water_access)},editingCohort?'Population cohort updated.':'Population cohort added.').then(()=>setEditingCohort(null))}}>
-   <label>Population group<input required maxLength="120" value={cohort.label} onChange={e=>setCohort({...cohort,label:e.target.value})}/></label>
-   {['residents','employed','housing_quality','medical_access','water_access'].map(k=><label key={k}>{k.replaceAll('_',' ')}<input required type="number" min="0" max={['residents','employed'].includes(k)?10000000:100} value={cohort[k]} onChange={e=>setCohort({...cohort,[k]:e.target.value})}/></label>)}
-   <button type="submit" disabled={busy}>{editingCohort?'Save population group':'Add population group'}</button>{editingCohort&&<button type="button" onClick={()=>setEditingCohort(null)}>Cancel edit</button>}
-  </form></details>}
+   <div className="wa-workspace-heading"><h3>Population simulation</h3><p>Population groups are generated from the settlement's actual residents and workforce. There are no manually managed cohorts.</p></div>
+   <div className="wa-civic-summary">
+    <div><span>Current residents</span><strong>{format(settlement.population)}</strong></div>
+    <div><span>Housing capacity</span><strong>{format(data.population_simulation?.housing_capacity??0)}</strong></div>
+    <div><span>Vacant homes</span><strong>{format(data.population_simulation?.vacancies??0)}</strong></div>
+    <div><span>Potential arrivals next cycle</span><strong>{format(data.population_simulation?.arrivals??0)}</strong></div>
+   </div>
+   <h3>Simulated population groups</h3>
+   <div className="wa-civic-values">{data.cohorts.map(c=><div key={c.key}><span>{c.label}</span><strong>{format(c.residents)} residents</strong></div>)}</div>
+   <p className="wa-hint">{Number(data.population_simulation?.housing_capacity||0)<=Number(settlement.population)?'Population cannot grow until more housing is operational.':'Arrivals are projected from available housing and civic conditions and only apply when a managed civilian cycle is committed.'} No background population changes run automatically.</p>
+   <button type="button" onClick={()=>setTab('upgrades')}>View housing & structures</button>
   </div>}
   {tab==='policy'&&<div className="wa-civic-workspace">
   <h3>Simulation policy and thresholds</h3>
@@ -110,7 +113,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    <button type="submit" disabled={busy}>Save civic policy</button>
   </form>}
   {canEdit&&<div><h3>Controlled cycle</h3><div className="wa-controls"><label>Cycle date <input type="date" value={cycleDate} onChange={e=>{setCycleDate(e.target.value);setProposed(null)}}/></label><button disabled={busy} onClick={async()=>{const r=await mutate('/preview','POST',{cycle_date:cycleDate},'Preview calculated without changing stock.');if(r)setProposed(r.preview)}}>Preview effects</button><button className="wa-accent" disabled={busy||!proposed||profile.paused||!settlement.simulation_enabled||regionMode!=='managed'||!['managed','detailed'].includes(profile.enabled_mode)} onClick={()=>{if(window.confirm('Commit the previewed '+cycleDate+' civic cycle? Civilian stock and civic scores will change once.'))mutate('/run','POST',{cycle_date:cycleDate},'Cycle committed.');setProposed(null)}}>Commit cycle</button></div>
-    {proposed&&<p className="wa-hint">Preview: food {format(proposed.food_used)} units, heating {format(proposed.fuel_used)} units, water {format(proposed.water_used)} units, medicine {format(proposed.medicine_used)} units. Stability {proposed.before_stability} → {proposed.after_stability}; unrest {proposed.before_unrest} → {proposed.after_unrest}. {proposed.grace_active?'Grace period active.':''}</p>}
+    {proposed&&<p className="wa-hint">Preview: arrivals {format(proposed.population?.arrivals||0)}, food {format(proposed.food_used)} units, heating {format(proposed.fuel_used)} units, water {format(proposed.water_used)} units, medicine {format(proposed.medicine_used)} units. Stability {proposed.before_stability} → {proposed.after_stability}; unrest {proposed.before_unrest} → {proposed.after_unrest}. {proposed.grace_active?'Grace period active.':''}</p>}
     {(!settlement.simulation_enabled||regionMode!=='managed')&&<p className="wa-hint">To commit cycles, set the region to Managed simulation and enable simulation in the settlement record. Both settings are required.</p>}
     <h4>Cycle history</h4>{data.cycles.map(c=><p key={c.id}>{String(c.cycle_date).slice(0,10)} · Food {format(c.food_used)} · Heating {format(c.fuel_used)} · Stability {c.before_stability} → {c.after_stability}</p>)}
    </div>}
