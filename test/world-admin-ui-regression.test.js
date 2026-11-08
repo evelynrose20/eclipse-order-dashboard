@@ -30,15 +30,21 @@ test('world admin contains stacked navigation and map expands to its own workspa
  }finally{await vite.close()}
 });
 
-test('map keeps native artwork proportions without forcing a fixed oversized height',async()=>{
+test('map fills its available zone width and grows height without distorting original art',async()=>{
  const {readFile}=await import('node:fs/promises');
  const css=await readFile(new URL('../src/world-administration.css',import.meta.url),'utf8');
  const dashboard=await readFile(new URL('../src/dashboard.css',import.meta.url),'utf8');
  const nav=await readFile(new URL('../src/order-navigation.css',import.meta.url),'utf8');
  assert.match(css,/\.wa-map-main-panel \.wtm-stage\s*\{/);
- assert.match(css,/width:min\(100%,1150px,115dvh\)/);
+ assert.match(css,/width:100%/);
+ assert.doesNotMatch(css,/width:min\(100%,1150px,115dvh\)/);
  assert.match(css,/height:auto/);
  assert.match(css,/aspect-ratio:900 \/ 560/);
+ const block=css.split('/* Cartography is authored at 900 × 560.')[1]?.split('/* Compact the World Administration chrome')[0];
+ assert.ok(block,'proportional zone map overrides must exist');
+ assert.match(block,/width:100%/);
+ assert.match(block,/max-width:none/);
+ assert.match(block,/height:auto/);
  assert.match(dashboard,/Data-dense desktop layout/);
  assert.match(nav,/Compact desktop navigation/);
 });

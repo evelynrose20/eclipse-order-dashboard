@@ -271,14 +271,17 @@
  .wa-map-selection-panel .wa-inspector>.wa-inspector-civic{grid-template-columns:1fr}
 }
 
-/* Map coordinate art is authored at 900 × 560. Keep that same ratio at every viewport
-   to prevent horizontally stretched terrain, mountain ranges, rail lines and labels. */
+/* Cartography is authored at 900 × 560. Preserve that ratio AND use the
+   full map panel width: the previous 1150px/viewport cap unnecessarily shrank
+   the editable territory instead of giving zones more mapping room. */
 .wa-map-main-panel .wtm-stage{
   box-sizing:border-box;
-  width:min(100%,1150px,115dvh);
+  /* Expand with the actual zone workspace. Height follows width so
+     existing mountain/road coordinates remain proportional, not stretched. */
+  width:100%;
+  max-width:none;
   height:auto;
   min-height:0;
-  max-height:none;
   aspect-ratio:900 / 560;
   margin:5px auto;
 }
