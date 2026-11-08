@@ -1,3 +1,4 @@
+import {civilianStorageCapacity} from './world-civic-building-templates.js';
 import {randomUUID} from 'node:crypto';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const whole=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -77,6 +78,13 @@ export async function handleCivicExtras(pool,req,path,actor){
    if(!dueAllowed(contract.frequency,last?.due_date,b.due_date))return fail(409,'aid_delivery_not_due');
    const [[stock]]=await db.execute('SELECT m.name,s.quantity FROM fc_material_stock s JOIN fc_materials m ON m.id=s.material_id WHERE s.material_id=? FOR UPDATE',[contract.material_id]);
    if(!stock||Number(stock.quantity)<Number(contract.quantity))return fail(409,'insufficient_shared_order_stock');
+   if(contract.resource_kind==='food'||contract.resource_kind==='water'){
+    const [[sitePopulation]]=await db.execute('SELECT population FROM world_settlements WHERE id=?',[settlementId]);
+    const [buildings]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[settlementId]);
+    const capacity=civilianStorageCapacity(sitePopulation,buildings);
+    const [[stored]]=await db.execute('SELECT COALESCE(SUM(quantity),0) AS quantity FROM world_civic_stock WHERE settlement_id=? AND resource_kind=?',[settlementId,contract.resource_kind]);
+    if(Number(stored.quantity)+Number(contract.quantity)>capacity[contract.resource_kind]+0.0001)return fail(409,'civilian_storage_capacity_exceeded');
+   }
    const [[civilian]]=await db.execute('SELECT resource_kind,food_group FROM world_civic_stock WHERE settlement_id=? AND item_code=? FOR UPDATE',[settlementId,contract.material_id]);
    if(civilian&&(civilian.resource_kind!==contract.resource_kind||String(civilian.food_group||'')!==String(contract.food_group||'')))return fail(409,'stock_item_classification_conflict');
    const [debit]=await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[contract.quantity,contract.material_id,contract.quantity]);
