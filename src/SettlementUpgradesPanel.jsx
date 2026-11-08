@@ -25,20 +25,36 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged}){
  }
  if(!data)return <div className="wa-empty">{error||'Loading settlement upgrades…'}</div>;
  const cap=Number(data.housing_capacity||0),population=Number(data.residents||0);
+ const sections=[
+  {key:'housing',title:'Housing infrastructure',subtitle:'Residential buildings and available accommodation',icon:'fa-house',categories:['housing'],add:'Add housing'},
+  {key:'defense',title:'Defensive infrastructure',subtitle:'Walls, watchtowers and fortifications',icon:'fa-shield-halved',categories:['defense'],add:'Add defenses'},
+  {key:'services',title:'Civic infrastructure',subtitle:'Clinics, waterworks, granaries and public works',icon:'fa-city',categories:['clinic','water','food_storage','insulation','public_works'],add:'Add civic structure'}
+ ];
+ const beginCategory=(category)=>setDraft({...blank,category,housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense'].includes(category)?10:0});
+ const renderStructure=(u)=><article className="wa-upgrade-card" key={u.id}>
+   <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
+   <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
+   <div className="wa-upgrade-details"><span>Level {u.level}</span><span>Condition {u.condition_pct}%</span>{u.housing_bonus>0&&<span>+{fmt(u.housing_bonus)} places</span>}{u.service_bonus>0&&<span>+{u.service_bonus} services</span>}{u.defense_bonus>0&&<span>+{u.defense_bonus} defense</span>}</div>
+   <footer><button type="button" onClick={()=>setDraft({...u})}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete '+u.name+'? Existing residents must remain housed.'))save('DELETE','/'+u.id,null,'Structure removed.')}}>Remove</button></footer>
+  </article>;
  return <div className="wa-upgrades">
-  <div className="wa-upgrades-header"><div><h3>Settlement structures</h3><p>Manage defenses, homes and public works without drawing new map markers.</p></div><button type="button" className="wa-accent" onClick={()=>setDraft({...blank})}>+ Add structure</button></div>
+  <div className="wa-upgrades-header"><div><h3>Settlement infrastructure</h3><p>Housing, defenses and essential services are managed separately.</p></div></div>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   <div className="wa-upgrade-metrics">
     <div><small>Residents / housing</small><strong>{fmt(population)} / {fmt(cap)}</strong><span>{cap===0?'No housing: settlement cannot gain residents':Math.max(0,cap-population)+' vacant places'}</span></div>
     <div><small>Additional protection</small><strong>+{data.effects.defense_bonus}</strong><span>Operational defenses</span></div>
     <div><small>Additional services</small><strong>+{data.effects.service_bonus}</strong><span>Operational infrastructure</span></div>
   </div>
-  <div className="wa-upgrade-grid">{data.upgrades.length?data.upgrades.map(u=><article className="wa-upgrade-card" key={u.id}>
-   <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
-   <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
-   <div className="wa-upgrade-details"><span>Level {u.level}</span><span>Condition {u.condition_pct}%</span>{u.housing_bonus>0&&<span>+{fmt(u.housing_bonus)} places</span>}{u.service_bonus>0&&<span>+{u.service_bonus} services</span>}{u.defense_bonus>0&&<span>+{u.defense_bonus} defense</span>}</div>
-   <footer><button type="button" onClick={()=>setDraft({...u})}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete '+u.name+'? Existing residents must remain housed.'))save('DELETE','/'+u.id,null,'Structure removed.')}}>Remove</button></footer>
-  </article>):<p className="wa-empty">No structures recorded. Add housing, defensive walls or service buildings to develop this settlement.</p>}</div>
+  {sections.map(section=>{
+   const records=data.upgrades.filter(u=>section.categories.includes(u.category));
+   return <section className="wa-upgrade-section" key={section.key} aria-label={section.title}>
+    <div className="wa-upgrade-section-heading">
+     <div className="wa-upgrade-section-title"><i className={'fa-solid '+section.icon} aria-hidden="true"/><div><h4>{section.title}</h4><p>{section.subtitle}</p></div><span className="wa-upgrade-section-count">{records.length}</span></div>
+     <button type="button" onClick={()=>beginCategory(section.categories[0])}>+ {section.add}</button>
+    </div>
+    {records.length?<div className="wa-upgrade-grid">{records.map(renderStructure)}</div>:<div className="wa-upgrade-section-empty">No {section.key==='housing'?'residential buildings':section.key==='defense'?'defensive structures':'civic facilities'} recorded yet.</div>}
+   </section>;
+  })}
   {draft&&<div className="wa-upgrade-edit" role="region" aria-label="Structure editor">
    <div className="wa-upgrades-header"><h3>{draft.id?'Manage':'Add'} structure</h3><button type="button" onClick={()=>setDraft(null)}>Close</button></div>
    <form onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.')}} className="wa-fields">
