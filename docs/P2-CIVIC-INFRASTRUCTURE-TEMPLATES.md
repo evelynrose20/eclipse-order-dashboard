@@ -42,3 +42,13 @@ The one-time migration converts previously recorded Granaries and Waterworks int
 Windows setup: pull current `main`, run `npm run setup:local` in `server`, restart the Windows API and refresh the dashboard. The default catalog is seeded with `INSERT IGNORE` so running setup again does not overwrite staff-edited templates. Incomplete projects and material commitments persist through restarts.
 
 Automated coverage includes template validation, physical storage limits, water production, school places, bounded costs, NPC priorities, and MySQL-backed building creation, material funding, completion, tier upgrades, storm damage and repair.
+
+## Construction supplies: committed project inventory (migration 066)
+
+Order-controlled settlement construction is funded through **Civilian Welfare → Buildings & Defenses → Construction Supplies**, using the same commitment principle as **Industry & Projects**. Every active Order building, repair, or level-up project lists its required material, total requirement, already committed amount, remaining shortage, shared workshop availability, construction labor progress, and recent contributions.
+
+The **Commit materials** control debits a chosen partial or full amount from actual shared Order stock in a locked transaction, writes the corresponding `fc_material_ledger` record and append-only `world_civic_project_contributions` receipt, and increases the project's funded total. Once committed, those goods are no longer part of available shared stock and therefore cannot be spent by other facilities or projects. A project cannot receive more than its remaining requirement or commit nonexistent stock. Construction uses labor only after the full material requirement has been committed. No automatic withdrawal takes place on a scheduled world cycle. Repeated simulation ticks cannot commit the materials again.
+
+The existing `materials_paid=1` flag on completed/funded projects remains valid; migration 066 does not erase or recreate prior project history. NPC projects remain funded with autonomous development resources, not Order stock. Future template changes cannot alter a project's pinned material requirement. Projects with incomplete commitments retain their progress and funding records across API restarts. The current civic template catalog has one required crafted material per template; unlike some industrial construction projects, it does not yet support a multi-material bill of materials.
+
+Apply `066_civic_project_contributions.sql` using Windows `setup:local` before restarting the API. Automated MySQL coverage verifies partial commitments, insufficient funding, no labor while underfunded, completed funding, and refusal of extra charges.
