@@ -13,8 +13,8 @@ const states=['planned','building','operational','damaged','destroyed'];
 const blank={name:'',category:'housing',status:'planned',condition_pct:100,level:1,housing_bonus:10,service_bonus:0,defense_bonus:0,notes:'',material_id:'',material_cost:0};
 const fmt=n=>Number(n||0).toLocaleString();
 const title=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
-export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[]}){
- const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[],openChooser=false}){
+ const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const root='/world-admin/settlements/'+settlement.id+'/upgrades';
  const load=async()=>{const r=await request(root);setData(r)};
  useEffect(()=>{setData(null);setDraft(null);load().catch(e=>setError(e.message||'Unable to load upgrades'))},[settlement.id]);
