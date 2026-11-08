@@ -7,7 +7,7 @@ const text=(value,max,required=false)=>typeof value==='string'&&value.length<=ma
 const allowedType=value=>value==='front'||value==='settlement';
 const validStation=b=>b&&text(b.name,140,true)&&allowedType(b.stop_type)&&id(b.stop_id)&&['planned','operational','closed'].includes(b.status)&&Number.isInteger(Number(b.platforms))&&Number(b.platforms)>=1&&Number(b.platforms)<=100&&text(b.notes,1200);
 const stationValues=b=>[b.name.trim(),b.stop_type,Number(b.stop_id),b.status,Number(b.platforms),b.notes||''];
-const validRoute=b=>b&&text(b.name,140,true)&&id(b.from_station_id)&&id(b.to_station_id)&&Number(b.from_station_id)!==Number(b.to_station_id)&&allowedType(b.from_type)&&allowedType(b.to_type)&&id(b.from_id)&&id(b.to_id)&&!(b.from_type===b.to_type&&Number(b.from_id)===Number(b.to_id))&&Number.isInteger(Number(b.duration_minutes))&&Number(b.duration_minutes)>=1&&Number(b.duration_minutes)<=10080&&['active','paused','retired'].includes(b.status)&&text(b.cargo_notes,1200);
+const validRoute=b=>b&&text(b.name,140,true)&&id(b.from_station_id)&&id(b.to_station_id)&&Number(b.from_station_id)!==Number(b.to_station_id)&&Number.isInteger(Number(b.duration_minutes))&&Number(b.duration_minutes)>=1&&Number(b.duration_minutes)<=10080&&['active','paused','retired'].includes(b.status)&&text(b.cargo_notes,1200);
 const routeValues=b=>[b.name.trim(),Number(b.from_station_id),Number(b.to_station_id),b.from_type,Number(b.from_id),b.to_type,Number(b.to_id),Number(b.duration_minutes),b.status,b.cargo_notes||''];
 async function read(req){let bytes=0;const parts=[];for await(const p of req){bytes+=p.length;if(bytes>16000)return null;parts.push(p)}try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{return null}}
 async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const result=await fn(db);if(result.status===200)await db.commit();else await db.rollback();return result}catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}}
@@ -74,20 +74,28 @@ export async function internalRailRoute(pool,req,path){
   if(req.method!=='DELETE'&&!validRoute(b))return fail(400,'rail_route_invalid_fields');
   return tx(pool,async db=>{
    if(req.method==='DELETE'){
+    const [active]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE route_id=? AND status='running' AND expected_arrival_at>UTC_TIMESTAMP(3) LIMIT 1",[routeId]);
+    if(active.length)return fail(409,'rail_route_has_active_journey');
     const [updated]=await db.execute("UPDATE order_internal_rail_routes SET status='retired' WHERE id=?",[routeId]);
     return updated.affectedRows?ok({saved:true}):fail(404,'rail_route_not_found');
    }
+   const [stationRows]=await db.execute('SELECT * FROM order_internal_rail_stations WHERE id IN (?,?)',[b.from_station_id,b.to_station_id]);
+   if(stationRows.length!==2)return fail(400,'rail_route_station_not_found');
+   const origin=stationRows.find(x=>Number(x.id)===Number(b.from_station_id));
+   const dest=stationRows.find(x=>Number(x.id)===Number(b.to_station_id));
+   if(!origin||!dest||origin.stop_type===dest.stop_type&&Number(origin.stop_id)===Number(dest.stop_id))return fail(400,'rail_route_distinct_stations_required');
    const available=await stops(db);
-   if(!allowedStop(available,b.from_type,b.from_id)||!allowedStop(available,b.to_type,b.to_id))return fail(400,'rail_route_order_stops_only');
+   if(!allowedStop(available,origin.stop_type,origin.stop_id)||!allowedStop(available,dest.stop_type,dest.stop_id))return fail(400,'rail_route_order_stops_only');
+   const complete={...b,from_type:origin.stop_type,from_id:origin.stop_id,to_type:dest.stop_type,to_id:dest.stop_id};
    if(req.method==='PUT'){
-    const [[current]]=await db.execute('SELECT id FROM order_internal_rail_routes WHERE id=? FOR UPDATE',[routeId]);
+    const [[current]]=await db.execute('SELECT * FROM order_internal_rail_routes WHERE id=? FOR UPDATE',[routeId]);
     if(!current)return fail(404,'rail_route_not_found');
     const [running]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE route_id=? AND status='running' AND expected_arrival_at>UTC_TIMESTAMP(3) LIMIT 1",[routeId]);
-    if(running.length&&b.status==='retired')return fail(409,'rail_route_has_active_journey');
-    await db.execute('UPDATE order_internal_rail_routes SET name=?,from_type=?,from_id=?,to_type=?,to_id=?,duration_minutes=?,status=?,cargo_notes=? WHERE id=?',[...routeValues(b),routeId]);
+    if(running.length)return fail(409,'rail_route_has_active_journey');
+    await db.execute('UPDATE order_internal_rail_routes SET name=?,from_station_id=?,to_station_id=?,from_type=?,from_id=?,to_type=?,to_id=?,duration_minutes=?,status=?,cargo_notes=? WHERE id=?',[...routeValues(complete),routeId]);
     return ok({saved:true});
    }
-   const [created]=await db.execute('INSERT INTO order_internal_rail_routes(name,from_type,from_id,to_type,to_id,duration_minutes,status,cargo_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?)',[...routeValues(b),actor.id]);
+   const [created]=await db.execute('INSERT INTO order_internal_rail_routes(name,from_station_id,to_station_id,from_type,from_id,to_type,to_id,duration_minutes,status,cargo_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[...routeValues(complete),actor.id]);
    return ok({id:created.insertId});
   });
  }
@@ -98,6 +106,8 @@ export async function internalRailRoute(pool,req,path){
    const [[route]]=await db.execute('SELECT * FROM order_internal_rail_routes WHERE id=? FOR UPDATE',[routeId]);
    if(!route)return fail(404,'rail_route_not_found');
    if(route.status!=='active')return fail(409,'rail_route_not_active');
+   const [endpoints]=await db.execute('SELECT id,status FROM order_internal_rail_stations WHERE id IN (?,?)',[route.from_station_id||0,route.to_station_id||0]);
+   if(endpoints.length!==2||endpoints.some(st=>st.status!=='operational'))return fail(409,'rail_stations_not_operational');
    const available=await stops(db);
    if(!allowedStop(available,route.from_type,route.from_id)||!allowedStop(available,route.to_type,route.to_id))return fail(409,'rail_route_stop_no_longer_order_owned');
    await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE route_id=? AND status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)",[routeId]);
