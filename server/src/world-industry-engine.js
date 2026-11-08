@@ -1,3 +1,4 @@
+import {climateForRegions} from './world-region-climate.js';
 import {settlementDemographics} from './world-demographics.js';
 import {industryProductionPreview} from './world-industry-rules.js';
 import {simulationCycleKey} from './world-settlement-simulation.js';
@@ -29,9 +30,10 @@ export async function adjustFacilityStock(db,facilityId,itemId,delta,action,refe
 export async function getIndustryPreview(db,id,lock=false){
  const [[facility]]=await db.execute(`SELECT f.*,COALESCE(s.population,0) AS population,
  COALESCE(s.civil_stability,70) AS stability,COALESCE(s.security_score,50) AS security,
- COALESCE(s.name,site.name) AS location_name,COALESCE(s.region_id,site.region_id) AS region_id,
+ COALESCE(s.name,site.name) AS location_name,t.category AS industry_category,COALESCE(s.region_id,site.region_id) AS region_id,
  COALESCE(s.zone_id,site.zone_id) AS zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
  FROM world_industry_facilities f
+ JOIN world_industry_templates t ON t.id=f.template_id
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_sites site ON site.id=f.site_id
  LEFT JOIN world_zones z ON z.id=site.zone_id
@@ -65,7 +67,11 @@ export async function getIndustryPreview(db,id,lock=false){
  const availableHeat=utilityDemand>0?utilityCapacity*Number(config.heat):0;
  const availablePower=utilityDemand>0?utilityCapacity*Number(config.power):0;
  const effective={...facility,level:Math.max(1,Number(facility.level)),capacity_pct:Math.min(100,Math.max(0,Number(facility.capacity_pct))),workforce,heat_available:availableHeat,power_available:availablePower};
- const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security)});
+ const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[facility.region_id]);
+ const [climate]=region?await climateForRegions(db,[region]):[];
+ const conditions=climate?.effective_weather||{};
+ const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security),weather:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),industry_category:facility.industry_category});
+ preview.weather={condition:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),source:conditions.source||'unknown'};
  preview.utility_fuel_required=Math.round(preview.operations*utilityDemand/10*1000)/1000;
  preview.utility_fuel_stock=fuel;
  preview.workers_available=workforce;
