@@ -7,6 +7,7 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
  const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30});
  const [scenarioStock,setScenarioStock]=useState({});
+ const [saveMode,setSaveMode]=useState('edit');
  const setConfig=(field,value)=>setDraft(d=>({...d,configuration:{...d.configuration,[field]:value}}));
  const changeRow=(kind,i,key,val)=>setConfig(kind,draft.configuration[kind].map((row,j)=>j===i?{...row,[key]:key==='qty'?Number(val):val}:row));
  const addRow=kind=>{const item=items.find(i=>!draft.configuration[kind].some(x=>x.item_id===i.id));if(item)setConfig(kind,[...draft.configuration[kind],{item_id:item.id,qty:1}]);};
@@ -20,7 +21,7 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
  }
  const payload=()=>({...draft,configuration:{...draft.configuration},rules:draft.rules});
  return <section className="wa-industry-editor">
-  <header><div><span className="wa-kicker">VERSIONED INDUSTRY TEMPLATE</span><h3>{template?'Publish revision '+(Number(template.current_version)+1):'New facility template'}</h3><p>{template?'The existing version remains attached to already-created sites.':'Define a reusable facility type without modifying server code.'}</p></div><button type="button" onClick={onCancel}>Close</button></header>
+  <header><div><span className="wa-kicker">VERSIONED INDUSTRY TEMPLATE</span><h3>{template?(saveMode==='edit'?'Edit version '+template.current_version:'Publish version '+(Number(template.current_version)+1)):'New facility template'}</h3><p>{template?(saveMode==='edit'?'Save changes to this version, including existing sites using it. Historical cycle reports remain unchanged.':'Create a separate version without changing existing sites.'):'Define a reusable facility type without modifying server code.'}</p></div><button type="button" onClick={onCancel}>Close</button></header>
   {error&&<p role="alert" className="wa-error">{error}</p>}
   <div className="wa-industry-editor-grid">
    <label>Name<input value={draft.name} maxLength="120" disabled={Boolean(template)} required onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
@@ -54,6 +55,6 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
    <p className="wide wa-npc-subtle">A dry run uses hypothetical numbers only; it cannot assign workers, conjure fuel, change a site, move stock, or commit production. Live production takes workers from simulated local employment and heat/power from actual facility ceruleum fuel.</p>
   </div></details>
   {test&&<div className="wa-industry-dryresult"><strong>Rule dry run</strong><span>{test.operations} operations · {test.blocked.length?test.blocked.join(', '):'No blocking conditions'}</span><small>{JSON.stringify(test.outputs)}</small></div>}
-  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',{...payload(),facility:scenario,stock:Object.fromEntries(draft.configuration.inputs.map(x=>[x.item_id,scenarioStock[x.item_id]??100]))},r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
+  <footer>{template&&<label>Save as <select aria-label="Template save mode" value={saveMode} onChange={e=>setSaveMode(e.target.value)}><option value="edit">Update current version</option><option value="new">Create new version</option></select></label>}<button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',{...payload(),facility:scenario,stock:Object.fromEntries(draft.configuration.inputs.map(x=>[x.item_id,scenarioStock[x.item_id]??100]))},r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+(saveMode==='edit'?'/edit':'/versions'):'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?(saveMode==='edit'?'Save version '+template.current_version:'Publish new version'):'Create template'}</button></footer>
  </section>;
 }
