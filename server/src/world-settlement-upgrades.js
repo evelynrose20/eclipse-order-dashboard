@@ -29,9 +29,10 @@ export async function getSettlementUpgradeRecords(db,id,lock=false){
 export async function handleSettlementUpgrades(pool,req,path,actor){
  const createMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/from-template$/.exec(path);
  const improveMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/(\d+)\/improve$/.exec(path);
- if((createMatch||improveMatch)&&req.method==='POST'){
+ const repairMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/(\d+)\/repair$/.exec(path);
+ if((createMatch||improveMatch||repairMatch)&&req.method==='POST'){
   if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
-  const id=Number((createMatch||improveMatch)[1]),upgradeId=improveMatch?Number(improveMatch[2]):null;
+  const id=Number((createMatch||improveMatch||repairMatch)[1]),upgradeId=improveMatch?Number(improveMatch[2]):repairMatch?Number(repairMatch[2]):null;
   const b=await read(req);
   if(createMatch&&(typeof b?.template_id!=='string'||b.template_id.length>48))return fail(400,'invalid_template');
   return transact(pool,async db=>{
@@ -42,15 +43,15 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
    if(upgradeId){
     const [[record]]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE id=? AND settlement_id=? FOR UPDATE',[upgradeId,id]);
     if(!record)return fail(404,'upgrade_not_found');
-    if(!record.template_id||record.status!=='operational')return fail(409,'building_not_ready_for_upgrade');
+    if(!record.template_id||record.status!==(repairMatch?'damaged':'operational'))return fail(409,repairMatch?'building_not_damaged':'building_not_ready_for_upgrade');
     upgrade=record;
    }
    const templateId=upgrade?.template_id||b.template_id;
    const [[template]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=? FOR UPDATE',[templateId]);
    if(!template)return fail(404,'template_not_found');
-   const project=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'order',actorId:actor.id});
+   const project=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'order',actorId:actor.id,repair:!!repairMatch});
    if(project.status!==200)return project;
-   await audit(db,actor.id,upgrade?'building_improve':'building_start',id,templateId);
+   await audit(db,actor.id,repairMatch?'building_repair':upgrade?'building_improve':'building_start',id,templateId);
    return project;
   });
  }
