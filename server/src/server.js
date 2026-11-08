@@ -142,6 +142,11 @@ const server=http.createServer(async(req,res)=>{
    result={status:500,body:{error:'internal_error'}};
   }
  }
+ // Route handlers must always return a response; never crash the process on an unmatched route.
+ if(result==null){
+  console.warn('[Eclipse Order API] Request did not match a handler:',req.method,pathname);
+  result={status:404,body:{error:'not_found'}};
+ }
  if(result.redirect){
   res.writeHead(302,{'Location':result.redirect,'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'});
   res.end();return;
