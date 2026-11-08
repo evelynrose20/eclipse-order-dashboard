@@ -103,17 +103,17 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
         <span>{draft.id?'Installed level remains active during an upgrade.':'Construction must finish before the new building produces effects.'}</span>
         {data.projects?.filter(p=>Number(p.upgrade_id)===Number(draft.id)&&p.status==='active').map(p=><span key={p.id}>Construction: {fmt(p.progress)} / {fmt(p.labor_required)} labor · {p.materials_paid?'Materials funded':'Materials still needed'}</span>)}
        </div>
-      </div><aside className="wa-industry-configuration"><h4>{draft.id?'Next upgrade':'Construction requirements'}</h4>
-       {selectedTemplate&&Number(draft.id?draft.level:0)<Number(selectedTemplate.max_level)?<>
-        <p>Target level {draft.id?Number(draft.level)+1:1} / {selectedTemplate.max_level}</p>
-        <p>{fmt(costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).units)} × {selectedTemplate.material_id} from shared Order inventory</p>
-        <p>{fmt(costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).labor)} simulated worker labor</p>
-        <p>NPCs pay {fmt(costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).npc)} development points for this tier instead.</p>
+      </div><aside className="wa-industry-configuration"><h4>{draft.id?(draft.status==='damaged'?'Repair structure':'Next upgrade'):'Construction requirements'}</h4>
+       {selectedTemplate&&(draft.status==='damaged'||Number(draft.id?draft.level:0)<Number(selectedTemplate.max_level))?<>
+        <p>{draft.status==='damaged'?'Restore level '+draft.level:'Target level '+(draft.id?Number(draft.level)+1:1)} / {selectedTemplate.max_level}</p>
+        <p>{fmt(draft.status==='damaged'?Math.max(1,Math.ceil(costFor(selectedTemplate,Number(draft.level)).units*Math.max(.2,(100-Number(draft.condition_pct||0))/100)*.5)):costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).units)} × {selectedTemplate.material_id} from shared Order inventory</p>
+        <p>{fmt(draft.status==='damaged'?Math.max(10,Math.ceil(costFor(selectedTemplate,Number(draft.level)).labor*Math.max(.2,(100-Number(draft.condition_pct||0))/100)*.5)):costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).labor)} simulated worker labor</p>
+        <p>NPCs pay {fmt(draft.status==='damaged'?Math.max(1,Math.ceil(costFor(selectedTemplate,Number(draft.level)).npc*Math.max(.2,(100-Number(draft.condition_pct||0))/100)*.5)):costFor(selectedTemplate,draft.id?Number(draft.level)+1:1).npc)} development points for this tier instead.</p>
        </>:<p>Maximum building level reached or template is no longer available.</p>}
        <p>Effects and construction costs are determined by the saved template, not manual service bonuses.</p>
       </aside></div>
       <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>draft.id?close():setStep('choose')}>{draft.id?'Close':'Back to templates'}</button>
-       <button type="button" className="wa-industry-primary" disabled={busy||!selectedTemplate||!selectedTemplate.enabled||Number(draft.id?draft.level:0)>=Number(selectedTemplate.max_level)||Boolean(data.projects?.some(p=>Number(p.upgrade_id)===Number(draft.id)&&['active','paused'].includes(p.status)))} onClick={async()=>{const result=await save('POST',draft.id?'/'+draft.id+'/improve':'/from-template',draft.id?{}:{template_id:draft.template_id},draft.id?'Upgrade project started.':'Building project started.');if(result)close()}}>{busy?'Saving…':draft.id?'Start upgrade project':'Start construction'}</button>
+       <button type="button" className="wa-industry-primary" disabled={busy||!selectedTemplate||(!selectedTemplate.enabled&&draft.status!=='damaged')||(draft.status!=='damaged'&&Number(draft.id?draft.level:0)>=Number(selectedTemplate.max_level))||Boolean(data.projects?.some(p=>Number(p.upgrade_id)===Number(draft.id)&&['active','paused'].includes(p.status)))} onClick={async()=>{const result=await save('POST',draft.id?'/'+draft.id+(draft.status==='damaged'?'/repair':'/improve'):'/from-template',draft.id?{}:{template_id:draft.template_id},draft.id?(draft.status==='damaged'?'Repair project started.':'Upgrade project started.'):'Building project started.');if(result)close()}}>{busy?'Saving…':draft.id?(draft.status==='damaged'?'Repair building':'Start upgrade project'):'Start construction'}</button>
       </footer>
      </div>}
      {!draft.template_id&&     <form id="wa-civic-build-form" className="wa-civic-build-form" onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.').then(saved=>{if(saved)close()})}}>
