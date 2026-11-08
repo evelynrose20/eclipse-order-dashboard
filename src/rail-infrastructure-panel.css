@@ -38,3 +38,7 @@
 .wtm-rail-symbol[data-state="planned"]{background:#70552f;border-color:#efcd88}
 .wtm-rail-symbol[data-state="closed"],.wtm-rail-symbol[data-state="damaged"]{background:#632f3c;border-color:#e6a3af}
 .wtm-rail-symbol i{font-size:12px}
+
+/* Operational badges stay alongside the original settlement and junction icons. */
+.wtm-rail-symbol.station{transform:translate(calc(-50% + 19px),calc(-50% - 19px));width:23px;height:23px}
+.wtm-rail-symbol.switch{transform:translate(calc(-50% + 15px),calc(-50% + 16px));width:23px;height:23px}
