@@ -16,9 +16,6 @@
 .wtm-rail-actions{display:flex;gap:7px;flex-wrap:wrap}
 .wtm-rail-actions button:first-child{background:#654c36;border-color:#c6a770}
 .wtm-rail-actions button:disabled,.wtm-rail-catalog button:disabled{opacity:.5;cursor:not-allowed}
-.wtm-rail-symbol{position:absolute;z-index:8;transform:translate(-50%,-50%);width:27px;height:27px;border:2px solid #e0c58e;border-radius:6px;background:#1e4960;color:#fbeed2;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 5px #07121da6}
-.wtm-rail-symbol.crossing{border-radius:50%;background:#674e32}
-.wtm-rail-symbol:focus-visible{outline:2px solid #ffe9b1;outline-offset:2px}
 .wtm-rail-position{position:absolute;z-index:7;width:14px;height:14px;border:2px solid #fff1c0;background:#ac703e;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%)}
 @media(max-width:640px){.wtm-rail-ops{padding:9px}.wtm-rail-tabs button{flex:1}}
 
@@ -33,12 +30,59 @@
 .wtm-rail-freight-check .freight-blocked{color:#f3c4ac}
 
 
-.wtm-rail-symbol.switch{background:#354c61;border-radius:7px}
-.wtm-rail-symbol[data-state="operational"],.wtm-rail-symbol[data-state="open"]{background:#185e4b;border-color:#a4dfc1}
-.wtm-rail-symbol[data-state="planned"]{background:#70552f;border-color:#efcd88}
-.wtm-rail-symbol[data-state="closed"],.wtm-rail-symbol[data-state="damaged"]{background:#632f3c;border-color:#e6a3af}
-.wtm-rail-symbol i{font-size:12px}
-
-/* Operational badges stay alongside the original settlement and junction icons. */
-.wtm-rail-symbol.station{transform:translate(calc(-50% + 19px),calc(-50% - 19px));width:23px;height:23px}
-.wtm-rail-symbol.switch{transform:translate(calc(-50% + 15px),calc(-50% + 16px));width:23px;height:23px}
+/* Compact railway annotations: the original track and junction remain visible. */
+.wtm-stage button.wtm-rail-symbol,
+.app-shell.eo-local .wtm-stage button.wtm-rail-symbol{
+ --rail-rim:#8ca9b0;--rail-ink:#e4edf0;--rail-fill:#1a303b;--rail-signal:#91a5ad;
+ position:absolute!important;z-index:12!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:21px!important;height:21px!important;min-width:21px!important;min-height:21px!important;
+ padding:0!important;margin:0!important;box-sizing:border-box!important;
+ border:1.5px solid var(--rail-rim)!important;border-radius:50%!important;
+ background:var(--rail-fill)!important;color:var(--rail-ink)!important;
+ box-shadow:0 0 0 2px #0c1721,0 2px 5px #060d14a8!important;
+ cursor:pointer;opacity:1;
+}
+.wtm-stage button.wtm-rail-symbol.station{transform:translate(calc(-50% + 23px),calc(-50% - 23px))!important}
+.wtm-stage button.wtm-rail-symbol.switch{
+ width:19px!important;height:19px!important;min-width:19px!important;min-height:19px!important;
+ transform:translate(calc(-50% + 22px),calc(-50% + 20px))!important
+}
+.wtm-stage button.wtm-rail-symbol.crossing{
+ width:19px!important;height:19px!important;min-width:19px!important;min-height:19px!important;
+ transform:translate(-50%,-50%)!important;border-radius:5px!important
+}
+.wtm-stage button.wtm-rail-symbol.station.rail-flip-x{transform:translate(calc(-50% - 23px),calc(-50% - 23px))!important}
+.wtm-stage button.wtm-rail-symbol.station.rail-flip-y{transform:translate(calc(-50% + 23px),calc(-50% + 23px))!important}
+.wtm-stage button.wtm-rail-symbol.station.rail-flip-x.rail-flip-y{transform:translate(calc(-50% - 23px),calc(-50% + 23px))!important}
+.wtm-stage button.wtm-rail-symbol.switch.rail-flip-x{transform:translate(calc(-50% - 22px),calc(-50% + 20px))!important}
+.wtm-stage button.wtm-rail-symbol.switch.rail-flip-y{transform:translate(calc(-50% + 22px),calc(-50% - 20px))!important}
+.wtm-stage button.wtm-rail-symbol.switch.rail-flip-x.rail-flip-y{transform:translate(calc(-50% - 22px),calc(-50% - 20px))!important}
+.wtm-stage button.wtm-rail-symbol>i.fa-solid{
+ font-family:'Font Awesome 6 Free'!important;font-style:normal!important;font-weight:900!important;
+ font-size:10px!important;line-height:1!important;transform:none!important;
+ color:inherit!important;text-shadow:none!important;pointer-events:none
+}
+.wtm-stage button.wtm-rail-symbol::after{
+ content:'';position:absolute;top:-3px;right:-3px;width:6px;height:6px;
+ background:var(--rail-signal);border:1px solid #0e1b25;border-radius:50%;pointer-events:none
+}
+.wtm-stage button.wtm-rail-symbol[data-state="operational"],
+.wtm-stage button.wtm-rail-symbol[data-state="open"]{
+ --rail-rim:#9ac4af;--rail-ink:#dff7e8;--rail-signal:#5fce94
+}
+.wtm-stage button.wtm-rail-symbol[data-state="planned"]{
+ --rail-rim:#bfa579;--rail-ink:#f8e2ba;--rail-signal:#e6b45d
+}
+.wtm-stage button.wtm-rail-symbol[data-state="closed"]{
+ --rail-rim:#bd938e;--rail-ink:#f0d3cd;--rail-signal:#d9857e
+}
+.wtm-stage button.wtm-rail-symbol[data-state="damaged"]{
+ --rail-rim:#ac8c9b;--rail-ink:#e6cbd6;--rail-signal:#d6769a
+}
+.wtm-stage button.wtm-rail-symbol:hover,
+.wtm-stage button.wtm-rail-symbol:focus-visible{
+ outline:2px solid #f5d69b!important;outline-offset:3px!important;
+ box-shadow:0 0 0 2px #0e1821,0 0 0 5px #d7b87c66!important
+}
+.wtm-stage button.wtm-rail-symbol:focus:not(:focus-visible){outline:none!important}
