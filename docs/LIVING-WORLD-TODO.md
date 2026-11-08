@@ -37,7 +37,7 @@ updated: 2026-11-07
 - [x] Separate settlement/civilian overview from visual territory map.
 - [x] Drag saved site markers and change their symbols without changing other settlement state (migration 042).
 - [x] Create roads/trails/rail/sky/water links with manually adjustable bends.
-- [ ] Region/zone hierarchy; zone navigation and multiple map backgrounds.
+- [x] Region/zone hierarchy, separate zone navigation and independent HTTPS map backgrounds (migration 046).
 - [x] Add persistent mountain-range map annotations, with editable named ridgelines.
 - [x] Expose territorial status directly on colored settlement map markers and provide a quick status selector.
 - [x] Register the Eclipse Order itself as a selectable, database-backed governing/control/support faction.
@@ -127,13 +127,13 @@ updated: 2026-11-07
 - [x] Preview and save road, trail, railway, air-route and waterway edges with editable bend points.
 - [x] Explicit transaction-safe conversion of older settlement-to-settlement routes without losing waypoints or track types.
 - [x] MySQL 8 integration tests covering junction splits, branches, moves and import.
-- [ ] Production Windows API migration and browser acceptance test after updating to this release.
+- [ ] Production Windows API migration 046 and browser acceptance test: switch zones, place settlements and routes, edit controls, and confirm the overview map remains intact.
 
 ## Current release checklist
 
 - [ ] Back up production MySQL.
 - [ ] Pull latest matching frontend and Windows API code.
-- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–045, including 045_world_transport_graph.
+- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–046, including 046_world_zones.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
 - [ ] Browser test all edit operations, including Plan a route / Edit routes: split a rail line, attach a branch, move the shared switch, save and reload.
 - [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
