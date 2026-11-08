@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 import RailInfrastructurePanel from './RailInfrastructurePanel.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
-import {simplifyTrackStroke,insertRouteBend} from './track-drawing.js';
+import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint} from './track-drawing.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
@@ -195,9 +195,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   if(candidate){setNotice('Junction selected as the start of your new route.');setJunctionAction('');if(mode!=='track')setMode('link');chooseRouteEndpoint('from',String(-Number(candidate.id)));return}
   if(displayed.some(site=>Math.hypot(Number(site.map_x)-p.x,Number(site.map_y)-p.y)<2)){setNotice('Choose the settlement directly when planning a route.');setJunctionAction('');return}
   const nearest=networkSegments.filter(edge=>mode!=='track'||edge.route_type==='rail').map(edge=>{
-   const line=graphPoints(edge);
-   const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
-   return {edge,distance:projected??Infinity};
+   const snap=nearestSmoothRoutePoint(graphPoints(edge),p);
+   return {edge,distance:snap?.d??Infinity};
   }).sort((a,b)=>a.distance-b.distance)[0];
   if(nearest&&nearest.distance<2){
    const snapped=await mutation('/world-admin/network/segments/'+nearest.edge.id+'/split','POST',p,'Junction snapped to the existing route.');
@@ -205,9 +204,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    return;
   }
   const nearLegacy=routes.filter(edge=>mode!=='track'||edge.route_type==='rail').map(edge=>{
-   const line=polyline(edge,byId);
-   const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
-   return {edge,distance:projected??Infinity};
+   const snap=nearestSmoothRoutePoint(polyline(edge,byId),p);
+   return {edge,distance:snap?.d??Infinity};
   }).sort((a,b)=>a.distance-b.distance)[0];
   if(nearLegacy&&nearLegacy.distance<2){
    const snapped=await mutation('/world-admin/network/legacy/'+nearLegacy.edge.id+'/branch','POST',p,'Junction joined to the older route.');
