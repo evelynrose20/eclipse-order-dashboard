@@ -1237,6 +1237,51 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(takenFarm.body.preview.operations,0);
   assert.ok(takenFarm.body.preview.blocked.includes('facility_ownership_changed'),'zone takeover must stop independent farm production');
   await admin.execute("UPDATE world_zones SET controlling_faction_id='eclipse-order' WHERE id=?",[farmZone.zone_id]);
+  // A destroyed farm already on the territory map is a valid industrial
+  // location. Attaching a facility does not create a duplicate map marker.
+  const existingFarmMarker=await worldAdministrationRoute(admin,request('POST',{
+   ...worldPlace,zone_id:Number(farmZone.zone_id),name:'CI Destroyed Map Farm',
+   map_icon:'farm',strategic_state:'destroyed',population:0,workforce:0,housing_capacity:0,
+   controlling_faction_id:'eclipse-order'
+  }),'/world-admin/settlements');
+  assert.equal(existingFarmMarker.status,200,JSON.stringify(existingFarmMarker.body));
+  const mappedFarmId=Number(existingFarmMarker.body.id);
+  const [starterFarms]=await admin.execute("SELECT id FROM world_industry_templates WHERE slug='starter-working-farmland'");
+  assert.equal(starterFarms.length,1,'standard farmland starter template installed');
+  const linkedFarm=await industryRoute(admin,request('POST',{
+   settlement_id:mappedFarmId,site_id:null,template_id:Number(starterFarms[0].id),
+   name:'CI Restored Map Farm',status:'ruined',cycle_mode:'manual',cycle_cadence:'normal',notes:'Existing map marker'
+  }),'/world-admin/industry/facilities',staff);
+  assert.equal(linkedFarm.status,200,JSON.stringify(linkedFarm.body));
+  const linkedFarmId=Number(linkedFarm.body.id);
+  const [[locationCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_sites WHERE name='CI Destroyed Map Farm'");
+  assert.equal(Number(locationCount.n),0,'no duplicate independent map marker created');
+  // Even if a facility is technically operational, a destroyed map marker must
+  // block production until the linked construction project restores its condition.
+  await admin.execute("UPDATE world_industry_facilities SET status='operational' WHERE id=?",[linkedFarmId]);
+  const blockedFarm=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+linkedFarmId+'/preview',staff);
+  assert.equal(blockedFarm.status,200,JSON.stringify(blockedFarm.body));
+  assert.equal(blockedFarm.body.preview.operations,0);
+  assert.ok(blockedFarm.body.preview.blocked.includes('mapped_location_needs_rebuilding'));
+  await admin.execute("UPDATE world_industry_facilities SET status='ruined' WHERE id=?",[linkedFarmId]);
+  const restoreFarm=await industryRoute(admin,request('POST',{
+   facility_id:linkedFarmId,name:'CI Rebuild Map Farm',description:'Restore existing destroyed farm',
+   status:'active',result_status:'operational',labor_required:1,campaign_project_id:null,needs:[]
+  }),'/world-admin/industry/projects',staff);
+  assert.equal(restoreFarm.status,200,JSON.stringify(restoreFarm.body));
+  const restoreTick=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+restoreFarm.body.id+'/advance',staff);
+  assert.equal(restoreTick.status,200,JSON.stringify(restoreTick.body));
+  assert.equal(restoreTick.body.completed,true);
+  const [[repairedMarker]]=await admin.execute('SELECT strategic_state FROM world_settlements WHERE id=?',[mappedFarmId]);
+  assert.equal(repairedMarker.strategic_state,'rebuilding','reconstruction does not magically secure the entire location');
+  const readyFarm=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+linkedFarmId+'/preview',staff);
+  assert.equal(readyFarm.status,200);
+  assert.ok(readyFarm.body.preview.operations>0,'existing mapped farm operates only after reconstruction');
+  const [[starterKinds]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_templates WHERE slug IN ('starter-orchard','starter-fishery','starter-ore-mine','starter-ceruleum-drilling','starter-ceruleum-refinery','starter-ore-foundry','starter-assembly-workshop','starter-ceruleum-generator')");
+  assert.equal(Number(starterKinds.n),8,'additional production types installed');
+  await admin.query(await readFile(new URL('../sql/056_industry_map_location_templates.sql',import.meta.url),'utf8'));
+  const [[starterKindsAgain]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_templates WHERE slug IN ('starter-orchard','starter-fishery','starter-ore-mine','starter-ceruleum-drilling','starter-ceruleum-refinery','starter-ore-foundry','starter-assembly-workshop','starter-ceruleum-generator')");
+  assert.equal(Number(starterKindsAgain.n),8,'re-running starter templates does not duplicate or reset recipes');
   await admin.query(await readFile(new URL('../sql/055_independent_industry_sites.sql',import.meta.url),'utf8'));
   const [[stillFarm]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_sites WHERE id=?',[farmSiteId]);
   assert.equal(Number(stillFarm.n),1,'repeat migration retains farm and production history');
