@@ -1,0 +1,59 @@
+import React,{useState} from 'react';
+const defaults=()=>({name:'',slug:'',category:'mine',configuration:{inputs:[],outputs:[],byproducts:[],labor:1,heat:0,power:0,capacity:1,upgrade_level:1},rules:[]});
+const fields=[['status','Facility state'],['level','Facility level'],['workforce','Assigned workforce'],['heat_available','Heating capacity'],['power_available','Power capacity'],['capacity_pct','Operating capacity %'],['population','Settlement residents'],['stability','Civic stability'],['security','Security']];
+const heading=s=>s.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+export default function IndustryTemplateEditor({template=null,items=[],request,onSaved,onCancel}){
+ const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:defaults());
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
+ const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30});
+ const [scenarioStock,setScenarioStock]=useState({});
+ const setConfig=(field,value)=>setDraft(d=>({...d,configuration:{...d.configuration,[field]:value}}));
+ const changeRow=(kind,i,key,val)=>setConfig(kind,draft.configuration[kind].map((row,j)=>j===i?{...row,[key]:key==='qty'?Number(val):val}:row));
+ const addRow=kind=>{const item=items.find(i=>!draft.configuration[kind].some(x=>x.item_id===i.id));if(item)setConfig(kind,[...draft.configuration[kind],{item_id:item.id,qty:1}]);};
+ const changeRule=(i,patch)=>setDraft(d=>({...d,rules:d.rules.map((r,j)=>i===j?{...r,...patch}:r)}));
+ const changeCondition=(i,k,patch)=>changeRule(i,{when:draft.rules[i].when.map((p,j)=>j===k?{...p,...patch}:p)});
+ async function submit(path,body,onDone,closeAfter=false){
+  setBusy(true);setError('');
+  try{const response=await request(path,{method:'POST',body});onDone(response);if(closeAfter&&onSaved)await onSaved();}
+  catch(e){setError(e.message||'Unable to save industry template')}
+  finally{setBusy(false)}
+ }
+ const payload=()=>({...draft,configuration:{...draft.configuration},rules:draft.rules});
+ return <section className="wa-industry-editor">
+  <header><div><span className="wa-kicker">VERSIONED INDUSTRY TEMPLATE</span><h3>{template?'Publish revision '+(Number(template.current_version)+1):'New facility template'}</h3><p>{template?'The existing version remains attached to already-created sites.':'Define a reusable facility type without modifying server code.'}</p></div><button type="button" onClick={onCancel}>Close</button></header>
+  {error&&<p role="alert" className="wa-error">{error}</p>}
+  <div className="wa-industry-editor-grid">
+   <label>Name<input value={draft.name} maxLength="120" disabled={Boolean(template)} required onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
+   <label>Template ID<input value={draft.slug} maxLength="70" disabled={Boolean(template)} placeholder="voidsent-mine" onChange={e=>setDraft({...draft,slug:e.target.value.toLowerCase().replace(/\s+/g,'-')})}/></label>
+   <label>Industry<select value={draft.category} disabled={Boolean(template)} onChange={e=>setDraft({...draft,category:e.target.value})}>{['mine','extraction','refinery','manufacturing','utilities','agriculture','other'].map(c=><option key={c} value={c}>{heading(c)}</option>)}</select></label>
+  </div>
+  <div className="wa-industry-rule-layout">
+   <section><h4>Production requirements</h4><div className="wa-industry-editor-grid">{[['labor','Workers / operation'],['heat','Heat / operation'],['power','Power / operation'],['capacity','Maximum operations / cycle'],['upgrade_level','Minimum facility level']].map(([field,label])=><label key={field}>{label}<input type="number" step="1" min={field==='upgrade_level'||field==='capacity'?1:0} max={field==='capacity'?1000:field==='upgrade_level'?20:100000} value={draft.configuration[field]} onChange={e=>setConfig(field,Number(e.target.value))}/></label>)}</div>
+    {['inputs','outputs','byproducts'].map(kind=><div className="wa-industry-material-group" key={kind}><div className="wa-industry-section-heading"><h4>{heading(kind)}</h4><button type="button" onClick={()=>addRow(kind)} disabled={draft.configuration[kind].length>=20||!items.length}>+ Add item</button></div>{draft.configuration[kind].map((row,i)=><div className="wa-industry-material-line" key={i}><select aria-label={kind+' material'} value={row.item_id} onChange={e=>changeRow(kind,i,'item_id',e.target.value)}>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><input aria-label={kind+' quantity'} type="number" step=".001" min=".001" value={row.qty} onChange={e=>changeRow(kind,i,'qty',e.target.value)}/><button type="button" aria-label={'Remove '+kind} onClick={()=>setConfig(kind,draft.configuration[kind].filter((_,j)=>j!==i))}>×</button></div>)}{!draft.configuration[kind].length&&<p className="wa-npc-subtle">{kind==='inputs'?'No input needed; suitable for extracting raw deposits.':kind==='outputs'?'At least one output is required.':'No additional byproducts.'}</p>}</div>)}
+   </section>
+   <section><div className="wa-industry-section-heading"><h4>Condition & action rules</h4><button type="button" onClick={()=>setDraft(d=>({...d,rules:[...d.rules,{when:[{field:'level',op:'gte',value:1}],action:{type:'allow'},message:''}]}))}>+ Add rule</button></div><p className="wa-npc-subtle">Rules are declarative, versioned, and never execute scripts. Matching conditions can block production or alter throughput.</p>
+    {draft.rules.map((rule,i)=><div className="wa-industry-rule-card" key={i}>
+      <div className="wa-industry-section-heading"><strong>Rule {i+1}</strong><button type="button" onClick={()=>setDraft(d=>({...d,rules:d.rules.filter((_,j)=>i!==j)}))}>Remove</button></div>
+      {rule.when.map((p,j)=><div className="wa-industry-condition" key={j}>
+       <select aria-label="Condition field" value={p.field} onChange={e=>changeCondition(i,j,{field:e.target.value,op:e.target.value==='status'?'eq':p.op,value:e.target.value==='status'?'operational':1})}>{fields.map(([k,label])=><option key={k} value={k}>{label}</option>)}</select>
+       <select aria-label="Comparison" value={p.op} onChange={e=>changeCondition(i,j,{op:e.target.value})}>{(p.field==='status'?['eq','neq']:['eq','neq','gte','lte']).map(v=><option key={v} value={v}>{v}</option>)}</select>
+       {p.field==='status'?<select value={p.value} onChange={e=>changeCondition(i,j,{value:e.target.value})}>{['captured','liberated','ruined','rebuilding','operational','damaged','paused'].map(v=><option key={v} value={v}>{heading(v)}</option>)}</select>:<input aria-label="Comparison value" type="number" value={p.value} onChange={e=>changeCondition(i,j,{value:Number(e.target.value)})}/>}
+       <button type="button" disabled={rule.when.length===1} aria-label="Remove condition" onClick={()=>changeRule(i,{when:rule.when.filter((_,k)=>j!==k)})}>×</button>
+      </div>)}
+      <button type="button" className="wa-industry-link" disabled={rule.when.length>=8} onClick={()=>changeRule(i,{when:[...rule.when,{field:'level',op:'gte',value:1}]})}>+ And condition</button>
+      <div className="wa-industry-condition"><label>Then<select value={rule.action.type} onChange={e=>changeRule(i,{action:e.target.value==='multiplier'?{type:'multiplier',value:1}:{type:e.target.value}})}>{['allow','block','multiplier'].map(v=><option key={v} value={v}>{heading(v)}</option>)}</select></label>{rule.action.type==='multiplier'&&<label>Output multiplier<input type="number" min="0" max="3" step=".1" value={rule.action.value} onChange={e=>changeRule(i,{action:{type:'multiplier',value:Number(e.target.value)}})}/></label>}</div>
+      <label>Reason (optional)<input value={rule.message||''} maxLength="180" onChange={e=>changeRule(i,{message:e.target.value})}/></label>
+     </div>)}
+    {!draft.rules.length&&<p className="wa-industry-empty">No custom rules. The normal workforce, input, heat, power, level and capacity requirements still apply.</p>}
+   </section>
+  </div>
+  <details className="wa-civic-form"><summary>Dry-run scenario · simulate available workers, utilities and goods</summary><div className="wa-industry-form">
+   {[['level','Facility level'],['capacity_pct','Capacity %'],['workforce','Workers'],['heat_available','Heat available'],['power_available','Power available']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="1" value={scenario[key]} onChange={e=>setScenario({...scenario,[key]:Number(e.target.value)})}/></label>)}
+   <label>Facility state<select value={scenario.status} onChange={e=>setScenario({...scenario,status:e.target.value})}>{['operational','captured','liberated','rebuilding','damaged','paused'].map(status=><option value={status} key={status}>{heading(status)}</option>)}</select></label>
+   {draft.configuration.inputs.map(input=><label key={input.item_id}>{items.find(x=>x.id===input.item_id)?.name||input.item_id} available<input type="number" min="0" step=".001" value={scenarioStock[input.item_id]??100} onChange={e=>setScenarioStock({...scenarioStock,[input.item_id]:Number(e.target.value)})}/></label>)}
+   <p className="wide wa-npc-subtle">A dry run reads only these example numbers. It never creates a facility, moves stock, or commits a production cycle.</p>
+  </div></details>
+  {test&&<div className="wa-industry-dryresult"><strong>Rule dry run</strong><span>{test.operations} operations · {test.blocked.length?test.blocked.join(', '):'No blocking conditions'}</span><small>{JSON.stringify(test.outputs)}</small></div>}
+  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',{...payload(),facility:scenario,stock:Object.fromEntries(draft.configuration.inputs.map(x=>[x.item_id,scenarioStock[x.item_id]??100]))},r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
+ </section>;
+}
