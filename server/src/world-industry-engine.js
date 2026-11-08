@@ -73,7 +73,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[facility.region_id]);
  const [climate]=region?await climateForRegions(db,[region]):[];
  const conditions=climate?.effective_weather||{};
- const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security),weather:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),industry_category:facility.industry_category,weather_protection_level:climateLevel,climate_powered:climateFuelRate===0||utilityCapacity>0});
+ const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security),weather:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),industry_category:facility.industry_category,weather_protection_level:climateLevel,climate_powered:climateFuelRate===0||utilityCapacity>0,climate_fuel_per_operation:climateFuelRate,climate_fuel_capacity:utilityCapacity});
  preview.weather={condition:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),source:conditions.source||'unknown'};
  if(climateFuelRate>0&&utilityCapacity===0){preview.operations=0;preview.blocked.push('climate_control_needs_fuel');preview.inputs={};preview.outputs={};preview.byproducts={};}
  preview.utility_fuel_required=Math.round(preview.operations*(utilityDemand/10+climateFuelRate)*1000)/1000;
