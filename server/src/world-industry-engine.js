@@ -38,6 +38,7 @@ export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry
  const data=await getIndustryPreview(db,id,!dry);
  if(!data)return {status:404,body:{error:'facility_not_found'}};
  const {facility,config,preview}=data;
+ if((facility.owner_faction_id||null)!==(facility.controlling_faction_id||null))return {status:409,body:{error:'facility_ownership_changed'}};
  const key=industryCycleKey(now,facility.cycle_cadence);
  if(!dry){
   if(facility.cycle_mode==='off')return {status:409,body:{error:'production_disabled'}};
@@ -61,9 +62,10 @@ export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry
  return {status:200,body:{committed:true,cycle_key:key,preview}};
 }
 export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
- const [[project]]=await db.execute('SELECT p.*,f.workforce,f.status AS facility_status,f.id AS industry_id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id WHERE p.id=? FOR UPDATE',[id]);
+ const [[project]]=await db.execute('SELECT p.*,f.workforce,f.owner_faction_id,s.controlling_faction_id,f.status AS facility_status,f.id AS industry_id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id JOIN world_settlements s ON s.id=f.settlement_id WHERE p.id=? FOR UPDATE',[id]);
  if(!project)return {status:404,body:{error:'project_not_found'}};
  if(project.status!=='active')return {status:409,body:{error:'project_not_active'}};
+ if((project.owner_faction_id||null)!==(project.controlling_faction_id||null))return {status:409,body:{error:'facility_ownership_changed'}};
  const [needs]=await db.execute('SELECT * FROM world_industry_project_needs WHERE project_id=? ORDER BY item_id FOR UPDATE',[id]);
  if(needs.some(n=>num(n.committed_qty)<num(n.required_qty)))return {status:409,body:{error:'project_materials_missing'}};
  const key=industryCycleKey(now,'normal');
@@ -83,8 +85,8 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
 }
 export async function runIndustryAutomation(pool,now=new Date()){
  if(!pool)return {production:0,construction:0};
- const [facilities]=await pool.execute("SELECT id FROM world_industry_facilities WHERE cycle_mode='automatic' AND status='operational' ORDER BY id LIMIT 150");
- const [projects]=await pool.execute("SELECT p.id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id WHERE p.status='active' AND f.cycle_mode='automatic' ORDER BY p.id LIMIT 150");
+ const [facilities]=await pool.execute("SELECT f.id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.cycle_mode='automatic' AND f.status='operational' AND f.owner_faction_id <=> s.controlling_faction_id ORDER BY f.id LIMIT 150");
+ const [projects]=await pool.execute("SELECT p.id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id JOIN world_settlements s ON s.id=f.settlement_id WHERE p.status='active' AND f.cycle_mode='automatic' AND f.owner_faction_id <=> s.controlling_faction_id ORDER BY p.id LIMIT 150");
  let production=0,construction=0;
  for(const f of facilities)try{
   const res=await atomicIndustry(pool,db=>produceIndustryCycle(db,f.id,now));
