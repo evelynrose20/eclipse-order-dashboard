@@ -28,6 +28,7 @@ test('chair admission requires offline machine, empty seat and player opt-in',()
  assert.equal(canSeatCharacter({machine_status:'running'},{character_id:null},accepted),false);
  assert.equal(canSeatCharacter({machine_status:'offline'},{character_id:'already-seated'},accepted),false);
  assert.equal(canSeatCharacter({machine_status:'offline'},{character_id:null},{...accepted,allow_seating:0}),false);
+ assert.equal(canSeatCharacter({machine_status:'offline'},{character_id:null},{allow_seating:1,allow_upper:0,allow_lower:0}),true,'Seating is independent of collection availability');
 });
 test('collection limits respect each channel and prior recorded units',()=>{
  const prefs={allow_seating:1,allow_upper:1,allow_lower:0,upper_limit:20,lower_limit:0};
