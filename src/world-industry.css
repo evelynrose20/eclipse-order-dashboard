@@ -116,3 +116,10 @@
 .wa-industry-campaign-intro h3{font-size:17px;margin:5px 0;color:#ecd3b1}
 .wa-industry-campaign-intro p{font-size:12px;color:#aec0ca;margin:0;line-height:1.6}
 .wa-industry-campaigns .eo-construction{min-width:0}
+
+.wa-industry-location-list{border-top:1px solid #445968;margin-top:10px;padding:10px 12px;display:grid;gap:6px}
+.wa-industry-location-list>strong{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#ddc6a2;padding:6px}
+.wa-industry-location-list>button{display:flex;align-items:center;gap:9px;border:1px solid #455b62;border-radius:4px;background:#203931;color:#e6edda;padding:10px;text-align:left}
+.wa-industry-location-list>button>span{display:grid;gap:4px;min-width:0;flex:1;font-weight:650;font-size:12px}
+.wa-industry-location-list small{color:#a9c7b8;font-size:10px}
+.wa-industry-sim-explain,.wa-industry-computed{margin:9px 15px;font-size:12px;color:#c5d7c7;line-height:1.5}
