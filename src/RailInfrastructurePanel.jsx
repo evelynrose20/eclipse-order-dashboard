@@ -58,7 +58,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const validation=()=>{
   if(!editing)return '';
   if(tab==='stations')return !editing.name?.trim()?'Enter a station name.':!Number(editing.node_id)?'Choose a rail-connected junction or settlement.':'';
-  if(tab==='platforms')return !Number(editing.station_id)?'Select a station before adding its platform.':!editing.code?.trim()?'Enter a platform code (for example F1).':platforms.some(p=>Number(p.station_id)===Number(editing.station_id)&&Number(p.id)!==Number(editing.id)&&String(p.code).toLowerCase()===String(editing.code).trim().toLowerCase())?'This station already has a platform with that code.':!Number.isInteger(Number(editing.track_length))||Number(editing.track_length)<1?'Track length must be at least 1.':!Number.isInteger(Number(editing.capacity))||Number(editing.capacity)<0?'Platform capacity must be zero or more.':'';
+  if(tab==='platforms')return !stateOptions.includes(String(editing.status||'').trim().toLowerCase())?'Choose a valid platform status.':!['freight','passenger','mixed','siding'].includes(String(editing.kind||'').trim().toLowerCase())?'Choose a valid platform role.':!Number(editing.station_id)?'Select a station before adding its platform.':!editing.code?.trim()?'Enter a platform code (for example F1).':platforms.some(p=>Number(p.station_id)===Number(editing.station_id)&&Number(p.id)!==Number(editing.id)&&String(p.code).toLowerCase()===String(editing.code).trim().toLowerCase())?'This station already has a platform with that code.':!Number.isInteger(Number(editing.track_length))||Number(editing.track_length)<1?'Track length must be at least 1.':!Number.isInteger(Number(editing.capacity))||Number(editing.capacity)<0?'Platform capacity must be zero or more.':'';
   if(tab==='switches')return !Number(editing.node_id)?'Choose a shared junction.':!Number(editing.entry_segment_id)||!Number(editing.exit_segment_id)?'Choose both tracks that meet at the junction.':Number(editing.entry_segment_id)===Number(editing.exit_segment_id)?'Choose two different tracks.':'';
   if(tab==='crossings')return !Number(editing.rail_segment_id)||!Number(editing.road_segment_id)?'Choose both a railway and a road.':'';
   return '';
@@ -80,12 +80,15 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   if(!editing||!canEdit||busy||tab==='links')return;
   const invalid=validation();if(invalid){setError(invalid);return}
   const payload=tab==='stations'?{...editing,region_id:Number(regionId),zone_id:Number(zoneId),node_id:asNum(editing.node_id),freight_capacity:asNum(editing.freight_capacity),freight_enabled:!!editing.freight_enabled,passenger_enabled:!!editing.passenger_enabled}:
-    tab==='platforms'?{...editing,station_id:asNum(editing.station_id),track_length:asNum(editing.track_length),capacity:asNum(editing.capacity)}:
+    tab==='platforms'?{station_id:asNum(editing.station_id),code:String(editing.code||'').trim(),kind:String(editing.kind||'freight').trim().toLowerCase(),status:String(editing.status||'planned').trim().toLowerCase(),track_length:asNum(editing.track_length),capacity:asNum(editing.capacity)}:
     tab==='switches'?{...editing,node_id:asNum(editing.node_id),entry_segment_id:asNum(editing.entry_segment_id),exit_segment_id:asNum(editing.exit_segment_id)}:
     {...editing,region_id:Number(regionId),zone_id:Number(zoneId),rail_segment_id:asNum(editing.rail_segment_id),road_segment_id:asNum(editing.road_segment_id),map_x:Number(editing.map_x),map_y:Number(editing.map_y)};
   setBusy(true);setError('');setMessage('');
   try{await request('/world-admin/rail/'+tab+(editing.id?'/'+editing.id:''),{method:editing.id?'PUT':'POST',body:payload});await onSaved?.();setEditing(null);setRecord(null);setMessage('Railway infrastructure saved.')}
-  catch(e){setError(e?.message||'Unable to save railway infrastructure.')}finally{setBusy(false)}
+  catch(e){
+    const hints={rail_platform_status_invalid:'Choose a valid platform status: Planned, Operational, Closed or Damaged.',rail_platform_capacity_invalid:'Platform capacity must be a whole number of zero or more.',rail_platform_kind_invalid:'Select Freight, Passenger, Mixed or Siding for the platform.',rail_platform_track_length_invalid:'Track length must be a whole number of at least 1.'};
+    setError(hints[e?.code]||hints[e?.message]||e?.message||'Unable to save railway infrastructure.');
+   }finally{setBusy(false)}
  }
  async function remove(){
   if(!editing?.id||busy||!canEdit||!window.confirm('Delete this '+tab.slice(0,-1)+'? Connected track geometry will remain.'))return;
