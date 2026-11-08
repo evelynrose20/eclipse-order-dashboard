@@ -1,0 +1,23 @@
+.wtm-rail-ops{display:grid;gap:12px;margin-top:12px;padding:13px;background:#182832;border:1px solid #586c78;color:#e1e6e2}
+.wtm-rail-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.wtm-rail-tabs button,.wtm-rail-catalog button,.wtm-rail-actions button{border:1px solid #677987;background:#253a45;border-radius:4px;padding:9px 11px;color:#f5ead7;cursor:pointer;font-weight:700;font-size:12px}
+.wtm-rail-tabs button.active,.wtm-rail-catalog button.selected{border-color:#dfbd7b;background:#664736}
+.wtm-rail-tabs i,.wtm-rail-actions i{margin-right:5px}
+.wtm-rail-catalog{display:flex;gap:7px;flex-wrap:wrap}
+.wtm-rail-catalog button{display:grid;gap:3px;min-width:122px;text-align:left}
+.wtm-rail-catalog small{font-size:10px;color:#b9c5c9;text-transform:uppercase}
+.wtm-rail-catalog .wtm-rail-new{color:#f7dca6}
+.wtm-rail-help{font-size:12px;color:#b9c8cb;line-height:1.5;margin:0}
+.wtm-rail-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:11px;padding:13px;border:1px solid #55636d;background:#111f29}
+.wtm-rail-form label{font-size:11px;font-weight:800;display:grid;gap:5px;color:#e5dfd4}
+.wtm-rail-form label.wide,.wtm-rail-actions.wide{grid-column:1/-1}
+.wtm-rail-form :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;background:#1c313d;color:#f4eddf;border:1px solid #7b8a91;border-radius:3px;padding:9px;font:inherit}
+.wtm-rail-form .wtm-rail-check{display:flex;align-items:center;gap:8px}
+.wtm-rail-actions{display:flex;gap:7px;flex-wrap:wrap}
+.wtm-rail-actions button:first-child{background:#654c36;border-color:#c6a770}
+.wtm-rail-actions button:disabled,.wtm-rail-catalog button:disabled{opacity:.5;cursor:not-allowed}
+.wtm-rail-symbol{position:absolute;z-index:8;transform:translate(-50%,-50%);width:27px;height:27px;border:2px solid #e0c58e;border-radius:6px;background:#1e4960;color:#fbeed2;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 5px #07121da6}
+.wtm-rail-symbol.crossing{border-radius:50%;background:#674e32}
+.wtm-rail-symbol:focus-visible{outline:2px solid #ffe9b1;outline-offset:2px}
+.wtm-rail-position{position:absolute;z-index:7;width:14px;height:14px;border:2px solid #fff1c0;background:#ac703e;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%)}
+@media(max-width:640px){.wtm-rail-ops{padding:9px}.wtm-rail-tabs button{flex:1}}
