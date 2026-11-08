@@ -22,8 +22,8 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
  useEffect(()=>{setData(null);setDraft(null);load().catch(e=>setError(e.message||'Unable to load upgrades'))},[settlement.id]);
  async function save(method,path,body,message){
   setBusy(true);setError('');setNotice('');
-  try{await request(root+path,{method,body});await load();await onChanged?.();setDraft(null);setNotice(message)}
-  catch(e){setError(e.message||'Unable to save upgrade')}
+  try{await request(root+path,{method,body});await load();await onChanged?.();setDraft(null);setNotice(message);return true}
+  catch(e){setError(e.message||'Unable to save upgrade');return false}
   finally{setBusy(false)}
  }
  if(!data)return <div className="wa-empty">{error||'Loading settlement upgrades…'}</div>;
@@ -84,7 +84,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
      </div>
      <footer className="wa-industry-attach-foot"><span>{chosen?chosenLabel+' selected':'Select a structure type to continue.'}</span><button type="button" className="wa-industry-primary" disabled={!chosen} onClick={()=>setStep('details')}>Continue to construction <i className="fa-solid fa-chevron-right" aria-hidden="true"/></button></footer>
     </>:draft&&<>
-     <form id="wa-civic-build-form" className="wa-civic-build-form" onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.').then(()=>{if(!error)close()})}}>
+     <form id="wa-civic-build-form" className="wa-civic-build-form" onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.').then(saved=>{if(saved)close()})}}>
       <div className="wa-industry-production-layout">
        <div className="wa-industry-production-main">
         <div className="wa-industry-picked-location"><span className="wa-kicker">SELECTED STRUCTURE</span><strong><i className={'fa-solid '+categoryIcon[draft.category]} aria-hidden="true"/> {chosenLabel}</strong><small>{settlement.name} · Civilian infrastructure</small>{!draft.id&&<button type="button" onClick={()=>setStep('choose')}>Change structure type</button>}</div>
