@@ -7,7 +7,7 @@ export default function ThrallChamber({request}){
   let active=true;
   request('/thralls/chamber').then(data=>{if(active)setRoom(data)}).catch(e=>{if(active)setError(e.message||'Room unavailable')});
   return()=>{active=false};
- },[request]);
+ },[]);
  if(error)return <section className="panel" role="alert"><h2>Room unavailable</h2><p>Access to this chamber could not be verified.</p></section>;
  if(!room)return <section className="panel"><p>Opening chamber records…</p></section>;
  return <div className="thrall-chamber">
