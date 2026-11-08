@@ -55,7 +55,9 @@ export async function getIndustryPreview(db,id,lock=false){
  // Ceruleum in the facility's own stock supplies heat and power; one unit = ten utility units.
  const utilityDemand=Number(config.heat)+Number(config.power);
  const fuel=Number(stock['ceruleum-fuel']||0);
- const utilityCapacity=utilityDemand>0?Math.floor(fuel*10/utilityDemand):0;
+ const recipeFuel=Number(config.inputs.find(x=>x.item_id==='ceruleum-fuel')?.qty||0);
+ const fuelPerOperation=utilityDemand/10+recipeFuel;
+ const utilityCapacity=utilityDemand>0?Math.floor((fuel+1e-7)/fuelPerOperation):0;
  const workforce=Math.max(0,availableWorkers);
  const availableHeat=utilityDemand>0?utilityCapacity*Number(config.heat):0;
  const availablePower=utilityDemand>0?utilityCapacity*Number(config.power):0;
