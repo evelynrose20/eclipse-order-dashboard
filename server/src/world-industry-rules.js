@@ -82,6 +82,7 @@ export function industryProductionPreview(facility,config,rules,stock={},context
  if(config.heat)limits.push(Math.floor(availableHeat/config.heat));
  if(config.power)limits.push(Math.floor(availablePower/config.power));
  for(const input of config.inputs)limits.push(Math.floor(Number(stock[input.item_id]||0)/input.qty));
+ if(Number(context.climate_fuel_per_operation)>0)limits.push(Math.max(0,Math.floor(Number(context.climate_fuel_capacity)||0)));
  const ctx={...context,level:Number(facility.level),workforce:availableWorkforce,heat_available:availableHeat,power_available:availablePower,capacity_pct:Number(facility.capacity_pct),status:facility.status};
  const decision=evaluateIndustryRules(rules,ctx);
  if(!decision.allowed)fails.push('rule_blocked');
