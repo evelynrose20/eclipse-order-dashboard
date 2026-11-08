@@ -16,7 +16,7 @@ const blank={name:'',category:'housing',status:'planned',condition_pct:100,level
 const fmt=n=>Number(n||0).toLocaleString();
 const title=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
 export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[],openChooser=false}){
- const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[step,setStep]=useState('choose'),[chosen,setChosen]=useState(''),[showTemplates,setShowTemplates]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[step,setStep]=useState('choose'),[chosen,setChosen]=useState(''),[showTemplates,setShowTemplates]=useState(false),[contributionAmounts,setContributionAmounts]=useState({}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  useEffect(()=>{if(openChooser){setAddMenu(true);setStep('choose');setChosen('');setDraft(null)}},[openChooser]);
  const root='/world-admin/settlements/'+settlement.id+'/upgrades';
  const load=async()=>{const r=await request(root);setData(r)};
@@ -46,6 +46,33 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
  const effectText=x=>({housing_capacity:'housing places',defense:'defense',medical_access:'medical access',water_daily:'water units per cycle',food_capacity:'food storage units',insulation:'insulation',public_works:'public works',school_places:'student places'})[x]||title(x);
  const snapshot=x=>{try{return typeof x==='string'?JSON.parse(x):x||{}}catch{return {}}};
  const costFor=(t,level)=>({material:t?.material_id||'iron-ingot',units:Number(t?.material_per_level||0)*level,labor:Number(t?.construction_labor||0)*level,npc:Number(t?.npc_development_cost||0)*level});
+ const commitProjectSupply=async project=>{
+  const remaining=Math.max(0,Number(project.material_required)-Number(project.committed_qty));
+  const amount=Number(contributionAmounts[project.id]||remaining);
+  if(!Number.isInteger(amount)||amount<1||amount>remaining){setError('Choose a quantity between 1 and the remaining requirement.');return}
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request(root+'/projects/'+project.id+'/commit',{method:'POST',body:{quantity:amount}});
+   setContributionAmounts(v=>({...v,[project.id]:''}));
+   await load();
+   await onChanged?.();
+   setNotice('Materials committed to this construction project.');
+  }catch(e){setError(e.message||'Unable to commit project materials')}finally{setBusy(false)}
+ };
+ const projectSupplies=project=>{
+  const required=Number(project.material_required||0),committed=Number(project.committed_qty||0);
+  const remaining=Math.max(0,required-committed);
+  const available=Number((data.available_materials||[]).find(x=>x.material_id===project.material_id)?.quantity||0);
+  const amount=contributionAmounts[project.id]??String(Math.min(remaining,available));
+  return <div className="wa-civic-project-supplies" key={project.id}>
+   <div className="wa-industry-choice-heading"><strong>{project.project_kind==='build'?'Build':project.project_kind==='repair'?'Repair':'Upgrade'} · {data.upgrades.find(u=>Number(u.id)===Number(project.upgrade_id))?.name||'Building'} · Level {project.target_level}</strong><span>{project.status}</span></div>
+   <div className="wa-upgrade-details"><span>Required: {fmt(required)} {project.material_id}</span><span>Committed: {fmt(committed)}</span><span>Remaining: {fmt(remaining)}</span><span>Shared stock: {fmt(available)}</span><span>Labor: {fmt(project.progress)} / {fmt(project.labor_required)}</span></div>
+   <div className="wa-civic-supply-progress" role="progressbar" aria-label="Construction materials committed" aria-valuemin={0} aria-valuemax={Math.max(1,required)} aria-valuenow={committed}><span style={{width:(required?Math.min(100,committed/required*100):100)+'%'}}/></div>
+   {project.status==='active'&&remaining>0&&<div className="wa-civic-supply-commit"><label>Commit from shared Order stock<input aria-label={'Material quantity for project '+project.id} type="number" min="1" max={remaining} step="1" value={amount} onChange={e=>setContributionAmounts(v=>({...v,[project.id]:e.target.value}))}/></label><button type="button" disabled={busy||available<1||Number(amount)<1||Number(amount)>Math.min(available,remaining)} onClick={()=>commitProjectSupply(project)}>Commit materials</button></div>}
+   {project.status==='active'&&remaining===0&&<p className="wa-npc-subtle">Fully supplied. Available workers advance the project during settlement simulation cycles.</p>}
+   {(data.contributions||[]).filter(c=>Number(c.project_id)===Number(project.id)).slice(0,5).map(c=><small key={c.id}>Committed {fmt(c.quantity)} {c.material_id} · {new Date(c.contributed_at).toLocaleDateString()}</small>)}
+  </div>
+ };
  const renderStructure=(u)=><article className="wa-upgrade-card" key={u.id}>
    <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
    <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
@@ -62,6 +89,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
     <div><small>Waterworks output</small><strong>{fmt(data.effects.infrastructure?.water_daily||0)}</strong><span>Units per production cycle before labor limit</span></div>
     <div><small>Water storage capacity</small><strong>{fmt(data.storage_capacity?.water||0)}</strong><span>Operational waterworks expand this</span></div>
   </div>
+  <section className="wa-civic-supply-section"><div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-boxes-stacked" aria-hidden="true"/><div><h4>Construction Supplies</h4><p>Reserve real crafted goods for Order-controlled building projects.</p></div></div></div>{(data.projects||[]).filter(p=>p.owner_kind==='order'&&['active','paused'].includes(p.status)).length?(data.projects||[]).filter(p=>p.owner_kind==='order'&&['active','paused'].includes(p.status)).map(projectSupplies):<p className="wa-npc-subtle">No active construction projects awaiting supplies.</p>}</section>
   <div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-plus" aria-hidden="true"/><div><h4>Build infrastructure</h4><p>Plan new buildings and services for this settlement.</p></div></div><button type="button" onClick={launch}>+ Add structure</button></div>
   {sections.map(section=>{
    const records=data.upgrades.filter(u=>section.categories.includes(u.category));
@@ -112,6 +140,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
        </>:<p>Maximum building level reached or template is no longer available.</p>}
        <p>Effects and construction costs are determined by the saved template, not manual service bonuses.</p>
       </aside></div>
+      {draft.id&&(data.projects||[]).filter(p=>Number(p.upgrade_id)===Number(draft.id)&&['active','paused'].includes(p.status)&&p.owner_kind==='order').map(projectSupplies)}
       <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>draft.id?close():setStep('choose')}>{draft.id?'Close':'Back to templates'}</button>
        <button type="button" className="wa-industry-primary" disabled={busy||!selectedTemplate||(!selectedTemplate.enabled&&draft.status!=='damaged')||(draft.status!=='damaged'&&Number(draft.id?draft.level:0)>=Number(selectedTemplate.max_level))||Boolean(data.projects?.some(p=>Number(p.upgrade_id)===Number(draft.id)&&['active','paused'].includes(p.status)))} onClick={async()=>{const result=await save('POST',draft.id?'/'+draft.id+(draft.status==='damaged'?'/repair':'/improve'):'/from-template',draft.id?{}:{template_id:draft.template_id},draft.id?(draft.status==='damaged'?'Repair project started.':'Upgrade project started.'):'Building project started.');if(result)close()}}>{busy?'Saving…':draft.id?(draft.status==='damaged'?'Repair building':'Start upgrade project'):'Start construction'}</button>
       </footer>
