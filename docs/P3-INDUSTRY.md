@@ -2,7 +2,7 @@
 
 ## Model and boundaries
 
-Industrial sites attach to an existing world settlement and therefore inherit its geographical context (region/zone) without requiring extra map station objects. A facility records its own operator at creation; changing the settlement's controller freezes production and construction until staff acknowledges the capture. The acknowledgment deliberately sets the facility to **Captured** and production to **Off**, without rewriting territory, characters or inventories.
+Industrial facilities can attach **either to an existing settlement or to an independent mapped industrial site** (farm, ranch, lumberyard, quarry, mine, refinery, workshop, plant or other). Independent sites have their own region, zone and map marker, but no fictional civilian population; their controlling faction comes from the territory at creation. A facility records its own operator at creation; changing the settlement's controller freezes production and construction until staff acknowledges the capture. The acknowledgment deliberately sets the facility to **Captured** and production to **Off**, without rewriting territory, characters or inventories.
 
 The staff-only **World Administration → Industry & Projects** workspace separates **Order-controlled**, **NPC-controlled**, and **Unclaimed** facilities and projects. It has compact **Sites & production**, **Facility templates**, **Construction projects**, **Item catalog**, and **Production history** tabs.
 
@@ -28,6 +28,8 @@ A project advances at most once daily from assigned facility workers after its m
 
 ## Production and stocks
 
+Industry requirements are defined by the published template: **workforce needed**, **heat needed**, **power needed**, inputs and maximum capacity. Staff cannot type an arbitrary available workforce, energy balance, facility level or capacity into a live site. Available staff are calculated from the zone's simulated settlement workforce of the same controlling faction and allocated across active facilities. Utilities consume actual \`ceruleum-fuel\` in the facility inventory (one fuel unit supplies ten heat/power units). No workers or fuel means no powered production. These limits are reevaluated each cycle. Changing cadence after the first committed cycle is rejected, and founding a site cannot immediately mark it operational.
+
 Each production run is one database transaction. It locks the facility and stock records, validates the pinned recipe and rules, enforces inputs, workforce, heat, power, site level, capacity and the 1,000-operation cap, deducts inputs, credits outputs and byproducts, and writes the production record plus item ledger entries. A unique facility/cycle key prevents duplicate runs after a restart or simultaneous request. If requirements are absent or status is not Operational, nothing is consumed.
 
 Sites start in **Manual** production mode unless staff explicitly selects Automatic; **Off** disables runs. Slow = one eligible cycle per three-day bucket, Normal = daily, Fast = once per six-hour bucket. The Windows API polls every minute but does not replay every missed bucket following downtime.
@@ -42,7 +44,7 @@ Facility stock and Order shared workshop stock are different inventories. The UI
 
 ## Deployment and controls
 
-This feature needs **Windows API + MySQL migration `054_world_industry_projects.sql`** and the matching frontend. Before deployment, back up the production database, pull `main` on Windows, run `npm run setup:local` from `server`, restart the Windows API service, then refresh the browser.
+Independent industrial locations additionally need **MySQL migration `055_independent_industry_sites.sql`**. This adds standalone mapped industry sites and installs safe starter templates for farming, ranching, logging, stone quarrying and timber milling without overwriting edited data. The original P3 features need **Windows API + MySQL migration `054_world_industry_projects.sql`** and the matching frontend. Before deployment, back up the production database, pull `main` on Windows, run `npm run setup:local` from `server`, restart the Windows API service, then refresh the browser.
 
 Check that:
 - The Item Catalog, Template Builder, Facilities and Projects tabs load without schema warnings.
@@ -53,3 +55,12 @@ Check that:
 - Local Windows logs show the automatic industry scheduler without errors.
 
 CI tests validate disposable MySQL schema and API flows; live Windows and browser acceptance remain separate.
+
+## Simulation-owned production safeguards (migration 055)
+
+- Industrial facilities **do not own their workers**. Labor is drawn from NPC or Order-controlled settlements in the same zone and faction, divided across eligible facilities. Placing ten farms does not create ten labor pools.
+- Heat and power requirements are recipe inputs, not edit controls. A facility with no fuel cannot operate a powered recipe. Fuel is consumed and recorded in the industrial stock ledger in the same transaction as inputs/outputs.
+- Creating a mapped site does not add population or housing. New sites begin ruined or captured and require real construction progress to become operational.
+- Facility settings permit naming, pause/automatic mode, and an initial cadence. The API rejects direct staffing, level, heat/power, capacity and ownership edits. Once a production cycle has been recorded, cadence is locked to prevent repeated production by switching clock modes.
+- Simulation-managed settlements cannot have population, employment or civic outcome fields overwritten in the ordinary settlement editor. Staff can still manage legitimate territorial information and fund infrastructure through the appropriate systems.
+- New facilities and new farms are staff-visible zone map markers; existing settlement markers can also own industrial facilities without creating a separate site. Neither deletes existing infrastructure or stocks.
