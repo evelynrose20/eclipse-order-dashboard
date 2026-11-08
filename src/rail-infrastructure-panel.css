@@ -31,3 +31,10 @@
 .wtm-rail-freight-check>p{min-width:100%;margin:0;font-size:12px;line-height:1.5}
 .wtm-rail-freight-check .freight-good{color:#b6e0c1}
 .wtm-rail-freight-check .freight-blocked{color:#f3c4ac}
+
+
+.wtm-rail-symbol.switch{background:#354c61;border-radius:7px}
+.wtm-rail-symbol[data-state="operational"],.wtm-rail-symbol[data-state="open"]{background:#185e4b;border-color:#a4dfc1}
+.wtm-rail-symbol[data-state="planned"]{background:#70552f;border-color:#efcd88}
+.wtm-rail-symbol[data-state="closed"],.wtm-rail-symbol[data-state="damaged"]{background:#632f3c;border-color:#e6a3af}
+.wtm-rail-symbol i{font-size:12px}
