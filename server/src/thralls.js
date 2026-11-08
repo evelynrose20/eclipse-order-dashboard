@@ -39,6 +39,21 @@ export const GENDER_IDENTITIES=['unspecified','female','male','nonbinary','other
 export const LOWER_ANATOMIES=['unspecified','vulva','penis','mixed','other'];
 export const LACTATION_STATES=['none','established','variable'];
 const CYCLE_MS=5*60*1000;
+export const chamberCycleDate=now=>new Date(now).toISOString().slice(0,10);
+export const chamberNextReset=now=>new Date(Date.UTC(new Date(now).getUTCFullYear(),new Date(now).getUTCMonth(),new Date(now).getUTCDate()+1)).toISOString();
+// Per-day game balance; two independent reserves. No character's balance can go negative.
+export function dailyCapacity(channel,prefs){
+ if(channel==='upper')return prefs?.lactation_state==='established'?18:prefs?.lactation_state==='variable'?8:0;
+ if(channel==='lower')return availableChamberChannels(prefs).lower?6:0;
+ return 0;
+}
+export function dailyBalance(prefs,used={}){
+ const upperMax=dailyCapacity('upper',prefs),lowerMax=dailyCapacity('lower',prefs);
+ return {
+  upper:{maximum:upperMax,used:Math.min(upperMax,Number(used.upper_used||0)),remaining:Math.max(0,upperMax-Number(used.upper_used||0))},
+  lower:{maximum:lowerMax,used:Math.min(lowerMax,Number(used.lower_used||0)),remaining:Math.max(0,lowerMax-Number(used.lower_used||0))}
+ };
+}
 // A deliberately fictional, low-volume game abstraction. Not a model of human physiology.
 export function simulatedCycleYield(channel,preferences,random=Math.random()){
  if(channel==='upper'){
@@ -99,9 +114,16 @@ export async function thrallsRoute(pool,req,path){
   const [batches]=await pool.execute('SELECT id,material,material_type,quantity,classification,notes,created_at FROM order_thrall_chamber_batches ORDER BY id DESC LIMIT 80');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
   const [[seat]]=await pool.execute('SELECT s.character_id,s.seated_at,s.upper_recorded,s.lower_recorded,c.character_name AS name FROM order_thrall_seat s LEFT JOIN characters c ON c.id=s.character_id WHERE s.id=1');
+  let daily=null;
+  const now=new Date(),cycle=chamberCycleDate(now);
+  if(seat?.character_id){
+   const [[prefs]]=await pool.execute('SELECT lactation_state,lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=?',[seat.character_id]);
+   const [[used]]=await pool.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=?',[seat.character_id,cycle]);
+   daily={...dailyBalance(prefs,used),cycle_date:cycle,next_reset_at:chamberNextReset(now)};
+  }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,batches,history,seat,roster,can_manage,can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  return ok({machine,batches,history,seat,daily,roster,can_manage,can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
@@ -155,7 +177,12 @@ export async function thrallsRoute(pool,req,path){
    if(channel==='lower'&&prefs.lower_anatomy==='unspecified')return await rollback(cn,'anatomy_not_configured');
    const last=seat[channel+'_last_cycle_at'];
    if(last&&Date.now()-new Date(last).getTime()<CYCLE_MS)return await rollback(cn,'cycle_not_ready');
-   const amount=simulatedCycleYield(channel,prefs);
+   const cycle=chamberCycleDate(new Date());
+   await cn.execute('INSERT IGNORE INTO order_thrall_daily_output(character_id,cycle_date) VALUES(?,?)',[seat.character_id,cycle]);
+   const [[usage]]=await cn.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=? FOR UPDATE',[seat.character_id,cycle]);
+   const available=dailyBalance(prefs,usage)[channel].remaining;
+   if(available===0)return await rollback(cn,'daily_output_exhausted');
+   const amount=Math.min(available,simulatedCycleYield(channel,prefs));
    if(amount&&Number(machine[channel+'_volume'])+amount>Number(machine[channel+'_capacity']))return await rollback(cn,'reservoir_full');
    if(channel==='lower'&&amount){
     const kind=lowerMaterialForAnatomy(prefs.lower_anatomy);
@@ -163,6 +190,7 @@ export async function thrallsRoute(pool,req,path){
     updates.push('lower_material_type=?');values.push(kind);
    }
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3),'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
+   if(amount)await cn.execute('UPDATE order_thrall_daily_output SET '+channel+'_used='+channel+'_used+? WHERE character_id=? AND cycle_date=?',[amount,seat.character_id,cycle]);
    if(amount){updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount)}
    detail='Completed '+channel+' cycle: '+amount+' units recorded';
   }else if(action==='decant'){
