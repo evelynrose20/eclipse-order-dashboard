@@ -181,6 +181,29 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const newPort=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Port',map_x:75,map_y:65,map_icon:'port'}),'/world-admin/settlements');
   assert.equal(newPort.status,200,JSON.stringify(newPort.body));
   const portId=Number(newPort.body.id);
+  // Civic settlement infrastructure: uninhabited sites require real accommodation.
+  const emptySettlement=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'Empty test outpost',population:0,workforce:0,housing_capacity:0}),'/world-admin/settlements');
+  assert.equal(emptySettlement.status,200,JSON.stringify(emptySettlement.body));
+  const emptyId=Number(emptySettlement.body.id);
+  const blockedResidents=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(blockedResidents.status,409,'population cannot increase without available homes');
+  const structurePath='/world-admin/settlements/'+emptyId+'/upgrades';
+  const building={name:'New residential quarter',category:'housing',status:'building',condition_pct:100,level:1,housing_bonus:30,service_bonus:0,defense_bonus:0,notes:'Initial accommodation'};
+  const newBuilding=await worldAdministrationRoute(admin,request('POST',building),structurePath);
+  assert.equal(newBuilding.status,200,JSON.stringify(newBuilding.body));
+  const notYetHoused=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(notYetHoused.status,409,'unfinished housing does not provide capacity');
+  const openedBuilding=await worldAdministrationRoute(admin,request('PUT',{...building,status:'operational'}),structurePath+'/'+newBuilding.body.id);
+  assert.equal(openedBuilding.status,200,JSON.stringify(openedBuilding.body));
+  const populatedOutpost=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:25,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(populatedOutpost.status,200,JSON.stringify(populatedOutpost.body));
+  const destroyedBuilding=await worldAdministrationRoute(admin,request('PUT',{...building,status:'destroyed'}),structurePath+'/'+newBuilding.body.id);
+  assert.equal(destroyedBuilding.status,409,'occupied homes cannot disappear without rehousing residents');
+  const defense={name:'Perimeter wall',category:'defense',status:'operational',condition_pct:100,level:2,housing_bonus:0,service_bonus:0,defense_bonus:20,notes:'Guards the outer road'};
+  const newWall=await worldAdministrationRoute(admin,request('POST',defense),structurePath);
+  assert.equal(newWall.status,200,JSON.stringify(newWall.body));
+  const [[wallCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_settlement_upgrades WHERE settlement_id=? AND category='defense'",[emptyId]);
+  assert.equal(Number(wallCount.n),1);
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
   const cohortPayload={label:'Civilian families',residents:90,employed:20,housing_quality:70,medical_access:65,water_access:80};
   const cohort=await worldAdministrationRoute(admin,request('POST',cohortPayload),'/world-admin/civic/'+mineId+'/cohorts');
