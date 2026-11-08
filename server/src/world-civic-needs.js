@@ -138,7 +138,9 @@ export async function handleCivicNeeds(pool,req,path,actor){
      await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,cycle_key,actor_id) VALUES(?,?,?,?,?,?,?,?)',[id,item.item_code,kind,item.food_group||null,-delta,'Authorized civilian cycle',b.cycle_date,actor.id]);
     }
    }
-   await db.execute('UPDATE world_settlements SET civil_stability=?,unrest=? WHERE id=?',[report.after_stability,report.after_unrest,id]);
+   const remainingFoodDays=report.food_need>0?Math.max(0,(report.food_stock-report.food_used)/report.food_need):0;
+   const varietyScore=Math.min(100,Math.round(report.food_groups_30d.length/Math.max(1,Number(data.profile.minimum_variety))*100));
+   await db.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=? WHERE id=?',[Math.min(99999,remainingFoodDays),varietyScore,report.after_stability,report.after_unrest,id]);
    await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[id,b.cycle_date,data.profile.enabled_mode,report.food_used,report.fuel_used,report.before_stability,report.after_stability,report.before_unrest,report.after_unrest,JSON.stringify(report),actor.id]);
    await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[b.cycle_date,id]);
    await log(db,actor.id,'civic_cycle',id,b.cycle_date);
