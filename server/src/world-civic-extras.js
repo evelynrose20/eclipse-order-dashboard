@@ -18,7 +18,7 @@ function dueAllowed(frequency,previous,current){
  return current.slice(0,7)!==previous.slice(0,7);
 }
 export async function handleCivicExtras(pool,req,path,actor){
- const m=/^\/world-admin\/civic\/(\d+)\/(cohorts|aid)(?:\/(\d+))?(?:\/(dispatch))?$/.exec(path);
+ const m=/^\/world-admin\/civic\/(\d+)\/(cohorts|aid|heating)(?:\/(\d+))?(?:\/(dispatch))?$/.exec(path);
  if(!m)return null;
  const settlementId=Number(m[1]),kind=m[2],entryId=m[3]?Number(m[3]):null,dispatch=m[4];
  if(!Number.isSafeInteger(settlementId)||settlementId<1)return fail(400,'invalid_settlement');
@@ -34,6 +34,26 @@ export async function handleCivicExtras(pool,req,path,actor){
     await db.execute('UPDATE world_civic_cohorts SET label=?,residents=?,employed=?,housing_quality=?,medical_access=?,water_access=? WHERE id=?',[b.label.trim(),b.residents,b.employed,b.housing_quality,b.medical_access,b.water_access,entryId]);
    }else await db.execute('DELETE FROM world_civic_cohorts WHERE id=?',[entryId]);
    await audit(db,actor.id,req.method==='PUT'?'cohort_update':'cohort_delete',settlementId,String(entryId));
+   return ok({saved:true});
+  });
+ }
+ if(kind==='heating'&&['POST','PUT','DELETE'].includes(req.method)){
+  const b=req.method==='DELETE'?null:await read(req);
+  if(req.method!=='DELETE'&&(!b||!label(b.name,120)||!whole(b.coverage_pct,0,100)||!whole(b.condition_pct,0,100)||!['operational','damaged','offline'].includes(b.status)||typeof b.notes!=='string'||b.notes.length>450))return fail(400,'invalid_heating_asset');
+  if(req.method==='POST'&&entryId||req.method!=='POST'&&!entryId)return fail(400,'invalid_heating_asset_request');
+  return tx(pool,async db=>{
+   const [[site]]=await db.execute('SELECT id FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);if(!site)return fail(404,'settlement_not_found');
+   if(req.method==='DELETE'){
+    const [deleted]=await db.execute('DELETE FROM world_civic_heating_assets WHERE id=? AND settlement_id=?',[entryId,settlementId]);
+    if(!deleted.affectedRows)return fail(404,'heating_asset_not_found');
+   }else if(req.method==='POST'){
+    const [created]=await db.execute('INSERT INTO world_civic_heating_assets(settlement_id,name,coverage_pct,condition_pct,status,notes,created_by) VALUES(?,?,?,?,?,?,?)',[settlementId,b.name.trim(),b.coverage_pct,b.condition_pct,b.status,b.notes,actor.id]);
+    await audit(db,actor.id,'heating_asset_create',settlementId,b.name);return ok({id:created.insertId});
+   }else{
+    const [updated]=await db.execute('UPDATE world_civic_heating_assets SET name=?,coverage_pct=?,condition_pct=?,status=?,notes=? WHERE id=? AND settlement_id=?',[b.name.trim(),b.coverage_pct,b.condition_pct,b.status,b.notes,entryId,settlementId]);
+    if(!updated.affectedRows)return fail(404,'heating_asset_not_found');
+   }
+   await audit(db,actor.id,req.method==='DELETE'?'heating_asset_delete':'heating_asset_update',settlementId,String(entryId));
    return ok({saved:true});
   });
  }
