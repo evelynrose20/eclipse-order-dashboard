@@ -1,5 +1,6 @@
 import {climateForRegions} from './world-region-climate.js';
 import {handleCivicExtras} from './world-civic-extras.js';
+import {upgradeEffects} from './world-settlement-upgrades.js';
 // Staff-controlled civilian ledger. Never touches player/front inventory.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -14,8 +15,14 @@ async function body(req){const chunks=[];let n=0;for await(const chunk of req){n
 async function tx(pool,fn){const c=await pool.getConnection();try{await c.beginTransaction();const result=await fn(c);if(result.status===200)await c.commit();else await c.rollback();return result}catch(e){await c.rollback().catch(()=>{});throw e}finally{c.release()}}
 async function log(db,actor,action,id,detail=''){await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor,action,'civic',id,detail.slice(0,350)])}
 const settingsDefault={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:3,grace_cycles:2,enabled_mode:'off',paused:0};
-function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=[]){
+function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=[],upgrades=[]){
  const population=Number(settlement.population);
+ const effects=upgradeEffects(upgrades),svc=effects.service_by_category;
+ const effectiveInsulation=clamp(Number(settlement.insulation||0)+(svc.insulation||0));
+ const effectiveHousing=clamp(Number(settlement.housing||0)+(svc.public_works||0));
+ const effectiveMedical=clamp(Number(settlement.medical_access||0)+(svc.clinic||0));
+ const effectiveFoodAccess=clamp(Number(settlement.food_access||0)+(svc.food_storage||0));
+ const effectiveSecurity=clamp(Number(settlement.security_score||0)+effects.defense_bonus);
  const food=stock.filter(s=>s.resource_kind==='food').reduce((sum,s)=>sum+Number(s.quantity),0);
  const fuel=stock.filter(s=>s.resource_kind==='fuel').reduce((sum,s)=>sum+Number(s.quantity),0);
  const water=stock.filter(s=>s.resource_kind==='water').reduce((sum,s)=>sum+Number(s.quantity),0);
@@ -24,7 +31,7 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const waterNeed=population*Number(profile.water_daily_per_resident);
  const medicineNeed=population*Number(profile.medicine_daily_per_resident);
  const exposure=Number(settlement.weather_exposure)/100;
- const insulation=Number(settlement.insulation)/100;
+ const insulation=effectiveInsulation/100;
  const temperatureDemand=Math.max(0,65-regionTempF)/65;
  const coverage=heatingAssets.length?Math.min(100,heatingAssets.reduce((n,a)=>n+(a.status==='offline'?0:Number(a.coverage_pct)*Number(a.condition_pct)/100),0)):Number(settlement.heating_coverage??50);
  const heatNeed=population*Number(profile.heat_daily_per_resident)*temperatureDemand*(1-insulation*.65)*(0.6+exposure*.8)*(coverage/100);
@@ -36,14 +43,14 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const chill=clamp((100-coverage)*temperatureDemand+(heatNeed>fuel?(heatNeed-fuel)/Math.max(1,heatNeed)*coverage:0));
  const dehydration=waterNeed>water?clamp((waterNeed-water)/Math.max(1,waterNeed)*100):0;
  const medicalShortage=medicineNeed>medicine?clamp((medicineNeed-medicine)/Math.max(0.001,medicineNeed)*100):0;
- const service=Math.round((100-Number(settlement.housing))*.12+(100-Number(settlement.medical_access))*.10+(100-Number(settlement.food_access))*.10);
+ const service=Math.round((100-effectiveHousing)*.12+(100-effectiveMedical)*.10+(100-effectiveFoodAccess)*.10+(100-effectiveSecurity)*.06);
  const pressure=population>0?clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service):0;
  const risk=population>0?clamp(pressure*.7+Number(settlement.unrest)*.3):0;
- const warnings=[...(foodNeed>0&&foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(Number(settlement.housing)<60?['housing_public_works_needed']:[]),...(Number(settlement.medical_access)<60?['clinic_support_needed']:[]),...(Number(settlement.security_score)<45?['public_safety_support_needed']:[])];
- return {food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
+ const warnings=[...(foodNeed>0&&foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(effectiveHousing<60?['housing_public_works_needed']:[]),...(effectiveMedical<60?['clinic_support_needed']:[]),...(effectiveSecurity<45?['public_safety_support_needed']:[])];
+ return {effective_security:effectiveSecurity,effective_housing:effectiveHousing,effective_medical_access:effectiveMedical,effective_food_access:effectiveFoodAccess,effective_insulation:effectiveInsulation,food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
 }
-export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[]){
- const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets);
+export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[],upgrades=[]){
+ const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets,upgrades);
  const eligible=profile.enabled_mode==='managed'||profile.enabled_mode==='detailed';
  const afterGrace=cycles>=Number(profile.grace_cycles);
  const beforeStability=Number(settlement.civil_stability),beforeUnrest=Number(settlement.unrest);
@@ -57,12 +64,13 @@ async function context(db,id,lock=false,cycleDate=null){
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[id]);
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
  const [heatingAssets]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE settlement_id=? ORDER BY id',[id]);
+ const [upgrades]=await db.execute('SELECT category,status,condition_pct,housing_bonus,defense_bonus,service_bonus FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
  const [climate]=await climateForRegions(db,[region],cycleDate?new Date(cycleDate+'T12:00:00Z'):new Date());
  const tempF=climate.effective_weather.temperature_f;
- return {settlement,heatingAssets,region_mode:region.simulation_mode,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
+ return {settlement,heatingAssets,upgrades,region_mode:region.simulation_mode,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
 export async function handleCivicNeeds(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
@@ -80,7 +88,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
   const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets)});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades)});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
