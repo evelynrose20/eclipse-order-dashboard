@@ -14,7 +14,7 @@ const blank={name:'',category:'housing',status:'planned',condition_pct:100,level
 const fmt=n=>Number(n||0).toLocaleString();
 const title=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
 export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[]}){
- const [data,setData]=useState(null),[draft,setDraft]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const root='/world-admin/settlements/'+settlement.id+'/upgrades';
  const load=async()=>{const r=await request(root);setData(r)};
  useEffect(()=>{setData(null);setDraft(null);load().catch(e=>setError(e.message||'Unable to load upgrades'))},[settlement.id]);
@@ -32,7 +32,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
   {key:'education',title:'Education',subtitle:'Schools and places for young residents',icon:'fa-graduation-cap',categories:['school'],add:'Add school'},
   {key:'services',title:'Civic infrastructure',subtitle:'Clinics, waterworks, granaries and public works',icon:'fa-city',categories:['clinic','water','food_storage','insulation','public_works'],add:'Add civic structure'}
  ];
- const beginCategory=(category)=>setDraft({...blank,category,housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense'].includes(category)?10:0});
+ const beginCategory=(category)=>setDraft({...blank,category,name:kinds.find(x=>x[0]===category)?.[1]||'',housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense','school'].includes(category)?10:0});
  const renderStructure=(u)=><article className="wa-upgrade-card" key={u.id}>
    <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
    <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
@@ -47,12 +47,14 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
     <div><small>Additional protection</small><strong>+{data.effects.defense_bonus}</strong><span>Operational defenses</span></div>
     <div><small>Additional services</small><strong>+{data.effects.service_bonus}</strong><span>Operational infrastructure</span></div>
   </div>
+  <div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-plus" aria-hidden="true"/><div><h4>Build infrastructure</h4><p>Choose a structure to plan for this settlement.</p></div></div><button type="button" aria-expanded={addMenu} onClick={()=>setAddMenu(v=>!v)}>+ Add structure</button></div>
+  {addMenu&&<div className="wa-upgrade-grid" role="group" aria-label="Choose structure type">{kinds.map(([key,name,description])=><button type="button" className="wa-upgrade-card" key={key} onClick={()=>{beginCategory(key);setAddMenu(false)}}><strong>{name}</strong><p>{description}</p></button>)}</div>}
   {sections.map(section=>{
    const records=data.upgrades.filter(u=>section.categories.includes(u.category));
    return <section className="wa-upgrade-section" key={section.key} aria-label={section.title}>
     <div className="wa-upgrade-section-heading">
      <div className="wa-upgrade-section-title"><i className={'fa-solid '+section.icon} aria-hidden="true"/><div><h4>{section.title}</h4><p>{section.subtitle}</p></div><span className="wa-upgrade-section-count">{records.length}</span></div>
-     <button type="button" onClick={()=>beginCategory(section.categories[0])}>+ {section.add}</button>
+     <button type="button" onClick={()=>{setAddMenu(true)}}>+ Add</button>
     </div>
     {records.length?<div className="wa-upgrade-grid">{records.map(renderStructure)}</div>:<div className="wa-upgrade-section-empty">No {section.key==='housing'?'residential buildings':section.key==='defense'?'defensive structures':'civic facilities'} recorded yet.</div>}
    </section>;
