@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './rail-infrastructure-panel.css';
 const stateOptions=['planned','operational','closed','damaged'];
 const stateLabel=s=>s.replaceAll('_',' ').replace(/^./,x=>x.toUpperCase());
-const routeReason={station_not_found:'Choose two saved railway stations.',stations_in_different_zones:'The two stations must belong to the same zone.',freight_platform_not_ready:'Both stations need operational freight platforms and handling capacity.',choose_distinct_stations:'Choose two different stations.',no_operational_rail_path:'No available rail route. Check junction switches, closed tracks and crossing states.'};
+const routeReason={station_not_found:'Choose two saved railway stations.',stations_in_different_zones:'The two stations must belong to the same zone.',freight_platform_not_ready:'Both stations need operational freight platforms and handling capacity.',choose_distinct_stations:'Choose two different stations.',no_operational_rail_path:'No available rail route. Check junction switches, closed tracks and crossing states.',no_interzone_rail_path:'No operational cross-zone rail connection joins these networks.'};
 const asNum=v=>Number(v);
 const blankStation=(region,zone)=>({region_id:Number(region),zone_id:Number(zone),node_id:'',name:'',status:'planned',freight_enabled:true,passenger_enabled:false,freight_capacity:0,notes:''});
 const blankPlatform=(id,platforms=[])=>{
@@ -12,8 +12,9 @@ const blankPlatform=(id,platforms=[])=>{
 };
 const blankSwitch=()=>({node_id:'',entry_segment_id:'',exit_segment_id:'',status:'open',notes:''});
 const blankCross=(region,zone,p)=>({region_id:Number(region),zone_id:Number(zone),rail_segment_id:'',road_segment_id:'',name:'',map_x:p?.x??50,map_y:p?.y??50,control_type:'gated',status:'planned',notes:''});
-export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint,focus,onFocusHandled}){
+export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],allStations=[],links=[],zones=[],regions=[],canEdit,request,onSaved,point,onClearPoint,focus,onFocusHandled}){
  const [oldRoute,setOldRoute]=useState('');
+ const [linkDraft,setLinkDraft]=useState(null);
  const [freightFrom,setFreightFrom]=useState(''),[freightTo,setFreightTo]=useState(''),[freightPreview,setFreightPreview]=useState(null);
  const [tab,setTab]=useState('stations'),[record,setRecord]=useState(null),[editing,setEditing]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const zoneNodes=nodes.filter(n=>Number(n.zone_id)===Number(zoneId)),zoneSegments=segments.filter(e=>Number(e.zone_id)===Number(zoneId));
@@ -23,7 +24,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const nodeLabel=n=>n.name||settlements.find(s=>Number(s.id)===Number(n.settlement_id))?.name||'Junction #'+n.id;
  const selectedStation=stations.find(s=>Number(s.id)===Number(record?.station_id??record?.id));
  const pairs=useMemo(()=>{const id=Number(editing?.node_id);return rails.filter(e=>Number(e.from_node_id)===id||Number(e.to_node_id)===id)},[rails,editing?.node_id]);
- useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('');setFreightFrom('');setFreightTo('');setFreightPreview(null)},[regionId,zoneId]);
+ useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('');setFreightFrom('');setFreightTo('');setFreightPreview(null);setLinkDraft(null)},[regionId,zoneId]);
  useEffect(()=>{if(point&&tab==='crossings'&&editing)setEditing(old=>old?{...old,map_x:point.x,map_y:point.y}:old)},[point?.x,point?.y,tab]);
  useEffect(()=>{
   if(!focus?.kind||focus.id==null)return;
@@ -41,7 +42,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   setEditing(kind==='stations'?blankStation(regionId,zoneId):kind==='platforms'?blankPlatform(selectedStation?.id||stations[0]?.id||0,platforms):kind==='switches'?blankSwitch():blankCross(regionId,zoneId,point));
  }
  function choose(kind,item){setTab(kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
- const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:crossings;
+ const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:tab==='crossings'?crossings:localLinks;
  const validation=()=>{
   if(!editing)return '';
   if(tab==='stations')return !editing.name?.trim()?'Enter a station name.':!Number(editing.node_id)?'Choose a rail-connected junction or settlement.':'';
@@ -64,7 +65,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   catch(e){setError(e?.message||'Unable to connect the older route.')}finally{setBusy(false)}
  }
  async function save(){
-  if(!editing||!canEdit||busy)return;
+  if(!editing||!canEdit||busy||tab==='links')return;
   const invalid=validation();if(invalid){setError(invalid);return}
   const payload=tab==='stations'?{...editing,region_id:Number(regionId),zone_id:Number(zoneId),node_id:asNum(editing.node_id),freight_capacity:asNum(editing.freight_capacity),freight_enabled:!!editing.freight_enabled,passenger_enabled:!!editing.passenger_enabled}:
     tab==='platforms'?{...editing,station_id:asNum(editing.station_id),track_length:asNum(editing.track_length),capacity:asNum(editing.capacity)}:
@@ -81,26 +82,58 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   catch(e){setError(e?.message||'Unable to delete record.')}finally{setBusy(false)}
  }
  const stationById=id=>stations.find(s=>Number(s.id)===Number(id));
- const tabs=[['stations','train','Stations'],['platforms','boxes-stacked','Platforms'],['switches','code-branch','Switches'],['crossings','road-barrier','Crossings']];
+ const localLinks=links.filter(l=>allStations.some(st=>Number(st.id)===Number(l.from_station_id)&&Number(st.zone_id)===Number(zoneId))||allStations.some(st=>Number(st.id)===Number(l.to_station_id)&&Number(st.zone_id)===Number(zoneId)));
+ const locationFor=st=>{const z=zones.find(x=>Number(x.id)===Number(st?.zone_id)),r=regions.find(x=>Number(x.id)===Number(st?.region_id));return (r?.name||'Region')+' / '+(z?.name||'Zone')};
+ const stationLabel=st=>(st?.name||'Unknown station')+' — '+locationFor(st);
+ const blankLink=()=>({from_station_id:stations[0]?.id||'',to_station_id:'',name:'',status:'planned',freight_enabled:true,bidirectional:true,notes:''});
+ async function saveLink(){
+  if(!linkDraft||busy)return;
+  if(!Number(linkDraft.from_station_id)||!Number(linkDraft.to_station_id)){setError('Choose both railway stations.');return}
+  setBusy(true);setError('');setMessage('');
+  try{await request('/world-admin/rail/links'+(linkDraft.id?'/'+linkDraft.id:''),{method:linkDraft.id?'PUT':'POST',body:{...linkDraft,from_station_id:Number(linkDraft.from_station_id),to_station_id:Number(linkDraft.to_station_id)}});await onSaved?.();setLinkDraft(null);setMessage('Cross-zone railway connection saved.')}
+  catch(e){setError(e.message||'Unable to save cross-zone link.')}finally{setBusy(false)}
+ }
+ async function removeLink(){
+  if(!linkDraft?.id||busy||!window.confirm('Delete this railway connection?'))return;
+  setBusy(true);setError('');
+  try{await request('/world-admin/rail/links/'+linkDraft.id,{method:'DELETE'});await onSaved?.();setLinkDraft(null);setMessage('Cross-zone connection deleted.')}
+  catch(e){setError(e.message||'Unable to delete connection.')}finally{setBusy(false)}
+ }
+ const tabs=[['stations','train','Stations'],['platforms','boxes-stacked','Platforms'],['switches','code-branch','Switches'],['crossings','road-barrier','Crossings'],['links','link','Network links']];
  return <section className="wtm-rail-ops" aria-label="Railway and freight infrastructure">
   <div className="wtm-route-heading"><strong><i className="fa-solid fa-train"/> RAILWAY OPERATIONS</strong><span>{stations.length} stations · {rails.length} rail segments</span></div>
-  <nav className="wtm-rail-tabs" aria-label="Rail infrastructure sections">{tabs.map(([id,icon,label])=><button type="button" key={id} aria-pressed={tab===id} className={tab===id?'active':''} onClick={()=>{setTab(id);setEditing(null);setRecord(null);setError('')}}><i className={'fa-solid fa-'+icon}/> {label}</button>)}</nav>
+  <nav className="wtm-rail-tabs" aria-label="Rail infrastructure sections">{tabs.map(([id,icon,label])=><button type="button" key={id} aria-pressed={tab===id} className={tab===id?'active':''} onClick={()=>{setTab(id);setEditing(null);setRecord(null);setLinkDraft(null);setError('')}}><i className={'fa-solid fa-'+icon}/> {label}</button>)}</nav>
   {error&&<p role="alert" className="wtm-error">{error}</p>}{message&&<p role="status" className="wtm-note">{message}</p>}
-  <div className="wtm-rail-catalog">
+  {tab==='links'&&<div className="wtm-rail-links">
+    <p className="wtm-rail-help">Link stations on different zone or region maps. These links represent rail continuing beyond the local map; no geometry is inferred between unrelated map coordinates.</p>
+    <div className="wtm-rail-catalog">{localLinks.map(l=><button type="button" key={l.id} onClick={()=>setLinkDraft({...l})}><strong>{l.name||'Regional rail connection'}</strong><small>{stationLabel(allStations.find(st=>Number(st.id)===Number(l.from_station_id)))} ↔ {stationLabel(allStations.find(st=>Number(st.id)===Number(l.to_station_id)))} · {stateLabel(l.status)}</small></button>)}
+    <button type="button" disabled={!stations.length||!allStations.some(st=>Number(st.zone_id)!==Number(zoneId))} onClick={()=>setLinkDraft(blankLink())}><i className="fa-solid fa-plus"/> Add network link</button></div>
+    {linkDraft&&<div className="wtm-rail-form">
+     <label>Local station<select value={linkDraft.from_station_id||''} onChange={e=>setLinkDraft(v=>({...v,from_station_id:e.target.value}))}><option value="">Choose local station</option>{stations.map(st=><option key={st.id} value={st.id}>{stationLabel(st)}</option>)}</select></label>
+     <label>Connecting station<select value={linkDraft.to_station_id||''} onChange={e=>setLinkDraft(v=>({...v,to_station_id:e.target.value}))}><option value="">Choose station in another zone</option>{allStations.filter(st=>Number(st.zone_id)!==Number(zoneId)).map(st=><option key={st.id} value={st.id}>{stationLabel(st)}</option>)}</select></label>
+     <label>Connection name<input maxLength={140} value={linkDraft.name} onChange={e=>setLinkDraft(v=>({...v,name:e.target.value}))}/></label>
+     <label>Operational status<select value={linkDraft.status} onChange={e=>setLinkDraft(v=>({...v,status:e.target.value}))}>{stateOptions.map(v=><option value={v} key={v}>{stateLabel(v)}</option>)}</select></label>
+     <label className="wtm-rail-check"><input type="checkbox" checked={!!linkDraft.bidirectional} onChange={e=>setLinkDraft(v=>({...v,bidirectional:e.target.checked}))}/> Two-way connection</label>
+     <label className="wtm-rail-check"><input type="checkbox" checked={!!linkDraft.freight_enabled} onChange={e=>setLinkDraft(v=>({...v,freight_enabled:e.target.checked}))}/> Freight allowed</label>
+     <label className="wide">Notes<textarea rows={2} maxLength={1200} value={linkDraft.notes} onChange={e=>setLinkDraft(v=>({...v,notes:e.target.value}))}/></label>
+     <div className="wtm-rail-actions wide"><button type="button" disabled={busy||!linkDraft.from_station_id||!linkDraft.to_station_id} onClick={saveLink}>Save connection</button><button type="button" onClick={()=>setLinkDraft(null)}>Cancel</button>{linkDraft.id&&<button type="button" onClick={removeLink}>Delete link</button>}</div>
+    </div>}
+   </div>}
+  {tab!=='links'&&<div className="wtm-rail-catalog">
    {(tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:crossings).map(item=><button type="button" key={item.id} className={record?.id===item.id?'selected':''} onClick={()=>choose(tab,item)}>
     <strong>{tab==='stations'?item.name:tab==='platforms'?((stationById(item.station_id)?.name||'Station')+' · '+item.code):tab==='switches'?'Switch #'+item.id+' · Node '+item.node_id:item.name||'Crossing #'+item.id}</strong>
     <small>{tab==='stations'?(item.freight_ready?'Freight ready':stateLabel(item.status)):stateLabel(item.status)}</small>
    </button>)}
    <button className="wtm-rail-new" type="button" disabled={!canEdit||busy||tab==='stations'&&!stationNodes.length||tab==='platforms'&&!stations.length||tab==='switches'&&!rails.length||tab==='crossings'&&(!rails.length||!roads.length)} onClick={()=>start(tab)}><i className="fa-solid fa-plus"/> Add {tab.slice(0,-1)}</button>
   </div>
-  {!!legacyRoutes.length&&<div className="wtm-rail-import">
+  {!!legacyRoutes.length&&tab!=='links'&&<div className="wtm-rail-import">
    <label>Older route to connect<select value={oldRoute} onChange={e=>setOldRoute(e.target.value)}><option value="">Choose a single existing road or railway</option>{legacyRoutes.map(r=><option key={r.id} value={r.id}>{r.route_name||('Route '+r.id)} · {r.route_type}</option>)}</select></label>
    <button type="button" disabled={!canEdit||!oldRoute||busy} onClick={promote}><i className="fa-solid fa-link"/> Enable rail infrastructure on selected route</button>
   </div>}
-  {stations.length>=2&&<div className="wtm-rail-freight-check" aria-label="Freight railway route check">
+  {allStations.length>=2&&<div className="wtm-rail-freight-check" aria-label="Freight railway route check">
    <strong><i className="fa-solid fa-train-subway"/> FREIGHT ROUTE CHECK</strong>
-   <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{stations.map(st=><option value={st.id} key={st.id}>{st.name}{st.freight_ready?' · Freight ready':''}</option>)}</select></label>
-   <label>Destination<select value={freightTo} onChange={e=>{setFreightTo(e.target.value);setFreightPreview(null)}}><option value="">Choose destination</option>{stations.filter(st=>String(st.id)!==String(freightFrom)).map(st=><option value={st.id} key={st.id}>{st.name}</option>)}</select></label>
+   <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{allStations.map(st=><option value={st.id} key={st.id}>{stationLabel(st){st.freight_ready?' · Freight ready':''}</option>)}</select></label>
+   <label>Destination<select value={freightTo} onChange={e=>{setFreightTo(e.target.value);setFreightPreview(null)}}><option value="">Choose destination</option>{allStations.filter(st=>String(st.id)!==String(freightFrom)).map(st=><option value={st.id} key={st.id}>{stationLabel(st)}</option>)}</select></label>
    <button type="button" disabled={!freightFrom||!freightTo||busy} onClick={previewFreight}><i className="fa-solid fa-route"/> Check route</button>
    {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+(routeReason[freightPreview.reason]||'This railway route is not available')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
   </div>}
@@ -108,7 +141,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   {tab==='stations'&&!stationNodes.length&&<p className="wtm-rail-help">Create a railway track between shared map nodes before adding a station. Stations attach to existing rail-connected nodes.</p>}
   {tab==='crossings'&&<p className="wtm-rail-help">Choose a railway and road, then click their intersection on the original map. Crossing status and control type can prevent future freight traversal.</p>}
   {tab==='switches'&&<p className="wtm-rail-help">Connect two railway segments to a shared junction first. Configure which track pair is open, closed or damaged; no train is dispatched automatically.</p>}
-  {editing&&canEdit&&<div className="wtm-rail-form">
+  {editing&&canEdit&&tab!=='links'&&<div className="wtm-rail-form">
     {tab==='stations'&&<>
      <label>Station name<input maxLength={140} value={editing.name||''} onChange={e=>update('name',e.target.value)}/></label>
      <label>Rail-connected node<select disabled={!!editing.id} value={editing.node_id||''} onChange={e=>update('node_id',e.target.value)}><option value="">Select location</option>{stationNodes.filter(n=>editing.id||!usedStationNodes.has(Number(n.id))).map(n=><option value={n.id} key={n.id}>{nodeLabel(n)}</option>)}</select></label>
