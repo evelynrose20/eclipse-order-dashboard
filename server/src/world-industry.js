@@ -214,6 +214,28 @@ export async function industryRoute(pool,req,path,actor){
    return ok({saved:true});
   });
  }
+ // Repair damage with material commitments and daily workforce. Never directly edit condition.
+ if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/repair-equipment$/.exec(path))&&req.method==='POST'){
+  const id=Number(match[1]);
+  return atomicIndustry(pool,async db=>{
+   const [[f]]=await db.execute('SELECT id,status,equipment_condition,owner_faction_id FROM world_industry_facilities WHERE id=? FOR UPDATE',[id]);
+   if(!f)return fail(404,'facility_not_found');
+   const damage=100-Number(f.equipment_condition);
+   if(damage<=0)return fail(409,'equipment_already_repaired');
+   if(!['operational','damaged','paused'].includes(f.status))return fail(409,'facility_not_repairable');
+   const [[pending]]=await db.execute("SELECT id FROM world_industry_projects WHERE facility_id=? AND equipment_repair=1 AND status IN ('planned','active','paused') LIMIT 1",[id]);
+   if(pending)return fail(409,'equipment_repair_already_underway');
+   const [items]=await db.execute("SELECT id FROM world_industry_items WHERE id IN ('iron-ingot','repair-timbers')");
+   if(items.length!==2)return fail(409,'equipment_repair_materials_unavailable');
+   const requiredIron=Math.max(10,Math.ceil(damage*3));
+   const requiredWood=Math.max(10,Math.ceil(damage*4));
+   const labor=Math.max(100,damage*15);
+   const [newProject]=await db.execute("INSERT INTO world_industry_projects(facility_id,name,status,result_status,labor_required,description,created_by,equipment_repair) VALUES(?,?,'active','operational',?,?,?,1)",[id,'Repair damaged equipment',labor,'Repair weather-damaged industrial equipment',actor.id]);
+   for(const [item,qty] of [['iron-ingot',requiredIron],['repair-timbers',requiredWood]])await db.execute('INSERT INTO world_industry_project_needs(project_id,item_id,required_qty) VALUES(?,?,?)',[newProject.insertId,item,qty]);
+   await audit(db,actor.id,'industry',id,'equipment_repair_started','Project '+newProject.insertId);
+   return ok({id:newProject.insertId,labor_required:labor});
+  });
+ }
  // Climate protection is always built with a fixed, escalating materials/labor bill.
  if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/climate-upgrade$/.exec(path))&&req.method==='POST'){
   const facilityId=Number(match[1]);
