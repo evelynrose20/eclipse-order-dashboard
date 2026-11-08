@@ -32,3 +32,13 @@ test('production requires operational site, inputs, workers, heat and power, and
  assert.equal(industryProductionPreview({...site,status:'captured'},refinery,[],{'ceruleum-crude':24}).operations,0);
  assert.equal(industryProductionPreview({...site,heat_available:0},refinery,[],{'ceruleum-crude':24}).operations,0);
 });
+
+test('output multipliers never exceed workforce, input or capacity operation caps',()=>{
+ const site={status:'operational',level:1,capacity_pct:100,workforce:18,heat_available:30,power_available:5};
+ const extra=[{when:[{field:'security',op:'gte',value:10}],action:{type:'multiplier',value:3}}];
+ const preview=industryProductionPreview(site,refinery,extra,{'ceruleum-crude':8},{security:70});
+ assert.equal(preview.operations,2);
+ assert.equal(preview.inputs['ceruleum-crude'],4);
+ assert.equal(preview.outputs['ceruleum-fuel'],12);
+ assert.equal(preview.throughput_multiplier,3);
+});
