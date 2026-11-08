@@ -32,7 +32,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
   const settlementId=Number(fundMatch[1]),projectId=Number(fundMatch[2]);
   const b=await read(req);
-  if(!b||!whole(b.quantity,1,1000000))return fail(400,'invalid_contribution_amount');
+  if(!b||!whole(b.quantity,1,1000000)||typeof b.material_id!=='string'||!/^[a-z0-9-]{2,48}$/.test(b.material_id))return fail(400,'invalid_contribution_amount');
   return transact(pool,async db=>{
    // Lock settlement first, like other warehouse transfers, to serialize contributions.
    const [[site]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);
@@ -41,20 +41,23 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
    const [[project]]=await db.execute("SELECT * FROM world_civic_building_projects WHERE id=? AND settlement_id=? AND owner_kind='order' FOR UPDATE",[projectId,settlementId]);
    if(!project)return fail(404,'project_not_found');
    if(project.status!=='active'||project.materials_paid)return fail(409,'project_already_funded_or_closed');
-   const [[funded]]=await db.execute('SELECT COALESCE(SUM(quantity),0) AS quantity FROM world_civic_project_contributions WHERE project_id=?',[projectId]);
-   const remaining=Number(project.material_required)-Number(funded.quantity);
-   if(remaining<=0)return fail(409,'project_fully_funded');
+   const [[need]]=await db.execute('SELECT * FROM world_civic_project_needs WHERE project_id=? AND material_id=? FOR UPDATE',[project.id,b.material_id]);
+   if(!need)return fail(404,'project_material_not_required');
+   const remaining=Number(need.required_qty)-Number(need.committed_qty);
+   if(remaining<=0)return fail(409,'project_material_fully_funded');
    if(b.quantity>remaining)return fail(409,'project_requirement_exceeded');
-   const [[stock]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[project.material_id]);
+   const [[stock]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[b.material_id]);
    if(!stock||Number(stock.quantity)<b.quantity)return fail(409,'insufficient_unreserved_shared_stock');
-   const [debit]=await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[b.quantity,project.material_id,b.quantity]);
+   const [debit]=await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[b.quantity,b.material_id,b.quantity]);
    if(debit.affectedRows!==1)return fail(409,'insufficient_unreserved_shared_stock');
-   const [entry]=await db.execute('INSERT INTO world_civic_project_contributions(project_id,material_id,quantity,actor_id) VALUES(?,?,?,?)',[project.id,project.material_id,b.quantity,actor.id]);
-   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[project.material_id,-b.quantity,Number(stock.quantity)-b.quantity,'upgrade',actor.id,'Civic project #'+project.id+' commitment #'+entry.insertId]);
-   const committed=Number(funded.quantity)+b.quantity;
-   if(committed>=Number(project.material_required))await db.execute('UPDATE world_civic_building_projects SET materials_paid=1 WHERE id=?',[project.id]);
-   await audit(db,actor.id,'building_material_commit',settlementId,'Project '+project.id+': '+project.material_id+' x'+b.quantity);
-   return ok({project_id:project.id,material_id:project.material_id,committed_qty:committed,required_qty:Number(project.material_required),remaining_qty:Math.max(0,Number(project.material_required)-committed),fully_funded:committed>=Number(project.material_required)});
+   const [entry]=await db.execute('INSERT INTO world_civic_project_contributions(project_id,material_id,quantity,actor_id) VALUES(?,?,?,?)',[project.id,b.material_id,b.quantity,actor.id]);
+   await db.execute('UPDATE world_civic_project_needs SET committed_qty=committed_qty+? WHERE project_id=? AND material_id=?',[b.quantity,project.id,b.material_id]);
+   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[b.material_id,-b.quantity,Number(stock.quantity)-b.quantity,'upgrade',actor.id,'Civic project #'+project.id+' commitment #'+entry.insertId]);
+   const [unfunded]=await db.execute('SELECT material_id FROM world_civic_project_needs WHERE project_id=? AND committed_qty<required_qty',[project.id]);
+   const fullyFunded=unfunded.length===0;
+   if(fullyFunded)await db.execute('UPDATE world_civic_building_projects SET materials_paid=1 WHERE id=?',[project.id]);
+   await audit(db,actor.id,'building_material_commit',settlementId,'Project '+project.id+': '+b.material_id+' x'+b.quantity);
+   return ok({project_id:project.id,material_id:b.material_id,committed_qty:Number(need.committed_qty)+b.quantity,required_qty:Number(need.required_qty),remaining_qty:Math.max(0,remaining-b.quantity),fully_funded:fullyFunded});
   });
  }
  const createMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/from-template$/.exec(path);
@@ -95,9 +98,10 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   if(!settlement)return fail(404,'settlement_not_found');
   const upgrades=await getSettlementUpgradeRecords(pool,id);
   const [projects]=await pool.execute('SELECT p.*,COALESCE(c.committed_qty,0) AS committed_qty FROM world_civic_building_projects p LEFT JOIN (SELECT project_id,SUM(quantity) AS committed_qty FROM world_civic_project_contributions GROUP BY project_id) c ON c.project_id=p.id WHERE p.settlement_id=? ORDER BY p.id DESC',[id]);
+  const [needs]=await pool.execute('SELECT n.* FROM world_civic_project_needs n JOIN world_civic_building_projects p ON p.id=n.project_id WHERE p.settlement_id=? ORDER BY n.project_id,n.material_id',[id]);
   const [contributions]=await pool.execute('SELECT c.id,c.project_id,c.material_id,c.quantity,c.contributed_at,c.actor_id FROM world_civic_project_contributions c JOIN world_civic_building_projects p ON p.id=c.project_id WHERE p.settlement_id=? ORDER BY c.id DESC LIMIT 100',[id]);
   const [availableMaterials]=await pool.execute('SELECT s.material_id,m.name,s.quantity FROM fc_material_stock s JOIN fc_materials m ON m.id=s.material_id ORDER BY m.name');
-  return ok({housing_capacity:housingCapacity(settlement,upgrades),base_capacity:Number(settlement.housing_capacity),residents:Number(settlement.population),effects:upgradeEffects(upgrades),storage_capacity:civilianStorageCapacity(settlement,upgrades),templates:await getCivicTemplates(pool),projects,contributions,available_materials:availableMaterials,upgrades});
+  return ok({housing_capacity:housingCapacity(settlement,upgrades),base_capacity:Number(settlement.housing_capacity),residents:Number(settlement.population),effects:upgradeEffects(upgrades),storage_capacity:civilianStorageCapacity(settlement,upgrades),templates:await getCivicTemplates(pool),projects:projects.map(p=>({...p,needs:needs.filter(n=>Number(n.project_id)===Number(p.id))})),contributions,available_materials:availableMaterials,upgrades});
  }
  if(req.method!=='POST'&&req.method!=='PUT'&&req.method!=='DELETE')return fail(404,'not_found');
  if(req.method==='POST'&&upgradeId||req.method!=='POST'&&!upgradeId)return fail(400,'invalid_upgrade_action');
