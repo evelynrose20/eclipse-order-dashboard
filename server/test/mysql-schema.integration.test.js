@@ -1090,6 +1090,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
    [mineId,'ci-real-civic-workers','2026-11-26','order',home.population,home.population,30,home.civil_stability,home.civil_stability,'routine','CI established civic workforce',JSON.stringify({fixture:true})]
   );
   await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',200) ON DUPLICATE KEY UPDATE quantity=200");
+  const forgedCivilianLabor=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,region_id:home.region_id,zone_id:home.zone_id,population:Number(home.population)+1,workforce:65}),'/world-admin/settlements/'+mineId);
+  assert.equal(forgedCivilianLabor.status,409);
+  assert.equal(forgedCivilianLabor.body.error,'simulated_civic_values_are_read_only','staff may not edit simulated residents and workforce');
+  const instantUpgrade=await worldAdministrationRoute(admin,request('POST',{name:'Free CI Housing',category:'housing',status:'operational',condition_pct:100,level:1,housing_bonus:10,service_bonus:0,defense_bonus:0,notes:'',material_id:'iron-ore',material_cost:2}),'/world-admin/settlements/'+mineId+'/upgrades');
+  assert.equal(instantUpgrade.status,409,'simulated buildings need funded worker-based construction, not instant staff status');
+
   const mineConfig={inputs:[],outputs:[{item_id:'iron-ore',qty:3}],byproducts:[{item_id:'mine-tailings',qty:1}],labor:2,heat:0,power:1,capacity:3,upgrade_level:1};
   async function createTemplate(slug,name,category,configuration){
    const result=await industryRoute(admin,request('POST',{slug,name,category,configuration,rules:[]}),'/world-admin/industry/templates',staff);
