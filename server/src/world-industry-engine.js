@@ -1,3 +1,4 @@
+import {settlementDemographics} from './world-demographics.js';
 import {industryProductionPreview} from './world-industry-rules.js';
 import {simulationCycleKey} from './world-settlement-simulation.js';
 
@@ -42,7 +43,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const stock=await stockSnapshot(db,id,lock);
  // Workers come from residents employed in this zone, not form inputs.
  // Equal allocation across all active sites prevents double-counting the same employees.
- const [[labor]]=await db.execute(`SELECT COALESCE(SUM(workforce),0) AS workers
+ const [labor]=await db.execute(`SELECT population,workforce
  FROM world_settlements WHERE region_id=? AND zone_id=? AND controlling_faction_id <=> ?`,
  [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
  const [[sites]]=await db.execute(`SELECT COUNT(*) AS n FROM world_industry_facilities f
@@ -53,7 +54,7 @@ export async function getIndustryPreview(db,id,lock=false){
  AND COALESCE(s.controlling_faction_id,z.controlling_faction_id) <=> ?
  AND f.status IN ('operational','rebuilding','liberated')`,
  [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
- const availableWorkers=Math.floor(Number(labor.workers)/Math.max(1,Number(sites.n)));
+ const availableWorkers=Math.floor(labor.reduce((sum,settlement)=>sum+settlementDemographics(settlement).employed,0)/Math.max(1,Number(sites.n)));
  // Ceruleum in the facility's own stock supplies heat and power; one unit = ten utility units.
  const utilityDemand=Number(config.heat)+Number(config.power);
  const fuel=Number(stock['ceruleum-fuel']||0);
