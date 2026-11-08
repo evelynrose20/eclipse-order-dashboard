@@ -120,3 +120,93 @@
 .wa-industry-directory-heading{flex-wrap:wrap}
 .wa-industry-directory-heading input{flex:1 1 170px}
 .wa-industry-directory-heading button{flex:0 1 auto;white-space:nowrap}
+
+
+/* Calm, information-dense industrial workspace — designed for actual operations. */
+.wa-industry{--industry-ink:#dfe7e9;--industry-muted:#96abb8;--industry-edge:#344956;--industry-pane:#172631;--industry-elevated:#21323e;gap:10px}
+.wa-industry-heading{padding:15px 18px;background:linear-gradient(115deg,#1c2b34,#18252e);border-color:#344b59}
+.wa-industry-heading h2{font-size:23px;line-height:1.1;color:#ecede9}
+.wa-industry-heading p{max-width:650px;color:var(--industry-muted)}
+.wa-industry-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.wa-industry-heading .wa-industry-header-actions button{min-height:36px;padding:8px 13px;background:#233744;border:1px solid #546978;border-radius:5px;color:#cddce3;font-size:12px}
+.wa-industry-heading .wa-industry-header-actions .wa-industry-attach-action,.wa-industry-directory-heading .wa-industry-attach-action{background:#8b554e;border-color:#af7872;color:#fff1e9;font-weight:700}
+.wa-industry-summary{gap:8px}
+.wa-industry-summary>div{padding:10px 13px;background:#1b2b36;border-color:#354a56;gap:3px}
+.wa-industry-summary strong{font-size:20px;color:#e4e8e8}
+.wa-industry-tabs{padding:5px;gap:4px;border-color:#364c59;background:#172631}
+.wa-industry-tabs button{font-size:11px;padding:9px 12px;border-color:transparent;background:transparent;border-radius:4px}
+.wa-industry-tabs button.active{background:#304552;color:#e2e6e8;border-color:#637c87}
+.wa-industry-scopes{gap:4px}
+.wa-industry-scopes button{padding:7px 10px;font-size:11px}
+.wa-industry-layout{grid-template-columns:minmax(250px,30%) minmax(0,1fr);gap:9px}
+.wa-industry-detail,.wa-industry-directory,.wa-industry-workspace{background:#182834;border-color:#384f5d}
+.wa-industry-site{padding:11px 13px}
+.wa-industry-detail>header{padding:14px 16px}
+.wa-industry-block{padding:12px 14px;gap:9px}
+.wa-industry-statgrid{gap:7px;padding:9px}
+.wa-industry-statgrid>div{background:#223440;border-color:#405766}
+.wa-industry-statgrid strong{font-size:16px}
+.wa-industry-workspace{padding:14px}
+.wa-industry button:focus-visible{outline:2px solid #c6b392;outline-offset:2px}
+
+/* Location-first facility setup. Available in every territorial faction. */
+.wa-industry-attach{width:min(1140px,100%);max-height:92vh;overflow:auto;display:flex;flex-direction:column;box-sizing:border-box;background:#15242e;border:1px solid #617381;border-radius:10px;box-shadow:0 25px 100px #04070bbb;color:#e5edef}
+.wa-industry-attach-head{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:18px 22px 15px;border-bottom:1px solid #344b59}
+.wa-industry-attach-head h3{font-size:24px;line-height:1.1;margin:5px 0;color:#edf1ee}
+.wa-industry-attach-head p{font-size:12px;color:#9fb4be;margin:0}
+.wa-industry-attach .wa-industry-close{border:1px solid #566976;border-radius:5px;background:#263947;color:#cfdae0;font-size:23px;width:34px;height:34px}
+.wa-industry-steps{display:flex;gap:3px;padding:10px 22px 4px}
+.wa-industry-steps button{flex:1;min-width:0;text-align:left;display:flex;align-items:center;gap:10px;background:#1b2d38;border:1px solid #344b59;color:#92a7b3;border-radius:5px;padding:11px 13px;font-size:12px;font-weight:700}
+.wa-industry-steps button span{color:#acb7ba;font-variant-numeric:tabular-nums}
+.wa-industry-steps button.active{background:#30424b;color:#f1e4d0;border-color:#ad947b}
+.wa-industry-steps button:disabled{opacity:.55}
+.wa-industry-location-toolbar{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(3,minmax(125px,.8fr));gap:8px;padding:13px 22px 5px}
+.wa-industry-location-toolbar label,.wa-industry-configuration label{min-width:0;display:grid;gap:5px;color:#a8bcc7;font-size:11px}
+.wa-industry-location-toolbar input,.wa-industry-location-toolbar select,.wa-industry-configuration input,.wa-industry-configuration select{min-width:0;width:100%;box-sizing:border-box;background:#111f29;border:1px solid #4d6573;border-radius:5px;padding:10px 11px;color:#e4eaed;font-size:12px}
+.wa-industry-ownership{display:flex;flex-wrap:wrap;gap:6px;padding:10px 22px}
+.wa-industry-ownership button{display:flex;align-items:center;gap:8px;background:#1c303d;border:1px solid #3b5260;padding:7px 12px;border-radius:30px;color:#bac9d0;font-size:11px}
+.wa-industry-ownership button.active{background:#42545b;border-color:#bd9f7d;color:#f4e6d6}
+.wa-industry-ownership small{font-variant-numeric:tabular-nums;color:#d8e2e3}
+.wa-industry-choice-heading{display:flex;justify-content:space-between;gap:10px;padding:8px 23px;font-size:11px;color:#dce6e8}
+.wa-industry-choice-heading span{color:#8fa8b4}
+.wa-industry-location-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;overflow:auto;max-height:38vh;align-content:start;padding:5px 22px 18px}
+.wa-industry-location-card{position:relative;display:grid;align-content:start;gap:5px;text-align:left;background:#21333f;color:#dae6e9;border:1px solid #3b5461;border-radius:6px;padding:13px 14px;min-height:137px;min-width:0}
+.wa-industry-location-card:hover{background:#2a404d;border-color:#809ba5}
+.wa-industry-location-card.selected{background:#30464c;border:1px solid #d1ae83;box-shadow:inset 0 0 0 1px #d1ae8344}
+.wa-industry-location-top{display:flex;justify-content:space-between;align-items:start;margin-bottom:5px;gap:8px}
+.wa-industry-location-symbol{width:32px;height:32px;border-radius:5px;background:#344a50;color:#cfe0d3;display:grid;place-items:center}
+.wa-industry-location-status{color:#b5c6cb;border:1px solid #607784;border-radius:3px;padding:4px 6px;font-size:9px;text-transform:uppercase;font-weight:700;letter-spacing:.03em}
+.wa-industry-location-status.is-destroyed,.wa-industry-location-status.is-abandoned{color:#f7b5af;border-color:#aa6362;background:#462f36}
+.wa-industry-location-status.is-contested,.wa-industry-location-status.is-occupied{color:#f2d39f;border-color:#967b50;background:#393529}
+.wa-industry-location-status.is-secure{color:#b4e2ce;border-color:#588a72;background:#223e36}
+.wa-industry-location-card>strong{font-size:14px;color:#eaf0ed;overflow-wrap:anywhere}
+.wa-industry-location-card .wa-industry-location-meta{font-size:11px;color:#c0cfd6;overflow-wrap:anywhere}
+.wa-industry-location-card>small{font-size:10px;color:#95acb9;overflow-wrap:anywhere}
+.wa-industry-selected-label{font-size:10px;color:#e7d0a7;font-weight:700}
+.wa-industry-no-locations{grid-column:1/-1;text-align:center;padding:35px 15px;color:#cfdee4}
+.wa-industry-no-locations p{color:#9fb2bd;font-size:12px}
+.wa-industry-no-locations button{padding:9px 15px;background:#344853;border:1px solid #718996;border-radius:4px;color:#f0e4ce}
+.wa-industry-attach-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #38505d;padding:13px 22px;color:#95aeba;font-size:12px}
+.wa-industry-attach-foot button{border:1px solid #657989;color:#dce9ef;background:#30434e;border-radius:5px;padding:10px 14px;font-size:12px}
+.wa-industry-attach-foot .wa-industry-primary{background:#98655b;color:#fff0e7;border-color:#bc8777;font-weight:700}
+.wa-industry-attach-foot button:disabled{opacity:.45;cursor:not-allowed}
+.wa-industry-production-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;padding:14px 22px 18px;min-height:370px}
+.wa-industry-production-main{min-width:0}
+.wa-industry-production-main h4,.wa-industry-configuration h4{font-size:14px;color:#eadac4;margin:15px 0 10px}
+.wa-industry-picked-location{display:grid;gap:4px;position:relative;padding:13px 15px;background:#263a44;border-left:3px solid #bc9b75}
+.wa-industry-picked-location strong{font-size:18px}
+.wa-industry-picked-location small{color:#9fbdc8}
+.wa-industry-picked-location button{position:absolute;top:12px;right:12px;border:1px solid #607684;background:#304650;color:#e4d9cc;border-radius:4px;padding:7px}
+.wa-industry-rebuild-note{display:flex;align-items:center;gap:9px;font-size:12px;color:#f0d0b3;border:1px solid #795d4c;background:#372f2b;padding:12px;line-height:1.5}
+.wa-industry-template-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:34vh;overflow:auto;gap:7px}
+.wa-industry-template-choices button{display:grid;text-align:left;gap:6px;background:#20323e;border:1px solid #3b5461;border-radius:5px;color:#dce6e7;padding:13px}
+.wa-industry-template-choices button.selected{background:#33494c;border-color:#c3a17c}
+.wa-industry-template-choices strong{font-size:12px}
+.wa-industry-template-choices small{font-size:10px;color:#9db6be}
+.wa-industry-configuration{background:#1e2f3a;border:1px solid #3a5260;border-radius:6px;padding:15px;display:grid;gap:10px;align-content:start}
+.wa-industry-configuration h4{margin:0}
+.wa-industry-configuration>p{font-size:11px;color:#a3b5c0;line-height:1.5;margin:0}
+.wa-industry-requirement-preview{display:grid;gap:7px;font-size:11px;color:#b4c6cb;background:#142630;padding:11px;border-radius:5px}
+.wa-industry-requirement-preview strong{color:#e9d6b8}
+@media(max-width:800px){.wa-industry-location-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-production-layout{grid-template-columns:1fr}.wa-industry-configuration{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-configuration>h4,.wa-industry-configuration>p,.wa-industry-requirement-preview{grid-column:1/-1}}
+@media(max-width:520px){.wa-industry-location-toolbar,.wa-industry-location-grid,.wa-industry-template-choices,.wa-industry-configuration{grid-template-columns:1fr}.wa-industry-attach-head,.wa-industry-location-toolbar,.wa-industry-ownership,.wa-industry-choice-heading,.wa-industry-location-grid,.wa-industry-production-layout,.wa-industry-attach-foot{padding-left:12px;padding-right:12px}.wa-industry-attach-foot{flex-wrap:wrap}.wa-industry-location-grid{max-height:43vh}.wa-industry-heading{gap:8px}.wa-industry-steps{padding-left:12px;padding-right:12px}}

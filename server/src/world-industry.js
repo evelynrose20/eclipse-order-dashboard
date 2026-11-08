@@ -41,7 +41,7 @@ async function summary(pool){
  const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0 ORDER BY facility_id,item_id');
  const [cycles]=await pool.execute('SELECT facility_id,cycle_key,cycle_date,operations,configuration_version FROM world_industry_cycles ORDER BY created_at DESC LIMIT 100');
  const [ledger]=await pool.execute('SELECT facility_id,item_id,delta,balance_after,action,reference_key,created_at FROM world_industry_ledger ORDER BY id DESC LIMIT 150');
- const [settlements]=await pool.execute('SELECT id,name,controlling_faction_id,region_id,zone_id,population,workforce FROM world_settlements ORDER BY name');
+ const [settlements]=await pool.execute('SELECT id,name,description,map_icon,strategic_state,controlling_faction_id,region_id,zone_id,population,workforce FROM world_settlements ORDER BY name');
  const [sites]=await pool.execute('SELECT site.*,z.controlling_faction_id AS controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id ORDER BY site.name');
  const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
  const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');

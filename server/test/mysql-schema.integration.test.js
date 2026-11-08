@@ -1254,6 +1254,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   }),'/world-admin/industry/facilities',staff);
   assert.equal(linkedFarm.status,200,JSON.stringify(linkedFarm.body));
   const linkedFarmId=Number(linkedFarm.body.id);
+  const siteDirectory=await industryRoute(admin,request('GET'),'/world-admin/industry',staff);
+  const mappedLocation=siteDirectory.body.settlements.find(x=>Number(x.id)===mappedFarmId);
+  assert.ok(mappedLocation,'industry directory must include existing territorial map location');
+  assert.equal(mappedLocation.map_icon,'farm','industry must receive the true map-marker type');
+  assert.equal(mappedLocation.strategic_state,'destroyed','industry must receive destroyed site condition');
+
   const [[locationCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_sites WHERE name='CI Destroyed Map Farm'");
   assert.equal(Number(locationCount.n),0,'no duplicate independent map marker created');
   // Even if a facility is technically operational, a destroyed map marker must
