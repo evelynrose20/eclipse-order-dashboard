@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {handleCivicNeeds} from './world-civic-needs.js';
+import {climateForRegions,handleRegionClimate} from './world-region-climate.js';
 import {handleTransportGraph} from './world-route-network.js';
 import {handleRailInfrastructure} from './world-rail-infrastructure.js';
 
@@ -43,7 +44,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  if(path==='/world-admin'&&req.method==='GET'){
   const [regions]=await pool.execute('SELECT * FROM world_regions ORDER BY id');
   const now=new Date();
-  const effective=regions.map(r=>({...r,effective_weather:effectiveWeather(r,now)}));
+  const effective=await climateForRegions(pool,regions,now);
   const [zones]=await pool.execute('SELECT * FROM world_zones ORDER BY region_id,is_default DESC,id');
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
   const [routes]=await pool.execute('SELECT id,region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
@@ -57,6 +58,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  }
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/civic/'))return handleCivicNeeds(pool,req,path,actor);
+ if(path.startsWith('/world-admin/climate/'))return handleRegionClimate(pool,req,path,actor);
  if(path.startsWith('/world-admin/zones'))return await handleZones(pool,req,path,actor);
  // Existing staff rail API is retained for backwards compatibility; the map no longer exposes it.
  if(path.startsWith('/world-admin/rail/'))return await handleRailInfrastructure(pool,req,path,actor);
