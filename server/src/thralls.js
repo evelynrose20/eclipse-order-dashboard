@@ -49,8 +49,12 @@ export function simulatedCycleYield(channel,preferences,random=Math.random()){
  return 0;
 }
 export const lowerMaterialForAnatomy=anatomy=>({vulva:'vaginal',penis:'seminal',mixed:'mixed',other:'other'})[anatomy]||'unclassified';
+export const availableChamberChannels=prefs=>({
+ upper:Boolean(prefs&&prefs.lactation_state&&prefs.lactation_state!=='none'),
+ lower:Boolean(prefs&&LOWER_ANATOMIES.includes(prefs.lower_anatomy)&&prefs.lower_anatomy!=='unspecified')
+});
 async function seatRoster(pool,actor){
- const [rows]=await pool.execute("SELECT c.id,c.character_name AS name,c.player_account_id,COALESCE(p.allow_seating,0) AS allow_seating,COALESCE(p.allow_upper,0) AS allow_upper,COALESCE(p.allow_lower,0) AS allow_lower,COALESCE(p.upper_limit,0) AS upper_limit,COALESCE(p.lower_limit,0) AS lower_limit,COALESCE(p.gender_identity,'unspecified') AS gender_identity,COALESCE(p.lower_anatomy,'unspecified') AS lower_anatomy FROM characters c LEFT JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks cr ON cr.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cr.rank_code WHERE (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) AND p.allow_seating=1 ORDER BY c.character_name",[actor.id]);
+ const [rows]=await pool.execute("SELECT c.id,c.character_name AS name,c.player_account_id,COALESCE(p.allow_seating,0) AS allow_seating,CASE WHEN p.lactation_state IS NOT NULL AND p.lactation_state<>'none' THEN 1 ELSE 0 END AS allow_upper,CASE WHEN p.lower_anatomy IS NOT NULL AND p.lower_anatomy<>'unspecified' THEN 1 ELSE 0 END AS allow_lower,COALESCE(p.upper_limit,0) AS upper_limit,COALESCE(p.lower_limit,0) AS lower_limit,COALESCE(p.gender_identity,'unspecified') AS gender_identity,COALESCE(p.lower_anatomy,'unspecified') AS lower_anatomy FROM characters c LEFT JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks cr ON cr.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cr.rank_code WHERE (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) AND p.allow_seating=1 ORDER BY c.character_name",[actor.id]);
  return rows.map(row=>({...row,is_own:row.player_account_id===actor.id}));
 }
 
@@ -121,7 +125,7 @@ export async function thrallsRoute(pool,req,path){
    if(machine.machine_status!=='offline')return await rollback(cn,'chair_must_be_offline');
    if(seat.character_id)return await rollback(cn,'chair_occupied');
    if(!uuid.test(data.character_id||''))return await rollback(cn,'invalid_character');
-   const [rows]=await cn.execute("SELECT c.character_name,c.collar_bound,p.allow_seating,p.allow_upper,p.allow_lower,p.lower_anatomy FROM characters c JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks r ON r.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE c.id=? AND (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) FOR UPDATE",[data.character_id,actor.id]);
+   const [rows]=await cn.execute("SELECT c.character_name,c.collar_bound,p.allow_seating,p.lower_anatomy FROM characters c JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks r ON r.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE c.id=? AND (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) FOR UPDATE",[data.character_id,actor.id]);
    const character=rows[0];
    if(!canSeatCharacter(machine,seat,character))return await rollback(cn,'character_has_not_opted_in');
    await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1',[data.character_id,actor.id]);
@@ -147,7 +151,7 @@ export async function thrallsRoute(pool,req,path){
    if(!['upper','lower'].includes(channel))return await rollback(cn,'invalid_channel');
    if(machine.machine_status!=='running'||machine[channel+'_status']!=='active'||!seat.character_id)return await rollback(cn,'assembly_not_active');
    const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
-   if(!prefs||!prefs.allow_seating||!prefs['allow_'+channel])return await rollback(cn,'collection_not_authorized');
+   if(!prefs||!prefs.allow_seating||!availableChamberChannels(prefs)[channel])return await rollback(cn,'collection_not_available');
    if(channel==='lower'&&prefs.lower_anatomy==='unspecified')return await rollback(cn,'anatomy_not_configured');
    const last=seat[channel+'_last_cycle_at'];
    if(last&&Date.now()-new Date(last).getTime()<CYCLE_MS)return await rollback(cn,'cycle_not_ready');
