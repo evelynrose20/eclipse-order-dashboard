@@ -274,6 +274,16 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.ok(retrievedZones.body.routes.every(r=>r.zone_id!=null));
   assert.ok(retrievedZones.body.network_nodes.every(n=>n.zone_id!=null));
   assert.ok(retrievedZones.body.mountains.some(m=>Number(m.zone_id)===newZoneId&&m.name==='Northern ridge'));
+  const unconnectedSite=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'South Camp'}),'/world-admin/settlements');
+  assert.equal(unconnectedSite.status,200,JSON.stringify(unconnectedSite.body));
+  const unconnectedNode=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,settlement_id:unconnectedSite.body.id}),'/world-admin/network/nodes');
+  assert.equal(unconnectedNode.status,200,JSON.stringify(unconnectedNode.body));
+  const moveUnconnectedSite=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,zone_id:newZoneId,name:'South Camp'}),'/world-admin/settlements/'+unconnectedSite.body.id);
+  assert.equal(moveUnconnectedSite.status,200,JSON.stringify(moveUnconnectedSite.body));
+  const [[movedNode]]=await admin.execute('SELECT zone_id FROM world_route_nodes WHERE id=?',[unconnectedNode.body.id]);
+  assert.equal(Number(movedNode.zone_id),newZoneId,'unconnected site node follows its settlement to the new zone');
+  const tryMovingConnected=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,zone_id:Number(overviewZone.id),name:'North Watch'}),'/world-admin/settlements/'+zoneSettlement.body.id);
+  assert.equal(tryMovingConnected.status,409,'connected settlement cannot be moved across zone boundaries');
   const refusePopulatedZone=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/zones/'+newZoneId);
   assert.equal(refusePopulatedZone.status,409,'populated zones are protected');
   const refuseOverviewDelete=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/zones/'+overviewZone.id);
