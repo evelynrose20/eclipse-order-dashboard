@@ -42,7 +42,7 @@ export async function thrallsRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return forbidden(401,'not_authenticated');
  if(!await mayEnterThralls(pool,actor))return forbidden(403,'access_denied');
- const preferencesPath=/^\\/thralls\\/characters\\/([0-9a-f-]{36})\\/contributions$/.exec(path);
+ const preferencesPath=new RegExp('^/thralls/characters/([0-9a-f-]{36})/contributions$').exec(path);
  if(preferencesPath&&uuid.test(preferencesPath[1])){
   const id=preferencesPath[1];
   const [[character]]=await pool.execute('SELECT id,character_name,player_account_id,collar_bound FROM characters WHERE id=?',[id]);
