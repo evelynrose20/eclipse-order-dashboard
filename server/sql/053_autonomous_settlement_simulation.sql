@@ -3,6 +3,7 @@ USE eclipse_order;
 CREATE TABLE IF NOT EXISTS world_settlement_autosim (
  settlement_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
  mode ENUM('off','automatic') NOT NULL DEFAULT 'automatic',
+ ownership ENUM('npc','order') NOT NULL DEFAULT 'npc',
  cadence ENUM('slow','normal','fast') NOT NULL DEFAULT 'normal',
  paused TINYINT(1) NOT NULL DEFAULT 0,
  last_cycle_key VARCHAR(35) NULL,
