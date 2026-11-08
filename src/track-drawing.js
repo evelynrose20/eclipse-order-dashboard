@@ -45,3 +45,12 @@ export function nearestSmoothRoutePoint(points,target,samples=28){
  }
  return best?{x:Math.max(0,Math.min(100,Math.round(best.x*100)/100)),y:Math.max(0,Math.min(100,Math.round(best.y*100)/100)),d:best.d,index:best.index}:null;
 }
+
+
+export function orientTrackStroke(points,start,end){
+ if(!Array.isArray(points)||points.length<2||!start||!end)return points;
+ const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+ const forward=distance(points[0],start)+distance(points.at(-1),end);
+ const reverse=distance(points[0],end)+distance(points.at(-1),start);
+ return reverse<forward?[...points].reverse():points;
+}
