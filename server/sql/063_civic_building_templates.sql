@@ -74,4 +74,13 @@ CREATE TABLE IF NOT EXISTS world_civic_building_project_ticks(
  PRIMARY KEY(project_id,cycle_key),
  FOREIGN KEY(project_id) REFERENCES world_civic_building_projects(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Upgrade existing functional granaries and waterworks once, preserving level, name, status and condition.
+-- Future newly created legacy structures are not silently converted on repeated setup.
+SET @new_063 := (SELECT IF(COUNT(*)=0,1,0) FROM schema_migrations WHERE version='063_civic_building_templates');
+UPDATE world_settlement_upgrades
+ SET template_id='granary',effect_snapshot=JSON_OBJECT('key','food_capacity','per_level',250),template_revision=1,service_bonus=0
+ WHERE @new_063=1 AND category='food_storage' AND template_id IS NULL;
+UPDATE world_settlement_upgrades
+ SET template_id='waterworks',effect_snapshot=JSON_OBJECT('key','water_daily','per_level',35),template_revision=1,service_bonus=0
+ WHERE @new_063=1 AND category='water' AND template_id IS NULL;
 INSERT INTO schema_migrations(version) VALUES('063_civic_building_templates') ON DUPLICATE KEY UPDATE version=VALUES(version);
