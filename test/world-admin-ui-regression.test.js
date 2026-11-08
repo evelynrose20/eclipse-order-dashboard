@@ -60,7 +60,7 @@ test('industry attachment defaults to all map factions and uses a browsable loca
  assert.match(wizard,/All locations/);
  assert.match(wizard,/NPC factions/);
  assert.match(wizard,/role="dialog"/);
- assert.match(wizard,/loc\.strategic_state/);
+ assert.match(wizard,/item\.strategic_state/);
  assert.match(wizard,/Existing mapped locations/);
 });
 test('NPC-controlled destroyed farm is visible and searchable in industry location gallery',async()=>{
