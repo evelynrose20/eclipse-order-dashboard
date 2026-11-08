@@ -11,6 +11,7 @@ import Factions from './Factions.jsx';
 import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
+import InternalRail from './InternalRail.jsx';
 import Treasury from './Treasury.jsx';
 import Fronts from './Fronts.jsx';
 import ConstructionProjects from './ConstructionProjects.jsx';
@@ -85,6 +86,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['lore','Order Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
+  ...(!playerPreview&&canManage(profile.role)?[['internal-rail','Internal Rail Logistics','🚆']]:[]),
   ['fronts','Order Fronts','♛'],
   ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
@@ -154,6 +156,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
+    {tab==='internal-rail'&&admin&&<InternalRail request={request}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
