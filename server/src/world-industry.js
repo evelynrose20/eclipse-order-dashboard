@@ -3,6 +3,7 @@ import {atomicIndustry,adjustFacilityStock,getIndustryPreview,produceIndustryCyc
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const whole=(x,min,max)=>Number.isInteger(x)&&x>=min&&x<=max;
 const txt=(x,max)=>typeof x==='string'&&x.trim().length>0&&x.length<=max;
+const N=x=>Number(x||0);
 const num=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max&&Math.round(x*1000)===x*1000;
 async function body(req){let size=0;const chunks=[];for await(const b of req){size+=b.length;if(size>50000)return null;chunks.push(b)}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}}
 const array=x=>typeof x==='string'?JSON.parse(x):x;
@@ -140,7 +141,7 @@ export async function industryRoute(pool,req,path,actor){
     await db.execute('INSERT IGNORE INTO fc_material_stock(material_id,quantity) VALUES(?,0)',[item.workshop_material_id]);
     const [[st]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[item.workshop_material_id]);
     if(action==='shared-in'){
-     if(num(st.quantity)<b.quantity)return fail(409,'insufficient_unreserved_shared_stock');
+     if(N(st.quantity)<b.quantity)return fail(409,'insufficient_unreserved_shared_stock');
      await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=?',[b.quantity,item.workshop_material_id]);
      await adjustFacilityStock(db,source,b.item_id,b.quantity,'shared_in',key,actor.id);
     }else{
@@ -187,7 +188,7 @@ export async function industryRoute(pool,req,path,actor){
    }
    if(!['planned','active','paused'].includes(p.status))return fail(409,'project_not_receiving_goods');
    const [[need]]=await db.execute('SELECT * FROM world_industry_project_needs WHERE project_id=? AND item_id=? FOR UPDATE',[id,b.item_id]);
-   if(!need||num(need.committed_qty)+b.quantity>num(need.required_qty)+.00001)return fail(409,'project_requirement_exceeded');
+   if(!need||N(need.committed_qty)+b.quantity>N(need.required_qty)+.00001)return fail(409,'project_requirement_exceeded');
    if(b.source==='facility')await adjustFacilityStock(db,p.facility_id,b.item_id,-b.quantity,'project_commit','project:'+id,actor.id);
    else{
     const [[item]]=await db.execute('SELECT workshop_material_id FROM world_industry_items WHERE id=?',[b.item_id]);
