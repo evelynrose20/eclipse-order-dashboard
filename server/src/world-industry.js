@@ -58,6 +58,10 @@ async function summary(pool){
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
  if(req.method==='GET'&&path==='/world-admin/industry')return summary(pool);
+ if(req.method==='GET'&&path==='/world-admin/industry/locations'){
+  const [locations]=await pool.execute('SELECT id,name,site_type,region_id,zone_id,controlling_faction_id,map_x,map_y FROM world_industry_locations ORDER BY id');
+  return ok({locations});
+ }
  let match;
  if(path==='/world-admin/industry/items'&&req.method==='POST'){
   const b=await body(req);
