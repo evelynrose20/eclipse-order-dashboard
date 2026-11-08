@@ -22,22 +22,7 @@ export async function handleCivicExtras(pool,req,path,actor){
  if(!m)return null;
  const settlementId=Number(m[1]),kind=m[2],entryId=m[3]?Number(m[3]):null,dispatch=m[4];
  if(!Number.isSafeInteger(settlementId)||settlementId<1)return fail(400,'invalid_settlement');
- if(kind==='cohorts'&&!entryId)return null; // Existing create route owns cohort insertion.
- if(kind==='cohorts'&&entryId&&['PUT','DELETE'].includes(req.method)){
-  const b=req.method==='PUT'?await read(req):null;
-  if(req.method==='PUT'&&!cohortValid(b))return fail(400,'invalid_civic_cohort');
-  return tx(pool,async db=>{
-   const [[site]]=await db.execute('SELECT population FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);if(!site)return fail(404,'settlement_not_found');
-   const [[existing]]=await db.execute('SELECT * FROM world_civic_cohorts WHERE id=? AND settlement_id=? FOR UPDATE',[entryId,settlementId]);if(!existing)return fail(404,'cohort_not_found');
-   if(req.method==='PUT'){
-    const [[total]]=await db.execute('SELECT COALESCE(SUM(residents),0) AS n FROM world_civic_cohorts WHERE settlement_id=?',[settlementId]);
-    if(Number(total.n)-Number(existing.residents)+b.residents>Number(site.population))return fail(409,'cohort_population_exceeds_settlement');
-    await db.execute('UPDATE world_civic_cohorts SET label=?,residents=?,employed=?,housing_quality=?,medical_access=?,water_access=? WHERE id=?',[b.label.trim(),b.residents,b.employed,b.housing_quality,b.medical_access,b.water_access,entryId]);
-   }else await db.execute('DELETE FROM world_civic_cohorts WHERE id=?',[entryId]);
-   await audit(db,actor.id,req.method==='PUT'?'cohort_update':'cohort_delete',settlementId,String(entryId));
-   return ok({saved:true});
-  });
- }
+ if(kind==='cohorts')return fail(409,'population_groups_are_simulated');
  if(kind==='heating'&&['POST','PUT','DELETE'].includes(req.method)){
   const b=req.method==='DELETE'?null:await read(req);
   if(req.method!=='DELETE'&&(!b||!label(b.name,120)||!whole(b.coverage_pct,0,100)||!whole(b.condition_pct,0,100)||!['operational','damaged','offline'].includes(b.status)||typeof b.notes!=='string'||b.notes.length>450))return fail(400,'invalid_heating_asset');
