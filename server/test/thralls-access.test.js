@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -36,4 +36,12 @@ test('collection limits respect each channel and prior recorded units',()=>{
  assert.equal(withinContributionLimit(prefs,seat,'upper',6),false);
  assert.equal(withinContributionLimit(prefs,seat,'lower',1),false);
  assert.equal(withinContributionLimit(prefs,seat,'upper',-1),false);
+});
+
+test('gender never determines lower reservoir classification',()=>{
+ assert.equal(lowerMaterialForAnatomy('vulva'),'vaginal');
+ assert.equal(lowerMaterialForAnatomy('penis'),'seminal');
+ assert.equal(lowerMaterialForAnatomy('mixed'),'mixed');
+ assert.equal(lowerMaterialForAnatomy('other'),'other');
+ assert.equal(lowerMaterialForAnatomy('unspecified'),'unclassified');
 });
