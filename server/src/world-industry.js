@@ -78,7 +78,7 @@ export async function industryRoute(pool,req,path,actor){
      const [[existing]]=await db.execute('SELECT configuration,rules FROM world_industry_template_versions WHERE template_id=? AND version=? FOR UPDATE',[versionTarget,Number(old.current_version)]);
      if(!existing)return fail(404,'template_version_not_found');
      // Preserve prior recipes in an append-only audit record for historical review.
-     await audit(db,actor.id,'industry',versionTarget,'template_edit_before',JSON.stringify({version:old.current_version,configuration:array(existing.configuration),rules:array(existing.rules)}));
+     await db.execute('INSERT INTO world_industry_template_edit_history(template_id,version,configuration,rules,edited_by) VALUES(?,?,?,?,?)',[versionTarget,old.current_version,JSON.stringify(array(existing.configuration)),JSON.stringify(array(existing.rules)),actor.id]);
      await db.execute('UPDATE world_industry_template_versions SET configuration=?,rules=? WHERE template_id=? AND version=?',[JSON.stringify(b.configuration),JSON.stringify(b.rules),versionTarget,old.current_version]);
      await audit(db,actor.id,'industry',versionTarget,'template_edit',String(old.current_version));
      return ok({template_id:versionTarget,version:Number(old.current_version),updated:true});
