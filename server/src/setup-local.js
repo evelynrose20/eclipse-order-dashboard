@@ -137,6 +137,8 @@ async function main(){
   await pool.query(equipmentMaintenance);
   const chamber=await readFile(new URL('../sql/061_thrall_chamber.sql',import.meta.url),'utf8');
   await pool.query(chamber);
+  const seating=await readFile(new URL('../sql/062_thrall_seating.sql',import.meta.url),'utf8');
+  await pool.query(seating);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
