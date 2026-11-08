@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {simplifyTrackStroke,insertRouteBend} from '../src/track-drawing.js';
+import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint} from '../src/track-drawing.js';
 
 test('freehand rail trace keeps endpoints and stays inside 16 editable handles',()=>{
  const points=Array.from({length:120},(_,i)=>({x:i/1.19,y:35+Math.sin(i/11)*16}));
@@ -26,4 +26,14 @@ test('track mode preserves original map while exposing click and drag to draw op
  for(const token of ['Lay track','traceTrack','trackTraceDown','trackTraceMove','trackTraceUp','draftWaypointMove','simplifyTrackStroke','insertRouteBend','Straighten','Reverse','Save railway'])assert.ok(s.includes(token),token);
  assert.ok(s.includes("route_type:mode==='track'?'rail':routeType"));
  assert.ok(!s.includes("junctionAction!=='split'&&((mode==='bend'"));
+});
+
+test('snapping to a visibly curved rail uses cubic geometry, not a straight line',()=>{
+ const points=[{x:0,y:50},{x:50,y:0},{x:100,y:50}];
+ // This point is on the first visible cubic curve, but far from the raw chord.
+ const click={x:21.875,y:21.875};
+ const snap=nearestSmoothRoutePoint(points,click);
+ assert.ok(snap&&snap.d<.3,JSON.stringify(snap));
+ assert.equal(snap.index,0);
+ assert.ok(Math.abs(snap.x-click.x)<.3&&Math.abs(snap.y-click.y)<.3);
 });
