@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {handleCivicNeeds} from './world-civic-needs.js';
 import {handleTransportGraph} from './world-route-network.js';
 import {handleRailInfrastructure} from './world-rail-infrastructure.js';
 
@@ -55,6 +56,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   return ok({can_edit:command,regions:effective,zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
+ if(path.startsWith('/world-admin/civic/'))return handleCivicNeeds(pool,req,path,actor);
  if(path.startsWith('/world-admin/zones'))return await handleZones(pool,req,path,actor);
  // Existing staff rail API is retained for backwards compatibility; the map no longer exposes it.
  if(path.startsWith('/world-admin/rail/'))return await handleRailInfrastructure(pool,req,path,actor);
