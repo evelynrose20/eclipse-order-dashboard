@@ -31,7 +31,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[],routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -431,7 +431,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
-   {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
+   {!displayed.length&&!sitePins.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
   </div>
   </div>
@@ -514,6 +514,6 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
   </div>}
   {canEdit&&active&&<div className="wtm-symbol"><MapIconPicker options={ICON_OPTIONS} label="Map icon" value={active.map_icon||'settlement'} onChange={changeIcon} disabled={busy}/><label>Territorial state<select value={active.strategic_state||'peaceful'} onChange={e=>changeState(e.target.value)} disabled={busy}>{STATUS_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><small>Status is visible on every map marker, including without selecting it.</small></div>}
-  <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length+networkSegments.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
+  <div className="wtm-legend"><div><strong>STATES</strong><span className="wtm-state-key">{STATUS_OPTIONS.map(([value,label])=><span key={value} data-state={value}><i/>{label}</span>)}</span></div><div><strong>MOUNTAIN RANGES</strong><span>{mountains.length} mapped</span></div><div><strong>KNOWN SITES</strong><span>{displayed.length+sitePins.length} mapped</span></div><div><strong>ROUTE NETWORK</strong><span>{routes.length+networkSegments.length} connections</span></div><div><strong>LEGEND</strong><span><i className="wtm-key wtm-key-road"/> Road · <i className="wtm-key wtm-key-trail"/> Trail · <i className="wtm-key wtm-key-rail"/> Rail</span></div></div>
  </div>;
 }
