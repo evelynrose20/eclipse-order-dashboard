@@ -47,7 +47,12 @@ async function summary(pool){
  const [zones]=await pool.execute('SELECT id,name,region_id,is_default FROM world_zones ORDER BY region_id,is_default DESC,name');
  const [utilityRows]=await pool.execute('SELECT facility_id,kind,COUNT(*) AS units_installed FROM world_industry_utilities GROUP BY facility_id,kind');
  const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
- return ok({items,workshop,locations,regions,zones,utility_rows:utilityRows,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,campaigns});
+ const effectiveFacilities=await Promise.all(facilities.map(async f=>{
+  const resolved=await getIndustryPreview(pool,f.id);
+  return {...f,workforce:resolved?.facility?.workforce||0,heat_available:resolved?.facility?.heat_available||0,power_available:resolved?.facility?.power_available||0,
+   workforce_needed:resolved?.facility?.requirements?.workforce||0,heat_needed:resolved?.facility?.requirements?.heat||0,power_needed:resolved?.facility?.requirements?.power||0};
+ }));
+ return ok({items,workshop,locations,regions,zones,utility_rows:utilityRows,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:effectiveFacilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,campaigns});
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
