@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import IndustryTemplateEditor from './IndustryTemplateEditor.jsx';
 import './world-industry.css';
-const number=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:3});
+const num=v=>Number(v||0);
+const number=v=>num(v).toLocaleString(undefined,{maximumFractionDigits:3});
 const title=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const facilityBlank={settlement_id:0,template_id:0,name:'',status:'ruined',level:1,capacity_pct:100,workforce:0,heat_available:0,power_available:0,cycle_mode:'manual',cycle_cadence:'normal',notes:''};
 const projectBlank={facility_id:0,name:'',description:'',status:'active',result_status:'operational',labor_required:100,campaign_project_id:null,needs:[]};
@@ -13,7 +14,7 @@ export default function IndustrySitesPanel({request,onChanged}){
  const [inventory,setInventory]=useState({action:'shared-in',item_id:'',quantity:1,target_facility_id:0}),[commit,setCommit]=useState({project_id:0,item_id:'',quantity:1,source:'facility'});
  const [newItem,setNewItem]=useState({id:'',name:'',category:'raw',workshop_material_id:'',description:''});
  const [preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- async function load(){const response=await request('/world-admin/industry');setData(response);setSelected(current=>response.facilities.some(f=>String(f.id)===current)?current:String(response.facilities[0]?.id||''));return response}
+ async function load(){const response=await request('/world-admin/industry');if(!response||!Array.isArray(response.facilities)||!Array.isArray(response.settlements))throw new Error('Industry API returned incomplete data. Check the Windows API version and migration 054.');setData(response);setSelected(current=>response.facilities.some(f=>String(f.id)===current)?current:String(response.facilities[0]?.id||''));return response}
  useEffect(()=>{load().catch(e=>setError(e.message||'Industry records unavailable'))},[]);
  async function mutate(path,body,method='POST',message='Saved'){
   setBusy(true);setError('');setNotice('');
@@ -24,7 +25,7 @@ export default function IndustrySitesPanel({request,onChanged}){
  const sites=data?.facilities||[],templates=data?.templates||[],items=data?.items||[],projects=data?.projects||[];
  const scopeMatches=site=>scope==='order'?site.controlling_faction_id==='eclipse-order':scope==='npc'?Boolean(site.controlling_faction_id)&&site.controlling_faction_id!=='eclipse-order':!site.controlling_faction_id;
  const scopedSites=sites.filter(scopeMatches);
- const scopedSettlements=data.settlements.filter(scopeMatches);
+ const scopedSettlements=(data?.settlements||[]).filter(scopeMatches);
  const scopedProjects=projects.filter(p=>scopedSites.some(s=>s.id===p.facility_id));
  const selectedFacility=scopedSites.find(s=>String(s.id)===selected)||scopedSites[0];
  const selectedTemplate=templates.find(t=>t.id===selectedFacility?.template_id);
@@ -34,7 +35,7 @@ export default function IndustrySitesPanel({request,onChanged}){
  const workshopCompatible=items.filter(i=>i.workshop_material_id);
  const startProject=()=>{setTab('projects');setProjectDraft({...projectBlank,facility_id:Number(selectedFacility?.id||0)});};
  const tabs=[['sites','Sites & production','fa-industry'],['templates','Facility templates','fa-diagram-project'],['projects','Construction projects','fa-helmet-safety'],['items','Item catalog','fa-boxes-stacked'],['history','Production history','fa-chart-line']];
- if(!data)return <section className="wa-panel"><p className="wa-empty">{error||'Loading industrial sites…'}</p></section>;
+ if(!data)return <section className="wa-panel wa-industry-load-state"><div className="wa-panel-title"><strong>INDUSTRY & PROJECTS</strong></div><div className="wa-industry-load-content"><h3>{error?'Unable to open industry records':'Loading industrial sites…'}</h3><p>{error||'Retrieving sites, industrial templates, projects and materials from your Windows API.'}</p>{error&&<button type="button" onClick={()=>{setError('');load().catch(e=>setError(e.message||'Industry records unavailable'))}}>Retry loading</button>}</div></section>;
  return <section className="wa-industry">
   <header className="wa-industry-heading"><div><span className="wa-kicker">LIVING WORLD · P3</span><h2>Sites, Industry & Projects</h2><p>Site restoration, industrial production, construction commitments and campaign-linked infrastructure. Separate from personal or business-front reserves.</p></div><button type="button" onClick={()=>load().catch(e=>setError(e.message))}>Refresh data</button></header>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}

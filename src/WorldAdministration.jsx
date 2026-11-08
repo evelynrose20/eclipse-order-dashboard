@@ -17,6 +17,12 @@ const states=['peaceful','secure','contested','occupied','liberated','rebuilding
 const pretty=x=>String(x||'').replaceAll('_',' ').replace(/\\b\\w/g,m=>m.toUpperCase());
 const civicStatus=(s,r)=>{const c=s?.civic_summary;if(!c)return 'Not configured';if(c.paused)return 'Paused';if(!c.enabled||c.mode==='off')return 'Off';if(c.mode==='narrative')return 'Narrative · warnings only';return (c.mode==='managed'?'Managed':'Detailed')+' · staff-run cycles';};
 const civicValue=(value,suffix='')=>value===null||value===undefined?'—':Number(value).toLocaleString(undefined,{maximumFractionDigits:1})+suffix;
+class WorldPanelBoundary extends React.Component{
+ constructor(props){super(props);this.state={failed:false}}
+ static getDerivedStateFromError(){return {failed:true}}
+ componentDidCatch(error,info){console.error('[World Administration] Panel error:',error,info.componentStack)}
+ render(){if(this.state.failed)return <section className="wa-panel wa-panel-recovery" role="alert"><h3>Unable to display this workspace</h3><p>The panel encountered a rendering error. Your settlement and industry records have not been changed. Reload this panel to try again.</p><button type="button" onClick={()=>this.setState({failed:false})}>Retry panel</button></section>;return this.props.children}
+}
 export default function WorldAdministration({request,readOnly=false}){
  const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[zone,setZone]=useState(''),[selected,setSelected]=useState('');
  const [editing,setEditing]=useState(null),[editType,setEditType]=useState(''),[preview,setPreview]=useState(true);
@@ -71,17 +77,32 @@ export default function WorldAdministration({request,readOnly=false}){
  const editZone=z=>{if(!activeRegion)return;setEditType('zone');setEditing(z?{...z}:zoneBlank(activeRegion.id))};
  const editRegion=r=>{setEditType('region');setEditing(r?{...r,temperature_f:cToF(r.temperature_c),weather_mode:r.weather_mode||'garlean_seasonal'}:{...regionBlank})};
  return <section className="wa-root">
-  <header className="wa-heading"><div><span>IMPERIAL ADMINISTRATION · NEW CASSIA & THE REALM</span><h2>World Administration</h2><p>Territories, NPC communities, civilian welfare, industrial sites and construction projects.</p></div>{canEdit&&<button className="wa-accent" onClick={()=>editRegion(null)}>+ New region</button>}</header>
+  <header className="wa-heading"><div><span>IMPERIAL ADMINISTRATION · NEW CASSIA & THE REALM</span><h2>World Administration</h2><p>Territories, NPC communities, civilian welfare, industrial sites and construction projects.</p></div></header>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   {!data?<p className="wa-empty">Opening world records…</p>:<>
    <nav className="wa-tabs" aria-label="World administration sections">
     {(canEdit?[['map','Territorial Map'],['settlements','Order Settlements'],['npc','NPC Settlements'],['unclaimed','Unclaimed'],['industry','Industry & Projects'],['civil','Civilian Welfare'],['reference','Simulation Rules']]:[['map','Territorial Map'],['settlements','Settlements'],['civil','Civilian Welfare']]).map(([id,name])=><button key={id} aria-current={section===id?'page':undefined} className={section===id?'active':''} onClick={()=>setSection(id)}>{name}</button>)}
    </nav>
-   {section!=='npc'&&section!=='industry'&&<div className="wa-controls"><label>Region <select value={region} onChange={e=>changeRegion(e.target.value)}><option value="">Choose region</option>{regions.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label>{activeRegion&&<label>Zone <select aria-label="Territory zone" value={activeZoneId} onChange={e=>changeZone(e.target.value)}>{zoneList.map(z=><option key={z.id} value={z.id}>{z.name}{z.is_default?' · Overview':''}</option>)}</select></label>}
-    {canEdit&&activeRegion&&<button onClick={()=>editRegion(activeRegion)}>Edit region / weather</button>}
-    {canEdit&&activeRegion&&<button onClick={()=>editZone(null)}><i className="fa-solid fa-plus"/> New zone</button>}
-    {canEdit&&activeZone&&<button onClick={()=>editZone(activeZone)}><i className="fa-solid fa-pen"/> Edit zone</button>}
-    {canEdit&&activeZone&&!activeZone.is_default&&<button onClick={deleteZone}><i className="fa-solid fa-trash-can"/> Delete zone</button>}{canEdit&&activeRegion&&<button className="wa-accent" onClick={newSettlement}>+ Add settlement</button>}</div>}
+   {section!=='npc'&&section!=='industry'&&<div className="wa-geography-picker" aria-label="Territorial geography">
+    <div className="wa-geography-line">
+     <span className="wa-geography-label">Region</span>
+     <div className="wa-geography-tabs" role="group" aria-label="Select region">
+      {regions.map(r=><button type="button" key={r.id} className={String(r.id)===region?'active':''} aria-pressed={String(r.id)===region} onClick={()=>changeRegion(String(r.id))}>{r.name}</button>)}
+      {canEdit&&<button type="button" className="wa-geography-add" onClick={()=>editRegion(null)}><i className="fa-solid fa-plus" aria-hidden="true"/> New region</button>}
+     </div>
+     {canEdit&&activeRegion&&<button type="button" className="wa-geography-tool" onClick={()=>editRegion(activeRegion)} title="Edit selected region and its weather"><i className="fa-solid fa-pen" aria-hidden="true"/> Edit region / weather</button>}
+    </div>
+    {activeRegion&&<div className="wa-geography-line">
+     <span className="wa-geography-label">Zone</span>
+     <div className="wa-geography-tabs" role="group" aria-label="Select zone">
+      {zoneList.map(z=><button type="button" key={z.id} className={String(z.id)===activeZoneId?'active':''} aria-pressed={String(z.id)===activeZoneId} title={z.is_default?z.name:z.description||z.name} onClick={()=>changeZone(String(z.id))}>{z.is_default?(activeRegion.name.replace(/^New\s+/i,'')||z.name):z.name}</button>)}
+      {canEdit&&<button type="button" className="wa-geography-add" onClick={()=>editZone(null)}><i className="fa-solid fa-plus" aria-hidden="true"/> New zone</button>}
+     </div>
+     {canEdit&&activeZone&&<button type="button" className="wa-geography-tool" onClick={()=>editZone(activeZone)}><i className="fa-solid fa-pen" aria-hidden="true"/> Edit zone</button>}
+     {canEdit&&activeZone&&!activeZone.is_default&&<button type="button" className="wa-geography-tool wa-geography-delete" onClick={deleteZone} disabled={busy}><i className="fa-solid fa-trash-can" aria-hidden="true"/> Delete zone</button>}
+     {canEdit&&activeRegion&&<button type="button" className="wa-accent wa-geography-create" onClick={newSettlement}><i className="fa-solid fa-plus" aria-hidden="true"/> Add settlement</button>}
+    </div>}
+   </div>}
    {section!=='npc'&&section!=='industry'&&activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
     <strong><i className="fa-solid fa-map-location-dot" aria-hidden="true"/> {activeZone.name}</strong>
     <span>{pretty(activeZone.strategic_state)}</span>
@@ -92,9 +113,9 @@ export default function WorldAdministration({request,readOnly=false}){
    {!regions.length&&<div className="wa-empty"><h3>No regions yet</h3><p>Begin by creating New Cassia's first region, then place settlements on its territory map. Nothing has been automatically populated.</p>{canEdit&&<button className="wa-accent" onClick={()=>editRegion(null)}>Create first region</button>}</div>}
 
    {canEdit&&section==='npc'&&<NpcSettlementsPanel request={request} factions={factions} onChanged={load}/>}
-   {canEdit&&section==='industry'&&<IndustrySitesPanel request={request} onChanged={load}/>}
-   {activeRegion&&section==='map'&&<div className="wa-columns"><section className="wa-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
-     <section className="wa-panel"><div className="wa-panel-title"><strong>SELECTED SETTLEMENT</strong><span>{local.length} locations</span></div>{current&&String(current.region_id)===region?<div className="wa-inspector"><h3>{current.name}</h3><p>{current.description||'No description yet.'}</p><div><span>Control</span><strong>{factionName(current.controlling_faction_id)}</strong></div><div><span>Government</span><strong>{factionName(current.governing_faction_id)}</strong></div><div><span>Supporting faction</span><strong>{factionName(current.supporting_faction_id)}</strong></div><div><span>Territorial state</span><strong>{pretty(current.strategic_state)}</strong></div><div><span>Residents</span><strong>{Number(current.population).toLocaleString()}</strong></div><section className="wa-inspector-civic"><h4>Civilian welfare</h4>
+   {canEdit&&section==='industry'&&<WorldPanelBoundary><IndustrySitesPanel request={request} onChanged={load}/></WorldPanelBoundary>}
+   {activeRegion&&section==='map'&&<div className="wa-map-workspace"><section className="wa-panel wa-map-main-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
+     <section className="wa-panel wa-map-selection-panel"><div className="wa-panel-title"><strong>SELECTED SETTLEMENT</strong><span>{local.length} locations</span></div>{current&&String(current.region_id)===region?<div className="wa-inspector"><h3>{current.name}</h3><p>{current.description||'No description yet.'}</p><div><span>Control</span><strong>{factionName(current.controlling_faction_id)}</strong></div><div><span>Government</span><strong>{factionName(current.governing_faction_id)}</strong></div><div><span>Supporting faction</span><strong>{factionName(current.supporting_faction_id)}</strong></div><div><span>Territorial state</span><strong>{pretty(current.strategic_state)}</strong></div><div><span>Residents</span><strong>{Number(current.population).toLocaleString()}</strong></div><section className="wa-inspector-civic"><h4>Civilian welfare</h4>
    {canEdit&&<div><span>Simulation</span><strong>{civicStatus(current,activeRegion)}</strong></div>}
    <div><span>Housing</span><strong>{civicValue(current.civic_summary?.housing_capacity)} places</strong></div><div><span>Defenses</span><strong>+{civicValue(current.civic_summary?.upgrade_effects?.defense_bonus)} protection</strong></div><div><span>Food reserves</span><strong>{current.civic_summary?.has_stock?civicValue(current.civic_summary.food_days,' days'):'No supplies recorded'}</strong></div>
    <div><span>Heating coverage</span><strong>{civicValue(current.civic_summary?.heating_coverage,'%')}</strong></div>

@@ -18,7 +18,7 @@ test('zone migration backfills current map geometry without resetting or deletin
 
 test('zone editor filters old map and route tools without rendering a duplicate second map',async()=>{
  const [admin,map,css]=await Promise.all([read('src/WorldAdministration.jsx'),read('src/WorldTerritoryMap.jsx'),read('src/world-administration.css')]);
- for(const token of ['activeZoneId','Territory zone','New zone','Edit zone','Delete zone','ZONE TERRITORY MAP','zone_id','map_background_url','governing_faction_id','controlling_faction_id','supporting_faction_id'])assert.ok(admin.includes(token),token);
+ for(const token of ['activeZoneId','Select zone','New zone','Edit zone','Delete zone','ZONE TERRITORY MAP','zone_id','map_background_url','governing_faction_id','controlling_faction_id','supporting_faction_id'])assert.ok(admin.includes(token),token);
  assert.match(admin,/routes=\{routes\.filter\(r=>String\(r\.region_id\)===region&&String\(r\.zone_id\)===activeZoneId\)\}/);
  assert.match(admin,/networkNodes=\{networkNodes\.filter\(n=>String\(n\.region_id\)===region&&String\(n\.zone_id\)===activeZoneId\)\}/);
  assert.match(admin,/mountains=\{mountains\.filter\(m=>String\(m\.region_id\)===region&&String\(m\.zone_id\)===activeZoneId\)\}/);
