@@ -130,8 +130,9 @@ export async function industryRoute(pool,req,path,actor){
   if(!b||!txt(b.name,140)||!['off','manual','automatic'].includes(b.cycle_mode)||!['slow','normal','fast'].includes(b.cycle_cadence)||typeof b.notes!=='string'||b.notes.length>500)return fail(400,'invalid_facility_settings');
   if(['workforce','heat_available','power_available','level','capacity_pct','status','settlement_id','site_id','owner_faction_id'].some(k=>Object.hasOwn(b,k)))return fail(400,'simulated_resources_read_only');
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT id FROM world_industry_facilities WHERE id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT id,cycle_cadence,last_cycle_key FROM world_industry_facilities WHERE id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
+   if(f.last_cycle_key&&f.cycle_cadence!==b.cycle_cadence)return fail(409,'production_cadence_locked_after_first_cycle');
    await db.execute('UPDATE world_industry_facilities SET name=?,cycle_mode=?,cycle_cadence=?,notes=? WHERE id=?',[b.name.trim(),b.cycle_mode,b.cycle_cadence,b.notes,id]);
    await audit(db,actor.id,'industry',id,'facility_settings',b.cycle_mode);
    return ok({saved:true});
