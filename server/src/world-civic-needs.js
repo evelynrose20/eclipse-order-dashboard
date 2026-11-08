@@ -1,3 +1,4 @@
+import {civilianStorageCapacity,waterworksProduction} from './world-civic-building-templates.js';
 import {workerHealthCycle} from './world-worker-hazards.js';
 import {educationPreview} from './world-education.js';
 import {settlementDemographics} from './world-demographics.js';
@@ -22,17 +23,20 @@ async function log(db,actor,action,id,detail=''){await db.execute('INSERT INTO w
 const settingsDefault={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:3,grace_cycles:2,enabled_mode:'off',paused:0};
 function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=[],upgrades=[]){
  const population=Number(settlement.population);
- const effects=upgradeEffects(upgrades),svc=effects.service_by_category;
- const effectiveInsulation=clamp(Number(settlement.insulation||0)+(svc.insulation||0));
- const effectiveHousing=clamp(Number(settlement.housing||0)+(svc.public_works||0));
- const effectiveMedical=clamp(Number(settlement.medical_access||0)+(svc.clinic||0));
+ const effects=upgradeEffects(upgrades),svc=effects.service_by_category,infra=effects.infrastructure;
+ const capacities=civilianStorageCapacity(settlement,upgrades);
+ const effectiveInsulation=clamp(Number(settlement.insulation||0)+(svc.insulation||0)+infra.insulation);
+ const effectiveHousing=clamp(Number(settlement.housing||0)+(svc.public_works||0)+infra.public_works);
+ const effectiveMedical=clamp(Number(settlement.medical_access||0)+(svc.clinic||0)+infra.medical_access);
  const effectiveFoodAccess=clamp(Number(settlement.food_access||0)+(svc.food_storage||0));
- const effectiveWaterAccess=clamp(Number(settlement.water_access??50)+(svc.water||0));
+ const effectiveWaterAccess=clamp(Number(settlement.water_access??50)+(svc.water||0)+Math.min(25,infra.water_daily/Math.max(1,population)*100));
  const effectiveSecurity=clamp(Number(settlement.security_score||0)+effects.defense_bonus);
  const food=stock.filter(s=>s.resource_kind==='food').reduce((sum,s)=>sum+Number(s.quantity),0);
  const fuel=stock.filter(s=>s.resource_kind==='fuel').reduce((sum,s)=>sum+Number(s.quantity),0);
  const water=stock.filter(s=>s.resource_kind==='water').reduce((sum,s)=>sum+Number(s.quantity),0);
  const medicine=stock.filter(s=>s.resource_kind==='medicine').reduce((sum,s)=>sum+Number(s.quantity),0);
+ const waterOutput=Math.min(waterworksProduction(upgrades,Math.max(0,Number(settlement.workforce||0)-Number(settlement.sick_workers||0)-Number(settlement.injured_workers||0))),Math.max(0,capacities.water-water));
+ const potentialWater=water+waterOutput;
  const foodNeed=population*Number(profile.food_daily_per_resident);
  const waterNeed=population*Number(profile.water_daily_per_resident);
  const medicineNeed=population*Number(profile.medicine_daily_per_resident);
@@ -47,13 +51,13 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const deficit=foodNeed>food?clamp((foodNeed-food)/Math.max(1,foodNeed)*100):0;
  const monotony=seen.size<Number(profile.minimum_variety)?clamp((Number(profile.minimum_variety)-seen.size)*12):0;
  const chill=clamp((100-coverage)*temperatureDemand+(heatNeed>fuel?(heatNeed-fuel)/Math.max(1,heatNeed)*coverage:0));
- const dehydration=waterNeed>water?clamp((waterNeed-water)/Math.max(1,waterNeed)*100):0;
+ const dehydration=waterNeed>potentialWater?clamp((waterNeed-potentialWater)/Math.max(1,waterNeed)*100):0;
  const medicalShortage=medicineNeed>medicine?clamp((medicineNeed-medicine)/Math.max(0.001,medicineNeed)*100):0;
  const service=Math.round((100-effectiveHousing)*.12+(100-effectiveMedical)*.10+(100-effectiveFoodAccess)*.10+(100-effectiveSecurity)*.06+(100-effectiveWaterAccess)*.06);
  const pressure=population>0?clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service):0;
  const risk=population>0?clamp(pressure*.7+Number(settlement.unrest)*.3):0;
  const warnings=[...(foodNeed>0&&foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(effectiveHousing<60?['housing_public_works_needed']:[]),...(effectiveMedical<60?['clinic_support_needed']:[]),...(effectiveSecurity<45?['public_safety_support_needed']:[])];
- return {effective_security:effectiveSecurity,effective_housing:effectiveHousing,effective_medical_access:effectiveMedical,effective_food_access:effectiveFoodAccess,effective_water_access:effectiveWaterAccess,effective_insulation:effectiveInsulation,food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
+ return {food_storage_capacity:capacities.food,water_storage_capacity:capacities.water,food_storage_free:Math.max(0,capacities.food-food),water_storage_free:Math.max(0,capacities.water-water),waterworks_generated:waterOutput,effective_security:effectiveSecurity,effective_housing:effectiveHousing,effective_medical_access:effectiveMedical,effective_food_access:effectiveFoodAccess,effective_water_access:effectiveWaterAccess,effective_insulation:effectiveInsulation,food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:foodDays===null?null:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
 }
 export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[],upgrades=[]){
  const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets,upgrades);
@@ -62,15 +66,15 @@ export function civicSimulationPreview(settlement,profile,stock,history,temperat
  const beforeStability=Number(settlement.civil_stability),beforeUnrest=Number(settlement.unrest);
  // Bounded voluntary simulation. Never alters population or authorizes incidents.
  const shift=Number(settlement.population)>0&&afterGrace&&eligible?Math.max(-3,Math.min(2,Math.round((40-metrics.pressure)/22))):0;
- return {...metrics,food_used:eligible?Math.min(metrics.food_stock,metrics.food_need):0,fuel_used:eligible?Math.min(metrics.fuel_stock,metrics.heat_need):0,water_used:eligible?Math.min(metrics.water_stock,metrics.water_need):0,medicine_used:eligible?Math.min(metrics.medicine_stock,metrics.medicine_need):0,before_stability:beforeStability,after_stability:clamp(beforeStability+shift),before_unrest:beforeUnrest,after_unrest:clamp(beforeUnrest-shift),grace_active:!afterGrace,simulation_eligible:eligible};
+ return {...metrics,food_used:eligible?Math.min(metrics.food_stock,metrics.food_need):0,fuel_used:eligible?Math.min(metrics.fuel_stock,metrics.heat_need):0,water_used:eligible?Math.min(metrics.water_stock+metrics.waterworks_generated,metrics.water_need):0,medicine_used:eligible?Math.min(metrics.medicine_stock,metrics.medicine_need):0,before_stability:beforeStability,after_stability:clamp(beforeStability+shift),before_unrest:beforeUnrest,after_unrest:clamp(beforeUnrest-shift),grace_active:!afterGrace,simulation_eligible:eligible};
 }
 async function context(db,id,lock=false,cycleDate=null){
- const [[settlement]]=await db.execute('SELECT s.*,r.temperature_c,r.weather_mode,r.weather FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?'+(lock?' FOR UPDATE':''),[id]);
+ const [[settlement]]=await db.execute('SELECT s.*,COALESCE(health.sick_workers,0) AS sick_workers,COALESCE(health.injured_workers,0) AS injured_workers,r.temperature_c,r.weather_mode,r.weather FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_worker_health health ON health.settlement_id=s.id WHERE s.id=?'+(lock?' FOR UPDATE':''),[id]);
  if(!settlement)return null;
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[id]);
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
  const [heatingAssets]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE settlement_id=? ORDER BY id',[id]);
- const [upgrades]=await db.execute('SELECT category,status,level,condition_pct,housing_bonus,defense_bonus,service_bonus FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
+ const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
@@ -115,6 +119,12 @@ export async function handleCivicNeeds(pool,req,path,actor){
   if(!b||!safeText(b.item_code,75)||!/^[a-z0-9][a-z0-9_-]*$/.test(b.item_code)||!safeText(b.item_label,120)||!kinds.includes(b.resource_kind)||!number(b.quantity_delta,-1e9,1e9)||b.quantity_delta===0||!safeText(b.reason,180)||!(b.food_group===null||b.food_group===''||safeText(b.food_group,75))||b.resource_kind==='food'&&!safeText(b.food_group,75))return fail(400,'invalid_civic_stock_movement');
   return tx(pool,async db=>{
    const [[settlement]]=await db.execute('SELECT id FROM world_settlements WHERE id=? FOR UPDATE',[id]);if(!settlement)return fail(404,'settlement_not_found');
+   const capacity=civilianStorageCapacity(settlement,await (async()=>{const [rows]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[id]);return rows})());
+   const kind=b.resource_kind;
+   if((kind==='food'||kind==='water')&&b.quantity_delta>0){
+    const [[existingQuantity]]=await db.execute('SELECT COALESCE(SUM(quantity),0) AS qty FROM world_civic_stock WHERE settlement_id=? AND resource_kind=?',[id,kind]);
+    if(Number(existingQuantity.qty)+b.quantity_delta>capacity[kind]+0.0001)return fail(409,'civilian_storage_capacity_exceeded');
+   }
    const [[old]]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? AND item_code=? FOR UPDATE',[id,b.item_code]);
    if(old&&(old.resource_kind!==b.resource_kind||String(old.food_group||'')!==String(b.food_group||'')))return fail(409,'stock_item_classification_conflict');
    const next=Number(old?.quantity||0)+b.quantity_delta;
@@ -134,6 +144,12 @@ export async function handleCivicNeeds(pool,req,path,actor){
    const [[material]]=await db.execute('SELECT m.id,m.name,s.quantity FROM fc_materials m JOIN fc_material_stock s ON s.material_id=m.id WHERE m.id=? FOR UPDATE',[b.material_id]);
    if(!material)return fail(404,'shared_material_not_found');
    if(Number(material.quantity)<b.quantity)return fail(409,'insufficient_shared_order_stock');
+   if(b.resource_kind==='food'||b.resource_kind==='water'){
+    const [structures]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
+    const capacity=civilianStorageCapacity(settlement,structures);
+    const [[total]]=await db.execute('SELECT COALESCE(SUM(quantity),0) AS qty FROM world_civic_stock WHERE settlement_id=? AND resource_kind=?',[id,b.resource_kind]);
+    if(Number(total.qty)+b.quantity>capacity[b.resource_kind]+0.0001)return fail(409,'civilian_storage_capacity_exceeded');
+   }
    const [[classified]]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? AND item_code=? FOR UPDATE',[id,b.material_id]);
    if(classified&&(classified.resource_kind!==b.resource_kind||String(classified.food_group||'')!==String(b.food_group||'')))return fail(409,'stock_item_classification_conflict');
    await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[b.quantity,b.material_id,b.quantity]);
@@ -176,6 +192,13 @@ export async function handleCivicNeeds(pool,req,path,actor){
    if(data.profile.last_cycle_date&&b.cycle_date<=String(data.profile.last_cycle_date).slice(0,10))return fail(409,'civic_cycle_out_of_order');
    const [[old]]=await db.execute('SELECT id FROM world_civic_cycles WHERE settlement_id=? AND cycle_date=?',[id,b.cycle_date]);
    if(old)return fail(409,'civic_cycle_already_committed');
+   if(report.waterworks_generated>0){
+    await db.execute("INSERT INTO world_civic_stock(settlement_id,item_code,item_label,resource_kind,food_group,quantity) VALUES(?,'civic-waterworks','Waterworks production','water',NULL,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)",[id,report.waterworks_generated]);
+    await db.execute("INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,cycle_key,actor_id) VALUES(?,'civic-waterworks','water',NULL,?,'Waterworks production',?,?)",[id,report.waterworks_generated,b.cycle_date,actor.id]);
+    const found=data.stock.find(x=>x.item_code==='civic-waterworks');
+    if(found)found.quantity=Number(found.quantity)+report.waterworks_generated;
+    else data.stock.push({item_code:'civic-waterworks',resource_kind:'water',food_group:null,quantity:report.waterworks_generated});
+   }
    // Consume each category deterministically by item code. Never draw from character/front inventory.
    for(const [kind,needed] of [['food',report.food_used],['fuel',report.fuel_used],['water',report.water_used],['medicine',report.medicine_used]]){
     let remaining=needed;
