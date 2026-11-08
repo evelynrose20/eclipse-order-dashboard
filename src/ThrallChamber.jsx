@@ -32,7 +32,8 @@ export default function ThrallChamber({request}){
  }
  const machine=data?.machine;
  const occupant=data?.seat;
- const selectedSeat=seatChoice||data?.roster?.find(c=>c.allow_seating&&(c.allow_upper||c.allow_lower))?.id||'';
+ const eligibleRoster=(data?.roster||[]).filter(c=>Boolean(c.allow_seating));
+ const selectedSeat=eligibleRoster.some(c=>c.id===seatChoice)?seatChoice:'';
  if(!machine&&!error)return <div className="chamber"><div className="chamber-card">Opening the chamber console…</div></div>;
  return <div className="chamber">
   <header className="chamber-hero">
@@ -90,9 +91,10 @@ export default function ThrallChamber({request}){
      </div>:<div className="chamber-assembly">
       <p className="chamber-helper">Eligible bound characters and your own opted-in characters appear as available. The apparatus must be offline to place anyone in the chair.</p>
       {canManage&&<div className="chamber-record">
-       <label>Character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name}{c.is_own?' (My character)':''} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
+       <label>Character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{eligibleRoster.map(c=><option value={c.id} key={c.id}>{c.name}{c.is_own?' (My character)':''} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
        <button type="button" disabled={busy||machine.machine_status!=='offline'||!selectedSeat} onClick={()=>act('seat',{character_id:selectedSeat},'Character seated in the offline apparatus.')}>Secure character in chair</button>
       </div>}
+      {canManage&&eligibleRoster.length===0&&<p className="chamber-helper" role="status">No saved seating permissions found. In the character dossier, enable Allow chamber seating, click Save permissions, then use Refresh above. Collection eligibility does not affect seating.</p>}
       {machine.machine_status!=='offline'&&canManage&&<p className="chamber-helper">Set the apparatus to Offline before seating a character.</p>}
      </div>}
     </section>
