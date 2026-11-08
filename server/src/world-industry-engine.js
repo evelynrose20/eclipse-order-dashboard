@@ -114,7 +114,7 @@ export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry
  };
  if(preview.utility_fuel_required>0)await adjustFacilityStock(db,id,'ceruleum-fuel',-preview.utility_fuel_required,'consume','utility:'+key,actorId);
  await change(preview.inputs,-1,'consume');
- const incident=weatherHazard({weather:preview.weather.condition,temperature_f:preview.weather.temperature_f,weather_protection_level:facility.weather_protection_level,industry_category:facility.industry_category,equipment_condition:facility.equipment_condition,workforce:preview.workers_available,facility_id:id,cycle_key:key});
+ const incident=weatherHazard({weather:preview.weather.condition,temperature_f:preview.weather.temperature_f,weather_protection_level:facility.weather_protection_level,industry_category:facility.industry_category,equipment_condition:facility.equipment_condition,workforce:Math.min(preview.workers_available,preview.operations*Number(config.labor)),facility_id:id,cycle_key:key});
  const actualOutputs=Object.fromEntries(Object.entries(preview.outputs).map(([item,qty])=>[item,round(qty*(1-incident.crop_loss_pct/100))]));
  await change(actualOutputs,1,'produce');
  preview.outputs=actualOutputs;
