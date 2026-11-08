@@ -53,3 +53,17 @@ Check that:
 - Local Windows logs show the automatic industry scheduler without errors.
 
 CI tests validate disposable MySQL schema and API flows; live Windows and browser acceptance remain separate.
+
+## November 2026: independent sites and derived operating requirements
+
+Agricultural and industrial facilities are **not** restricted to civilian settlements. Under Industry & Projects, staff can register a **productive location** (farm, orchard, lumberyard, quarry, mine, fishery, workshop, refinery, factory, outpost, or power plant), place it in a region and zone, and assign control. These are map pins and facility hosts **without residents, housing, civic food consumption or other settlement mechanics**. A location may contain multiple facilities and each has its own recipe, project and stock ledger.
+
+The production editor shows **Workforce needed / available**, **Power needed / supplied**, and **Heat needed / supplied**. The needs originate in the pinned production template; supplied resources come from the simulation. Staff cannot enter their own employee count, utility supply, facility level, capacity percentage or operating status when registering or editing a facility. Newly registered facilities begin ruined and must be liberated/rebuilt through material-funded construction.
+
+**Labor** comes from the most recent committed civilian simulation workforce records for settlements in the same region/zone and under the same controller. The source is a single shared pool, allocated deterministically among facilities, and bounded per settlement. Directly typing an arbitrary workforce figure into a settlement edit form cannot create industry labor. After a civilian simulation has run at a settlement, administrative edits cannot change its population or workforce—only later simulation cycles update those figures.
+
+**Power and heat** come only from completed facility utility projects. A power project installs 10 supply units; a heat project installs 10. Each requires material contributions and at least 20 labor-days, and advances at most once per dated cycle using actual derived workforce. A facility can have at most 10 units of each project type (100 capacity units). These represent constructed utility connections/infrastructure, not free fuel from workshop inventory; a future richer grid/fuel network can build on these earned capacities.
+
+Previously stored `workforce`, `power_available` and `heat_available` values remain in the database for historical compatibility but are ignored for production and project advancement. There is deliberately **no migration granting free utility capacity from old entries**. Existing powered facilities may need a constructed generator/heat utility before production can resume. Facility stocks, history and construction contributions are retained.
+
+Migration: `055_independent_industry_sites.sql` runs after `054_world_industry_projects.sql`. Back up production MySQL, pull main, run `npm run setup:local` inside the Windows API `server` directory and restart the service. GitHub Pages alone does not update this database/API.
