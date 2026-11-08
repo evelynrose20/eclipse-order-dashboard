@@ -146,3 +146,17 @@
 .wa-upgrade-actions{display:flex;justify-content:flex-end;gap:9px}
 @media(max-width:900px){.wa-civic-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-civic-dashboard{grid-template-columns:1fr}.wa-upgrade-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.wa-civic-tabs button{flex:1 0 42%}.wa-civic-summary{grid-template-columns:1fr 1fr}.wa-civic-empty{flex-wrap:wrap}.wa-civic-empty button{width:100%}.wa-upgrade-metrics{grid-template-columns:1fr}}
+
+
+/* Independent infrastructure groups within the civilian settlement editor. */
+.wa-upgrade-section{display:grid;gap:11px;padding:13px;border:1px solid #425565;background:#162632;border-radius:6px;min-width:0}
+.wa-upgrade-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wa-upgrade-section-title{display:flex;align-items:center;gap:11px;min-width:0}
+.wa-upgrade-section-title>i{display:grid;place-items:center;width:35px;height:35px;border:1px solid #6c6258;border-radius:5px;color:#ddb68b;background:#293640;flex-shrink:0}
+.wa-upgrade-section-title h4{margin:0;font-size:14px;color:#eddcc4}
+.wa-upgrade-section-title p{margin:3px 0 0;font-size:11px;color:#aabcc7}
+.wa-upgrade-section-count{padding:3px 8px;border-radius:99px;background:#2b3c4a;color:#c6d3dc;font-size:11px}
+.wa-upgrade-section-heading>button{padding:9px 12px;border:1px solid #9d866b;background:#293844;color:#f3dcc1;border-radius:4px;cursor:pointer;font-weight:600;font-size:12px}
+.wa-upgrade-section-heading>button:hover{border-color:#edc99a;background:#364a59}
+.wa-upgrade-section-empty{padding:15px;border:1px dashed #445665;border-radius:5px;color:#9db0bd;font-size:12px}
+@media(max-width:540px){.wa-upgrade-section-heading>button{width:100%}}
