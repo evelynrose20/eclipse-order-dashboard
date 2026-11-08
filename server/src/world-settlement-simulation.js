@@ -172,7 +172,7 @@ export async function runSettlementSimulation(pool,now=new Date()){
     await db.execute("UPDATE world_settlement_autosim SET mode='off',paused=1,ownership=? WHERE settlement_id=?",[ownership,id]);
     await db.commit();continue;
    }
-   const cadence=ownership==='order'?'normal':state.cadence;
+   const cadence=ownership==='order'&&state.cadence==='fast'?'normal':state.cadence;
    const key=simulationCycleKey(now,cadence);
    if(state.last_cycle_key===key){await db.rollback();continue}
    const [weather]=await climateForRegions(db,[{...site,weather_mode:site.weather_mode}],now);
