@@ -5,7 +5,7 @@ const fail=(status,error)=>({status,body:{error}});
 const id=value=>Number.isSafeInteger(Number(value))&&Number(value)>0;
 const text=(value,max,required=false)=>typeof value==='string'&&value.length<=max&&(!required||value.trim().length>0);
 const allowedType=value=>value==='front'||value==='settlement';
-const validStation=b=>b&&text(b.name,140,true)&&allowedType(b.stop_type)&&id(b.stop_id)&&['planned','operational','closed'].includes(b.status)&&Number.isInteger(Number(b.platforms))&&Number(b.platforms)>=1&&Number(b.platforms)<=100&&text(b.notes,1200);
+const validStation=b=>b&&text(b.name,140,true)&&allowedType(b.stop_type)&&id(b.stop_id)&&['planned','operational','closed','damaged'].includes(b.status)&&Number.isInteger(Number(b.platforms))&&Number(b.platforms)>=1&&Number(b.platforms)<=100&&text(b.notes,1200);
 const stationValues=b=>[b.name.trim(),b.stop_type,Number(b.stop_id),b.status,Number(b.platforms),b.notes||''];
 const validRoute=b=>b&&text(b.name,140,true)&&id(b.from_station_id)&&id(b.to_station_id)&&Number(b.from_station_id)!==Number(b.to_station_id)&&Number.isInteger(Number(b.duration_minutes))&&Number(b.duration_minutes)>=1&&Number(b.duration_minutes)<=10080&&['active','paused','retired'].includes(b.status)&&text(b.cargo_notes,1200);
 const routeValues=b=>[b.name.trim(),Number(b.from_station_id),Number(b.to_station_id),b.from_type,Number(b.from_id),b.to_type,Number(b.to_id),Number(b.duration_minutes),b.status,b.cargo_notes||''];
