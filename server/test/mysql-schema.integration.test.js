@@ -1083,7 +1083,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const deniedIndustry=await industryRoute(admin,request('GET'),'/world-admin/industry',{id,account_role:'member'});
   assert.equal(deniedIndustry.status,403);
   const mineConfig={inputs:[],outputs:[{item_id:'iron-ore',qty:3}],byproducts:[{item_id:'mine-tailings',qty:1}],labor:2,heat:0,power:1,capacity:3,upgrade_level:1};
-  const makeTemplate=async slug,name,category,configuration=>industryRoute(admin,request('POST',{slug,name,category,configuration,rules:[]}),'/world-admin/industry/templates',staff);
+  const makeTemplate=async (slug,name,category,configuration)=>industryRoute(admin,request('POST',{slug,name,category,configuration,rules:[]}),'/world-admin/industry/templates',staff);
   const oreTemplate=await makeTemplate('ci-voidsent-mine','CI Voidsent Mine','mine',mineConfig);
   assert.equal(oreTemplate.status,200,JSON.stringify(oreTemplate.body));
   const rigConfig={inputs:[],outputs:[{item_id:'ceruleum-crude',qty:4}],byproducts:[],labor:2,heat:0,power:3,capacity:3,upgrade_level:1};
