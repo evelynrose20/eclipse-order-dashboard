@@ -1,3 +1,4 @@
+import {settlementDemographics,cappedEmployment} from './world-demographics.js';
 import {housingCapacity} from './world-settlement-upgrades.js';
 const asInt=(v)=>Math.max(0,Math.floor(Number(v)||0));
 const clamp=(v)=>Math.max(0,Math.min(100,Math.round(Number(v)||0)));
@@ -8,7 +9,8 @@ const clamp=(v)=>Math.max(0,Math.min(100,Math.round(Number(v)||0)));
  */
 export function simulatedPopulationGroups(settlement){
  const population=asInt(settlement.population);
- const employed=Math.min(population,asInt(settlement.workforce));
+ const demographics=settlementDemographics(settlement);
+ const employed=demographics.employed;
  return [
   {key:'employed',label:'Employed residents',residents:employed,employed,kind:'simulated'},
   {key:'other',label:'Other residents',residents:population-employed,employed:0,kind:'simulated'}
@@ -28,6 +30,6 @@ export function previewPopulationChange(settlement,upgrades=[],risk=0,enabled=fa
  const arrivals=desirable?Math.min(vacancies,Math.max(1,Math.floor(population*0.01))):0;
  const next=population+arrivals;
  // Preserve the prior employment proportion; don't generate new jobs.
- const employed=Math.min(asInt(settlement.workforce),next);
+ const employed=cappedEmployment({...settlement,population:next},settlement.workforce);
  return {population_before:population,population_after:next,arrivals,housing_capacity:capacity,vacancies,workforce_after:employed,groups:simulatedPopulationGroups({...settlement,population:next,workforce:employed})};
 }
