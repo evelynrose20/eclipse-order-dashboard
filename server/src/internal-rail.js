@@ -5,8 +5,10 @@ const fail=(status,error)=>({status,body:{error}});
 const id=value=>Number.isSafeInteger(Number(value))&&Number(value)>0;
 const text=(value,max,required=false)=>typeof value==='string'&&value.length<=max&&(!required||value.trim().length>0);
 const allowedType=value=>value==='front'||value==='settlement';
-const validRoute=b=>b&&text(b.name,140,true)&&allowedType(b.from_type)&&allowedType(b.to_type)&&id(b.from_id)&&id(b.to_id)&&!(b.from_type===b.to_type&&Number(b.from_id)===Number(b.to_id))&&Number.isInteger(Number(b.duration_minutes))&&Number(b.duration_minutes)>=1&&Number(b.duration_minutes)<=10080&&['active','paused','retired'].includes(b.status)&&text(b.cargo_notes,1200);
-const routeValues=b=>[b.name.trim(),b.from_type,Number(b.from_id),b.to_type,Number(b.to_id),Number(b.duration_minutes),b.status,b.cargo_notes||''];
+const validStation=b=>b&&text(b.name,140,true)&&allowedType(b.stop_type)&&id(b.stop_id)&&['planned','operational','closed'].includes(b.status)&&Number.isInteger(Number(b.platforms))&&Number(b.platforms)>=1&&Number(b.platforms)<=100&&text(b.notes,1200);
+const stationValues=b=>[b.name.trim(),b.stop_type,Number(b.stop_id),b.status,Number(b.platforms),b.notes||''];
+const validRoute=b=>b&&text(b.name,140,true)&&id(b.from_station_id)&&id(b.to_station_id)&&Number(b.from_station_id)!==Number(b.to_station_id)&&allowedType(b.from_type)&&allowedType(b.to_type)&&id(b.from_id)&&id(b.to_id)&&!(b.from_type===b.to_type&&Number(b.from_id)===Number(b.to_id))&&Number.isInteger(Number(b.duration_minutes))&&Number(b.duration_minutes)>=1&&Number(b.duration_minutes)<=10080&&['active','paused','retired'].includes(b.status)&&text(b.cargo_notes,1200);
+const routeValues=b=>[b.name.trim(),Number(b.from_station_id),Number(b.to_station_id),b.from_type,Number(b.from_id),b.to_type,Number(b.to_id),Number(b.duration_minutes),b.status,b.cargo_notes||''];
 async function read(req){let bytes=0;const parts=[];for await(const p of req){bytes+=p.length;if(bytes>16000)return null;parts.push(p)}try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{return null}}
 async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const result=await fn(db);if(result.status===200)await db.commit();else await db.rollback();return result}catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}}
 async function stops(db){
@@ -29,8 +31,40 @@ export async function internalRailRoute(pool,req,path){
   // Only journeys actually due are finalized; repeated reads never dispatch twice.
   await pool.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)");
   const [routes]=await pool.execute('SELECT * FROM order_internal_rail_routes ORDER BY status,id DESC');
-  const [journeys]=await pool.execute('SELECT * FROM order_internal_rail_journeys ORDER BY id DESC LIMIT 150');
-  return ok({server_now:new Date().toISOString(),stops:await stops(pool),routes,journeys:journeys.map(j=>journeyProgress(j))});
+  const [journeys]=await pool.execute("SELECT id,route_id,DATE_FORMAT(departed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS departed_at,DATE_FORMAT(expected_arrival_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS expected_arrival_at,status,notes,dispatched_by,DATE_FORMAT(completed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS completed_at FROM order_internal_rail_journeys ORDER BY id DESC LIMIT 150");
+  const [stations]=await pool.execute('SELECT * FROM order_internal_rail_stations ORDER BY id');
+  return ok({server_now:new Date().toISOString(),stops:await stops(pool),stations,routes,journeys:journeys.map(j=>journeyProgress(j))});
+ }
+ const station=/^\/internal-rail\/stations(?:\/(\d+))?$/.exec(path);
+ if(station&&['POST','PUT','DELETE'].includes(req.method)){
+  const stationId=station[1]?Number(station[1]):null;
+  if(req.method==='POST'&&stationId||req.method!=='POST'&&!stationId)return fail(400,'rail_station_invalid_action');
+  const b=req.method==='DELETE'?null:await read(req);
+  if(req.method!=='DELETE'&&!validStation(b))return fail(400,'rail_station_invalid_fields');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const [used]=await db.execute('SELECT id FROM order_internal_rail_routes WHERE from_station_id=? OR to_station_id=? LIMIT 1',[stationId,stationId]);
+    if(used.length)return fail(409,'rail_station_has_routes');
+    const [removed]=await db.execute('DELETE FROM order_internal_rail_stations WHERE id=?',[stationId]);
+    return removed.affectedRows?ok({saved:true}):fail(404,'rail_station_not_found');
+   }
+   const available=await stops(db);
+   if(!allowedStop(available,b.stop_type,b.stop_id))return fail(400,'rail_station_order_stop_required');
+   if(req.method==='PUT'){
+    const [[old]]=await db.execute('SELECT * FROM order_internal_rail_stations WHERE id=? FOR UPDATE',[stationId]);
+    if(!old)return fail(404,'rail_station_not_found');
+    const [running]=await db.execute("SELECT j.id FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id WHERE (r.from_station_id=? OR r.to_station_id=?) AND j.status='running' AND j.expected_arrival_at>UTC_TIMESTAMP(3) LIMIT 1",[stationId,stationId]);
+    if(running.length&&b.status!=='operational')return fail(409,'rail_station_has_active_journey');
+    if(old.stop_type!==b.stop_type||Number(old.stop_id)!==Number(b.stop_id)){
+     const [routes]=await db.execute('SELECT id FROM order_internal_rail_routes WHERE from_station_id=? OR to_station_id=? LIMIT 1',[stationId,stationId]);
+     if(routes.length)return fail(409,'rail_station_has_routes');
+    }
+    await db.execute('UPDATE order_internal_rail_stations SET name=?,stop_type=?,stop_id=?,status=?,platforms=?,notes=? WHERE id=?',[...stationValues(b),stationId]);
+    return ok({saved:true});
+   }
+   const [created]=await db.execute('INSERT INTO order_internal_rail_stations(name,stop_type,stop_id,status,platforms,notes,created_by) VALUES(?,?,?,?,?,?,?)',[...stationValues(b),actor.id]);
+   return ok({id:created.insertId});
+  });
  }
  const route=/^\/internal-rail\/routes(?:\/(\d+))?$/.exec(path);
  if(route&&['POST','PUT','DELETE'].includes(req.method)){
