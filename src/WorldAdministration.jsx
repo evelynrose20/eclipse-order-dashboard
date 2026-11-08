@@ -46,7 +46,7 @@ export default function WorldAdministration({request,readOnly=false}){
   try{
    const response=await request('/world-admin/'+endpoint+(editing.id?'/'+editing.id:''),{method:editing.id?'PUT':'POST',body});
    await load();
-   if(editType==='region')changeRegion(String(editing.id||response.id));
+   if(editType==='region'){const next=String(editing.id||response.id);setRegion(next);const parent=next===region?activeZone:null;setZone(String(parent?.id||response.zone_id||''));setSelected('')}
    if(editType==='zone'){setRegion(String(body.region_id));setZone(String(editing.id||response.id));setSelected('')}
    if(editType==='settlement'){setRegion(String(body.region_id));setZone(String(body.zone_id));setSelected(String(editing.id||response.id))}
    setEditing(null);setNotice('World record saved. No automatic simulation was run.');
@@ -75,6 +75,13 @@ export default function WorldAdministration({request,readOnly=false}){
     {canEdit&&activeRegion&&<button onClick={()=>editZone(null)}><i className="fa-solid fa-plus"/> New zone</button>}
     {canEdit&&activeZone&&<button onClick={()=>editZone(activeZone)}><i className="fa-solid fa-pen"/> Edit zone</button>}
     {canEdit&&activeZone&&!activeZone.is_default&&<button onClick={deleteZone}><i className="fa-solid fa-trash-can"/> Delete zone</button>}{canEdit&&activeRegion&&<button className="wa-accent" onClick={newSettlement}>+ Add settlement</button>}</div>
+   {activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
+    <strong><i className="fa-solid fa-map-location-dot" aria-hidden="true"/> {activeZone.name}</strong>
+    <span>{pretty(activeZone.strategic_state)}</span>
+    <span>Government: {factionName(activeZone.governing_faction_id)}</span>
+    <span>Control: {factionName(activeZone.controlling_faction_id)}</span>
+    <span>Support: {factionName(activeZone.supporting_faction_id)}</span>
+   </div>}
    {!regions.length&&<div className="wa-empty"><h3>No regions yet</h3><p>Begin by creating New Cassia's first region, then place settlements on its territory map. Nothing has been automatically populated.</p>{canEdit&&<button className="wa-accent" onClick={()=>editRegion(null)}>Create first region</button>}</div>}
    {activeRegion&&section==='map'&&<div className="wa-columns"><section className="wa-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
      <section className="wa-panel"><div className="wa-panel-title"><strong>SELECTED SETTLEMENT</strong><span>{local.length} locations</span></div>{current&&String(current.region_id)===region?<div className="wa-inspector"><h3>{current.name}</h3><p>{current.description||'No description yet.'}</p><div><span>Control</span><strong>{factionName(current.controlling_faction_id)}</strong></div><div><span>Government</span><strong>{factionName(current.governing_faction_id)}</strong></div><div><span>Supporting faction</span><strong>{factionName(current.supporting_faction_id)}</strong></div><div><span>Territorial state</span><strong>{pretty(current.strategic_state)}</strong></div><div><span>Residents</span><strong>{Number(current.population).toLocaleString()}</strong></div>{canEdit&&<button className="wa-accent" onClick={()=>editSettlement(current)}>Edit settlement</button>}</div>:<p className="wa-empty">Select a mapped settlement.</p>}</section></div>}
