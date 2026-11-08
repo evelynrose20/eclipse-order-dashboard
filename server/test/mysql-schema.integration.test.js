@@ -1063,5 +1063,18 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(againOrder.processed,0,'same-day automatic Order run must not repeat');
   const [[afterIron]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
   assert.equal(Number(afterIron.quantity),95,'shared construction material debit occurs exactly once');
+  const npcReenabled=await settlementSimulationRoute(admin,request('PUT',{mode:'automatic',cadence:'normal',paused:false}),'/world-admin/simulation/'+npcId+'/settings',{id,account_role:'domina'});
+  assert.equal(npcReenabled.status,200);
+  await admin.execute("UPDATE world_settlements SET controlling_faction_id='eclipse-order',simulation_enabled=1 WHERE id=?",[npcId]);
+  await admin.execute("INSERT INTO world_civic_profiles(settlement_id,enabled_mode) VALUES(?,'managed') ON DUPLICATE KEY UPDATE enabled_mode='managed'",[npcId]);
+  await runSettlementSimulation(admin,new Date('2026-11-25T06:00:00Z'));
+  const [[transferred]]=await admin.execute('SELECT mode,ownership,paused FROM world_settlement_autosim WHERE settlement_id=?',[npcId]);
+  assert.equal(transferred.mode,'off','an NPC auto policy must never silently turn into an Order auto policy');
+  assert.equal(transferred.ownership,'order');
+  assert.equal(Number(transferred.paused),1);
+  await admin.query(await readFile(new URL('../sql/053_autonomous_settlement_simulation.sql',import.meta.url),'utf8'));
+  const [[retainedCycles]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
+  assert.ok(Number(retainedCycles.n)>0,'repeated setup retains simulation history');
+
  }finally{await admin.end();}
 });
