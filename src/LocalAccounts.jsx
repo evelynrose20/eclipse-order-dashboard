@@ -16,6 +16,9 @@ const ERROR_MESSAGES={
  assembly_not_active:'An occupied chair and active assembly are required to record a collection.',
  character_owner_required:'Only the character\'s player may change these permissions.',
  chamber_not_initialized:'Run the Windows API database setup to initialize the chamber.',
+ cycle_not_ready:'This assembly needs five minutes between fictional collection cycles.',
+ collection_not_authorized:'This character has not consented to the applicable collection category.',
+ anatomy_not_configured:'Set the character anatomy in the Chamber section of their dossier.',
  decant_lower_reservoir_first:'The lower reservoir holds a different collection type. Decant or clear it before recording this type.',
  invalid_contribution_preferences:'Check the character gender, anatomy, category permissions and maximum quantities.',
 
