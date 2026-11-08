@@ -1,8 +1,14 @@
 -- Settlement structures are independent of map icons, roads and rail systems.
 USE eclipse_order;
-ALTER TABLE world_settlements ADD COLUMN housing_capacity INT UNSIGNED NOT NULL DEFAULT 0;
--- Existing populations retain enough legacy accommodation to prevent destructive migrations.
-UPDATE world_settlements SET housing_capacity=population WHERE housing_capacity<population;
+SET @new_052 := (SELECT IF(COUNT(*)=0,1,0) FROM schema_migrations WHERE version='052_settlement_upgrades');
+SET @housing_col := (SELECT IF(COUNT(*)=0,
+ 'ALTER TABLE world_settlements ADD COLUMN housing_capacity INT UNSIGNED NOT NULL DEFAULT 0',
+ 'DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_settlements' AND column_name='housing_capacity');
+PREPARE housing_add FROM @housing_col;
+EXECUTE housing_add;
+DEALLOCATE PREPARE housing_add;
+-- Grandfather existing populations only on the first migration, never on repeat setup.
+UPDATE world_settlements SET housing_capacity=population WHERE @new_052=1 AND housing_capacity<population;
 CREATE TABLE IF NOT EXISTS world_settlement_upgrades (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  settlement_id BIGINT UNSIGNED NOT NULL,
