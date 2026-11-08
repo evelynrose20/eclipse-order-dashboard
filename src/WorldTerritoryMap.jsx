@@ -32,7 +32,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -476,7 +476,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </div>
    {attachedSegments.length>0&&<p className="wtm-junction-warning">Deleting this junction also deletes its {attachedSegments.length} connected route segment{attachedSegments.length===1?'':'s'}. Moving or renaming preserves all connections.</p>}
   </section>}
-  {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} focus={railFocus} onFocusHandled={()=>setRailFocus(null)} onClearPoint={()=>setRailPoint(null)}/>}
+  {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} allStations={allRailStations} links={railLinks} zones={allZones} regions={allRegions} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} focus={railFocus} onFocusHandled={()=>setRailFocus(null)} onClearPoint={()=>setRailPoint(null)}/>}
   {canEdit&&(drawing||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{drawing?(mode==='track'?'LAY A RAILWAY':'PLAN A NEW CONNECTION'):'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
