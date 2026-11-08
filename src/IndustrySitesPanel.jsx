@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import IndustryTemplateEditor from './IndustryTemplateEditor.jsx';
+import './world-industry.css';
 const number=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:3});
 const title=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const facilityBlank={settlement_id:0,template_id:0,name:'',status:'ruined',level:1,capacity_pct:100,workforce:0,heat_available:0,power_available:0,cycle_mode:'manual',cycle_cadence:'normal',notes:''};
