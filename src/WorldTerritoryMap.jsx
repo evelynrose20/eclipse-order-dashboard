@@ -402,7 +402,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </div>
    {attachedSegments.length>0&&<p className="wtm-junction-warning">Deleting this junction also deletes its {attachedSegments.length} connected route segment{attachedSegments.length===1?'':'s'}. Moving or renaming preserves all connections.</p>}
   </section>}
-  {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} onClearPoint={()=>setRailPoint(null)}/>}
+  {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} onClearPoint={()=>setRailPoint(null)}/>}
   {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{mode==='link'?'PLAN A NEW CONNECTION':'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
