@@ -27,7 +27,7 @@ test('Garlean territory presentation includes contoured terrain and smoother edi
  for(const s of ['smoothRoadPath','wtm-terrain','wtm-map-compass','wtm-map-title','wtm-map-corner','wtm-map-frame'])assert.ok(map.includes(s),s);
  for(const s of ['wtm-pin[data-state="occupied"]','wtm-pin[data-state="contested"]','wtm-pin[data-state="liberated"]','wtm-road-trail','wtm-map-contour'])assert.ok(map.includes(s)||css.includes(s),s);
  assert.match(map,/onPointerDown=\{e=>pointerDown\(e,s\)\}/);
- assert.match(map,/onClick=\{e=>\{e\.stopPropagation\(\);selectRoad\(route\)\}\}/);
+ assert.match(map,/if\(junctionAction==='split'\)void splitRoute\(route,e\);else selectRoad\(route\)/);
 });
 test('all non-entrypoint Markdown documentation is in the docs vault and the living world TODO is linkable',async()=>{
  const home=await source('docs/00-START-HERE.md');
