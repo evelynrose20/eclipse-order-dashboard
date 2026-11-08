@@ -84,7 +84,7 @@ export default function InternalRail({request}){
   <div className="ir-stats"><div><small>Active services</small><strong>{stats.routes}</strong></div><div><small>Trains en route</small><strong>{stats.travelling}</strong></div><div><small>Arrived runs</small><strong>{stats.arrivals}</strong></div></div>
   {view==='services'&&<><div className="ir-toolbar"><strong>Internal railway services</strong><label>Show <select value={scope} onChange={e=>setScope(e.target.value)}><option value="active">Current routes</option><option value="all">All routes</option><option value="paused">Paused</option><option value="retired">Retired</option></select></label></div>
   {!data&&<p className="ir-empty">Loading the internal rail ledger…</p>}
-  {data&&stations.length<2&&<p className="ir-empty">Create two stations in the Stations tab first, assigning each to an Order-controlled settlement or Order-owned front.</p>}
+  {data&&stations.length<2&&<p className="ir-empty">Create two stations in the Stations tab first, assigning each to an Order-controlled settlement or Order front.</p>}
   <div className="ir-route-grid">{viewed.map(r=>{
    const travelling=activeJourney(r.id),history=routeJourneys(r.id),latest=history[0],p=travelling?calculateProgress(travelling,now):latest?.status==='arrived'?100:0;
    const remaining=travelling?Math.max(0,Math.ceil((instant(travelling.expected_arrival_at)-now)/60000)):0;
@@ -102,7 +102,7 @@ export default function InternalRail({request}){
   </>}
   {view==='stations'&&<div className="ir-stations">
    <div className="ir-toolbar"><strong>Order railway stations</strong><button type="button" disabled={busy||!stops.length} onClick={()=>{setStationDraft(blankStation());setError('')}}><i className="fa-solid fa-plus"/> Add station</button></div>
-   {data&&!stops.length&&<p className="ir-empty">There are no eligible Order settlements or fronts yet. Assign a settlement to the Order in World Administration, or activate an Order-owned front.</p>}
+   {data&&!stops.length&&<p className="ir-empty">There are no eligible Order settlements or fronts yet. Assign a settlement to the Order in World Administration, or activate an Order front.</p>}
    <div className="ir-route-grid">{stations.map(st=><article key={st.id} className="ir-route-card"><div className="ir-route-head"><div><small>INTERNAL STATION · #{st.id}</small><h3><i className="fa-solid fa-train-subway"/> {st.name}</h3></div><span className={'ir-state '+st.status}>{statusLabel(st.status)}</span></div>
    <p className="ir-station-location"><i className="fa-solid fa-location-dot"/> {stationStop(st)} · {st.stop_type==='front'?'Order front':'Settlement'}</p>
    <p className="ir-trip-info">{st.platforms} {Number(st.platforms)===1?'platform':'platforms'} · No physical map tracks required</p>
