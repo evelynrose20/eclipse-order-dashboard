@@ -11,7 +11,22 @@ async function body(req){const chunks=[];let n=0;for await(const c of req){n+=c.
 async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const out=await fn(db);if(out.status===200)await db.commit();else await db.rollback();return out}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
 async function audit(db,actor,action,id){await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor.id,action,'network',id,'Transport network edited'])}
 async function railNodeUsed(db,nodeId){const [a]=await db.execute('SELECT id FROM world_rail_stations WHERE node_id=? LIMIT 1',[nodeId]);const [b]=await db.execute('SELECT id FROM world_rail_switches WHERE node_id=? LIMIT 1',[nodeId]);return a.length>0||b.length>0}
-async function railSegmentUsed(db,segmentId){const [a]=await db.execute('SELECT id FROM world_rail_switches WHERE entry_segment_id=? OR exit_segment_id=? LIMIT 1',[segmentId,segmentId]);const [b]=await db.execute('SELECT id FROM world_rail_crossings WHERE rail_segment_id=? OR road_segment_id=? LIMIT 1',[segmentId,segmentId]);return a.length>0||b.length>0}
+async function railSegmentUsed(db,segmentId){
+ const [switches]=await db.execute('SELECT id FROM world_rail_switches WHERE entry_segment_id=? OR exit_segment_id=? LIMIT 1',[segmentId,segmentId]);
+ const [crossings]=await db.execute('SELECT id FROM world_rail_crossings WHERE rail_segment_id=? OR road_segment_id=? LIMIT 1',[segmentId,segmentId]);
+ if(switches.length||crossings.length)return true;
+ const [[edge]]=await db.execute('SELECT from_node_id,to_node_id,route_type FROM world_route_segments WHERE id=?',[segmentId]);
+ if(edge?.route_type==='rail'){
+  for(const nodeId of [edge.from_node_id,edge.to_node_id]){
+   const [station]=await db.execute('SELECT id FROM world_rail_stations WHERE node_id=? LIMIT 1',[nodeId]);
+   if(station.length){
+    const [otherRails]=await db.execute("SELECT id FROM world_route_segments WHERE route_type='rail' AND id<>? AND (from_node_id=? OR to_node_id=?) LIMIT 1",[segmentId,nodeId,nodeId]);
+    if(!otherRails.length)return true;
+   }
+  }
+ }
+ return false;
+}
 async function nodesIn(db,region,zone,ids){const [a]=await db.execute('SELECT id,region_id,zone_id,settlement_id,map_x,map_y,node_kind FROM world_route_nodes WHERE region_id=? AND zone_id=? AND id IN (?,?)',[region,zone,...ids]);return a.length===2?a:null}
 async function settlementNode(db,region,settlement,actor){
  const [sites]=await db.execute('SELECT id,zone_id,map_x,map_y FROM world_settlements WHERE id=? AND region_id=?',[settlement,region]);
