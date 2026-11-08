@@ -44,6 +44,22 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   if(!settlement)return fail(404,'settlement_not_found');
   const upgrades=await getSettlementUpgradeRecords(db,id,true);
   if(upgradeId&&!upgrades.some(u=>Number(u.id)===upgradeId))return fail(404,'upgrade_not_found');
+  // Once a settlement has begun simulating, housing and defenses must be built
+  // through funded worker cycles rather than manually marked operational.
+  const [[hasCycle]]=await db.execute('SELECT id FROM world_settlement_sim_history WHERE settlement_id=? LIMIT 1',[id]);
+  if(hasCycle){
+   const previous=upgrades.find(u=>Number(u.id)===upgradeId);
+   if(req.method==='POST'&&(b.status!=='planned'||Number(b.material_cost)<2||b.housing_bonus>500))return fail(409,'simulated_upgrades_require_funded_construction');
+   if(req.method==='DELETE'&&previous?.status!=='planned')return fail(409,'completed_simulated_upgrades_cannot_be_deleted');
+   if(req.method==='PUT'){
+    const transitions={planned:['planned','building'],building:['building','damaged','destroyed'],operational:['operational','damaged','destroyed'],damaged:['damaged','destroyed'],destroyed:['destroyed']};
+    if(!transitions[previous.status]?.includes(b.status))return fail(409,'simulated_upgrade_requires_construction_cycle');
+    const immutable=['category','level','housing_bonus','service_bonus','defense_bonus','material_id','material_cost'];
+    if(previous.status!=='planned'&&immutable.some(k=>String(previous[k]??'')!==String(b[k]??'')))return fail(409,'simulated_upgrade_requirements_are_locked');
+    if(Number(b.condition_pct)>Number(previous.condition_pct))return fail(409,'simulated_upgrade_repair_requires_project');
+    if(previous.status==='planned'&&b.status==='building'&&Number(b.material_cost)<2)return fail(409,'simulated_upgrades_require_funded_construction');
+   }
+  }
   const next=req.method==='DELETE'?upgrades.filter(x=>Number(x.id)!==upgradeId):req.method==='PUT'?upgrades.map(x=>Number(x.id)===upgradeId?{...x,...b}:x):[...upgrades,b];
   if(housingCapacity(settlement,next)<Number(settlement.population))return fail(409,'upgrade_would_displace_residents');
   const vals=b?[b.name.trim(),b.category,b.status,b.condition_pct,b.level,b.housing_bonus,b.service_bonus,b.defense_bonus,b.notes,b.material_id||null,Number(b.material_cost)||0]:null;
