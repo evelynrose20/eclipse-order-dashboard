@@ -149,6 +149,8 @@ async function main(){
   await pool.query(dailyChamber);
   const civicContributions=await readFile(new URL('../sql/066_civic_project_contributions.sql',import.meta.url),'utf8');
   await pool.query(civicContributions);
+  const multiMaterials=await readFile(new URL('../sql/067_civic_multimaterial_projects.sql',import.meta.url),'utf8');
+  await pool.query(multiMaterials);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
