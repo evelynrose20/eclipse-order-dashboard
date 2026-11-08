@@ -12,14 +12,15 @@ const defs={
  school:['school_places','Student places per level']
 };
 const heading=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
-const blank=()=>({id:'',name:'',description:'',category:'housing',effect_key:'housing_capacity',effect_per_level:30,material_id:'iron-ingot',material_per_level:20,npc_development_cost:12,construction_labor:100,max_level:6,enabled:true});
+const blank=()=>({id:'',name:'',description:'',category:'housing',effect_key:'housing_capacity',effect_per_level:30,material_id:'iron-ingot',material_per_level:20,materials:[{material_id:'iron-ingot',units_per_level:20}],npc_development_cost:12,construction_labor:100,max_level:6,enabled:true});
 export default function CivicTemplateManager({templates=[],materials=[],request,onSaved,onClose}){
  const [draft,setDraft]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const save=async()=>{
   if(!draft)return;
   setBusy(true);setError('');
   try{
-   const body={...draft,effect_per_level:Number(draft.effect_per_level),material_per_level:Number(draft.material_per_level),npc_development_cost:Number(draft.npc_development_cost),construction_labor:Number(draft.construction_labor),max_level:Number(draft.max_level),enabled:!!draft.enabled};
+   const lines=(draft.materials||[]).map(m=>({material_id:m.material_id,units_per_level:Number(m.units_per_level)}));
+   const body={...draft,materials:lines,material_id:lines[0]?.material_id,material_per_level:lines[0]?.units_per_level,effect_per_level:Number(draft.effect_per_level),npc_development_cost:Number(draft.npc_development_cost),construction_labor:Number(draft.construction_labor),max_level:Number(draft.max_level),enabled:!!draft.enabled};
    await request('/world-admin/civic/templates'+(templates.some(t=>t.id===draft.id)?'/'+draft.id:''),{method:templates.some(t=>t.id===draft.id)?'PUT':'POST',body});
    await onSaved?.();setDraft(null);
   }catch(e){setError(e.message||'Unable to save infrastructure template')}finally{setBusy(false)}
@@ -28,7 +29,7 @@ export default function CivicTemplateManager({templates=[],materials=[],request,
   <header className="wa-industry-attach-head"><div><span className="wa-kicker">CIVILIAN INFRASTRUCTURE</span><h3>Building templates</h3><p>Reusable building types for Order settlements and autonomous NPC construction.</p></div><button type="button" className="wa-industry-close" aria-label="Close template editor" onClick={onClose}>×</button></header>
   {error&&<p className="wa-error wa-civic-modal-error" role="alert">{error}</p>}
   {!draft?<><div className="wa-industry-choice-heading"><strong>Available building recipes</strong><button type="button" className="wa-industry-primary" onClick={()=>setDraft(blank())}>+ Create template</button></div>
-   <div className="wa-industry-location-grid wa-civic-type-grid">{templates.map(t=><button key={t.id} type="button" className="wa-industry-location-card" onClick={()=>setDraft({...t,enabled:!!t.enabled})}><div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className="fa-solid fa-building" aria-hidden="true"/></span><span>{t.enabled?'Available':'Disabled'}</span></div><strong>{t.name}</strong><span className="wa-industry-location-meta">{t.description}</span><small>Level effect: +{t.effect_per_level} {heading(t.effect_key)} · Up to level {t.max_level}</small><small>Recipe revision {t.revision} · {t.material_per_level} {t.material_id} per tier</small></button>)}</div>
+   <div className="wa-industry-location-grid wa-civic-type-grid">{templates.map(t=><button key={t.id} type="button" className="wa-industry-location-card" onClick={()=>setDraft({...t,materials:t.materials?.length?t.materials:[{material_id:t.material_id,units_per_level:t.material_per_level}],enabled:!!t.enabled})}><div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className="fa-solid fa-building" aria-hidden="true"/></span><span>{t.enabled?'Available':'Disabled'}</span></div><strong>{t.name}</strong><span className="wa-industry-location-meta">{t.description}</span><small>Level effect: +{t.effect_per_level} {heading(t.effect_key)} · Up to level {t.max_level}</small><small>Recipe revision {t.revision} · {(t.materials||[{material_id:t.material_id,units_per_level:t.material_per_level}]).map(x=>x.units_per_level+' '+x.material_id).join(' · ')} per tier</small></button>)}</div>
    <footer className="wa-industry-attach-foot"><span>Editing a recipe changes future construction and upgrades, not completed buildings.</span><button type="button" onClick={onClose}>Close</button></footer>
   </>:<><div className="wa-industry-steps"><button type="button" className="active"><span>01</span> Template setup</button><button type="button" disabled><span>02</span> Use in construction</button></div>
    <div className="wa-industry-production-layout"><div className="wa-industry-production-main"><div className="wa-civic-build-fields">
@@ -37,14 +38,20 @@ export default function CivicTemplateManager({templates=[],materials=[],request,
     <label className="wide">Description<input maxLength="400" value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
     <label>Category<select disabled={templates.some(t=>t.id===draft.id)} value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value,effect_key:defs[e.target.value][0]})}>{Object.keys(defs).map(x=><option key={x} value={x}>{heading(x)}</option>)}</select></label>
     <label>{defs[draft.category]?.[1]}<input type="number" required min="1" max="100000" step="1" value={draft.effect_per_level} onChange={e=>setDraft({...draft,effect_per_level:e.target.value})}/></label>
-    <label>Construction material<select required value={draft.material_id} onChange={e=>setDraft({...draft,material_id:e.target.value})}>{materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-    <label>Material units / tier<input type="number" min="5" max="10000" required value={draft.material_per_level} onChange={e=>setDraft({...draft,material_per_level:e.target.value})}/></label>
+    <div className="wide wa-civic-multimaterials"><div className="wa-upgrade-section-heading"><strong>Construction materials per level</strong><button type="button" disabled={(draft.materials||[]).length>=12} onClick={()=>setDraft({...draft,materials:[...(draft.materials||[]),{material_id:'',units_per_level:5}]})}>+ Add material</button></div>
+     {(draft.materials||[]).map((line,i)=><div className="wa-civic-material-line" key={i}>
+      <label>Material<select required value={line.material_id} onChange={e=>setDraft({...draft,materials:draft.materials.map((m,j)=>j===i?{...m,material_id:e.target.value}:m)})}><option value="">Choose material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+      <label>Units per level<input required type="number" min="1" max="10000" step="1" value={line.units_per_level} onChange={e=>setDraft({...draft,materials:draft.materials.map((m,j)=>j===i?{...m,units_per_level:e.target.value}:m)})}/></label>
+      <button type="button" disabled={draft.materials.length===1} onClick={()=>setDraft({...draft,materials:draft.materials.filter((_,j)=>j!==i)})}>Remove</button>
+     </div>)}
+     <small>All listed materials are required. Each type can be committed in separate batches when construction begins.</small>
+    </div>
     <label>Construction labor / tier<input type="number" min="50" max="100000" required value={draft.construction_labor} onChange={e=>setDraft({...draft,construction_labor:e.target.value})}/></label>
     <label>NPC development cost / tier<input type="number" min="5" max="10000" required value={draft.npc_development_cost} onChange={e=>setDraft({...draft,npc_development_cost:e.target.value})}/></label>
     <label>Maximum level<input type="number" min="1" max="10" required value={draft.max_level} onChange={e=>setDraft({...draft,max_level:e.target.value})}/></label>
     <label>Availability<select value={draft.enabled?'on':'off'} onChange={e=>setDraft({...draft,enabled:e.target.value==='on'})}><option value="on">Available to all settlements</option><option value="off">Disable future construction</option></select></label>
    </div></div><aside className="wa-industry-configuration"><h4>Template rules</h4><p>Templates define building effects and the materials, labor and NPC development required for each level.</p><p>A building receives its effect snapshot when its project completes. Editing this recipe will not rewrite an already completed level.</p><p>NPC factions choose enabled templates according to settlement needs and available development resources. Excessive building benefits or unrealistically cheap recipes are rejected.</p></aside></div>
-   <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>setDraft(null)}>Back to templates</button><button type="button" className="wa-industry-primary" disabled={busy||!draft.id||!draft.name.trim()} onClick={save}>{busy?'Saving…':'Save template'}</button></footer>
+   <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>setDraft(null)}>Back to templates</button><button type="button" className="wa-industry-primary" disabled={busy||!draft.id||!draft.name.trim()||!(draft.materials||[]).length||draft.materials.some(m=>!m.material_id||Number(m.units_per_level)<1)} onClick={save}>{busy?'Saving…':'Save template'}</button></footer>
   </>}
  </section></div>;
 }
