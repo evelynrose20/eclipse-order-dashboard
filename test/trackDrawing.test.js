@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint} from '../src/track-drawing.js';
+import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from '../src/track-drawing.js';
 
 test('freehand rail trace keeps endpoints and stays inside 16 editable handles',()=>{
  const points=Array.from({length:120},(_,i)=>({x:i/1.19,y:35+Math.sin(i/11)*16}));
@@ -36,4 +36,16 @@ test('snapping to a visibly curved rail uses cubic geometry, not a straight line
  assert.ok(snap&&snap.d<.3,JSON.stringify(snap));
  assert.equal(snap.index,0);
  assert.ok(Math.abs(snap.x-click.x)<.3&&Math.abs(snap.y-click.y)<.3);
+});
+
+test('traced track sketches automatically follow start-to-destination direction',()=>{
+ const a={x:0,y:0},b={x:100,y:100};
+ const reversed=[{x:99,y:99},{x:55,y:54},{x:1,y:1}];
+ assert.deepEqual(orientTrackStroke(reversed,a,b),[...reversed].reverse());
+ assert.deepEqual(orientTrackStroke([...reversed].reverse(),a,b),[...reversed].reverse());
+});
+test('server and browser use the same smooth snapping geometry',async()=>{
+ const {nearestSmoothRoutePoint:serverSnap}=await import('../server/src/route-geometry.js');
+ const points=[{x:0,y:50},{x:50,y:0},{x:100,y:50}],click={x:21.875,y:21.875};
+ assert.deepEqual(serverSnap(points,click),nearestSmoothRoutePoint(points,click));
 });
