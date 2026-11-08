@@ -16,7 +16,7 @@ async function ensureItems(db,c){
 }
 async function noCycle(db,c,excluding=null){
  const [rows]=await db.execute('SELECT v.configuration FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.archived=0'+(excluding?' AND t.id<>?':''),excluding?[excluding]:[]);
- const [pinned]=await db.execute("SELECT DISTINCT v.configuration FROM world_industry_facilities f JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version WHERE f.status IN ('operational','rebuilding','liberated','damaged')");
+ const [pinned]=await db.execute("SELECT DISTINCT v.configuration FROM world_industry_facilities f JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version WHERE f.status IN ('operational','rebuilding','liberated','damaged')"+(excluding?' AND f.template_id<>?':''),excluding?[excluding]:[]);
  return !industryDependenciesHaveCycle([...rows.map(r=>array(r.configuration)),...pinned.map(r=>array(r.configuration)),c]);
 }
 const validFacility=b=>b&&(whole(b.settlement_id,1,Number.MAX_SAFE_INTEGER)!==whole(b.site_id,1,Number.MAX_SAFE_INTEGER))&&whole(b.template_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&['captured','liberated','ruined','rebuilding','operational','damaged','paused'].includes(b.status)&&['off','manual','automatic'].includes(b.cycle_mode)&&['slow','normal','fast'].includes(b.cycle_cadence)&&typeof b.notes==='string'&&b.notes.length<=500;
@@ -62,8 +62,8 @@ export async function industryRoute(pool,req,path,actor){
    await audit(db,actor.id,'industry',0,'item_create',b.id);return ok({id:b.id});
   });
  }
- if(path==='/world-admin/industry/templates'&&req.method==='POST'||(match=/^\/world-admin\/industry\/templates\/(\d+)\/versions$/.exec(path))&&req.method==='POST'){
-  const b=await body(req),versionTarget=match?Number(match[1]):null;
+ if(path==='/world-admin/industry/templates'&&req.method==='POST'||(match=/^\/world-admin\/industry\/templates\/(\d+)\/(versions|edit)$/.exec(path))&&req.method==='POST'){
+  const b=await body(req),versionTarget=match?Number(match[1]):null,editExisting=match?.[2]==='edit';
   const error=validateIndustryConfiguration(b?.configuration)||validateIndustryRules(b?.rules);
   if(error)return fail(400,error);
   if(!versionTarget&&(!txt(b.name,120)||!txt(b.slug,70)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(b.slug)||!['mine','extraction','refinery','manufacturing','utilities','agriculture','other'].includes(b.category)))return fail(400,'invalid_template');
@@ -74,6 +74,15 @@ export async function industryRoute(pool,req,path,actor){
    if(versionTarget){
     const [[old]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
     if(!old)return fail(404,'template_not_found');
+    if(editExisting){
+     const [[existing]]=await db.execute('SELECT configuration,rules FROM world_industry_template_versions WHERE template_id=? AND version=? FOR UPDATE',[versionTarget,Number(old.current_version)]);
+     if(!existing)return fail(404,'template_version_not_found');
+     // Preserve prior recipes in an append-only audit record for historical review.
+     await audit(db,actor.id,'industry',versionTarget,'template_edit_before',JSON.stringify({version:old.current_version,configuration:array(existing.configuration),rules:array(existing.rules)}));
+     await db.execute('UPDATE world_industry_template_versions SET configuration=?,rules=? WHERE template_id=? AND version=?',[JSON.stringify(b.configuration),JSON.stringify(b.rules),versionTarget,old.current_version]);
+     await audit(db,actor.id,'industry',versionTarget,'template_edit',String(old.current_version));
+     return ok({template_id:versionTarget,version:Number(old.current_version),updated:true});
+    }
     if(Number(old.current_version)>=999)return fail(409,'template_version_limit');
     const next=Number(old.current_version)+1;
     await db.execute('INSERT INTO world_industry_template_versions(template_id,version,configuration,rules,published_by) VALUES(?,?,?,?,?)',[versionTarget,next,JSON.stringify(b.configuration),JSON.stringify(b.rules),actor.id]);
