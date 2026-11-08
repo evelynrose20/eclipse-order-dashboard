@@ -22,7 +22,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -902,9 +902,18 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(created1.status,200,JSON.stringify(created1.body));
   assert.equal(created2.status,200,JSON.stringify(created2.body));
   const service={name:'CI Order Express',from_station_id:Number(created1.body.id),to_station_id:Number(created2.body.id),duration_minutes:30,status:'active',cargo_notes:'Order supplies only'};
+  const damagedStation=await internalRailRoute(admin,request('PUT',{...s1,status:'damaged'}),'/internal-rail/stations/'+created1.body.id);
+  assert.equal(damagedStation.status,200,JSON.stringify(damagedStation.body));
+  const [[damagedRow]]=await admin.execute('SELECT status FROM order_internal_rail_stations WHERE id=?',[created1.body.id]);
+  assert.equal(damagedRow.status,'damaged','Damaged is persisted in the new railway station status enum');
   const railRoute=await internalRailRoute(admin,request('POST',service),'/internal-rail/routes');
   assert.equal(railRoute.status,200,JSON.stringify(railRoute.body));
   const railId=Number(railRoute.body.id);
+  const blockedDamaged=await internalRailRoute(admin,request('POST',{}),'/internal-rail/routes/'+railId+'/dispatch');
+  assert.equal(blockedDamaged.status,409,'Damaged stations must block train dispatch');
+  assert.equal(blockedDamaged.body.error,'rail_stations_not_operational');
+  const repairedStation=await internalRailRoute(admin,request('PUT',s1),'/internal-rail/stations/'+created1.body.id);
+  assert.equal(repairedStation.status,200,JSON.stringify(repairedStation.body));
   const dispatched=await internalRailRoute(admin,request('POST',{}),'/internal-rail/routes/'+railId+'/dispatch');
   assert.equal(dispatched.status,200,JSON.stringify(dispatched.body));
   const duplicateDispatch=await internalRailRoute(admin,request('POST',{}),'/internal-rail/routes/'+railId+'/dispatch');
@@ -924,6 +933,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal((await internalRailRoute(admin,request('DELETE'),'/internal-rail/stations/'+created1.body.id)).status,409,'stations referenced by routes cannot be deleted');
   // Running the new migration again must keep routes, stations and journey history.
   await admin.query(await readFile(new URL('../sql/049_internal_rail_logistics.sql',import.meta.url),'utf8'));
+  await admin.query(await readFile(new URL('../sql/050_internal_rail_damaged.sql',import.meta.url),'utf8'));
+  await admin.query(await readFile(new URL('../sql/050_internal_rail_damaged.sql',import.meta.url),'utf8'));
   const [[retainedRail]]=await admin.execute('SELECT COUNT(*) AS total FROM order_internal_rail_journeys WHERE route_id=?',[railId]);
   assert.equal(Number(retainedRail.total),1);
  }finally{await admin.end();}
