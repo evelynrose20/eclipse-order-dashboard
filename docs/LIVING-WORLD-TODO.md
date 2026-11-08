@@ -56,6 +56,10 @@ updated: 2026-11-07
 
 ## P2 — Garlean climate and civilian needs
 
+> [!important] P2 feature branch review (2026-11-08)
+> A draft implementation on `feature/garlean-civic-needs-p2` adds configurable monthly Garlean climate curves, dated DM weather events/forecast, a separate staff-owned civilian stock ledger, monthly food group history, cohort registration, adjustable simulation thresholds, explicit preview/commit, bounded civic score changes, idempotent settlement/date cycles and an incident approval queue. All writes are command-only and audited. **Do not mark the P2 boxes complete until the PR is verified and merged.** Still outstanding: real workshop/front inventory reservation and validated delivery integration; comprehensive cohort editing and essential-service consumption; settlement-specific weather microzones and weather-adjusted transport; practical MySQL/browser/permission acceptance, including backing up production before migration. No scheduled auto-ticks, surprise confiscation, automatic riots or player punishment are introduced.
+
+
 - [x] Real-calendar, deterministic fictional Garlean seasonal temperature and conditions.
 - [x] Fahrenheit presentation with seasonal/manual weather selection.
 - [x] Civic outlook preview: food shortage, diet monotony, heat demand and unrest risk.
