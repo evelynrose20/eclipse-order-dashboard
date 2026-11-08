@@ -48,3 +48,15 @@ test('map fills its available zone width and grows height without distorting ori
  assert.match(dashboard,/Data-dense desktop layout/);
  assert.match(nav,/Compact desktop navigation/);
 });
+
+test('industry attaches to existing region map locations rather than offering a duplicate marker editor',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const jsx=await readFile(new URL('../src/IndustrySitesPanel.jsx',import.meta.url),'utf8');
+ assert.match(jsx,/Attach production to a map location/);
+ assert.match(jsx,/Existing map location/);
+ assert.match(jsx,/categoryGroups\.map/);
+ assert.match(jsx,/scopedSettlements/);
+ assert.doesNotMatch(jsx,/Create mapped site/);
+ assert.doesNotMatch(jsx,/setNewSite/);
+ assert.doesNotMatch(jsx,/\/world-admin\/industry\/sites'/);
+});
