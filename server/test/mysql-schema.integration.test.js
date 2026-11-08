@@ -9,6 +9,7 @@ import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {worldAdministrationRoute} from '../src/world-administration.js';
+import {internalRailRoute} from '../src/internal-rail.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from '../src/fronts.js';
@@ -21,7 +22,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -887,5 +888,42 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
 
 
 
+
+  // Menu-only Order railways are tied to settlements/fronts, not saved map geometry.
+  await admin.execute("UPDATE world_settlements SET controlling_faction_id='eclipse-order' WHERE id IN (?,?)",[mineId,portId]);
+  const noTrainsYet=await internalRailRoute(admin,request('GET'),'/internal-rail');
+  assert.equal(noTrainsYet.status,200,JSON.stringify(noTrainsYet.body));
+  assert.ok(noTrainsYet.body.stops.some(st=>st.type==='settlement'&&Number(st.id)===mineId));
+  const s1={name:'CI Moonlight Station',stop_type:'settlement',stop_id:mineId,status:'operational',platforms:2,notes:''};
+  const s2={...s1,name:'CI Port Terminal',stop_id:portId,platforms:1};
+  const created1=await internalRailRoute(admin,request('POST',s1),'/internal-rail/stations');
+  const created2=await internalRailRoute(admin,request('POST',s2),'/internal-rail/stations');
+  assert.equal(created1.status,200,JSON.stringify(created1.body));
+  assert.equal(created2.status,200,JSON.stringify(created2.body));
+  const service={name:'CI Order Express',from_station_id:Number(created1.body.id),to_station_id:Number(created2.body.id),duration_minutes:30,status:'active',cargo_notes:'Order supplies only'};
+  const railRoute=await internalRailRoute(admin,request('POST',service),'/internal-rail/routes');
+  assert.equal(railRoute.status,200,JSON.stringify(railRoute.body));
+  const railId=Number(railRoute.body.id);
+  const dispatched=await internalRailRoute(admin,request('POST',{}),'/internal-rail/routes/'+railId+'/dispatch');
+  assert.equal(dispatched.status,200,JSON.stringify(dispatched.body));
+  const duplicateDispatch=await internalRailRoute(admin,request('POST',{}),'/internal-rail/routes/'+railId+'/dispatch');
+  assert.equal(duplicateDispatch.status,409,'cannot dispatch twice while a train is in transit');
+  const retireWhileRunning=await internalRailRoute(admin,request('DELETE'),'/internal-rail/routes/'+railId);
+  assert.equal(retireWhileRunning.status,409,'active journey blocks retiring the service');
+  const loadedRail=await internalRailRoute(admin,request('GET'),'/internal-rail');
+  assert.equal(loadedRail.status,200);
+  const run=loadedRail.body.journeys.find(j=>Number(j.route_id)===railId);
+  assert.ok(run);
+  assert.match(run.departed_at,/Z$/);
+  assert.ok(run.progress_percent>=0&&run.progress_percent<=100);
+  const cancelRail=await internalRailRoute(admin,request('POST',{}),'/internal-rail/journeys/'+run.id+'/cancel');
+  assert.equal(cancelRail.status,200);
+  const routeRetired=await internalRailRoute(admin,request('DELETE'),'/internal-rail/routes/'+railId);
+  assert.equal(routeRetired.status,200);
+  assert.equal((await internalRailRoute(admin,request('DELETE'),'/internal-rail/stations/'+created1.body.id)).status,409,'stations referenced by routes cannot be deleted');
+  // Running the new migration again must keep routes, stations and journey history.
+  await admin.query(await readFile(new URL('../sql/049_internal_rail_logistics.sql',import.meta.url),'utf8'));
+  const [[retainedRail]]=await admin.execute('SELECT COUNT(*) AS total FROM order_internal_rail_journeys WHERE route_id=?',[railId]);
+  assert.equal(Number(retainedRail.total),1);
  }finally{await admin.end();}
 });
