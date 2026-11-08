@@ -93,6 +93,28 @@ async function applyNpcCycle(db,site,state,now,key,weather){
  await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,dateOf(now),'npc',pop,nextPopulation,workforce,beforeStability,stability,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),event,headline,JSON.stringify(report)]);
  return {settlement_id:site.id,origin:'npc',event,headline};
 }
+async function advanceOrderStructures(db,site,key){
+ const result={advanced:[],completed:[],blocked:[]};
+ const workforce=Number(site.workforce||0);
+ if(workforce<=0)return result;
+ const [structures]=await db.execute("SELECT * FROM world_settlement_upgrades WHERE settlement_id=? AND status='building' ORDER BY id FOR UPDATE",[site.id]);
+ for(const item of structures){
+  if(Number(item.material_cost)>0&&!item.materials_paid){
+   const [[material]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[item.material_id]);
+   if(!material||Number(material.quantity)<Number(item.material_cost)){result.blocked.push(item.name+' needs shared materials');continue}
+   const [debit]=await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[item.material_cost,item.material_id,item.material_cost]);
+   if(debit.affectedRows!==1){result.blocked.push(item.name+' needs shared materials');continue}
+   await db.execute('INSERT INTO world_settlement_upgrade_material_receipts(upgrade_id,material_id,quantity,cycle_key) VALUES(?,?,?,?)',[item.id,item.material_id,item.material_cost,key]);
+   await db.execute('UPDATE world_settlement_upgrades SET materials_paid=1 WHERE id=?',[item.id]);
+  }
+  const work=Math.min(35,Math.max(3,Math.round(workforce/(5*Math.max(1,Number(item.level))))+5));
+  const progress=Math.min(100,Number(item.construction_progress||0)+work);
+  const done=progress>=100;
+  await db.execute('UPDATE world_settlement_upgrades SET construction_progress=?,status=? WHERE id=?',[progress,done?'operational':'building',item.id]);
+  (done?result.completed:result.advanced).push({name:item.name,progress,work});
+ }
+ return result;
+}
 async function applyOrderCycle(db,site,state,now,key,temperature){
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[site.id]);
  if(!profile||profile.paused||!['managed','detailed'].includes(profile.enabled_mode)||!site.simulation_enabled||site.simulation_mode!=='managed')return null;
@@ -123,10 +145,11 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NULL)',[site.id,cycleDate,profile.enabled_mode,preview.food_used,preview.fuel_used,preview.water_used,preview.medicine_used,preview.before_stability,preview.after_stability,preview.before_unrest,preview.after_unrest,JSON.stringify({...preview,population:migration,system_generated:true})]);
  await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[cycleDate,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=? WHERE settlement_id=?',[key,site.id]);
+ const construction=await advanceOrderStructures(db,site,key);
  const shortage=preview.warnings.filter(w=>w.includes('shortfall')||w.includes('low'));
- const event=shortage.length?'shortage':migration.arrivals?'arrivals':'routine';
- const headline=shortage.length?'Civilian shortages require attention':migration.arrivals?migration.arrivals+' residents arrived':'Daily civilian operations completed';
- await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,system_generated:true})]);
+ const event=shortage.length?'shortage':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
+ const headline=shortage.length?'Civilian shortages require attention':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
+ await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,system_generated:true})]);
  return {settlement_id:site.id,origin:'order',event,headline};
 }
 export async function runSettlementSimulation(pool,now=new Date()){
