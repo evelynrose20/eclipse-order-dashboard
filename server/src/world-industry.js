@@ -213,6 +213,31 @@ export async function industryRoute(pool,req,path,actor){
    return ok({saved:true});
   });
  }
+ // Climate protection is always built with a fixed, escalating materials/labor bill.
+ if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/climate-upgrade$/.exec(path))&&req.method==='POST'){
+  const facilityId=Number(match[1]);
+  return atomicIndustry(pool,async db=>{
+   const [[f]]=await db.execute('SELECT id,status,owner_faction_id,weather_protection_level FROM world_industry_facilities WHERE id=? FOR UPDATE',[facilityId]);
+   if(!f)return fail(404,'facility_not_found');
+   if(!['operational','paused'].includes(f.status))return fail(409,'facility_must_be_operational_for_upgrade');
+   const [[existing]]=await db.execute("SELECT id FROM world_industry_projects WHERE facility_id=? AND weather_upgrade_target IS NOT NULL AND status IN ('planned','active','paused') LIMIT 1",[facilityId]);
+   if(existing)return fail(409,'climate_upgrade_already_underway');
+   const target=Number(f.weather_protection_level)+1;
+   const tiers=[
+    {name:'Weather Shelters',labor:500,needs:[['iron-ingot',100],['repair-timbers',150],['ceruleum-fuel',20]]},
+    {name:'Insulated Production Enclosures',labor:1500,needs:[['iron-ingot',350],['repair-timbers',400],['ceruleum-fuel',100]]},
+    {name:'Active Climate Control',labor:4000,needs:[['iron-ingot',800],['repair-timbers',1000],['ceruleum-fuel',350]]}
+   ];
+   if(target>tiers.length)return fail(409,'maximum_climate_protection_reached');
+   const tier=tiers[target-1];
+   const [available]=await db.execute("SELECT id FROM world_industry_items WHERE id IN ('iron-ingot','repair-timbers','ceruleum-fuel')");
+   if(available.length!==3)return fail(409,'climate_upgrade_material_catalog_incomplete');
+   const [created]=await db.execute("INSERT INTO world_industry_projects(facility_id,name,status,result_status,labor_required,description,created_by,weather_upgrade_target) VALUES(?,?,'active','operational',?,?,?,?)",[facilityId,tier.name,tier.labor,'Industrial weather protection: tier '+target,actor.id,target]);
+   for(const [item,amount] of tier.needs)await db.execute('INSERT INTO world_industry_project_needs(project_id,item_id,required_qty) VALUES(?,?,?)',[created.insertId,item,amount]);
+   await audit(db,actor.id,'industry',facilityId,'climate_upgrade_started','Tier '+target+' project '+created.insertId);
+   return ok({id:created.insertId,target_level:target,name:tier.name});
+  });
+ }
  if(path==='/world-admin/industry/projects'&&req.method==='POST'){
   const b=await body(req);if(!validProject(b))return fail(400,'invalid_industry_project');
   return atomicIndustry(pool,async db=>{
