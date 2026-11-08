@@ -1,3 +1,4 @@
+import {advanceWorkerHealth,workerHealthSnapshot} from './world-worker-care.js';
 import {educationPreview,advanceEducation} from './world-education.js';
 import {settlementDemographics,cappedEmployment} from './world-demographics.js';
 import {climateForRegions} from './world-region-climate.js';
@@ -112,7 +113,9 @@ async function applyNpcCycle(db,site,state,now,key,weather){
  }
  if(arrival.arrivals&&[10,25,50,100,250,500,1000,2500,5000].some(mark=>pop<mark&&nextPopulation>=mark)&&event!=='shortage'){event='milestone';headline=site.name+' reached '+nextPopulation+' residents'}
  const education=await advanceEducation(db,{...site,population:nextPopulation,workforce},upgrades);
- const report={education,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
+ const workerHealth=await advanceWorkerHealth(db,{...site,population:nextPopulation,workforce},upgrades,education,{cycle_key:key,temperature_f:weather,heating_coverage:site.heating_coverage,medicine_available:outcome.next.medicine,weather:weather<=0?'blizzard':'clear'});
+ outcome.next.medicine=Math.max(0,round(outcome.next.medicine-workerHealth.medicine_required));
+ const report={education,worker_health:workerHealth,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
  await db.execute('UPDATE world_settlements SET population=?,workforce=?,civil_stability=?,unrest=?,housing_capacity=COALESCE(?,housing_capacity),security_score=COALESCE(?,security_score),medical_access=COALESCE(?,medical_access),food_access=COALESCE(?,food_access),housing=COALESCE(?,housing) WHERE id=?',[nextPopulation,workforce,stability,unrest,updates.housing_capacity??null,updates.security_score??null,updates.medical_access??null,updates.food_access??null,updates.housing??null,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=?,food_units=?,water_units=?,fuel_units=?,medicine_units=?,development_points=? WHERE settlement_id=?',[key,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),site.id]);
  await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,dateOf(now),'npc',pop,nextPopulation,workforce,beforeStability,stability,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),event,headline,JSON.stringify(report)]);
@@ -165,17 +168,33 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
    remaining=round(remaining-debit);
   }
  }
- const remains=preview.food_need>0?Math.max(0,(preview.food_stock-preview.food_used)/preview.food_need):0;
+ // Medicine for treating ill or injured workers is separate from routine civilian use.
+ const remainingMedicine=Math.max(0,preview.medicine_stock-preview.medicine_used);
+ const workerHealth=await advanceWorkerHealth(db,{...site,population:migration.population_after},upgrades,education,{cycle_key:key,temperature_f:temperature,heating_coverage:preview.heating_coverage_effective,medicine_available:remainingMedicine,weather:temperature<=0?'blizzard':'clear'});
+ let careMedicine=workerHealth.medicine_required||0;
+ if(careMedicine>0){
+  const [medicalStocks]=await db.execute("SELECT item_code,quantity FROM world_civic_stock WHERE settlement_id=? AND resource_kind='medicine' AND quantity>0 ORDER BY item_code FOR UPDATE",[site.id]);
+  for(const item of medicalStocks){
+   if(careMedicine<=0)break;
+   const used=Math.min(careMedicine,Number(item.quantity));
+   if(!used)continue;
+   await db.execute('UPDATE world_civic_stock SET quantity=quantity-? WHERE settlement_id=? AND item_code=? AND quantity>=?',[used,site.id,item.item_code,used]);
+   await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,cycle_key,actor_id) VALUES(?,?,?,?,?,?,?,NULL)',[site.id,item.item_code,'medicine',null,-used,'Worker medical treatment',cycleDate]);
+   careMedicine-=used;
+  }
+  if(careMedicine>0)throw new Error('worker_care_medicine_balance_inconsistent');
+ }
+  const remains=preview.food_need>0?Math.max(0,(preview.food_stock-preview.food_used)/preview.food_need):0;
  const variety=Math.min(100,Math.round(preview.food_groups_30d.length/Math.max(1,Number(profile.minimum_variety))*100));
  await db.execute('UPDATE world_settlements SET population=?,food_days=?,food_variety=?,civil_stability=?,unrest=? WHERE id=?',[migration.population_after,Math.min(99999,remains),variety,preview.after_stability,preview.after_unrest,site.id]);
- await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NULL)',[site.id,cycleDate,profile.enabled_mode,preview.food_used,preview.fuel_used,preview.water_used,preview.medicine_used,preview.before_stability,preview.after_stability,preview.before_unrest,preview.after_unrest,JSON.stringify({...preview,population:migration,education,system_generated:true})]);
+ await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NULL)',[site.id,cycleDate,profile.enabled_mode,preview.food_used,preview.fuel_used,preview.water_used,preview.medicine_used,preview.before_stability,preview.after_stability,preview.before_unrest,preview.after_unrest,JSON.stringify({...preview,population:migration,education,worker_health:workerHealth,system_generated:true})]);
  await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[cycleDate,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=? WHERE settlement_id=?',[key,site.id]);
  const construction=await advanceOrderStructures(db,site,key);
  const shortage=preview.warnings.filter(w=>w.includes('shortfall')||w.includes('low'));
  const event=shortage.length?'shortage':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
  const headline=shortage.length?'Civilian shortages require attention':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
- await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,education,system_generated:true})]);
+ await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,education,worker_health:workerHealth,system_generated:true})]);
  return {settlement_id:site.id,origin:'order',event,headline};
 }
 export async function runSettlementSimulation(pool,now=new Date()){
@@ -218,11 +237,12 @@ export async function settlementSimulationRoute(pool,req,path,actor){
  if(!command(actor))return {status:403,body:{error:'command_required'}};
  if(path==='/world-admin/simulation'&&req.method==='GET'){
   const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
+  const [healthStates]=await pool.execute('SELECT settlement_id,sick_workers,injured_workers FROM world_settlement_worker_health');
   const [educationStates]=await pool.execute('SELECT settlement_id,attainment FROM world_settlement_education');
   const [schools]=await pool.execute("SELECT settlement_id,category,status,condition_pct,level FROM world_settlement_upgrades WHERE category='school'");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");
-  return {status:200,body:{settlements:sites.map(s=>({...s,demographics:settlementDemographics(s),education:educationPreview(s,schools.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+  return {status:200,body:{settlements:sites.map(s=>({...s,demographics:settlementDemographics(s),worker_health:healthStates.find(x=>Number(x.settlement_id)===Number(s.id))||{sick_workers:0,injured_workers:0},education:educationPreview(s,schools.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
  }
  const match=/^\/world-admin\/simulation\/(\d+)\/settings$/.exec(path);
  if(match&&req.method==='PUT'){
