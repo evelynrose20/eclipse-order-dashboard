@@ -84,7 +84,7 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  const priorHealth=await workerHealthSnapshot(db,site.id);
  const activeWorkforce=Math.max(0,workforce-priorHealth.sick_workers-priorHealth.injured_workers);
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
- let development=Number(state.development_points)+Math.max(0,activeWorkforce*.16);
+ let development=Number(state.development_points)+Math.max(3,activeWorkforce*.16);
  const ambient=npcEverydayStory(site,key,weather);
  let event=ambient.event,headline=ambient.headline;
  if(arrival.arrivals){event='arrivals';headline=arrival.arrivals+' new resident'+(arrival.arrivals===1?'':'s')+' settled in '+site.name}
