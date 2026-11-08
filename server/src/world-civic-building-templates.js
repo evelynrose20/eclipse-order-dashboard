@@ -40,8 +40,8 @@ export function civilianStorageCapacity(settlement,upgrades=[]){
  const population=safe(settlement.population);
  const bonus=civicInfrastructureEffects(upgrades);
  // Existing stores are grandfathered; the caps only constrain new deposits.
- return {food:Math.max(100,population*12)+bonus.food_capacity,
-         water:Math.max(100,population*12)+bonus.water_storage};
+ return {food:Math.max(500,population*12)+bonus.food_capacity,
+         water:Math.max(500,population*12)+bonus.water_storage};
 }
 export function npcConstructionPreference(settlement,upgrades=[],stocks={}){
  const effects=civicInfrastructureEffects(upgrades);
