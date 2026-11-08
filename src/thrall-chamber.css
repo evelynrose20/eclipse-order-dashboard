@@ -63,3 +63,12 @@
 .chamber-dialog .chamber-heading{margin-bottom:0}.chamber-dialog textarea{min-height:80px}
 @media(max-width:950px){.chamber-layout{grid-template-columns:1fr}.chamber-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.chamber-hero{align-items:flex-start;flex-direction:column;padding:18px}.chamber-stats,.chamber-reservoirs{grid-template-columns:1fr}.chamber-tabs .chamber-refresh{margin-left:0}.chamber-record{align-items:stretch}.chamber-hero h2{font-size:22px}}
+
+.chamber-daily-balance{display:grid;gap:9px;background:#13252a;border:1px solid #4a695f;padding:12px;margin:12px 0}
+.chamber-daily-balance>div:first-child{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px}
+.chamber-daily-balance>div:first-child>span{font-size:10px;font-weight:800;letter-spacing:.09em;color:#a4c6b5}
+.chamber-daily-balance strong{font-size:20px;color:#d7ecdc;font-variant-numeric:tabular-nums}
+.chamber-daily-balance strong small{font-size:12px;color:#b7c9bf;font-weight:500}
+.chamber-daily-balance>small{font-size:11px;color:#a9bfb9}
+.chamber-daily-meter{height:9px;background:#0b1820;border:1px solid #41615c;overflow:hidden}
+.chamber-daily-meter>span{display:block;background:linear-gradient(90deg,#4c927c,#94c9ae);height:100%;transition:width .2s}
