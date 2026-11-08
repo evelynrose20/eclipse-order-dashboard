@@ -132,7 +132,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   </div>}
   {allStations.length>=2&&<div className="wtm-rail-freight-check" aria-label="Freight railway route check">
    <strong><i className="fa-solid fa-train-subway"/> FREIGHT ROUTE CHECK</strong>
-   <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{allStations.map(st=><option value={st.id} key={st.id}>{stationLabel(st){st.freight_ready?' · Freight ready':''}</option>)}</select></label>
+   <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{allStations.map(st=><option value={st.id} key={st.id}>{stationLabel(st)}{st.freight_ready?' · Freight ready':''}</option>)}</select></label>
    <label>Destination<select value={freightTo} onChange={e=>{setFreightTo(e.target.value);setFreightPreview(null)}}><option value="">Choose destination</option>{allStations.filter(st=>String(st.id)!==String(freightFrom)).map(st=><option value={st.id} key={st.id}>{stationLabel(st)}</option>)}</select></label>
    <button type="button" disabled={!freightFrom||!freightTo||busy} onClick={previewFreight}><i className="fa-solid fa-route"/> Check route</button>
    {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+(routeReason[freightPreview.reason]||'This railway route is not available')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
