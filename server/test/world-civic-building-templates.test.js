@@ -42,7 +42,11 @@ test('template recipe imposes bounded effort and prevents fake effect category',
  assert.equal(validateCivicTemplate({...t,effect_key:'housing_capacity'}),'invalid_civic_template');
  assert.equal(validateCivicTemplate({...t,effect_per_level:5000,material_per_level:5,npc_development_cost:5}),'invalid_civic_template','templates cannot generate huge free capacity');
  assert.equal(validateCivicTemplate({...t,material_per_level:0}),'invalid_civic_template','resources cannot be waived');
- assert.deepEqual(civicProjectCost(t,2),{material_id:'iron-ingot',material_required:60,labor_required:270,npc_development_cost:30});
+ assert.deepEqual(civicProjectCost(t,2),{materials:[{material_id:'iron-ingot',units_per_level:30,required_qty:60}],material_id:'iron-ingot',material_required:60,labor_required:270,npc_development_cost:30});
+ const multi={...t,materials:[{material_id:'iron-ingot',units_per_level:20},{material_id:'iron-ore',units_per_level:10}]};
+ assert.equal(validateCivicTemplate(multi),null);
+ assert.deepEqual(civicProjectCost(multi,2).materials.map(m=>[m.material_id,m.required_qty]),[['iron-ingot',40],['iron-ore',20]]);
+ assert.equal(validateCivicTemplate({...multi,materials:[multi.materials[0],multi.materials[0]]}),'invalid_civic_template');
 });
 test('NPC decisions choose building categories based on real shortages',()=>{
  assert.equal(npcConstructionPreference({population:0,housing_capacity:0},[],{}),'housing');
