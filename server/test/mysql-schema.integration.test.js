@@ -1095,6 +1095,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(forgedCivilianLabor.body.error,'simulated_civic_values_are_read_only','staff may not edit simulated residents and workforce');
   const instantUpgrade=await worldAdministrationRoute(admin,request('POST',{name:'Free CI Housing',category:'housing',status:'operational',condition_pct:100,level:1,housing_bonus:10,service_bonus:0,defense_bonus:0,notes:'',material_id:'iron-ore',material_cost:2}),'/world-admin/settlements/'+mineId+'/upgrades');
   assert.equal(instantUpgrade.status,409,'simulated buildings need funded worker-based construction, not instant staff status');
+  const fakeFood=await worldAdministrationRoute(admin,request('POST',{item_code:'invented-fuel',item_label:'Invented Fuel',resource_kind:'fuel',food_group:null,quantity_delta:1000,reason:'Free supplies'}),'/world-admin/civic/'+mineId+'/stock');
+  assert.equal(fakeFood.status,409,'civilian goods must be backed by transferred materials');
+  assert.equal(fakeFood.body.error,'civic_stock_must_come_from_real_transfers');
+  const fakeHeat=await worldAdministrationRoute(admin,request('POST',{name:'Instant Thermal Plant',coverage_pct:100,condition_pct:100,status:'operational',notes:''}),'/world-admin/civic/'+mineId+'/heating');
+  assert.equal(fakeHeat.status,409,'simulated heating cannot be invented from a staff form');
+
 
   const mineConfig={inputs:[],outputs:[{item_id:'iron-ore',qty:3}],byproducts:[{item_id:'mine-tailings',qty:1}],labor:2,heat:0,power:1,capacity:3,upgrade_level:1};
   async function createTemplate(slug,name,category,configuration){
