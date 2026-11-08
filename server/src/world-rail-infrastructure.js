@@ -53,7 +53,7 @@ export function planRailFreight({originId,destinationId,stations,platforms,segme
  if(!same(start,finish.region_id,finish.zone_id))return {available:false,reason:'stations_in_different_zones'};
  if(!freightReady(start,platforms)||!freightReady(finish,platforms))return {available:false,reason:'freight_platform_not_ready'};
  if(Number(start.id)===Number(finish.id))return {available:false,reason:'choose_distinct_stations'};
- const blocked=new Set(crossings.filter(c=>same(c,start.region_id,start.zone_id)&&c.control_type!=='grade_separated'&&c.status!=='operational').map(c=>Number(c.rail_segment_id)));
+ const blocked=new Set(crossings.filter(c=>same(c,start.region_id,start.zone_id)&&c.status!=='operational').map(c=>Number(c.rail_segment_id)));
  const tracks=segments.filter(e=>same(e,start.region_id,start.zone_id)&&e.route_type==='rail'&&!blocked.has(Number(e.id)));
  const adjacent=new Map();
  for(const e of tracks){for(const n of [e.from_node_id,e.to_node_id]){const key=Number(n);if(!adjacent.has(key))adjacent.set(key,[]);adjacent.get(key).push(e)}}
