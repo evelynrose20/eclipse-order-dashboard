@@ -287,3 +287,9 @@
 .wtm-track-toggle input{width:16px;height:16px;accent-color:#d0ad74}
 .wtm-track-trace{fill:none;stroke:#f0dfb9;stroke-width:2.8;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round;pointer-events:none;filter:drop-shadow(0 0 2px #17222c)}
 .wtm-stage:has(.wtm-track-trace){cursor:crosshair}
+
+/* Independent farms and other production sites; distinct from civilian settlements. */
+.wtm-industry-pin{position:absolute!important;z-index:3;transform:translate(-50%,-50%)!important;display:grid!important;justify-items:center!important;gap:4px!important;padding:4px!important;min-width:0!important;min-height:0!important;background:none!important;border:none!important;color:#f0e8cd!important;box-shadow:none!important;cursor:pointer}
+.wtm-industry-pin-symbol{display:grid;place-items:center;min-width:29px;min-height:29px;border:2px solid #9cba8a;background:#244739;color:#deedc3;border-radius:6px;box-shadow:0 0 0 3px #111b26;font-size:15px;pointer-events:none}
+.wtm-industry-pin-name{max-width:125px;padding:3px 5px;background:#10241de9;border:1px solid #688b73;color:#e9f2d8;font-size:10px;font-weight:800;line-height:1.2;overflow-wrap:anywhere;pointer-events:none}
+.wtm-industry-pin:hover .wtm-industry-pin-symbol,.wtm-industry-pin:focus-visible .wtm-industry-pin-symbol{background:#466b4c;border-color:#ecdfac}
