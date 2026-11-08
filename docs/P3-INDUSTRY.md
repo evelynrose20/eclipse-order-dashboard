@@ -81,3 +81,17 @@ For installs using migration 055, previously created independent industrial mark
 - Regional fictional Garlean weather and any active weather events affect outdoor agriculture, mining and extraction. Snow reduces maximum outdoor throughput to 70%, rain to 85%, and blizzard to 25%; staff may add validated temperature and weather predicates in the template rule builder. Indoor manufacturing is not automatically slowed by those outdoor multipliers.
 - Edit-in-place is a deliberate recipe change for facilities pinned to the current version. An immutable prior snapshot is saved before every edit. To preserve existing facility recipes, explicitly create a new version instead.
 - Run migrations 057 and 058 with the normal Windows `setup:local` flow before restarting the Windows API. They retain settlements, stocks, facility history and existing templates.
+
+## Weatherproofing farms and industrial facilities (migration 059)
+
+Every mapped facility, including farms, orchards, mines, mills and factories, can build sequential climate-protection improvements via **Industry & Projects → Sites & production → Weather protection**. These are real industry construction projects: players or staff commit actual facility-controlled stock or eligible unreserved Order stock, and locally available workers advance labor at most once per daily cycle. A project cannot skip directly to the maximum level, and it never grants staff a free production multiplier or changes map ownership.
+
+| Upgrade | Required stock | Labor | Weather recovery | Operating fuel |
+| --- | --- | ---: | --- | --- |
+| Weather Shelters | 100 iron ingots, 150 repair timbers, 20 ceruleum | 500 | Restores 50% of weather/cold productivity lost | None |
+| Insulated Production Enclosures | 350 iron ingots, 400 repair timbers, 100 ceruleum | 1,500 | Restores 85% of weather/cold productivity lost | 0.15 ceruleum per operation |
+| Active Climate Control | 800 iron ingots, 1,000 repair timbers, 350 ceruleum | 4,000 | Fully restores weather/cold productivity if powered | 0.5 ceruleum per operation |
+
+Rain/snow/blizzard affect outdoor agriculture and extraction. Extreme cold affects all facilities, including enclosed factories, more harshly for outdoor activities. Upgrades reduce these environmental penalties but do not waive staffing, material, recipe, capacity, faction-control, damage or custom template-rule requirements. Powered upgrade operation is limited by actual ceruleum stock and consumed fuel is recorded in the facility ledger.
+
+The additive SQL migration `059_industry_climate_upgrades.sql` is installed by the normal Windows `setup:local` script, and is safe to rerun. Existing facilities start with no climate protection; current industrial projects and historical production records remain intact.
