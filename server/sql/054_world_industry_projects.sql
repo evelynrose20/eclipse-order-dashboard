@@ -140,4 +140,15 @@ INSERT IGNORE INTO world_industry_items(id,name,category,workshop_material_id,de
  ('mine-tailings','Mine Tailings','byproduct',NULL,'Mining waste'),
  ('refinery-residue','Refinery Residue','byproduct',NULL,'Refining residue'),
  ('repair-timbers','Repair Timbers','supply',NULL,'Committed reconstruction material');
+USE eclipse_order;
+CREATE TABLE IF NOT EXISTS world_industry_project_ticks (
+ project_id BIGINT UNSIGNED NOT NULL,
+ cycle_key VARCHAR(35) NOT NULL,
+ labor_added INT UNSIGNED NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(project_id,cycle_key),
+ FOREIGN KEY(project_id) REFERENCES world_industry_projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Re-running setup is safe and does not touch existing project contributions.
+
 INSERT INTO schema_migrations(version) VALUES('054_world_industry_projects') ON DUPLICATE KEY UPDATE version=VALUES(version);
