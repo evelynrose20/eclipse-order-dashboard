@@ -16,6 +16,8 @@ const ERROR_MESSAGES={
  assembly_not_active:'An occupied chair and active assembly are required to record a collection.',
  character_owner_required:'Only the character\'s player may change these permissions.',
  chamber_not_initialized:'Run the Windows API database setup to initialize the chamber.',
+ decant_lower_reservoir_first:'The lower reservoir holds a different collection type. Decant or clear it before recording this type.',
+ invalid_contribution_preferences:'Check the character gender, anatomy, category permissions and maximum quantities.',
 
  discord_login_not_configured:'Discord sign-in has not been configured yet. Contact Order command.',
  discord_not_in_server:'Your Discord account was not found in the Order’s configured server. If you are already a member, contact Order command to check the server connection.',
