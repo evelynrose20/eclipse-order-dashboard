@@ -10,7 +10,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {worldAdministrationRoute} from '../src/world-administration.js';
 import {industryRoute} from '../src/world-industry.js';
-import {runIndustryAutomation} from '../src/world-industry-engine.js';
+import {runIndustryAutomation,atomicIndustry,advanceIndustryProject} from '../src/world-industry-engine.js';
 import {runSettlementSimulation,settlementSimulationRoute} from '../src/world-settlement-simulation.js';
 import {internalRailRoute} from '../src/internal-rail.js';
 import {craftingRoute} from '../src/crafting.js';
@@ -1078,113 +1078,144 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[retainedCycles]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
   assert.ok(Number(retainedCycles.n)>0,'repeated setup retains simulation history');
 
-  // P3 acceptance: liberated voidsent mine -> rebuilt -> staffed -> ore production.
+
+  // P3 acceptance: no direct staff editing of simulated factory labor,
+  // utility supply, level, condition or operating capacity.
   const staff={id,account_role:'domina'};
-  const deniedIndustry=await industryRoute(admin,request('GET'),'/world-admin/industry',{id,account_role:'member'});
-  assert.equal(deniedIndustry.status,403);
+  assert.equal((await industryRoute(admin,request('GET'),'/world-admin/industry',{id,account_role:'member'})).status,403);
+  const [[home]]=await admin.execute('SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.civil_stability FROM world_settlements s WHERE s.id=?',[mineId]);
+  assert.ok(home.zone_id,'industry acceptance needs a real existing zone');
+  await admin.execute(
+   'INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+   [mineId,'ci-real-civic-workers','2026-11-26','order',home.population,home.population,30,home.civil_stability,home.civil_stability,'routine','CI established civic workforce',JSON.stringify({fixture:true})]
+  );
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',200) ON DUPLICATE KEY UPDATE quantity=200");
   const mineConfig={inputs:[],outputs:[{item_id:'iron-ore',qty:3}],byproducts:[{item_id:'mine-tailings',qty:1}],labor:2,heat:0,power:1,capacity:3,upgrade_level:1};
-  const makeTemplate=async (slug,name,category,configuration)=>industryRoute(admin,request('POST',{slug,name,category,configuration,rules:[]}),'/world-admin/industry/templates',staff);
-  const oreTemplate=await makeTemplate('ci-voidsent-mine','CI Voidsent Mine','mine',mineConfig);
-  assert.equal(oreTemplate.status,200,JSON.stringify(oreTemplate.body));
+  async function createTemplate(slug,name,category,configuration){
+   const result=await industryRoute(admin,request('POST',{slug,name,category,configuration,rules:[]}),'/world-admin/industry/templates',staff);
+   assert.equal(result.status,200,JSON.stringify(result.body));return result.body.template_id;
+  }
+  const oreTemplate=await createTemplate('ci-voidsent-mine','CI Voidsent Mine','mine',mineConfig);
   const rigConfig={inputs:[],outputs:[{item_id:'ceruleum-crude',qty:4}],byproducts:[],labor:2,heat:0,power:3,capacity:3,upgrade_level:1};
-  const rigTemplate=await makeTemplate('ci-ceruleum-rig','CI Ceruleum Rig','extraction',rigConfig);
-  assert.equal(rigTemplate.status,200,JSON.stringify(rigTemplate.body));
+  const rigTemplate=await createTemplate('ci-ceruleum-rig','CI Ceruleum Rig','extraction',rigConfig);
   const refiningConfig={inputs:[{item_id:'ceruleum-crude',qty:2}],outputs:[{item_id:'ceruleum-fuel',qty:1}],byproducts:[{item_id:'refinery-residue',qty:.5}],labor:3,heat:2,power:2,capacity:2,upgrade_level:1};
-  const refineryTemplate=await makeTemplate('ci-refinery','CI Ceruleum Refinery','refinery',refiningConfig);
-  assert.equal(refineryTemplate.status,200,JSON.stringify(refineryTemplate.body));
-  const invalidLoop=await makeTemplate('ci-loop','Circular test refinery','refinery',{...refiningConfig,inputs:[{item_id:'ceruleum-fuel',qty:1}],outputs:[{item_id:'ceruleum-crude',qty:1}],byproducts:[]});
-  assert.equal(invalidLoop.status,409,'circular industry input/output dependencies must be rejected');
-  const factorySettings={settlement_id:mineId,template_id:oreTemplate.body.template_id,name:'CI Reclaimed Voidsent Mine',status:'captured',level:1,capacity_pct:100,workforce:9,heat_available:0,power_available:20,cycle_mode:'manual',cycle_cadence:'normal',notes:'Liberation scenario'};
-  const mineFacility=await industryRoute(admin,request('POST',factorySettings),'/world-admin/industry/facilities',staff);
-  assert.equal(mineFacility.status,200,JSON.stringify(mineFacility.body));
-  const mineFacilityId=Number(mineFacility.body.id);
+  const refineryTemplate=await createTemplate('ci-refinery','CI Ceruleum Refinery','refinery',refiningConfig);
+  const invalidLoop=await industryRoute(admin,request('POST',{slug:'ci-loop',name:'Circular test refinery',category:'refinery',configuration:{...refiningConfig,inputs:[{item_id:'ceruleum-fuel',qty:1}],outputs:[{item_id:'ceruleum-crude',qty:1}],byproducts:[]},rules:[]}),'/world-admin/industry/templates',staff);
+  assert.equal(invalidLoop.status,409);
+  const facilityBody={settlement_id:mineId,template_id:oreTemplate,name:'CI Reclaimed Voidsent Mine',cycle_mode:'manual',cycle_cadence:'normal',notes:'Liberation scenario'};
+  const cheated=await industryRoute(admin,request('POST',{...facilityBody,workforce:99999999,power_available:999999,level:20,status:'operational'}),'/world-admin/industry/facilities',staff);
+  assert.equal(cheated.status,400,'staff cannot create pre-powered, pre-staffed industrial facilities');
+  const createdMine=await industryRoute(admin,request('POST',facilityBody),'/world-admin/industry/facilities',staff);
+  assert.equal(createdMine.status,200,JSON.stringify(createdMine.body));
+  const mineFacilityId=Number(createdMine.body.id);
+  const forbiddenEdit=await industryRoute(admin,request('PUT',{name:facilityBody.name,notes:'',cycle_mode:'manual',cycle_cadence:'normal',workforce:99999999}),'/world-admin/industry/facilities/'+mineFacilityId,staff);
+  assert.equal(forbiddenEdit.status,400,'staff cannot overwrite a computed workforce through PUT');
   const mineRunPath='/world-admin/industry/facilities/'+mineFacilityId+'/run';
-  const capturedRun=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
-  assert.equal(capturedRun.status,409,'captured mines do not produce');
-  const liberatedMine=await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+mineFacilityId+'/transition',staff);
-  assert.equal(liberatedMine.status,200,JSON.stringify(liberatedMine.body));
-  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',100) ON DUPLICATE KEY UPDATE quantity=100");
-  const projectSetup={facility_id:mineFacilityId,name:'CI Rebuild Voidsent Shaft',description:'Repair the captured mine',status:'active',result_status:'operational',labor_required:1,campaign_project_id:null,needs:[{item_id:'iron-ore',qty:2}]};
-  const mineProject=await industryRoute(admin,request('POST',projectSetup),'/world-admin/industry/projects',staff);
-  assert.equal(mineProject.status,200,JSON.stringify(mineProject.body));
-  const mineProjectId=Number(mineProject.body.id);
-  const firstCommit=await industryRoute(admin,request('POST',{item_id:'iron-ore',quantity:2,source:'shared'}),'/world-admin/industry/projects/'+mineProjectId+'/commit',staff);
-  assert.equal(firstCommit.status,200,JSON.stringify(firstCommit.body));
-  const duplicateCommit=await industryRoute(admin,request('POST',{item_id:'iron-ore',quantity:2,source:'shared'}),'/world-admin/industry/projects/'+mineProjectId+'/commit',staff);
-  assert.equal(duplicateCommit.status,409,'materials cannot be double-committed');
-  const [[sharedAfterCommit]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
-  assert.equal(Number(sharedAfterCommit.quantity),98,'committing materials deducts unreserved Order stock only');
-  const mineRepair=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+mineProjectId+'/advance',staff);
-  assert.equal(mineRepair.status,200,JSON.stringify(mineRepair.body));
-  assert.equal(mineRepair.body.completed,true);
+  assert.equal((await industryRoute(admin,request('POST',{}),mineRunPath,staff)).status,409,'ruined mine cannot produce');
+  assert.equal((await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+mineFacilityId+'/transition',staff)).status,200);
+  const noPower=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+mineFacilityId+'/preview',staff);
+  assert.equal(noPower.status,200);
+  assert.equal(noPower.body.preview.operations,0,'unbuilt power is not available just because staff entered an old number');
+  assert.equal(Number(noPower.body.facility.power_available),0);
+
+  // Building and utility projects each require real materials and multiple
+  // dated workforce cycles; daily ticks are idempotent.
+  let workDay=0;
+  async function completeProject(facilityId,name,utility_kind='none',cost=2){
+   const planned={facility_id:facilityId,name,description:'Construction requiring actual supplies',status:'active',result_status:'operational',utility_kind,labor_required:20,campaign_project_id:null,needs:[{item_id:'iron-ore',qty:cost}]};
+   const created=await industryRoute(admin,request('POST',planned),'/world-admin/industry/projects',staff);
+   assert.equal(created.status,200,JSON.stringify(created.body));
+   const projectId=created.body.id;
+   const commit=await industryRoute(admin,request('POST',{item_id:'iron-ore',quantity:cost,source:'shared'}),'/world-admin/industry/projects/'+projectId+'/commit',staff);
+   assert.equal(commit.status,200,JSON.stringify(commit.body));
+   let finished=false;
+   for(let tick=0;tick<50;tick++){
+    workDay++;
+    const date=new Date(Date.UTC(2026,11,1+workDay,6,0,0));
+    const result=await atomicIndustry(admin,db=>advanceIndustryProject(db,projectId,date,id));
+    assert.equal(result.status,200,JSON.stringify(result.body));
+    if(result.body.completed){finished=true;break}
+   }
+   assert.equal(finished,true,'project must progress from real workforce across separate cycles');
+   return projectId;
+  }
+  await completeProject(mineFacilityId,'CI Mine Generator','power');
+  await completeProject(mineFacilityId,'CI Rebuild Voidsent Shaft');
   const mineRun=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
   assert.equal(mineRun.status,200,JSON.stringify(mineRun.body));
   assert.equal(mineRun.body.preview.outputs['iron-ore'],9);
-  const minedAgain=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
-  assert.equal(minedAgain.status,409,'one production cycle per facility cadence key');
+  assert.equal((await industryRoute(admin,request('POST',{}),mineRunPath,staff)).status,409);
   const [[mineOre]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
   assert.equal(Number(mineOre.quantity),9);
-  // Publishing a recipe revision cannot rewrite a facility's pinned version.
-  const newOreVersion=await industryRoute(admin,request('POST',{configuration:{...mineConfig,outputs:[{item_id:'iron-ore',qty:5}]},rules:[]}),'/world-admin/industry/templates/'+oreTemplate.body.template_id+'/versions',staff);
-  assert.equal(newOreVersion.status,200,JSON.stringify(newOreVersion.body));
+  const oreRevision=await industryRoute(admin,request('POST',{configuration:{...mineConfig,outputs:[{item_id:'iron-ore',qty:5}]},rules:[]}),'/world-admin/industry/templates/'+oreTemplate+'/versions',staff);
+  assert.equal(oreRevision.status,200);
   const [[pinned]]=await admin.execute('SELECT template_version FROM world_industry_facilities WHERE id=?',[mineFacilityId]);
   assert.equal(Number(pinned.template_version),1);
-  // P3 acceptance: ceruleum rig liberated -> repaired -> crude -> refinery -> fuel relocated.
-  const rigFacility=await industryRoute(admin,request('POST',{...factorySettings,name:'CI Captured Ceruleum Rig',template_id:rigTemplate.body.template_id,status:'captured',power_available:18}),'/world-admin/industry/facilities',staff);
-  assert.equal(rigFacility.status,200,JSON.stringify(rigFacility.body));
-  const rigId=Number(rigFacility.body.id);
+
+  // Ceruleum extraction / refinery / fuel transfer all remain item-backed.
+  const rigCreated=await industryRoute(admin,request('POST',{...facilityBody,name:'CI Ceruleum Rig',template_id:rigTemplate}),'/world-admin/industry/facilities',staff);
+  assert.equal(rigCreated.status,200);
+  const rigId=rigCreated.body.id;
   assert.equal((await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+rigId+'/transition',staff)).status,200);
-  const buildRig=await industryRoute(admin,request('POST',{...projectSetup,facility_id:rigId,name:'CI Rebuild Drilling Plant',needs:[]}),'/world-admin/industry/projects',staff);
-  assert.equal(buildRig.status,200,JSON.stringify(buildRig.body));
-  assert.equal((await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+buildRig.body.id+'/advance',staff)).body.completed,true);
-  const crudeRun=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+rigId+'/run',staff);
-  assert.equal(crudeRun.status,200,JSON.stringify(crudeRun.body));
-  assert.equal(crudeRun.body.preview.outputs['ceruleum-crude'],12);
-  const refineryFacility=await industryRoute(admin,request('POST',{...factorySettings,name:'CI Rebuilt Refinery',template_id:refineryTemplate.body.template_id,status:'liberated',heat_available:20,power_available:18}),'/world-admin/industry/facilities',staff);
-  assert.equal(refineryFacility.status,200,JSON.stringify(refineryFacility.body));
-  const refineryId=Number(refineryFacility.body.id);
-  const refineryRepair=await industryRoute(admin,request('POST',{...projectSetup,facility_id:refineryId,name:'CI Refine Ceruleum',needs:[]}),'/world-admin/industry/projects',staff);
-  assert.equal(refineryRepair.status,200,JSON.stringify(refineryRepair.body));
-  assert.equal((await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+refineryRepair.body.id+'/advance',staff)).body.completed,true);
-  const beforeTransfer=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+refineryId+'/preview',staff);
-  assert.equal(beforeTransfer.body.preview.operations,0,'refinery must have input stock');
-  const movedCrude=await industryRoute(admin,request('POST',{item_id:'ceruleum-crude',quantity:6,target_facility_id:refineryId}),'/world-admin/industry/facilities/'+rigId+'/transfer',staff);
-  assert.equal(movedCrude.status,200,JSON.stringify(movedCrude.body));
-  const fuelRun=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+refineryId+'/run',staff);
-  assert.equal(fuelRun.status,200,JSON.stringify(fuelRun.body));
-  assert.equal(fuelRun.body.preview.outputs['ceruleum-fuel'],2);
-  const depot=await industryRoute(admin,request('POST',{...factorySettings,settlement_id:portId,name:'CI Ceruleum Depot',template_id:rigTemplate.body.template_id,status:'operational',workforce:0,cycle_mode:'off'}),'/world-admin/industry/facilities',staff);
-  assert.equal(depot.status,200,JSON.stringify(depot.body));
-  const fuelHandOff=await industryRoute(admin,request('POST',{item_id:'ceruleum-fuel',quantity:2,target_facility_id:depot.body.id}),'/world-admin/industry/facilities/'+refineryId+'/transfer',staff);
-  assert.equal(fuelHandOff.status,200,JSON.stringify(fuelHandOff.body));
-  const [[fuelDelivered]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel'",[depot.body.id]);
-  assert.equal(Number(fuelDelivered.quantity),2,'refined ceruleum fuel reaches destination facility without double spending');
-  const [[cycleCount]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_cycles WHERE facility_id IN (?,?,?)',[mineFacilityId,rigId,refineryId]);
-  assert.equal(Number(cycleCount.n),3,'exactly one atomic cycle recorded for each productive facility');
+  await completeProject(rigId,'CI Rig Power','power');
+  await completeProject(rigId,'CI Rig Rebuild');
+  const crude=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+rigId+'/run',staff);
+  assert.equal(crude.status,200,JSON.stringify(crude.body));
+  assert.equal(crude.body.preview.outputs['ceruleum-crude'],12);
+  const refineCreated=await industryRoute(admin,request('POST',{...facilityBody,name:'CI Refinery',template_id:refineryTemplate}),'/world-admin/industry/facilities',staff);
+  assert.equal(refineCreated.status,200);
+  const refineryId=refineCreated.body.id;
+  assert.equal((await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+refineryId+'/transition',staff)).status,200);
+  await completeProject(refineryId,'CI Refinery Generator','power');
+  await completeProject(refineryId,'CI Refinery Heater','heat');
+  await completeProject(refineryId,'CI Refinery Rebuild');
+  const beforeFeed=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+refineryId+'/preview',staff);
+  assert.equal(beforeFeed.body.preview.operations,0);
+  const delivered=await industryRoute(admin,request('POST',{item_id:'ceruleum-crude',quantity:6,target_facility_id:refineryId}),'/world-admin/industry/facilities/'+rigId+'/transfer',staff);
+  assert.equal(delivered.status,200,JSON.stringify(delivered.body));
+  const refined=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+refineryId+'/run',staff);
+  assert.equal(refined.status,200,JSON.stringify(refined.body));
+  assert.equal(refined.body.preview.outputs['ceruleum-fuel'],2);
+
+  // A farm is a real industrial location WITHOUT a civilian settlement record.
+  const grain=await industryRoute(admin,request('POST',{id:'ci-farm-grain',name:'CI Grain',category:'raw',workshop_material_id:null,description:'Farm output'}),'/world-admin/industry/items',staff);
+  assert.equal(grain.status,200);
+  const farmTemplate=await createTemplate('ci-farmstead','CI Farmstead','agriculture',{inputs:[],outputs:[{item_id:'ci-farm-grain',qty:2}],byproducts:[],labor:2,heat:0,power:0,capacity:2,upgrade_level:1});
+  const farm=await industryRoute(admin,request('POST',{name:'CI Farm Fields',site_type:'farm',region_id:home.region_id,zone_id:home.zone_id,controlling_faction_id:home.controlling_faction_id,map_x:20,map_y:30,description:'Outside the village'}),'/world-admin/industry/locations',staff);
+  assert.equal(farm.status,200,JSON.stringify(farm.body));
+  const farmCreated=await industryRoute(admin,request('POST',{location_id:farm.body.id,template_id:farmTemplate,name:'CI Farm Harvest',cycle_mode:'manual',cycle_cadence:'normal',notes:''}),'/world-admin/industry/facilities',staff);
+  assert.equal(farmCreated.status,200,JSON.stringify(farmCreated.body));
+  const farmId=farmCreated.body.id;
+  assert.equal((await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+farmId+'/transition',staff)).status,200);
+  await completeProject(farmId,'CI Farm Commissioning');
+  const farmHarvest=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+farmId+'/run',staff);
+  assert.equal(farmHarvest.status,200,JSON.stringify(farmHarvest.body));
+  assert.ok(farmHarvest.body.preview.outputs['ci-farm-grain']>0,'independent farm produces using the real zone workforce');
+  const [[farmHost]]=await admin.execute('SELECT settlement_id,location_id FROM world_industry_facilities WHERE id=?',[farmId]);
+  assert.equal(farmHost.settlement_id,null);
+  assert.equal(Number(farmHost.location_id),Number(farm.body.id));
+
   const allIndustry=await industryRoute(admin,request('GET'),'/world-admin/industry',staff);
   assert.equal(allIndustry.status,200);
-  assert.ok(allIndustry.body.facilities.some(f=>f.id===mineFacilityId));
-  const pinnedOverview=allIndustry.body.facilities.find(f=>f.id===mineFacilityId);
-  assert.equal(Number(pinnedOverview.template_version),1);
-  assert.equal(pinnedOverview.template_configuration.outputs[0].qty,3,'the UI summary must retain old published recipe versions');
-  const [[beforeTakeoverStock]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
+  assert.ok(allIndustry.body.locations.some(l=>Number(l.id)===Number(farm.body.id)));
+  const summaryMine=allIndustry.body.facilities.find(f=>Number(f.id)===Number(mineFacilityId));
+  assert.equal(Number(summaryMine.workforce_needed),2);
+  assert.equal(Number(summaryMine.power_needed),1);
+  assert.equal(Number(summaryMine.power_available),10);
+  assert.equal(summaryMine.template_configuration.outputs[0].qty,3);
+  // A captured settlement cannot keep producing for its former controller.
+  const [[mineBeforeTakeover]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
   await admin.execute("UPDATE world_settlements SET controlling_faction_id='house-kurogane' WHERE id=?",[mineId]);
-  const productionAfterCapture=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
-  assert.equal(productionAfterCapture.status,409);
-  assert.equal(productionAfterCapture.body.error,'facility_ownership_changed','capturing territory suspends the old operator automatically');
-  const noSilentLiberation=await industryRoute(admin,request('POST',{status:'damaged'}),'/world-admin/industry/facilities/'+mineFacilityId+'/transition',staff);
-  assert.equal(noSilentLiberation.status,409);
-  const acknowledged=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+mineFacilityId+'/reconcile',staff);
-  assert.equal(acknowledged.status,200);
-  const [[afterTakeover]]=await admin.execute('SELECT status,cycle_mode,owner_faction_id FROM world_industry_facilities WHERE id=?',[mineFacilityId]);
-  assert.equal(afterTakeover.status,'captured');
-  assert.equal(afterTakeover.cycle_mode,'off');
-  assert.equal(afterTakeover.owner_faction_id,'house-kurogane');
-  const [[afterTakeoverStock]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
-  assert.equal(Number(afterTakeoverStock.quantity),Number(beforeTakeoverStock.quantity),'takeover does not erase goods');
-  await admin.query(await readFile(new URL('../sql/054_world_industry_projects.sql',import.meta.url),'utf8'));
-  const [[afterRepeat]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_cycles WHERE facility_id IN (?,?,?)',[mineFacilityId,rigId,refineryId]);
-  assert.equal(Number(afterRepeat.n),3,'re-running the P3 migration retains cycle history');
+  const captured=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
+  assert.equal(captured.status,409);
+  assert.equal(captured.body.error,'facility_ownership_changed');
+  const reviewed=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+mineFacilityId+'/reconcile',staff);
+  assert.equal(reviewed.status,200);
+  const [[mineAfterTakeover]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
+  assert.equal(Number(mineBeforeTakeover.quantity),Number(mineAfterTakeover.quantity));
+  await admin.query(await readFile(new URL('../sql/055_independent_industry_sites.sql',import.meta.url),'utf8'));
+  const [[stillFarm]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_locations WHERE id=?',[farm.body.id]);
+  assert.equal(Number(stillFarm.n),1,'repeatable migration preserves productive farm location');
 
 
  }finally{await admin.end();}
