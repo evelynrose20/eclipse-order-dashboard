@@ -1,8 +1,8 @@
 // Industry DSL: data-only predicates and safe actions, no scripting/eval.
 const integer=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;
 const qty=(n,max=1e6)=>typeof n==='number'&&Number.isFinite(n)&&n>0&&n<=max&&Math.round(n*1000)===n*1000;
-const fields=new Set(['level','workforce','heat_available','power_available','capacity_pct','population','stability','security','status']);
-const numericFields=new Set(['level','workforce','heat_available','power_available','capacity_pct','population','stability','security']);
+const fields=new Set(['level','workforce','heat_available','power_available','capacity_pct','population','stability','security','temperature_f','status','weather']);
+const numericFields=new Set(['level','workforce','heat_available','power_available','capacity_pct','population','stability','security','temperature_f']);
 export const validItemId=x=>typeof x==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(x)&&x.length<=48;
 function validMaterials(values,allowEmpty=false){
  return Array.isArray(values)&&(allowEmpty||values.length>0)&&values.length<=20&&values.every(row=>row&&validItemId(row.item_id)&&qty(row.qty))&&new Set(values.map(x=>x.item_id)).size===values.length;
@@ -28,6 +28,7 @@ export function validateIndustryRules(rules){
    if(!pred||!fields.has(pred.field)||!['eq','neq','gte','lte'].includes(pred.op))return 'invalid_predicate';
    if(numericFields.has(pred.field)?typeof pred.value!=='number'||!Number.isFinite(pred.value):typeof pred.value!=='string'||pred.value.length>40)return 'invalid_predicate_value';
    if(pred.field==='status'&&!['captured','liberated','ruined','rebuilding','operational','damaged','paused'].includes(pred.value))return 'invalid_status_predicate';
+   if(pred.field==='weather'&&(!['clear','cloudy','overcast','rain','snow','blizzard'].includes(pred.value)||!['eq','neq'].includes(pred.op)))return 'invalid_weather_predicate';
    if(pred.field==='status'&&!['eq','neq'].includes(pred.op))return 'invalid_status_operator';
   }
  }
@@ -84,7 +85,10 @@ export function industryProductionPreview(facility,config,rules,stock={},context
  const ctx={...context,level:Number(facility.level),workforce:availableWorkforce,heat_available:availableHeat,power_available:availablePower,capacity_pct:Number(facility.capacity_pct),status:facility.status};
  const decision=evaluateIndustryRules(rules,ctx);
  if(!decision.allowed)fails.push('rule_blocked');
- const operations=fails.length||decision.multiplier===0?0:Math.min(1000,Math.floor(Math.max(0,Math.min(...limits))));
+ // Outdoor operations slow during severe regional weather; all facilities remain subject to custom weather rules.
+ const outdoor=['agriculture','mine','extraction'].includes(context.industry_category);
+ const weatherPenalty=outdoor?context.weather==='blizzard'?.25:context.weather==='snow'?.7:context.weather==='rain'?.85:1:1;
+ const operations=fails.length||decision.multiplier===0?0:Math.min(1000,Math.floor(Math.max(0,Math.min(...limits)*weatherPenalty)));
  const scale=(arr,multiplier=1)=>Object.fromEntries(arr.map(x=>[x.item_id,Math.round(x.qty*operations*multiplier*1000)/1000]));
- return {operations,throughput_multiplier:decision.multiplier,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs,decision.multiplier),byproducts:scale(config.byproducts||[],decision.multiplier),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
+ return {operations,throughput_multiplier:decision.multiplier,weather_multiplier:weatherPenalty,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs,decision.multiplier),byproducts:scale(config.byproducts||[],decision.multiplier),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
 }
