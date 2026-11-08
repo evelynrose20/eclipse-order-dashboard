@@ -27,6 +27,13 @@ async function railSegmentUsed(db,segmentId){
  }
  return false;
 }
+async function railEditCompatible(db,id,b){
+ const [[old]]=await db.execute('SELECT from_node_id,to_node_id,route_type,waypoints FROM world_route_segments WHERE id=?',[id]);
+ if(!old||Number(old.from_node_id)!==Number(b.from_node_id)||Number(old.to_node_id)!==Number(b.to_node_id)||old.route_type!==b.route_type)return false;
+ const [crossings]=await db.execute('SELECT id FROM world_rail_crossings WHERE rail_segment_id=? OR road_segment_id=? LIMIT 1',[id,id]);
+ const saved=typeof old.waypoints==='string'?JSON.parse(old.waypoints):old.waypoints;
+ return !crossings.length||JSON.stringify(saved)===JSON.stringify(b.waypoints);
+}
 async function nodesIn(db,region,zone,ids){const [a]=await db.execute('SELECT id,region_id,zone_id,settlement_id,map_x,map_y,node_kind FROM world_route_nodes WHERE region_id=? AND zone_id=? AND id IN (?,?)',[region,zone,...ids]);return a.length===2?a:null}
 async function settlementNode(db,region,settlement,actor){
  const [sites]=await db.execute('SELECT id,zone_id,map_x,map_y FROM world_settlements WHERE id=? AND region_id=?',[settlement,region]);
@@ -175,7 +182,7 @@ export async function handleTransportGraph(pool,req,path,actor){
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);if(!zoneId)return fail(400,'zone_not_in_region');
    if(!await nodesIn(db,b.region_id,zoneId,[b.from_node_id,b.to_node_id]))return fail(400,'nodes_must_share_zone');
    if(id){
-    if(await railSegmentUsed(db,id))return fail(409,'route_has_rail_infrastructure');
+    if(await railSegmentUsed(db,id)&&!await railEditCompatible(db,id,b))return fail(409,'route_has_rail_infrastructure');
     const [r]=await db.execute('UPDATE world_route_segments SET from_node_id=?,to_node_id=?,route_type=?,route_name=?,waypoints=? WHERE id=? AND region_id=? AND zone_id=?',[b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),id,b.region_id,zoneId]);
     if(!r.affectedRows)return fail(404,'segment_not_found');
     await audit(db,actor,'network_segment_edit',id);return ok({saved:true});
