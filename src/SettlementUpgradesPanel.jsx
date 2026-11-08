@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import './world-industry.css';
 const kinds=[
  ['housing','Housing','Adds residential capacity'],
  ['defense','Defenses','Walls, watchtowers and fortifications'],
@@ -14,8 +15,8 @@ const blank={name:'',category:'housing',status:'planned',condition_pct:100,level
 const fmt=n=>Number(n||0).toLocaleString();
 const title=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
 export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[],openChooser=false}){
- const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- useEffect(()=>{if(openChooser)setAddMenu(true)},[openChooser]);
+ const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[step,setStep]=useState('choose'),[chosen,setChosen]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ useEffect(()=>{if(openChooser){setAddMenu(true);setStep('choose');setChosen('');setDraft(null)}},[openChooser]);
  const root='/world-admin/settlements/'+settlement.id+'/upgrades';
  const load=async()=>{const r=await request(root);setData(r)};
  useEffect(()=>{setData(null);setDraft(null);load().catch(e=>setError(e.message||'Unable to load upgrades'))},[settlement.id]);
@@ -33,12 +34,18 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
   {key:'education',title:'Education',subtitle:'Schools and places for young residents',icon:'fa-graduation-cap',categories:['school'],add:'Add school'},
   {key:'services',title:'Civic infrastructure',subtitle:'Clinics, waterworks, granaries and public works',icon:'fa-city',categories:['clinic','water','food_storage','insulation','public_works'],add:'Add civic structure'}
  ];
- const beginCategory=(category)=>setDraft({...blank,category,name:kinds.find(x=>x[0]===category)?.[1]||'',housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense','school'].includes(category)?10:0});
+ const beginCategory=category=>setDraft({...blank,category,name:kinds.find(x=>x[0]===category)?.[1]||'',housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense','school'].includes(category)?10:0});
+ const launch=()=>{setAddMenu(true);setStep('choose');setChosen('');setDraft(null)};
+ const close=()=>{setAddMenu(false);setDraft(null);setStep('choose');setChosen('')};
+ const editRecord=record=>{setDraft({...record});setChosen(record.category);setStep('details');setAddMenu(true)};
+ const selectKind=category=>{setChosen(category);beginCategory(category)};
+ const categoryIcon={housing:'fa-house',defense:'fa-shield-halved',clinic:'fa-kit-medical',water:'fa-droplet',food_storage:'fa-warehouse',insulation:'fa-snowflake',public_works:'fa-city',school:'fa-graduation-cap'};
+ const chosenLabel=kinds.find(x=>x[0]===chosen)?.[1]||'Structure';
  const renderStructure=(u)=><article className="wa-upgrade-card" key={u.id}>
    <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
    <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
    <div className="wa-upgrade-details"><span>Level {u.level}</span><span>Condition {u.condition_pct}%</span>{u.housing_bonus>0&&<span>+{fmt(u.housing_bonus)} places</span>}{u.service_bonus>0&&<span>+{u.service_bonus} services</span>}{u.defense_bonus>0&&<span>+{u.defense_bonus} defense</span>}{u.status==='building'&&<span>{Number(u.construction_progress||0)}% constructed</span>}</div>
-   <footer><button type="button" onClick={()=>setDraft({...u})}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete '+u.name+'? Existing residents must remain housed.'))save('DELETE','/'+u.id,null,'Structure removed.')}}>Remove</button></footer>
+   <footer><button type="button" onClick={()=>editRecord(u)}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete '+u.name+'? Existing residents must remain housed.'))save('DELETE','/'+u.id,null,'Structure removed.')}}>Remove</button></footer>
   </article>;
  return <div className="wa-upgrades">
   <div className="wa-upgrades-header"><div><h3>Settlement infrastructure</h3><p>Housing, defenses and essential services are managed separately.</p></div></div>
@@ -48,35 +55,58 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
     <div><small>Additional protection</small><strong>+{data.effects.defense_bonus}</strong><span>Operational defenses</span></div>
     <div><small>Additional services</small><strong>+{data.effects.service_bonus}</strong><span>Operational infrastructure</span></div>
   </div>
-  <div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-plus" aria-hidden="true"/><div><h4>Build infrastructure</h4><p>Choose a structure to plan for this settlement.</p></div></div><button type="button" aria-expanded={addMenu} onClick={()=>setAddMenu(v=>!v)}>+ Add structure</button></div>
-  {addMenu&&<div className="wa-upgrade-grid" role="group" aria-label="Choose structure type">{kinds.map(([key,name,description])=><button type="button" className="wa-upgrade-card" key={key} onClick={()=>{beginCategory(key);setAddMenu(false)}}><strong>{name}</strong><p>{description}</p></button>)}</div>}
+  <div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-plus" aria-hidden="true"/><div><h4>Build infrastructure</h4><p>Plan new buildings and services for this settlement.</p></div></div><button type="button" onClick={launch}>+ Add structure</button></div>
   {sections.map(section=>{
    const records=data.upgrades.filter(u=>section.categories.includes(u.category));
    return <section className="wa-upgrade-section" key={section.key} aria-label={section.title}>
     <div className="wa-upgrade-section-heading">
      <div className="wa-upgrade-section-title"><i className={'fa-solid '+section.icon} aria-hidden="true"/><div><h4>{section.title}</h4><p>{section.subtitle}</p></div><span className="wa-upgrade-section-count">{records.length}</span></div>
-     <button type="button" onClick={()=>{setAddMenu(true)}}>+ Add</button>
+     <button type="button" onClick={launch}>+ Add</button>
     </div>
     {records.length?<div className="wa-upgrade-grid">{records.map(renderStructure)}</div>:<div className="wa-upgrade-section-empty">No {section.key==='housing'?'residential buildings':section.key==='defense'?'defensive structures':'civic facilities'} recorded yet.</div>}
    </section>;
   })}
-  {draft&&<div className="wa-upgrade-edit" role="region" aria-label="Structure editor">
-   <div className="wa-upgrades-header"><h3>{draft.id?'Manage':'Add'} structure</h3><button type="button" onClick={()=>setDraft(null)}>Close</button></div>
-   <form onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.')}} className="wa-fields">
-    <label>Name<input required maxLength="120" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
-    <label>Category<select value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value,housing_bonus:e.target.value==='housing'?10:0,defense_bonus:e.target.value==='defense'?10:0,service_bonus:['clinic','water','food_storage','insulation','public_works','school'].includes(e.target.value)?10:0})}>{kinds.map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
-    <label>State<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})}>{states.map(x=><option key={x} value={x}>{title(x)}</option>)}</select></label>
-    <label>Level<input type="number" required min="1" max="20" step="1" value={draft.level} onChange={e=>setDraft({...draft,level:e.target.value})}/></label>
-    <label>Condition %<input type="number" required min="0" max="100" step="1" value={draft.condition_pct} onChange={e=>setDraft({...draft,condition_pct:e.target.value})}/></label>
-    {draft.category==='housing'&&<label>Housing places<input type="number" required min="0" max="10000000" step="1" value={draft.housing_bonus} onChange={e=>setDraft({...draft,housing_bonus:e.target.value})}/></label>}
-    {draft.category==='defense'&&<label>Defense improvement<input type="number" required min="0" max="100" step="1" value={draft.defense_bonus} onChange={e=>setDraft({...draft,defense_bonus:e.target.value})}/></label>}
-    {['clinic','water','food_storage','insulation','public_works'].includes(draft.category)&&<label>Service improvement<input type="number" required min="0" max="100" step="1" value={draft.service_bonus} onChange={e=>setDraft({...draft,service_bonus:e.target.value})}/></label>}
-    {['planned','building'].includes(draft.status)&&<><label>Construction material<select value={draft.material_id||''} disabled={Boolean(draft.materials_paid)} onChange={e=>setDraft({...draft,material_id:e.target.value})}><option value="">None required (staff override)</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name} · {fmt(m.quantity)} in shared stock</option>)}</select></label><label>Material units<input type="number" required min="0" max="1000000" step="1" disabled={Boolean(draft.materials_paid)} value={draft.material_cost||0} onChange={e=>setDraft({...draft,material_cost:e.target.value})}/></label></>}
-    {draft.status==='building'&&<p className="wide wa-hint">Construction progress: {Number(draft.construction_progress||0)}%. {draft.materials_paid?'Materials already allocated.':'Materials will be deducted once from unreserved shared workshop stock at the first automatic construction step.'} Workers advance this structure each active automatic Order cycle.</p>}
-    <label className="wide">Notes<input maxLength="500" value={draft.notes||''} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label>
-    <div className="wide wa-upgrade-actions"><button type="button" onClick={()=>setDraft(null)}>Cancel</button><button className="wa-accent" type="submit" disabled={busy}>{busy?'Saving…':'Save structure'}</button></div>
-   </form>
-   <p className="wa-hint">Planned/building/destroyed structures provide no bonuses. Damaged structures provide reduced effects. Housing cannot be removed or downgraded below the current resident count.</p>
+  {addMenu&&<div className="wa-industry-overlay" role="presentation">
+   <section className="wa-industry-attach wa-civic-attach" role="dialog" aria-modal="true" aria-label="Plan settlement infrastructure">
+    <header className="wa-industry-attach-head"><div><span className="wa-kicker">CIVILIAN WELFARE / INFRASTRUCTURE</span><h3>{draft?.id?'Manage structure':'Build infrastructure'}</h3><p>{settlement.name} · Choose a structure and configure its construction.</p></div><button type="button" className="wa-industry-close" aria-label="Close structure setup" onClick={close}>×</button></header>
+    <div className="wa-industry-steps">
+     <button type="button" className={step==='choose'?'active':''} onClick={()=>setStep('choose')}><span>01</span> Structure type</button>
+     <button type="button" className={step==='details'?'active':''} disabled={!chosen} onClick={()=>setStep('details')}><span>02</span> Construction setup</button>
+    </div>
+    {error&&<p role="alert" className="wa-error wa-civic-modal-error">{error}</p>}
+    {step==='choose'?<>
+     <div className="wa-industry-choice-heading"><strong>Choose a building or service</strong><span>{kinds.length} types · {settlement.name}</span></div>
+     <div className="wa-industry-location-grid wa-civic-type-grid" role="group" aria-label="Structure types">
+      {kinds.map(([key,name,description])=><button type="button" className={'wa-industry-location-card '+(chosen===key?'selected':'')} aria-pressed={chosen===key} key={key} onClick={()=>selectKind(key)}>
+       <div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className={'fa-solid '+categoryIcon[key]} aria-hidden="true"/></span>{chosen===key&&<span className="wa-industry-location-status is-secure">SELECTED</span>}</div>
+       <strong>{name}</strong><span className="wa-industry-location-meta">{description}</span><small>{data.upgrades.filter(u=>u.category===key).length} existing in this settlement</small>
+      </button>)}
+     </div>
+     <footer className="wa-industry-attach-foot"><span>{chosen?chosenLabel+' selected':'Select a structure type to continue.'}</span><button type="button" className="wa-industry-primary" disabled={!chosen} onClick={()=>setStep('details')}>Continue to construction <i className="fa-solid fa-chevron-right" aria-hidden="true"/></button></footer>
+    </>:draft&&<>
+     <form id="wa-civic-build-form" className="wa-civic-build-form" onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.').then(()=>{if(!error)close()})}}>
+      <div className="wa-industry-production-layout">
+       <div className="wa-industry-production-main">
+        <div className="wa-industry-picked-location"><span className="wa-kicker">SELECTED STRUCTURE</span><strong><i className={'fa-solid '+categoryIcon[draft.category]} aria-hidden="true"/> {chosenLabel}</strong><small>{settlement.name} · Civilian infrastructure</small>{!draft.id&&<button type="button" onClick={()=>setStep('choose')}>Change structure type</button>}</div>
+        <div className="wa-civic-build-fields">
+         <label>Name<input required maxLength="120" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
+         <label>Category<select value={draft.category} disabled={!draft.id} onChange={e=>setDraft({...draft,category:e.target.value,housing_bonus:e.target.value==='housing'?10:0,defense_bonus:e.target.value==='defense'?10:0,service_bonus:['clinic','water','food_storage','insulation','public_works','school'].includes(e.target.value)?10:0})}>{kinds.map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
+         <label>State<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})}>{states.map(x=><option key={x} value={x}>{title(x)}</option>)}</select></label>
+         <label>Level<input type="number" required min="1" max="20" step="1" value={draft.level} onChange={e=>setDraft({...draft,level:e.target.value})}/></label>
+         <label>Condition %<input type="number" required min="0" max="100" step="1" value={draft.condition_pct} onChange={e=>setDraft({...draft,condition_pct:e.target.value})}/></label>
+         {draft.category==='housing'&&<label>Housing places<input type="number" required min="0" max="10000000" step="1" value={draft.housing_bonus} onChange={e=>setDraft({...draft,housing_bonus:e.target.value})}/></label>}
+         {draft.category==='defense'&&<label>Defense improvement<input type="number" required min="0" max="100" step="1" value={draft.defense_bonus} onChange={e=>setDraft({...draft,defense_bonus:e.target.value})}/></label>}
+         {['clinic','water','food_storage','insulation','public_works'].includes(draft.category)&&<label>Service improvement<input type="number" required min="0" max="100" step="1" value={draft.service_bonus} onChange={e=>setDraft({...draft,service_bonus:e.target.value})}/></label>}
+         {['planned','building'].includes(draft.status)&&<><label>Construction material<select value={draft.material_id||''} disabled={Boolean(draft.materials_paid)} onChange={e=>setDraft({...draft,material_id:e.target.value})}><option value="">None required</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name} · {fmt(m.quantity)} available</option>)}</select></label><label>Material units<input type="number" required min="0" max="1000000" step="1" disabled={Boolean(draft.materials_paid)} value={draft.material_cost||0} onChange={e=>setDraft({...draft,material_cost:e.target.value})}/></label></>}
+         <label className="wide">Notes<input maxLength="500" value={draft.notes} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label>
+        </div>
+       </div>
+       <aside className="wa-industry-configuration"><h4>Construction details</h4><p>Current residents: {fmt(population)}</p><p>Housing capacity: {fmt(cap)}</p><p>Planned and building structures do not provide finished benefits.</p><p>Damaged buildings provide reduced effects. Housing cannot be downgraded below existing residents.</p>{draft.status==='building'&&<p>Construction progress: {Number(draft.construction_progress||0)}%. Building progresses using available workers and committed materials during settlement cycles.</p>}</aside>
+      </div>
+      <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>draft.id?close():setStep('choose')}>{draft.id?'Cancel':'Back to structures'}</button><button type="submit" className="wa-industry-primary" disabled={busy}>{busy?'Saving…':draft.id?'Save changes':'Create structure'}</button></footer>
+     </form>
+    </>}
+   </section>
   </div>}
  </div>;
 }
