@@ -32,7 +32,9 @@ export async function getIndustryPreview(db,id,lock=false){
  const config=typeof version.configuration==='string'?JSON.parse(version.configuration):version.configuration;
  const rules=typeof version.rules==='string'?JSON.parse(version.rules):version.rules;
  const stock=await stockSnapshot(db,id,lock);
- return {facility,config,rules,stock,preview:industryProductionPreview(facility,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security)})};
+ const preview=industryProductionPreview(facility,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security)});
+ if((facility.owner_faction_id||null)!==(facility.controlling_faction_id||null))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['facility_ownership_changed'],inputs:{},outputs:{},byproducts:{}}};
+ return {facility,config,rules,stock,preview};
 }
 export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry=false){
  const data=await getIndustryPreview(db,id,!dry);
