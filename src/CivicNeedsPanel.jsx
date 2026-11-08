@@ -8,6 +8,7 @@ const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grai
 export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [tab,setTab]=useState('overview');
+ const [addMenu,setAddMenu]=useState(false);
  const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults);
  const [event,setEvent]=useState({kind:'petition',title:'',detail:''}),[cycleDate,setCycleDate]=useState(today()),[proposed,setProposed]=useState(null);
  const [profile,setProfile]=useState(null);
@@ -30,6 +31,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   <div className="wa-panel-title"><strong>{settlement.name} · Civilian welfare</strong><span>{empty?'Uninhabited':profile.paused?'Paused':profile.enabled_mode==='off'?'Simulation off':profile.enabled_mode}</span></div>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   <div className="wa-civic-tabs" role="tablist" aria-label="Civilian welfare sections">{groups.map(([key,label,icon])=><button role="tab" aria-selected={tab===key} key={key} className={tab===key?'active':''} onClick={()=>setTab(key)}><i className={'fa-solid '+icon} aria-hidden="true"/> {label}</button>)}</div>
+  {canEdit&&<div className="wa-civic-add-menu"><button type="button" className="wa-accent" aria-expanded={addMenu} onClick={()=>setAddMenu(open=>!open)}><i className="fa-solid fa-plus" aria-hidden="true"/> Add to settlement</button>{addMenu&&<div className="wa-upgrade-grid" role="group" aria-label="Choose civilian welfare action">{[['upgrades','Construct buildings','Housing, schools, clinics and civic infrastructure','fa-building'],['upgrades','Add heating','Heating and cold-weather infrastructure','fa-fire-flame-simple'],['supplies','Deliver provisions','Transfer civilian food, fuel, water or medicine','fa-truck'],['aid','Plan relief','Set up a recurring delivery service','fa-truck-medical'],['events','Propose civic event','Petitions, relief requests and weather emergencies','fa-scroll']].map(([section,label,help,icon],i)=><button key={i} type="button" className="wa-upgrade-card" onClick={()=>{setTab(section);setAddMenu(false)}}><strong><i className={'fa-solid '+icon} aria-hidden="true"/> {label}</strong><p>{help}</p></button>)}</div>}</div>}
   <div className="wa-civic-summary">
     <div><span>Residents</span><strong>{format(settlement.population)}</strong></div>
     <div><span>Housing</span><strong>{format(settlement.civic_summary?.housing_capacity??settlement.housing_capacity??0)}</strong></div>
@@ -99,6 +101,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     <div><span>Vacant homes</span><strong>{format(data.population_simulation?.vacancies??0)}</strong></div>
     <div><span>Potential arrivals next cycle</span><strong>{format(data.population_simulation?.arrivals??0)}</strong></div>
    </div>
+   <h3>Worker health & medical care</h3><div className="wa-civic-values"><div><span>Workers ill</span><strong>{format(data.worker_health?.sick_workers||0)}</strong></div><div><span>Workers injured</span><strong>{format(data.worker_health?.injured_workers||0)}</strong></div><div><span>Available workers</span><strong>{format(Math.max(0,Number(settlement.workforce)-Number(data.worker_health?.sick_workers||0)-Number(data.worker_health?.injured_workers||0)))}</strong></div></div><p className="wa-hint">Illness and workplace injuries are calculated by the simulation. Clinics, qualified medical staff and civilian medicine supplies help workers recover during settlement cycles. Injured and sick workers cannot work in industry while recovering.</p>
    <h3>Simulated population groups</h3>
    <div className="wa-civic-values">{data.cohorts.map(c=><div key={c.key}><span>{c.label}</span><strong>{format(c.residents)} residents</strong></div>)}</div>
    <p className="wa-hint">{Number(data.population_simulation?.housing_capacity||0)<=Number(settlement.population)?'Population cannot grow until more housing is operational.':'Arrivals are projected from available housing and civic conditions and only apply when a managed civilian cycle is committed.'} No background population changes run automatically.</p>
