@@ -1,4 +1,5 @@
 import {climateForRegions} from './world-region-climate.js';
+import {handleCivicExtras} from './world-civic-extras.js';
 // Staff-controlled civilian ledger. Never touches player/front inventory.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -63,6 +64,8 @@ async function context(db,id,lock=false,cycleDate=null){
 }
 export async function handleCivicNeeds(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
+ const extras=await handleCivicExtras(pool,req,path,actor);
+ if(extras)return extras;
  const match=/^\/world-admin\/civic\/(\d+)(?:\/(profile|stock|transfer|cohorts|preview|run|incidents))?(?:\/(\d+)\/review)?$/.exec(path);
  if(!match)return fail(404,'not_found');
  const id=Number(match[1]),section=match[2]||'overview',reviewId=match[3]?Number(match[3]):null;
@@ -72,8 +75,10 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const [shared_materials]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
   const [cohorts]=await pool.execute('SELECT * FROM world_civic_cohorts WHERE settlement_id=? ORDER BY id',[id]);
   const [incidents]=await pool.execute('SELECT * FROM world_civic_incidents WHERE settlement_id=? ORDER BY id DESC LIMIT 50',[id]);
+  const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
+  const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,cohorts,incidents,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles)});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles)});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
