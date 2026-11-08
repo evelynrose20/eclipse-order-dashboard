@@ -1,3 +1,5 @@
+import {civicInfrastructureEffects,civilianStorageCapacity} from './world-civic-building-templates.js';
+import {getCivicTemplates,beginCivicTemplateProject} from './world-civic-template-projects.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const categories=['housing','defense','clinic','water','food_storage','insulation','public_works','school'];
 const statuses=['planned','building','operational','damaged','destroyed'];
@@ -17,13 +19,41 @@ export function upgradeEffects(upgrades=[]){
   byCategory[u.category]=(byCategory[u.category]||0)+1;
   serviceByCategory[u.category]=(serviceByCategory[u.category]||0)+Math.floor(Number(u.service_bonus)*factor);
  }
- return {housing_bonus:housing,service_bonus:Math.min(100,service),defense_bonus:Math.min(100,defense),by_category:byCategory,service_by_category:serviceByCategory};
+ const infrastructure=civicInfrastructureEffects(upgrades);
+ return {housing_bonus:housing+infrastructure.housing_capacity,service_bonus:Math.min(100,service),defense_bonus:Math.min(100,defense+infrastructure.defense),by_category:byCategory,service_by_category:serviceByCategory,infrastructure};
 }
 export function housingCapacity(settlement,upgrades=[]){return Number(settlement.housing_capacity||0)+upgradeEffects(upgrades).housing_bonus}
 export async function getSettlementUpgradeRecords(db,id,lock=false){
  const [rows]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=? ORDER BY id'+(lock?' FOR UPDATE':''),[id]);return rows;
 }
 export async function handleSettlementUpgrades(pool,req,path,actor){
+ const createMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/from-template$/.exec(path);
+ const improveMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/(\d+)\/improve$/.exec(path);
+ if((createMatch||improveMatch)&&req.method==='POST'){
+  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
+  const id=Number((createMatch||improveMatch)[1]),upgradeId=improveMatch?Number(improveMatch[2]):null;
+  const b=await read(req);
+  if(createMatch&&(typeof b?.template_id!=='string'||b.template_id.length>48))return fail(400,'invalid_template');
+  return transact(pool,async db=>{
+   const [[site]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[id]);
+   if(!site)return fail(404,'settlement_not_found');
+   if(site.controlling_faction_id&&site.controlling_faction_id!=='eclipse-order')return fail(409,'npc_settlement_builds_automatically');
+   let upgrade=null;
+   if(upgradeId){
+    const [[record]]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE id=? AND settlement_id=? FOR UPDATE',[upgradeId,id]);
+    if(!record)return fail(404,'upgrade_not_found');
+    if(!record.template_id||record.status!=='operational')return fail(409,'building_not_ready_for_upgrade');
+    upgrade=record;
+   }
+   const templateId=upgrade?.template_id||b.template_id;
+   const [[template]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=? FOR UPDATE',[templateId]);
+   if(!template)return fail(404,'template_not_found');
+   const project=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'order',actorId:actor.id});
+   if(project.status!==200)return project;
+   await audit(db,actor.id,upgrade?'building_improve':'building_start',id,templateId);
+   return project;
+  });
+ }
  const m=/^\/world-admin\/settlements\/(\d+)\/upgrades(?:\/(\d+))?$/.exec(path);
  if(!m)return null;
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
@@ -33,7 +63,8 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   const [[settlement]]=await pool.execute('SELECT id,population,housing_capacity,security_score,medical_access,housing FROM world_settlements WHERE id=?',[id]);
   if(!settlement)return fail(404,'settlement_not_found');
   const upgrades=await getSettlementUpgradeRecords(pool,id);
-  return ok({housing_capacity:housingCapacity(settlement,upgrades),base_capacity:Number(settlement.housing_capacity),residents:Number(settlement.population),effects:upgradeEffects(upgrades),upgrades});
+  const [projects]=await pool.execute('SELECT * FROM world_civic_building_projects WHERE settlement_id=? ORDER BY id DESC',[id]);
+  return ok({housing_capacity:housingCapacity(settlement,upgrades),base_capacity:Number(settlement.housing_capacity),residents:Number(settlement.population),effects:upgradeEffects(upgrades),storage_capacity:civilianStorageCapacity(settlement,upgrades),templates:await getCivicTemplates(pool),projects,upgrades});
  }
  if(req.method!=='POST'&&req.method!=='PUT'&&req.method!=='DELETE')return fail(404,'not_found');
  if(req.method==='POST'&&upgradeId||req.method!=='POST'&&!upgradeId)return fail(400,'invalid_upgrade_action');
@@ -44,6 +75,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   if(!settlement)return fail(404,'settlement_not_found');
   const upgrades=await getSettlementUpgradeRecords(db,id,true);
   if(upgradeId&&!upgrades.some(u=>Number(u.id)===upgradeId))return fail(404,'upgrade_not_found');
+  if(upgradeId&&upgrades.find(x=>Number(x.id)===upgradeId)?.template_id&&req.method==='PUT')return fail(409,'template_building_requires_project');
   const next=req.method==='DELETE'?upgrades.filter(x=>Number(x.id)!==upgradeId):req.method==='PUT'?upgrades.map(x=>Number(x.id)===upgradeId?{...x,...b}:x):[...upgrades,b];
   if(housingCapacity(settlement,next)<Number(settlement.population))return fail(409,'upgrade_would_displace_residents');
   const vals=b?[b.name.trim(),b.category,b.status,b.condition_pct,b.level,b.housing_bonus,b.service_bonus,b.defense_bonus,b.notes,b.material_id||null,Number(b.material_cost)||0]:null;
