@@ -1,3 +1,4 @@
+import {effectiveWeather} from './garlean-climate.js';
 // Staff-controlled civilian ledger. Never touches player/front inventory.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -43,13 +44,13 @@ export function civicSimulationPreview(settlement,profile,stock,history,temperat
  return {...metrics,food_used:eligible?Math.min(metrics.food_stock,metrics.food_need):0,fuel_used:eligible?Math.min(metrics.fuel_stock,metrics.heat_need):0,before_stability:beforeStability,after_stability:clamp(beforeStability+shift),before_unrest:beforeUnrest,after_unrest:clamp(beforeUnrest-shift),grace_active:!afterGrace,simulation_eligible:eligible};
 }
 async function context(db,id,lock=false){
- const [[settlement]]=await db.execute('SELECT s.*,r.temperature_c,r.weather_mode FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?'+(lock?' FOR UPDATE':''),[id]);
+ const [[settlement]]=await db.execute('SELECT s.*,r.temperature_c,r.weather_mode,r.weather FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?'+(lock?' FOR UPDATE':''),[id]);
  if(!settlement)return null;
  const [[profile]]=await db.execute('SELECT * FROM world_civic_profiles WHERE settlement_id=?',[id]);
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
- const tempF=Math.round(Number(settlement.temperature_c)*9/5+32);
+ const tempF=effectiveWeather(settlement).temperature_f;
  return {settlement,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
 export async function handleCivicNeeds(pool,req,path,actor){
