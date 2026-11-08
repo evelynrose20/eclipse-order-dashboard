@@ -103,7 +103,7 @@ export async function industryRoute(pool,req,path,actor){
    await audit(db,actor.id,'industry',id,'facility_settings',b.cycle_mode);return ok({saved:true});
   });
  }
- if((match=/^\\/world-admin\\/industry\\/facilities\\/(\\d+)\\/reconcile$/.exec(path))&&req.method==='POST'){
+ if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/reconcile$/.exec(path))&&req.method==='POST'){
   const id=Number(match[1]);
   return atomicIndustry(pool,async db=>{
    const [[f]]=await db.execute('SELECT f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
