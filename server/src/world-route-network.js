@@ -115,7 +115,9 @@ export async function handleTransportGraph(pool,req,path,actor){
   return tx(pool,async db=>{
    const [[node]]=await db.execute('SELECT id,settlement_id FROM world_route_nodes WHERE id=? FOR UPDATE',[id]);
    if(!node||node.settlement_id!=null)return fail(404,'junction_not_found');
+   if(await railNodeUsed(db,id))return fail(409,'node_has_rail_infrastructure');
    const [edges]=await db.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=? FOR UPDATE',[id,id]);
+   for(const edge of edges){if(await railSegmentUsed(db,edge.id))return fail(409,'route_has_rail_infrastructure')}
    await db.execute('DELETE FROM world_route_segments WHERE from_node_id=? OR to_node_id=?',[id,id]);
    const [deleted]=await db.execute('DELETE FROM world_route_nodes WHERE id=? AND settlement_id IS NULL',[id]);
    if(!deleted.affectedRows)return fail(404,'junction_not_found');
@@ -125,6 +127,7 @@ export async function handleTransportGraph(pool,req,path,actor){
  }
  if(table==='nodes'&&id&&req.method==='DELETE'){
   return tx(pool,async db=>{
+   if(await railNodeUsed(db,id))return fail(409,'node_has_rail_infrastructure');
    const [edges]=await db.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=? LIMIT 1',[id,id]);
    if(edges.length)return fail(409,'junction_has_connections');
    const [r]=await db.execute('DELETE FROM world_route_nodes WHERE id=? AND settlement_id IS NULL',[id]);
@@ -138,6 +141,7 @@ export async function handleTransportGraph(pool,req,path,actor){
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);if(!zoneId)return fail(400,'zone_not_in_region');
    if(!await nodesIn(db,b.region_id,zoneId,[b.from_node_id,b.to_node_id]))return fail(400,'nodes_must_share_zone');
    if(id){
+    if(await railSegmentUsed(db,id))return fail(409,'route_has_rail_infrastructure');
     const [r]=await db.execute('UPDATE world_route_segments SET from_node_id=?,to_node_id=?,route_type=?,route_name=?,waypoints=? WHERE id=? AND region_id=? AND zone_id=?',[b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),id,b.region_id,zoneId]);
     if(!r.affectedRows)return fail(404,'segment_not_found');
     await audit(db,actor,'network_segment_edit',id);return ok({saved:true});
@@ -147,12 +151,13 @@ export async function handleTransportGraph(pool,req,path,actor){
   });
  }
  if(table==='segments'&&id&&req.method==='DELETE'&&!split){
-  return tx(pool,async db=>{const [r]=await db.execute('DELETE FROM world_route_segments WHERE id=?',[id]);if(!r.affectedRows)return fail(404,'segment_not_found');await audit(db,actor,'network_segment_delete',id);return ok({saved:true})});
+  return tx(pool,async db=>{if(await railSegmentUsed(db,id))return fail(409,'route_has_rail_infrastructure');const [r]=await db.execute('DELETE FROM world_route_segments WHERE id=?',[id]);if(!r.affectedRows)return fail(404,'segment_not_found');await audit(db,actor,'network_segment_delete',id);return ok({saved:true})});
  }
  if(table==='segments'&&id&&split&&req.method==='POST'){
   if(!point(b))return fail(400,'invalid_split_point');
   return tx(pool,async db=>{
    const [[edge]]=await db.execute('SELECT * FROM world_route_segments WHERE id=? FOR UPDATE',[id]);
+   if(await railSegmentUsed(db,id))return fail(409,'route_has_rail_infrastructure');
    if(!edge)return fail(404,'segment_not_found');
    const nodes=await nodesIn(db,edge.region_id,edge.zone_id,[edge.from_node_id,edge.to_node_id]);
    if(!nodes)return fail(409,'segment_nodes_missing');
