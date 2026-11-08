@@ -79,7 +79,6 @@ export default function ThrallChamber({request}){
        <div className="chamber-buttons">{['ready','active','maintenance','offline'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
       {!canManage&&<p className="chamber-helper">Your rank permits viewing this workspace. Staff and Household ranks can modify chamber controls and records.</p>}
-      <div className="chamber-note"><i className="fa-solid fa-shield-heart"/> OOC consent and scene boundaries remain independent of in-character machine settings.</div>
      </section>
     </div>
     <section className="chamber-card">
@@ -89,12 +88,12 @@ export default function ThrallChamber({request}){
       <p className="chamber-helper">Upper recorded: {occupant.upper_recorded} units · Lower recorded: {occupant.lower_recorded} units. Output is simulated from recorded character physiology and machine cycles.</p>
       {data.can_release&&<div className="chamber-actions"><button type="button" disabled={busy} className="chamber-danger" onClick={()=>act('release',{},'Character released and apparatus switched offline.')}>Release character</button></div>}
      </div>:<div className="chamber-assembly">
-      <p className="chamber-helper">Eligible bound characters and your own opted-in characters appear as available. The apparatus must be offline to place anyone in the chair.</p>
+      <p className="chamber-helper">Eligible bound characters and your own registered characters appear here. The apparatus must be offline to place anyone in the chair.</p>
       {canManage&&<div className="chamber-record">
        <label>Character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{eligibleRoster.map(c=><option value={c.id} key={c.id}>{c.name}{c.is_own?' (My character)':''} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
        <button type="button" disabled={busy||machine.machine_status!=='offline'||!selectedSeat} onClick={()=>act('seat',{character_id:selectedSeat},'Character seated in the offline apparatus.')}>Secure character in chair</button>
       </div>}
-      {canManage&&eligibleRoster.length===0&&<p className="chamber-helper" role="status">No saved seating permissions found. In the character dossier, enable Allow chamber seating, click Save permissions, then use Refresh above. Collection eligibility does not affect seating.</p>}
+      {canManage&&eligibleRoster.length===0&&<p className="chamber-helper" role="status">No characters are available for seating. Enable chamber seating in the character dossier, save, then refresh this page.</p>}
       {machine.machine_status!=='offline'&&canManage&&<p className="chamber-helper">Set the apparatus to Offline before seating a character.</p>}
      </div>}
     </section>
