@@ -18,7 +18,7 @@ export default function WorldAdministration({request,readOnly=false}){
  const load=async()=>{const result=await request('/world-admin');setData(result);const currentRegion=result.regions.some(r=>String(r.id)===region)?region:String(result.regions[0]?.id||'');setRegion(currentRegion);setZone(old=>result.zones?.some(z=>String(z.id)===old&&String(z.region_id)===currentRegion)?old:String(result.zones?.find(z=>String(z.region_id)===currentRegion&&z.is_default)?.id||result.zones?.find(z=>String(z.region_id)===currentRegion)?.id||''));setSelected(old=>result.settlements.some(s=>String(s.id)===old)?old:String(result.settlements[0]?.id||''));return result};
  useEffect(()=>{load().catch(e=>setError(e.message||'Unable to open world records.'))},[]);
  const canEdit=!!data?.can_edit&&!readOnly;
- const regions=data?.regions||[],zones=data?.zones||[],settlements=data?.settlements||[],factions=data?.factions||[],routes=data?.routes||[],networkNodes=data?.network_nodes||[],networkSegments=data?.network_segments||[],mountains=data?.mountains||[],;
+ const regions=data?.regions||[],zones=data?.zones||[],settlements=data?.settlements||[],factions=data?.factions||[],routes=data?.routes||[],networkNodes=data?.network_nodes||[],networkSegments=data?.network_segments||[],mountains=data?.mountains||[];
  const activeRegion=regions.find(r=>String(r.id)===region);
  const activeZone=zones.find(z=>String(z.id)===zone&&String(z.region_id)===region)||zones.find(z=>String(z.region_id)===region&&z.is_default)||zones.find(z=>String(z.region_id)===region);
  const activeZoneId=String(activeZone?.id||'');
