@@ -1,4 +1,4 @@
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 
 const labels={farm:'Farm',orchard:'Orchard',ranch:'Ranch',fishery:'Fishery',mine:'Mine',quarry:'Quarry',lumber_yard:'Lumberyard',logging_camp:'Logging camp',sawmill:'Sawmill',refinery:'Refinery',factory:'Factory',ceruleum_plant:'Ceruleum plant',drilling_rig:'Drilling rig',power_plant:'Power plant',workshop:'Workshop',warehouse:'Warehouse',depot:'Depot'};
 const preferred={farm:'agriculture',orchard:'agriculture',ranch:'agriculture',fishery:'agriculture',lumber_yard:'extraction',logging_camp:'extraction',mine:'mine',quarry:'mine',refinery:'refinery',ceruleum_plant:'refinery',drilling_rig:'extraction',sawmill:'manufacturing',factory:'manufacturing',workshop:'manufacturing',power_plant:'utilities'};
@@ -14,7 +14,7 @@ export function industryLocationOptions(data){
  });
  return [...(data?.settlements||[]).map(x=>annotate(x,'settlement')),...(data?.sites||[]).map(x=>annotate(x,'site'))];
 }
-export default function IndustryFacilityWizard({data,busy=false,onCancel,onSubmit}){
+export default function IndustryFacilityWizard({data,busy=false,initialLocationKey='',onCancel,onSubmit}){
  const locations=useMemo(()=>industryLocationOptions(data),[data]);
  const templates=(data?.templates||[]).filter(t=>!t.archived);
  const [query,setQuery]=useState(''),[ownership,setOwnership]=useState('all'),[region,setRegion]=useState('all'),[zone,setZone]=useState('all'),[type,setType]=useState('all');
@@ -40,6 +40,7 @@ export default function IndustryFacilityWizard({data,busy=false,onCancel,onSubmi
   setChosen(loc.locationKey);setTemplateId(Number(suggested?.id||0));setName(loc.name+' '+(suggested?.name||'Production'));
   setCondition(['destroyed','abandoned'].includes(loc.condition)?'ruined':'ruined');
  };
+ useEffect(()=>{if(!initialLocationKey)return;const location=locations.find(loc=>loc.locationKey===initialLocationKey);if(location){applyLocation(location);setStep('production')}},[initialLocationKey,locations]);
  const send=()=>{if(!selected||!chosenTemplate||!name.trim()||busy)return;
   onSubmit({settlement_id:selected.kind==='settlement'?Number(selected.id):null,site_id:selected.kind==='site'?Number(selected.id):null,template_id:Number(chosenTemplate.id),name:name.trim(),status:condition,cycle_mode:mode,cycle_cadence:cadence,notes});
  };
