@@ -210,3 +210,21 @@
 .wa-industry-requirement-preview strong{color:#e9d6b8}
 @media(max-width:800px){.wa-industry-location-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-production-layout{grid-template-columns:1fr}.wa-industry-configuration{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-industry-configuration>h4,.wa-industry-configuration>p,.wa-industry-requirement-preview{grid-column:1/-1}}
 @media(max-width:520px){.wa-industry-location-toolbar,.wa-industry-location-grid,.wa-industry-template-choices,.wa-industry-configuration{grid-template-columns:1fr}.wa-industry-attach-head,.wa-industry-location-toolbar,.wa-industry-ownership,.wa-industry-choice-heading,.wa-industry-location-grid,.wa-industry-production-layout,.wa-industry-attach-foot{padding-left:12px;padding-right:12px}.wa-industry-attach-foot{flex-wrap:wrap}.wa-industry-location-grid{max-height:43vh}.wa-industry-heading{gap:8px}.wa-industry-steps{padding-left:12px;padding-right:12px}}
+
+/* Civilian infrastructure uses the same full-screen wizard shell as Attach Production. */
+.wa-civic-attach{max-height:92vh;min-height:440px}
+.wa-civic-type-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:min(53vh,490px)}
+.wa-civic-add-menu{display:flex;justify-content:flex-end;padding:8px 0}
+.wa-civic-modal-error{margin:10px 22px 0}
+.wa-civic-build-form{display:flex;min-height:0;flex:1;flex-direction:column}
+.wa-civic-build-form .wa-industry-production-layout{flex:1;overflow:auto;max-height:56vh}
+.wa-civic-build-form .wa-industry-picked-location{margin-bottom:14px}
+.wa-civic-build-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.wa-civic-build-fields label{display:grid;min-width:0;gap:6px;color:#acbfca;font-size:12px}
+.wa-civic-build-fields .wide{grid-column:1/-1}
+.wa-civic-build-fields input,.wa-civic-build-fields select{min-width:0;width:100%;box-sizing:border-box;background:#111f29;border:1px solid #4d6573;border-radius:5px;padding:10px 11px;color:#e4eaed;font-size:12px}
+.wa-civic-build-fields input:focus,.wa-civic-build-fields select:focus{outline:2px solid #ab9479;outline-offset:1px}
+.wa-civic-build-form .wa-industry-configuration{align-content:start}
+.wa-civic-type-grid .wa-industry-location-card{min-height:142px}
+@media(max-width:800px){.wa-civic-type-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.wa-civic-type-grid,.wa-civic-build-fields{grid-template-columns:1fr}.wa-civic-build-form .wa-industry-production-layout{max-height:60vh}}
