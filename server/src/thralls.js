@@ -164,12 +164,12 @@ export async function thrallsRoute(pool,req,path){
    }
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3),'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
    if(amount){updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount)}
-   detail='Completed '+channel+' fictional cycle: '+amount+' units recorded';
+   detail='Completed '+channel+' cycle: '+amount+' units recorded';
   }else if(action==='decant'){
    const channel=data.channel,amount=data.quantity,classification=String(data.classification||'Unclassified').trim(),notes=String(data.notes||'').trim();
    if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0||amount>machine[channel+'_volume']||classification.length>80||notes.length>500)return await rollback(cn,'invalid_batch');
    await cn.execute('INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,created_by) VALUES(?,?,?,?,?,?)',[channel==='upper'?'lacteal':'secondary',channel==='upper'?'milk':machine.lower_material_type,amount,classification||'Unclassified',notes,actor.id]);
-   updates=[channel+'_volume='+channel+'_volume-?'];values=[amount];detail='Decanted '+amount+' fictional units from '+channel+' reservoir';
+   updates=[channel+'_volume='+channel+'_volume-?'];values=[amount];detail='Decanted '+amount+' units from '+channel+' reservoir';
   }else{
    if(machine.machine_status==='running')return await rollback(cn,'stop_chamber_first');
    if(!['upper','lower'].includes(data.channel))return await rollback(cn,'invalid_channel');
