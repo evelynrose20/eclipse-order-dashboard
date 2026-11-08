@@ -1,6 +1,6 @@
 import {resolveSession} from './auth.js';
 import {handleTransportGraph} from './world-route-network.js';
-import {railRecords,handleRailInfrastructure} from './world-rail-infrastructure.js';
+
 import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
 
@@ -47,17 +47,14 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [routes]=await pool.execute('SELECT id,region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
   const [networkNodes]=await pool.execute('SELECT id,region_id,zone_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
-  // Rail station notes and freight/switch readiness are command-only operational data.
-  const railway=command?await railRecords(pool):{rail_stations:[],rail_platforms:[],rail_switches:[],rail_crossings:[],rail_links:[]};
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_mountain_ranges ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
-  return ok({...railway,rail_api_revision:3,can_edit:command,regions:effective,zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
+  return ok({can_edit:command,regions:effective,zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/zones'))return await handleZones(pool,req,path,actor);
- if(path.startsWith('/world-admin/rail/'))return await handleRailInfrastructure(pool,req,path,actor);
  if(path.startsWith('/world-admin/network/'))return await handleTransportGraph(pool,req,path,actor);
  let match;
  // Map-only state changes never rewrite the settlement's civilian records.
