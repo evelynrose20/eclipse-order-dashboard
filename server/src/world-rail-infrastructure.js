@@ -191,10 +191,10 @@ export async function handleRailInfrastructure(pool,req,path,actor){
    const platform={
     station_id:Number(b.station_id),
     code:typeof b.code==='string'&&b.code.trim()?b.code.trim():previous?.code||'',
-    kind:b.kind??previous?.kind??'freight',
+    kind:typeof (b.kind??previous?.kind)==='string'?String(b.kind??previous?.kind).trim().toLowerCase():b.kind??previous?.kind??'freight',
     track_length:b.track_length??previous?.track_length??1,
     capacity:b.capacity??previous?.capacity??10,
-    status:b.status??previous?.status??'planned'
+    status:typeof (b.status??previous?.status)==='string'?String(b.status??previous?.status).trim().toLowerCase():b.status??previous?.status??'planned'
    };
    if(!platform.code&&req.method==='POST'){
     const [used]=await db.execute('SELECT code FROM world_rail_platforms WHERE station_id=? FOR UPDATE',[platform.station_id]);
