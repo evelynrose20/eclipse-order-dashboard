@@ -117,12 +117,13 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  if(!project&&!ongoing){
   const preferred=npcConstructionPreference(site,upgrades,{...state,food_units:outcome.next.food,water_units:outcome.next.water});
   if(preferred){
-   const [[template]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=? AND enabled=1',[preferred]);
+   const [eligibleTemplates]=await db.execute('SELECT * FROM world_civic_building_templates WHERE category=? AND enabled=1 ORDER BY npc_development_cost/effect_per_level ASC,id',[preferred]);
+   const template=eligibleTemplates[0];
    if(template){
     const matches=upgrades.filter(u=>u.template_id===preferred&&u.status==='operational');
     const candidate=matches.find(u=>Number(u.level)<Number(template.max_level))||null;
     const upgrade=matches.length&& !candidate?null:candidate;
-    const expand=matches.length===0||upgrade!==null;
+    const expand=true;
     const cost=civicProjectCost(template,upgrade?Number(upgrade.level)+1:1);
     if(expand&&development>=cost.npc_development_cost){
      const started=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'npc',npcDevelopment:development});
