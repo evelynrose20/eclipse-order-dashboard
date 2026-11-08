@@ -70,7 +70,7 @@ async function ensureNpcRows(pool){
  SELECT s.id,'automatic','npc','normal',s.population*12,s.population*7,s.population*12,s.population*.2
  FROM world_settlements s WHERE s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order'`);
 }
-async function applyNpcCycle(db,site,state,now,key,weather){
+async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='clear'){
  const pop=Number(site.population),beforeStability=Number(site.civil_stability);
  const outcome=npcSupplyCycle({...site,...state,temperature_f:weather});
  const [upgrades]=await db.execute('SELECT category,status,condition_pct,level FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]); // Completed schools provide education.
@@ -113,7 +113,7 @@ async function applyNpcCycle(db,site,state,now,key,weather){
  }
  if(arrival.arrivals&&[10,25,50,100,250,500,1000,2500,5000].some(mark=>pop<mark&&nextPopulation>=mark)&&event!=='shortage'){event='milestone';headline=site.name+' reached '+nextPopulation+' residents'}
  const education=await advanceEducation(db,{...site,population:nextPopulation,workforce},upgrades);
- const workerHealth=await advanceWorkerHealth(db,{...site,population:nextPopulation,workforce},upgrades,education,{cycle_key:key,temperature_f:weather,heating_coverage:site.heating_coverage,medicine_available:outcome.next.medicine,weather:weather<=0?'blizzard':'clear'});
+ const workerHealth=await advanceWorkerHealth(db,{...site,population:nextPopulation,workforce},upgrades,education,{cycle_key:key,temperature_f:weather,heating_coverage:site.heating_coverage,medicine_available:outcome.next.medicine,weather:weatherCondition});
  outcome.next.medicine=Math.max(0,round(outcome.next.medicine-workerHealth.medicine_required));
  const report={education,worker_health:workerHealth,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
  await db.execute('UPDATE world_settlements SET population=?,workforce=?,civil_stability=?,unrest=?,housing_capacity=COALESCE(?,housing_capacity),security_score=COALESCE(?,security_score),medical_access=COALESCE(?,medical_access),food_access=COALESCE(?,food_access),housing=COALESCE(?,housing) WHERE id=?',[nextPopulation,workforce,stability,unrest,updates.housing_capacity??null,updates.security_score??null,updates.medical_access??null,updates.food_access??null,updates.housing??null,site.id]);
@@ -143,7 +143,7 @@ async function advanceOrderStructures(db,site,key){
  }
  return result;
 }
-async function applyOrderCycle(db,site,state,now,key,temperature){
+async function applyOrderCycle(db,site,state,now,key,temperature,weatherCondition='clear'){
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[site.id]);
  if(!profile||profile.paused||!['managed','detailed'].includes(profile.enabled_mode)||!site.simulation_enabled||site.simulation_mode!=='managed')return null;
  const cycleDate=dateOf(now);
@@ -170,7 +170,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  }
  // Medicine for treating ill or injured workers is separate from routine civilian use.
  const remainingMedicine=Math.max(0,preview.medicine_stock-preview.medicine_used);
- const workerHealth=await advanceWorkerHealth(db,{...site,population:migration.population_after},upgrades,education,{cycle_key:key,temperature_f:temperature,heating_coverage:preview.heating_coverage_effective,medicine_available:remainingMedicine,weather:temperature<=0?'blizzard':'clear'});
+ const workerHealth=await advanceWorkerHealth(db,{...site,population:migration.population_after},upgrades,education,{cycle_key:key,temperature_f:temperature,heating_coverage:preview.heating_coverage_effective,medicine_available:remainingMedicine,weather:weatherCondition});
  let careMedicine=workerHealth.medicine_required||0;
  if(careMedicine>0){
   const [medicalStocks]=await db.execute("SELECT item_code,quantity FROM world_civic_stock WHERE settlement_id=? AND resource_kind='medicine' AND quantity>0 ORDER BY item_code FOR UPDATE",[site.id]);
@@ -222,7 +222,8 @@ export async function runSettlementSimulation(pool,now=new Date()){
    if(state.last_cycle_key===key){await db.rollback();continue}
    const [weather]=await climateForRegions(db,[{...site,weather_mode:site.weather_mode}],now);
    const temperature=Number(weather.effective_weather.temperature_f);
-   const result=ownership==='npc'?await applyNpcCycle(db,site,state,now,key,temperature):await applyOrderCycle(db,site,state,now,key,temperature);
+   const weatherCondition=weather.effective_weather.weather||'clear';
+   const result=ownership==='npc'?await applyNpcCycle(db,site,state,now,key,temperature,weatherCondition):await applyOrderCycle(db,site,state,now,key,temperature,weatherCondition);
    if(!result){await db.rollback();continue}
    await db.commit();
    results.push(result);
