@@ -22,7 +22,49 @@ const projected=(p,a,b)=>{
  const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));
  const x=a.x+t*dx,y=a.y+t*dy;return {x:Math.round(x*100)/100,y:Math.round(y*100)/100,d:Math.hypot(p.x-x,p.y-y)};
 };
+// Branch one legacy route on demand without converting or deleting unrelated roads.
+// The route is replaced by two graph segments only after a successful snapped split.
+async function branchLegacyRoute(pool,req,legacyId,actor){
+ const b=await body(req);
+ if(!point(b))return fail(400,'invalid_split_point');
+ return tx(pool,async db=>{
+  const [[legacy]]=await db.execute('SELECT * FROM world_map_routes WHERE id=? FOR UPDATE',[legacyId]);
+  if(!legacy)return fail(404,'legacy_route_not_found');
+  const [sites]=await db.execute('SELECT id,map_x,map_y FROM world_settlements WHERE region_id=? AND id IN (?,?)',[legacy.region_id,legacy.from_settlement_id,legacy.to_settlement_id]);
+  if(sites.length!==2)return fail(409,'legacy_route_endpoint_missing');
+  const sitePoint=id=>{const s=sites.find(v=>Number(v.id)===Number(id));return {x:Number(s.map_x),y:Number(s.map_y)}};
+  const bends=typeof legacy.waypoints==='string'?JSON.parse(legacy.waypoints):legacy.waypoints;
+  if(!validWaypoints(bends))return fail(409,'invalid_legacy_route_geometry');
+  const points=[sitePoint(legacy.from_settlement_id),...bends,sitePoint(legacy.to_settlement_id)];
+  let best=null;
+  for(let i=0;i<points.length-1;i++){
+   const q=projected(b,points[i],points[i+1]);
+   if(!best||q.d<best.d)best={...q,index:i};
+  }
+  if(!best||best.d>3)return fail(400,'junction_must_snap_to_route');
+  const from=await settlementNode(db,legacy.region_id,legacy.from_settlement_id,actor);
+  const to=await settlementNode(db,legacy.region_id,legacy.to_settlement_id,actor);
+  if(!from||!to)return fail(409,'legacy_route_endpoint_missing');
+  // Near an existing settlement, connect directly without changing the older road.
+  if(Math.hypot(best.x-points[0].x,best.y-points[0].y)<1)return ok({id:from,reused:true});
+  if(Math.hypot(best.x-points.at(-1).x,best.y-points.at(-1).y)<1)return ok({id:to,reused:true});
+  const [node]=await db.execute('INSERT INTO world_route_nodes(region_id,name,node_kind,map_x,map_y,created_by) VALUES(?,?,?,?,?,?)',[legacy.region_id,'',legacy.route_type==='rail'?'rail_switch':'junction',best.x,best.y,actor.id]);
+  const splitAt={x:best.x,y:best.y};
+  // Preserve every authored bend; two segments meet at the same durable coordinate.
+  const leftBends=points.slice(1,best.index+1);
+  const rightBends=points.slice(best.index+1,-1);
+  const insert='INSERT INTO world_route_segments(region_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?)';
+  await db.execute(insert,[legacy.region_id,from,node.insertId,legacy.route_type,legacy.route_name,JSON.stringify(leftBends),actor.id]);
+  await db.execute(insert,[legacy.region_id,node.insertId,to,legacy.route_type,legacy.route_name,JSON.stringify(rightBends),actor.id]);
+  const [removed]=await db.execute('DELETE FROM world_map_routes WHERE id=?',[legacyId]);
+  if(removed.affectedRows!==1)return fail(409,'legacy_route_changed');
+  await audit(db,actor,'network_branch_legacy',legacyId);
+  return ok({id:node.insertId,converted_route_id:legacyId,point:splitAt});
+ });
+}
 export async function handleTransportGraph(pool,req,path,actor){
+ const legacyBranch=/^\/world-admin\/network\/legacy\/(\d+)\/branch$/.exec(path);
+ if(legacyBranch&&req.method==='POST')return branchLegacyRoute(pool,req,Number(legacyBranch[1]),actor);
  const m=path.match(/^\/world-admin\/network\/(nodes|segments)(?:\/(\d+))?(?:\/(split|remove))?$/);
  if(path==='/world-admin/network/import'&&req.method==='POST'){
   const b=await body(req);if(!ident(b?.region_id))return fail(400,'invalid_region');
