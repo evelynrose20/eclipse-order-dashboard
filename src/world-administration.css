@@ -73,3 +73,12 @@
 .wa-error{border-left:3px solid #d35a69;background:#39232c;color:#f6d8d5;padding:12px;margin:0}.wa-notice{border-left:3px solid #6eae96;background:#243b34;color:#d8ecdf;padding:12px;margin:0}
 @media(max-width:900px){.wa-columns{grid-template-columns:1fr}.wa-civil-grid{grid-template-columns:1fr}.wa-map{height:340px}}
 @media(max-width:600px){.wa-heading{padding:16px;align-items:start;flex-direction:column}.wa-weather{grid-template-columns:1fr}.wa-fields{grid-template-columns:1fr}.wa-fields label.wide,.wa-projection{grid-column:1}.wa-settlement-list button{grid-template-columns:1fr}.wa-map{height:280px;margin:8px}}
+
+
+/* Region/zone navigation keeps the current map canvas and its original editing tools. */
+.wa-zone-summary{display:flex;align-items:center;flex-wrap:wrap;gap:7px 18px;background:#192732;border:1px solid #506371;padding:10px 14px;font-size:11px;color:#bdccd0}
+.wa-zone-summary strong{color:#e6c58e;font-size:12px;margin-right:8px}
+.wa-zone-summary span{border-left:1px solid #4c5f69;padding-left:12px}
+.wa-zone-summary span:first-of-type{color:#e9d3ae;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.wa-controls label select:focus-visible{outline:2px solid #e0c18d;outline-offset:2px}
+@media(max-width:620px){.wa-zone-summary{display:grid;grid-template-columns:1fr 1fr}.wa-zone-summary strong{grid-column:1/-1}.wa-zone-summary span{padding-left:0;border-left:0}}
