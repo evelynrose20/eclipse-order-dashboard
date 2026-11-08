@@ -34,9 +34,20 @@ export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status=
 export const withinContributionLimit=(prefs,seat,channel,amount)=>['upper','lower'].includes(channel)&&isAmount(amount)&&amount>0&&Boolean(prefs?.allow_seating)&&Boolean(prefs?.['allow_'+channel])&&Number(seat?.[channel+'_recorded']||0)+amount<=Number(prefs?.[channel+'_limit']||0);
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const defaultPrefs={allow_upper:0,allow_lower:0,upper_limit:0,lower_limit:0,allow_seating:0,gender_identity:'unspecified',lower_anatomy:'unspecified'};
+const defaultPrefs={allow_upper:0,allow_lower:0,allow_seating:0,gender_identity:'unspecified',lower_anatomy:'unspecified',lactation_state:'none'};
 export const GENDER_IDENTITIES=['unspecified','female','male','nonbinary','other'];
 export const LOWER_ANATOMIES=['unspecified','vulva','penis','mixed','other'];
+export const LACTATION_STATES=['none','established','variable'];
+const CYCLE_MS=5*60*1000;
+// A deliberately fictional, low-volume game abstraction. Not a model of human physiology.
+export function simulatedCycleYield(channel,preferences,random=Math.random()){
+ if(channel==='upper'){
+  if(preferences.lactation_state==='none')return 0;
+  return preferences.lactation_state==='established'?1+Math.floor(random*3):Math.floor(random*3);
+ }
+ if(channel==='lower')return random<0.55?0:1;
+ return 0;
+}
 export const lowerMaterialForAnatomy=anatomy=>({vulva:'vaginal',penis:'seminal',mixed:'mixed',other:'other'})[anatomy]||'unclassified';
 async function seatRoster(pool,actor){
  const [rows]=await pool.execute("SELECT c.id,c.character_name AS name,c.player_account_id,COALESCE(p.allow_seating,0) AS allow_seating,COALESCE(p.allow_upper,0) AS allow_upper,COALESCE(p.allow_lower,0) AS allow_lower,COALESCE(p.upper_limit,0) AS upper_limit,COALESCE(p.lower_limit,0) AS lower_limit,COALESCE(p.gender_identity,'unspecified') AS gender_identity,COALESCE(p.lower_anatomy,'unspecified') AS lower_anatomy FROM characters c LEFT JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks cr ON cr.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cr.rank_code WHERE (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) AND p.allow_seating=1 ORDER BY c.character_name",[actor.id]);
@@ -55,14 +66,14 @@ export async function thrallsRoute(pool,req,path){
   const owner=character.player_account_id===actor.id;
   if(!owner&&!(await manager(pool,actor)))return forbidden(403,'character_access_denied');
   if(req.method==='GET'){
-   const [[prefs]]=await pool.execute('SELECT allow_upper,allow_lower,upper_limit,lower_limit,allow_seating,gender_identity,lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=?',[id]);
+   const [[prefs]]=await pool.execute('SELECT allow_upper,allow_lower,allow_seating,gender_identity,lower_anatomy,lactation_state FROM order_thrall_contribution_preferences WHERE character_id=?',[id]);
    return ok({character_id:id,character_name:character.character_name,preferences:prefs||defaultPrefs,can_edit:owner});
   }
   if(req.method!=='PUT')return forbidden(405,'method_not_allowed');
   if(!owner)return forbidden(403,'character_owner_required');
   const body=await readBody(req);
-  if(!body||!['allow_upper','allow_lower','allow_seating'].every(k=>typeof body[k]==='boolean')||!isAmount(body.upper_limit)||!isAmount(body.lower_limit)||!GENDER_IDENTITIES.includes(body.gender_identity)||!LOWER_ANATOMIES.includes(body.lower_anatomy))return forbidden(400,'invalid_contribution_preferences');
-  const next={allow_upper:body.allow_upper,allow_lower:body.allow_lower,allow_seating:body.allow_seating,upper_limit:body.allow_upper?body.upper_limit:0,lower_limit:body.allow_lower?body.lower_limit:0,gender_identity:body.gender_identity,lower_anatomy:body.lower_anatomy};
+  if(!body||!['allow_upper','allow_lower','allow_seating'].every(k=>typeof body[k]==='boolean')||!GENDER_IDENTITIES.includes(body.gender_identity)||!LOWER_ANATOMIES.includes(body.lower_anatomy)||!LACTATION_STATES.includes(body.lactation_state))return forbidden(400,'invalid_contribution_preferences');
+  const next={allow_upper:body.allow_upper,allow_lower:body.allow_lower,allow_seating:body.allow_seating,gender_identity:body.gender_identity,lower_anatomy:body.lower_anatomy,lactation_state:body.lactation_state};
   const cn=await pool.getConnection();
   try{
    await cn.beginTransaction();
@@ -71,10 +82,10 @@ export async function thrallsRoute(pool,req,path){
    const [[previous]]=await cn.execute('SELECT lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[id]);
    if(seat.character_id===id&&(!next.allow_seating||(!next.allow_upper&&!next.allow_lower)||(previous&&previous.lower_anatomy!==next.lower_anatomy))){
     await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready',revision=revision+1 WHERE id=1");
-    await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0 WHERE id=1');
+    await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
     await cn.execute('INSERT INTO order_thrall_chamber_log(actor_id,action,detail) VALUES(?,?,?)',[actor.id,'release','Player withdrew chair permission; character released']);
    }
-   await cn.execute('INSERT INTO order_thrall_contribution_preferences(character_id,allow_upper,allow_lower,upper_limit,lower_limit,allow_seating,gender_identity,lower_anatomy) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE allow_upper=VALUES(allow_upper),allow_lower=VALUES(allow_lower),upper_limit=VALUES(upper_limit),lower_limit=VALUES(lower_limit),allow_seating=VALUES(allow_seating),gender_identity=VALUES(gender_identity),lower_anatomy=VALUES(lower_anatomy)',[id,Number(next.allow_upper),Number(next.allow_lower),next.upper_limit,next.lower_limit,Number(next.allow_seating),next.gender_identity,next.lower_anatomy]);
+   await cn.execute('INSERT INTO order_thrall_contribution_preferences(character_id,allow_upper,allow_lower,allow_seating,gender_identity,lower_anatomy,lactation_state) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE allow_upper=VALUES(allow_upper),allow_lower=VALUES(allow_lower),allow_seating=VALUES(allow_seating),gender_identity=VALUES(gender_identity),lower_anatomy=VALUES(lower_anatomy),lactation_state=VALUES(lactation_state)',[id,Number(next.allow_upper),Number(next.allow_lower),Number(next.allow_seating),next.gender_identity,next.lower_anatomy,next.lactation_state]);
    await cn.commit();return ok({saved:true});
   }catch(e){await cn.rollback().catch(()=>{});throw e}finally{cn.release()}
  }
@@ -93,7 +104,7 @@ export async function thrallsRoute(pool,req,path){
  const data=await readBody(req);
  if(!data||typeof data!=='object')return forbidden(400,'invalid_request');
  const action=data.action;
- if(!['set_status','record_collection','decant','maintenance','reset','seat','release'].includes(action))return forbidden(400,'invalid_chamber_action');
+ if(!['set_status','run_cycle','decant','maintenance','reset','seat','release'].includes(action))return forbidden(400,'invalid_chamber_action');
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
  const cn=await pool.getConnection();
  try{
@@ -113,12 +124,12 @@ export async function thrallsRoute(pool,req,path){
    const [rows]=await cn.execute("SELECT c.character_name,c.collar_bound,p.allow_seating,p.allow_upper,p.allow_lower,p.lower_anatomy FROM characters c JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks r ON r.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE c.id=? AND (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) FOR UPDATE",[data.character_id,actor.id]);
    const character=rows[0];
    if(!canSeatCharacter(machine,seat,character))return await rollback(cn,'character_has_not_opted_in');
-   await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0 WHERE id=1',[data.character_id,actor.id]);
+   await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1',[data.character_id,actor.id]);
    detail='Seated '+character.character_name+' with recorded player permission';
   }else if(action==='release'){
    if(!seat.character_id)return await rollback(cn,'chair_empty');
    await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready' WHERE id=1");
-   await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0 WHERE id=1');
+   await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
    detail='Released the seated character; machine set offline';
   }else if(action==='set_status'){
    const allowed=['offline','standby','running','maintenance'];
@@ -131,20 +142,25 @@ export async function thrallsRoute(pool,req,path){
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
    if(status==='active'&&machine.machine_status!=='running')return await rollback(cn,'chamber_not_running');
    updates=[channel+'_status=?'];values=[status];detail=channel+' assembly set to '+status;
-  }else if(action==='record_collection'){
-   const channel=data.channel,amount=data.quantity;
-   if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0)return await rollback(cn,'invalid_quantity');
+  }else if(action==='run_cycle'){
+   const channel=data.channel;
+   if(!['upper','lower'].includes(channel))return await rollback(cn,'invalid_channel');
    if(machine.machine_status!=='running'||machine[channel+'_status']!=='active'||!seat.character_id)return await rollback(cn,'assembly_not_active');
    const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
-   if(!withinContributionLimit(prefs,seat,channel,amount))return await rollback(cn,'character_contribution_limit');
-   if(channel==='lower'){
+   if(!prefs||!prefs.allow_seating||!prefs['allow_'+channel])return await rollback(cn,'collection_not_authorized');
+   if(channel==='lower'&&prefs.lower_anatomy==='unspecified')return await rollback(cn,'anatomy_not_configured');
+   const last=seat[channel+'_last_cycle_at'];
+   if(last&&Date.now()-new Date(last).getTime()<CYCLE_MS)return await rollback(cn,'cycle_not_ready');
+   const amount=simulatedCycleYield(channel,prefs);
+   if(amount&&Number(machine[channel+'_volume'])+amount>Number(machine[channel+'_capacity']))return await rollback(cn,'reservoir_full');
+   if(channel==='lower'&&amount){
     const kind=lowerMaterialForAnatomy(prefs.lower_anatomy);
     if(machine.lower_volume>0&&machine.lower_material_type!==kind)return await rollback(cn,'decant_lower_reservoir_first');
-    await cn.execute('UPDATE order_thrall_chamber SET lower_material_type=? WHERE id=1',[kind]);
+    updates.push('lower_material_type=?');values.push(kind);
    }
-   await cn.execute('UPDATE order_thrall_seat SET '+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
-   if(Number(machine[channel+'_volume'])+amount>Number(machine[channel+'_capacity']))return await rollback(cn,'reservoir_full');
-   updates=[channel+'_volume='+channel+'_volume+?'];values=[amount];detail='Recorded '+amount+' fictional units in '+channel+' reservoir';
+   await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3),'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
+   if(amount){updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount)}
+   detail='Completed '+channel+' fictional cycle: '+amount+' units recorded';
   }else if(action==='decant'){
    const channel=data.channel,amount=data.quantity,classification=String(data.classification||'Unclassified').trim(),notes=String(data.notes||'').trim();
    if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0||amount>machine[channel+'_volume']||classification.length>80||notes.length>500)return await rollback(cn,'invalid_batch');
