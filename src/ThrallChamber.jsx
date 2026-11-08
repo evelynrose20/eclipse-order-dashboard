@@ -14,6 +14,7 @@ export default function ThrallChamber({request}){
  const [amounts,setAmounts]=useState({upper:10,lower:10});
  const [batch,setBatch]=useState({channel:'upper',quantity:10,classification:'Unclassified',notes:''});
  const [showBatch,setShowBatch]=useState(false);
+ const [seatChoice,setSeatChoice]=useState('');
  const load=async()=>setData(await request('/thralls/chamber'));
  useEffect(()=>{let active=true;request('/thralls/chamber').then(d=>{if(active)setData(d)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
  const canManage=Boolean(data?.can_manage);
@@ -29,6 +30,8 @@ export default function ThrallChamber({request}){
   finally{setBusy(false)}
  }
  const machine=data?.machine;
+ const occupant=data?.seat;
+ const selectedSeat=seatChoice||data?.roster?.find(c=>c.allow_seating&&(c.allow_upper||c.allow_lower))?.id||'';
  if(!machine&&!error)return <div className="chamber"><div className="chamber-card">Opening the chamber console…</div></div>;
  return <div className="chamber">
   <header className="chamber-hero">
@@ -55,17 +58,17 @@ export default function ThrallChamber({request}){
       <div className="chamber-visual" aria-label="Schematic of the central magitek apparatus">
        <div className="chamber-lightstrip"/>
        <div className="chamber-frame">
-        <i className="fa-solid fa-chair"/><span>EXTRACTION THRONE</span><small>Stationary · lower vaults</small>
+        <i className="fa-solid fa-chair"/><span>EXTRACTION THRONE</span><small>{occupant?.character_id?'Occupied: '+occupant.name:'Empty · stationary lower vaults'}</small>
        </div>
        <div className="chamber-feed"><span>UPPER ASSEMBLY</span><span className={'chamber-pill '+machine.upper_status}>{title(machine.upper_status)}</span></div>
        <div className="chamber-feed"><span>LOWER ASSEMBLY</span><span className={'chamber-pill '+machine.lower_status}>{title(machine.lower_status)}</span></div>
       </div>
       <div className="chamber-actions">
-       <button disabled={!canManage||busy||machine.machine_status==='running'} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
+       <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">These controls update the fictional in-world machine record. They do not operate any physical equipment.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. The chair must be offline before seating a character. These controls update the fictional in-world machine record. They do not operate any physical equipment.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
@@ -78,14 +81,29 @@ export default function ThrallChamber({request}){
      </section>
     </div>
     <section className="chamber-card">
-     <div className="chamber-heading"><div><span>03 / STORAGE VESSELS</span><h3>Collection reservoirs</h3></div><i className="fa-solid fa-flask-vial"/></div>
+     <div className="chamber-heading"><div><span>03 / CHAIR OCCUPANCY</span><h3>Character assignment</h3></div><i className="fa-solid fa-user-lock"/></div>
+     {occupant?.character_id?<div className="chamber-assembly">
+      <div className="chamber-assembly-head"><strong>{occupant.name}</strong><span className="chamber-pill active">Seated</span></div>
+      <p className="chamber-helper">Upper recorded: {occupant.upper_recorded} units · Lower recorded: {occupant.lower_recorded} units. Limits are controlled through the player's bound character dossier.</p>
+      {data.can_release&&<div className="chamber-actions"><button type="button" disabled={busy} className="chamber-danger" onClick={()=>act('release',{},'Character released and apparatus switched offline.')}>Release character</button></div>}
+     </div>:<div className="chamber-assembly">
+      <p className="chamber-helper">Only bound characters who have opted in to chamber seating appear as available. The apparatus must be offline to place anyone in the chair.</p>
+      {canManage&&<div className="chamber-record">
+       <label>Bound character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
+       <button type="button" disabled={busy||machine.machine_status!=='offline'||!selectedSeat} onClick={()=>act('seat',{character_id:selectedSeat},'Character seated in the offline apparatus.')}>Secure character in chair</button>
+      </div>}
+      {machine.machine_status!=='offline'&&canManage&&<p className="chamber-helper">Set the apparatus to Offline before seating a character.</p>}
+     </div>}
+    </section>
+    <section className="chamber-card">
+     <div className="chamber-heading"><div><span>04 / STORAGE VESSELS</span><h3>Collection reservoirs</h3></div><i className="fa-solid fa-flask-vial"/></div>
      <div className="chamber-reservoirs">{channels.map(c=>{
       const volume=Number(machine[c.id+'_volume']),capacity=Number(machine[c.id+'_capacity']),pct=Math.min(100,Math.round(100*volume/capacity));
       return <div className="chamber-reservoir" key={c.id}>
        <div className="chamber-reservoir-top"><strong>{c.label}</strong><span>{volume} / {capacity} units</span></div>
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
        <small>{c.material} · {pct}% of capacity</small>
-       {canManage&&<div className="chamber-record"><label>Record fictional quantity<input type="number" min="1" max="1000" value={amounts[c.id]} onChange={e=>setAmounts(v=>({...v,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('record_collection',{channel:c.id,quantity:Number(amounts[c.id])},'Collection added to '+c.label)}>Record units</button><button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button></div>}
+       {canManage&&<div className="chamber-record"><label>Record fictional quantity<input type="number" min="1" max="1000" value={amounts[c.id]} onChange={e=>setAmounts(v=>({...v,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('record_collection',{channel:c.id,quantity:Number(amounts[c.id])},'Collection added to '+c.label)}>Record units</button><button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button></div>}
       </div>;
      })}</div>
     </section>
