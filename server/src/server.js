@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
+import {thrallsRoute} from './thralls.js';
 import {recruitmentRoute} from './recruitment.js';
 import {loreRoute} from './lore.js';
 import {faqRoute} from './faq.js';
@@ -115,6 +116,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
+  else if(pathname==='/thralls/chamber')result=await thrallsRoute(pool,req,pathname);
   else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
