@@ -65,12 +65,10 @@ export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,h
   const [[previous]]=await db.execute('SELECT cycle_key FROM world_civic_building_project_ticks WHERE project_id=? AND cycle_key=?',[p.id,key]);
   if(previous)continue;
   if(!p.materials_paid){
-   const [[available]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[p.material_id]);
-   if(!available||Number(available.quantity)<Number(p.material_required)){result.blocked.push(p.id);continue}
-   await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[p.material_required,p.material_id,p.material_required]);
-   const [[stock]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=?',[p.material_id]);
-   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[p.material_id,-Number(p.material_required),stock.quantity,'upgrade',p.created_by,'Settlement building #'+p.id]);
-   await db.execute('UPDATE world_civic_building_projects SET materials_paid=1 WHERE id=?',[p.id]);
+   // Only explicitly committed and already debited stock can fund construction.
+   // No other system can spend goods reserved for this project.
+   result.blocked.push(p.id);
+   continue;
   }
   const work=Math.min(capacity,Math.max(0,Math.ceil(capacity*.3)),Math.max(0,Number(p.labor_required)-Number(p.progress)),30);
   if(!work){result.blocked.push(p.id);continue}
