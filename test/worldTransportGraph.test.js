@@ -43,3 +43,19 @@ test('junctions are selectable, draggable and removable from the original map',a
  assert.match(css,/transform:none!important/);
  assert.match(css,/\.wtm-junction-editor/);
 });
+
+test('original map lets users connect settlements and saved junctions, including older-road branches',async()=>{
+ const [map,css,graph]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css'),load('server/src/world-route-network.js')]);
+ assert.match(map,/Route starting endpoint/);
+ assert.match(map,/Route destination endpoint/);
+ assert.match(map,/endpointOptions/);
+ assert.match(map,/chooseRouteEndpoint/);
+ assert.match(map,/from_node_id:from,to_node_id:to/);
+ assert.match(map,/network\/legacy/);
+ assert.match(map,/networkSegments\.length\|\|routes\.length/);
+ assert.match(graph,/network_branch_legacy/);
+ assert.match(graph,/branchLegacyRoute/);
+ assert.match(css,/\.wtm-network \.wtm-road-road \.wtm-road-top/);
+ assert.match(css,/stroke-dasharray:none/);
+ assert.match(map,/wtm-mountains/);
+});
