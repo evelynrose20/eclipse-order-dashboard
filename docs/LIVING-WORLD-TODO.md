@@ -75,15 +75,17 @@ updated: 2026-11-07
 
 ## P3 — Sites, industry and projects
 
-- [ ] Create facility/industry templates with zero code changes.
-- [ ] Resource/item catalog linked to existing workshop/inventory.
-- [ ] Inputs, outputs, byproducts, labor, heat/power, capacity, upgrade requirements.
-- [ ] Versioned declarative condition/action rule builder, dry runs, circular dependency checks.
-- [ ] Construction Projects linked to facilities and territories.
-- [ ] Reserved personal/front goods distinct from committed campaign materials.
-- [ ] Atomic production ledger and configurable production cycles with caps.
-- [ ] **Acceptance test:** voidsent mine liberated → repaired → staffed → ore produced.
-- [ ] **Acceptance test:** ceruleum rig captured → drilling plant rebuilt → refining enabled → fuel delivered.
+- [x] Create facility/industry templates with zero code changes.
+- [x] Resource/item catalog linked to existing workshop/inventory.
+- [x] Inputs, outputs, byproducts, labor, heat/power, capacity, upgrade requirements.
+- [x] Versioned declarative condition/action rule builder, dry runs, circular dependency checks.
+- [x] Construction Projects linked to facilities and territories.
+- [x] Reserved personal/front goods distinct from committed campaign materials.
+- [x] Atomic production ledger and configurable production cycles with caps.
+- [x] **MySQL acceptance test:** voidsent mine liberated → repaired → staffed → ore produced.
+- [x] **MySQL acceptance test:** ceruleum rig captured → drilling plant rebuilt → refining enabled → fuel delivered by explicit facility stock handoff (P4 transport simulation is separate).
+
+P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUSTRY.md). Code and disposable-MySQL test coverage complete; live Windows acceptance remains outstanding.
 
 ## P4 — Logistics, trade and transports
 
