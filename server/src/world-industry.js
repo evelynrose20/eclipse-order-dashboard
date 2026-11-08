@@ -16,7 +16,8 @@ async function ensureItems(db,c){
 }
 async function noCycle(db,c,excluding=null){
  const [rows]=await db.execute('SELECT v.configuration FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.archived=0'+(excluding?' AND t.id<>?':''),excluding?[excluding]:[]);
- return !industryDependenciesHaveCycle([...rows.map(r=>array(r.configuration)),c]);
+ const [pinned]=await db.execute("SELECT DISTINCT v.configuration FROM world_industry_facilities f JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version WHERE f.status IN ('operational','rebuilding','liberated','damaged')");
+ return !industryDependenciesHaveCycle([...rows.map(r=>array(r.configuration)),...pinned.map(r=>array(r.configuration)),c]);
 }
 const validFacility=b=>b&&whole(b.settlement_id,1,Number.MAX_SAFE_INTEGER)&&whole(b.template_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&['captured','liberated','ruined','rebuilding','operational','damaged','paused'].includes(b.status)&&whole(b.level,1,20)&&whole(b.capacity_pct,0,100)&&whole(b.workforce,0,10000000)&&num(b.heat_available,0,1000000)&&num(b.power_available,0,1000000)&&['off','manual','automatic'].includes(b.cycle_mode)&&['slow','normal','fast'].includes(b.cycle_cadence)&&typeof b.notes==='string'&&b.notes.length<=500;
 const validProject=b=>b&&whole(b.facility_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&typeof b.description==='string'&&b.description.length<=500&&['planned','active'].includes(b.status)&&['liberated','rebuilding','operational','damaged'].includes(b.result_status)&&whole(b.labor_required,1,1000000)&&Array.isArray(b.needs)&&b.needs.length<=20&&b.needs.every(x=>validItemId(x.item_id)&&num(x.qty,0.001,1000000))&&new Set(b.needs.map(x=>x.item_id)).size===b.needs.length&&(b.campaign_project_id==null||whole(b.campaign_project_id,1,Number.MAX_SAFE_INTEGER));
@@ -54,6 +55,7 @@ export async function industryRoute(pool,req,path,actor){
   if(error)return fail(400,error);
   if(!versionTarget&&(!txt(b.name,120)||!txt(b.slug,70)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(b.slug)||!['mine','extraction','refinery','manufacturing','utilities','agriculture','other'].includes(b.category)))return fail(400,'invalid_template');
   return atomicIndustry(pool,async db=>{
+   await db.execute('SELECT id FROM world_industry_catalog_lock WHERE id=1 FOR UPDATE');
    if(!await ensureItems(db,b.configuration))return fail(400,'unknown_industry_item');
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
