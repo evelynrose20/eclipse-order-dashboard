@@ -1,3 +1,5 @@
+import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
+import {beginCivicTemplateProject,advanceCivicTemplateProjects} from './world-civic-template-projects.js';
 import {advanceWorkerHealth,workerHealthSnapshot} from './world-worker-care.js';
 import {educationPreview,advanceEducation} from './world-education.js';
 import {settlementDemographics,cappedEmployment} from './world-demographics.js';
@@ -18,18 +20,20 @@ export function simulationCycleKey(now,cadence='normal'){
 }
 export function npcSupplyCycle(input){
  const population=Math.max(0,Math.floor(Number(input.population)||0));
- const employed=cappedEmployment(input,input.workforce);
+ const employed=Math.min(cappedEmployment(input,input.workforce),Math.max(0,Math.floor(Number(input.healthy_workforce??input.workforce)||0)));
+ const infra=civicInfrastructureEffects(input.upgrades||[]);
+ const storage=civilianStorageCapacity(input,input.upgrades||[]);
  const temperature=Number(input.temperature_f??32);
  const current={food:Number(input.food_units)||0,water:Number(input.water_units)||0,fuel:Number(input.fuel_units)||0,medicine:Number(input.medicine_units)||0};
  if(!population)return {next:current,shortages:[],consumption:{food:0,water:0,fuel:0,medicine:0},production:{food:0,water:0,fuel:0,medicine:0},risk:0};
  const cold=Math.max(0,(55-temperature)/65);
  const effectiveHousing=Math.min(100,Number(input.insulation)||0);
  const consumption={food:round(population*.75),water:round(population),fuel:round(population*.8*cold*(1-effectiveHousing*.005)),medicine:round(population*.01)};
- const production={food:round(population*.46+employed*.8),water:round(population*.72+employed*.75),fuel:round((population*.25+employed*.5)*(cold>.1?1:.45)),medicine:round(population*.008+employed*.007)};
+ const production={food:round(population*.46+employed*.8),water:round(population*.72+employed*.75+Math.min(infra.water_daily,employed*2)),fuel:round((population*.25+employed*.5)*(cold>.1?1:.45)),medicine:round(population*.008+employed*.007)};
  const next={},shortages=[];
  for(const kind of ['food','water','fuel','medicine']){
   const available=current[kind]+production[kind];
-  next[kind]=round(Math.min(population*40,Math.max(0,available-consumption[kind])));
+  next[kind]=round(Math.min(kind==='food'?storage.food:kind==='water'?storage.water:Math.max(100,population*40),Math.max(0,available-consumption[kind])));
   if(available+0.001<consumption[kind])shortages.push(kind);
  }
  return {next,shortages,consumption,production,risk:clamp(shortages.length*17+Math.max(0,50-Number(input.medical_access||50))*.15)};
@@ -72,8 +76,10 @@ async function ensureNpcRows(pool){
 }
 async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='clear'){
  const pop=Number(site.population),beforeStability=Number(site.civil_stability);
- const outcome=npcSupplyCycle({...site,...state,temperature_f:weather});
- const [upgrades]=await db.execute('SELECT category,status,condition_pct,level FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]); // Completed schools provide education.
+ const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]);
+ const priorHealth=await workerHealthSnapshot(db,site.id);
+ const healthy=Math.max(0,Number(site.workforce||0)-priorHealth.sick_workers-priorHealth.injured_workers);
+ const outcome=npcSupplyCycle({...site,...state,upgrades,healthy_workforce:healthy,temperature_f:weather});
  const arrival=previewPopulationChange(site,upgrades,outcome.risk,outcome.risk<75);
  const nextPopulation=arrival.population_after;
  const targetJobs=Math.min(settlementDemographics({...site,population:nextPopulation}).eligible_workers,Math.floor(nextPopulation*.55));
@@ -81,7 +87,6 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  const step=targetJobs>beforeJobs?Math.max(1,Math.ceil((targetJobs-beforeJobs)*.18)):-Math.max(1,Math.ceil((beforeJobs-targetJobs)*.18));
  const workforce=cappedEmployment({...site,population:nextPopulation},Math.max(0,beforeJobs===targetJobs?beforeJobs:beforeJobs+step));
  const stability=clamp(beforeStability+(outcome.shortages.length?-2:1)),unrest=clamp(Number(site.unrest)+(outcome.shortages.length?2:-1));
- const priorHealth=await workerHealthSnapshot(db,site.id);
  const activeWorkforce=Math.max(0,workforce-priorHealth.sick_workers-priorHealth.injured_workers);
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
  let development=Number(state.development_points)+Math.max(3,activeWorkforce*.16);
@@ -105,19 +110,37 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
    await db.execute('UPDATE world_npc_construction SET progress=? WHERE id=?',[progress,project.id]);
    if([25,50,75].some(mark=>Number(project.progress)<mark&&progress>=mark)&&event!=='shortage'){event='construction';headline=project.name+' reached '+progress+'% completion'}
   }
- }else{
-  const choice=npcProjectChoice(site,null);
-  if(choice&&development>=10){
-   await db.execute('INSERT INTO world_npc_construction(settlement_id,kind,name,progress,started_on) VALUES(?,?,?,?,?)',[site.id,choice,projectNames[choice],0,dateOf(now)]);
-   development-=10;
-   if(event==='routine'){event='construction';headline=projectNames[choice]+' construction began'}
+ }
+ // New NPC projects use exactly the same template recipes as Order settlement buildings.
+ // Legacy NPC construction records continue to completion but are no longer created.
+ const [[ongoing]]=await db.execute("SELECT id FROM world_civic_building_projects WHERE settlement_id=? AND owner_kind='npc' AND status IN ('active','paused') LIMIT 1",[site.id]);
+ if(!project&&!ongoing){
+  const preferred=npcConstructionPreference(site,upgrades,{...state,food_units:outcome.next.food,water_units:outcome.next.water});
+  if(preferred){
+   const [[template]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=? AND enabled=1',[preferred]);
+   if(template){
+    const matches=upgrades.filter(u=>u.template_id===preferred&&u.status==='operational');
+    const candidate=matches.find(u=>Number(u.level)<Number(template.max_level))||null;
+    const upgrade=matches.length&& !candidate?null:candidate;
+    const expand=matches.length===0||upgrade!==null;
+    const cost=civicProjectCost(template,upgrade?Number(upgrade.level)+1:1);
+    if(expand&&development>=cost.npc_development_cost){
+     const started=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'npc',npcDevelopment:development});
+     if(started.status===200){
+      development-=started.body.cost.npc_development_cost;
+      event='construction';headline=template.name+' construction funded';
+     }
+    }
+   }
   }
  }
+ const templateConstruction=await advanceCivicTemplateProjects(db,site,key,'npc',activeWorkforce);
+ if(templateConstruction.completed.length){event='construction';headline='Settlement infrastructure completed';}
  if(arrival.arrivals&&[10,25,50,100,250,500,1000,2500,5000].some(mark=>pop<mark&&nextPopulation>=mark)&&event!=='shortage'){event='milestone';headline=site.name+' reached '+nextPopulation+' residents'}
  const education=await advanceEducation(db,{...site,population:nextPopulation,workforce},upgrades);
  const workerHealth=await advanceWorkerHealth(db,{...site,population:nextPopulation,workforce},upgrades,education,{cycle_key:key,temperature_f:weather,heating_coverage:site.heating_coverage,medicine_available:outcome.next.medicine,weather:weatherCondition});
  outcome.next.medicine=Math.max(0,round(outcome.next.medicine-workerHealth.medicine_required));
- const report={education,worker_health:workerHealth,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
+ const report={education,worker_health:workerHealth,template_construction:templateConstruction,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
  await db.execute('UPDATE world_settlements SET population=?,workforce=?,civil_stability=?,unrest=?,housing_capacity=COALESCE(?,housing_capacity),security_score=COALESCE(?,security_score),medical_access=COALESCE(?,medical_access),food_access=COALESCE(?,food_access),housing=COALESCE(?,housing) WHERE id=?',[nextPopulation,workforce,stability,unrest,updates.housing_capacity??null,updates.security_score??null,updates.medical_access??null,updates.food_access??null,updates.housing??null,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=?,food_units=?,water_units=?,fuel_units=?,medicine_units=?,development_points=? WHERE settlement_id=?',[key,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),site.id]);
  await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,dateOf(now),'npc',pop,nextPopulation,workforce,beforeStability,stability,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),event,headline,JSON.stringify(report)]);
@@ -128,7 +151,9 @@ async function advanceOrderStructures(db,site,key){
  const health=await workerHealthSnapshot(db,site.id);
  const workforce=Math.max(0,Number(site.workforce||0)-health.sick_workers-health.injured_workers);
  if(workforce<=0)return result;
- const [structures]=await db.execute("SELECT * FROM world_settlement_upgrades WHERE settlement_id=? AND status='building' ORDER BY id FOR UPDATE",[site.id]);
+ const templateConstruction=await advanceCivicTemplateProjects(db,site,key,'order',workforce);
+ result.template_projects=templateConstruction;
+ const [structures]=await db.execute("SELECT * FROM world_settlement_upgrades WHERE settlement_id=? AND status='building' AND template_id IS NULL ORDER BY id FOR UPDATE",[site.id]);
  for(const item of structures){
   if(Number(item.material_cost)>0&&!item.materials_paid){
    const [[material]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[item.material_id]);
@@ -159,6 +184,12 @@ async function applyOrderCycle(db,site,state,now,key,temperature,weatherConditio
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[site.id]);
  const [[count]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[site.id]);
  const preview=civicSimulationPreview(site,profile,stock,history,temperature,Number(count.n),heater,upgrades);
+ if(preview.waterworks_generated>0){
+  await db.execute("INSERT INTO world_civic_stock(settlement_id,item_code,item_label,resource_kind,food_group,quantity) VALUES(?,'civic-waterworks','Waterworks production','water',NULL,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)",[site.id,preview.waterworks_generated]);
+  await db.execute("INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,cycle_key,actor_id) VALUES(?,'civic-waterworks','water',NULL,?,'Waterworks production',?,NULL)",[site.id,preview.waterworks_generated,cycleDate]);
+  const found=stock.find(x=>x.item_code==='civic-waterworks');if(found)found.quantity=Number(found.quantity)+preview.waterworks_generated;
+  else stock.push({item_code:'civic-waterworks',resource_kind:'water',food_group:null,quantity:preview.waterworks_generated});
+ }
  const migration=previewPopulationChange(site,upgrades,preview.risk,true);
  const education=await advanceEducation(db,{...site,population:migration.population_after},upgrades);
  for(const [kind,used] of [['food',preview.food_used],['fuel',preview.fuel_used],['water',preview.water_used],['medicine',preview.medicine_used]]){
@@ -195,8 +226,8 @@ async function applyOrderCycle(db,site,state,now,key,temperature,weatherConditio
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=? WHERE settlement_id=?',[key,site.id]);
  const construction=await advanceOrderStructures(db,site,key);
  const shortage=preview.warnings.filter(w=>w.includes('shortfall')||w.includes('low'));
- const event=shortage.length?'shortage':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
- const headline=shortage.length?'Civilian shortages require attention':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
+ const event=shortage.length?'shortage':construction.template_projects?.completed.length?'construction':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
+ const headline=shortage.length?'Civilian shortages require attention':construction.template_projects?.completed.length?'Infrastructure upgrade completed':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
  await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,education,worker_health:workerHealth,system_generated:true})]);
  return {settlement_id:site.id,origin:'order',event,headline};
 }
