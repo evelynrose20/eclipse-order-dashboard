@@ -1190,6 +1190,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   // are simulated; staff cannot create goods by entering fake factory balances.
   const [[farmZone]]=await admin.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[mineId]);
   await admin.execute("UPDATE world_zones SET controlling_faction_id='eclipse-order' WHERE id=?",[farmZone.zone_id]);
+  await admin.execute("UPDATE world_settlements SET controlling_faction_id='eclipse-order',workforce=30 WHERE id=?",[mineId]);
   const standAloneFarm=await industryRoute(admin,request('POST',{name:'CI Goldenfields Farm',kind:'farm',region_id:farmZone.region_id,zone_id:farmZone.zone_id,map_x:22,map_y:44,description:'Independent grain farm, no residents'}),'/world-admin/industry/sites',staff);
   assert.equal(standAloneFarm.status,200,JSON.stringify(standAloneFarm.body));
   const farmSiteId=Number(standAloneFarm.body.id);
