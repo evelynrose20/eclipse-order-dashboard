@@ -22,7 +22,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','052_settlement_upgrades.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -181,6 +181,29 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const newPort=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Port',map_x:75,map_y:65,map_icon:'port'}),'/world-admin/settlements');
   assert.equal(newPort.status,200,JSON.stringify(newPort.body));
   const portId=Number(newPort.body.id);
+  // Civic settlement infrastructure: uninhabited sites require real accommodation.
+  const emptySettlement=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'Empty test outpost',population:0,workforce:0,housing_capacity:0}),'/world-admin/settlements');
+  assert.equal(emptySettlement.status,200,JSON.stringify(emptySettlement.body));
+  const emptyId=Number(emptySettlement.body.id);
+  const blockedResidents=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(blockedResidents.status,409,'population cannot increase without available homes');
+  const structurePath='/world-admin/settlements/'+emptyId+'/upgrades';
+  const building={name:'New residential quarter',category:'housing',status:'building',condition_pct:100,level:1,housing_bonus:30,service_bonus:0,defense_bonus:0,notes:'Initial accommodation'};
+  const newBuilding=await worldAdministrationRoute(admin,request('POST',building),structurePath);
+  assert.equal(newBuilding.status,200,JSON.stringify(newBuilding.body));
+  const notYetHoused=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(notYetHoused.status,409,'unfinished housing does not provide capacity');
+  const openedBuilding=await worldAdministrationRoute(admin,request('PUT',{...building,status:'operational'}),structurePath+'/'+newBuilding.body.id);
+  assert.equal(openedBuilding.status,200,JSON.stringify(openedBuilding.body));
+  const populatedOutpost=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:25,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
+  assert.equal(populatedOutpost.status,200,JSON.stringify(populatedOutpost.body));
+  const destroyedBuilding=await worldAdministrationRoute(admin,request('PUT',{...building,status:'destroyed'}),structurePath+'/'+newBuilding.body.id);
+  assert.equal(destroyedBuilding.status,409,'occupied homes cannot disappear without rehousing residents');
+  const defense={name:'Perimeter wall',category:'defense',status:'operational',condition_pct:100,level:2,housing_bonus:0,service_bonus:0,defense_bonus:20,notes:'Guards the outer road'};
+  const newWall=await worldAdministrationRoute(admin,request('POST',defense),structurePath);
+  assert.equal(newWall.status,200,JSON.stringify(newWall.body));
+  const [[wallCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_settlement_upgrades WHERE settlement_id=? AND category='defense'",[emptyId]);
+  assert.equal(Number(wallCount.n),1);
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
   const cohortPayload={label:'Civilian families',residents:90,employed:20,housing_quality:70,medical_access:65,water_access:80};
   const cohort=await worldAdministrationRoute(admin,request('POST',cohortPayload),'/world-admin/civic/'+mineId+'/cohorts');

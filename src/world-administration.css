@@ -92,3 +92,57 @@
 .wa-inspector-civic>div strong{font-size:11px;color:#e8edf0;text-align:right;max-width:60%;overflow-wrap:anywhere}
 .wa-inspector-civic .wa-civic-alerts{border-left:3px solid #c09c64;padding:7px 10px;background:#29303a;color:#e0c5a1;font-size:11px}
 .wa-inspector-civic button{width:100%;margin-top:5px}
+
+/* Civilian Welfare workspace: a short overview and one focused management view. */
+.wa-civic-detail{min-width:0;overflow:hidden}
+.wa-civic-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:12px 16px;background:#101e29;border-bottom:1px solid #344653}
+.wa-civic-tabs button{display:inline-flex;gap:8px;align-items:center;justify-content:center;padding:10px 13px;background:#1c2c39;border:1px solid #3a5061;border-radius:5px;color:#b8c8d1;font-size:12px;font-weight:700;cursor:pointer}
+.wa-civic-tabs button.active{background:#35414b;border-color:#caa67b;color:#f1dbc0}
+.wa-civic-tabs button:hover{border-color:#b79a77;color:#fff}
+.wa-civic-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:15px}
+.wa-civic-summary>div,.wa-upgrade-metrics>div{border:1px solid #3a4f5c;background:#1d2c38;border-radius:5px;padding:13px;display:grid;gap:5px;min-width:0}
+.wa-civic-summary span,.wa-upgrade-metrics small{font-size:11px;color:#a6bbc5}
+.wa-civic-summary strong,.wa-upgrade-metrics strong{font-size:18px;color:#f1dfc6;overflow-wrap:anywhere}
+.wa-civic-dashboard{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;padding:0 15px 15px}
+.wa-civic-dashboard .wa-civic-values{padding:12px;background:#1a2935;border:1px solid #3b4e5b;border-radius:5px}
+.wa-civic-overview-actions{display:grid;align-content:start;gap:9px;padding:16px;background:#192735;border:1px solid #40525d;border-radius:5px}
+.wa-civic-overview-actions h3{margin:0;font-size:16px}
+.wa-civic-overview-actions p{margin:0 0 4px;font-size:12px;line-height:1.5;color:#bac9d0}
+.wa-civic-overview-actions button{background:#283c4b;color:#ecded0;border:1px solid #5f6c70;padding:10px;text-align:left;border-radius:4px;cursor:pointer}
+.wa-civic-workspace{padding:12px 16px 18px;display:grid;gap:12px}
+.wa-civic-workspace>h3{margin:10px 0 0;font-size:16px;color:#edd8b7}
+.wa-workspace-heading h3{margin:0;font-size:18px}.wa-workspace-heading p{font-size:12px;color:#aebfc8}
+.wa-civic-form{border:1px solid #425562;border-radius:5px;background:#192935;overflow:hidden}
+.wa-civic-form summary{display:flex;align-items:center;gap:9px;cursor:pointer;padding:13px 15px;font-size:12px;font-weight:700;color:#e6c6a0;list-style:none}
+.wa-civic-form summary::-webkit-details-marker{display:none}
+.wa-civic-form[open] summary{background:#293a48;border-bottom:1px solid #455a69}
+.wa-civic-form .wa-fields{padding:15px;gap:10px}
+.wa-civic-empty{display:flex;align-items:center;gap:14px;margin:0 15px 14px;padding:16px;border:1px solid #71614f;background:#312c2b;border-radius:5px}
+.wa-civic-empty>i{color:#edc58d;font-size:25px}.wa-civic-empty>div{flex:1;min-width:0}
+.wa-civic-empty strong{color:#f3dfc4;font-size:13px}.wa-civic-empty p{color:#c5bdb6;font-size:12px;line-height:1.5;margin:5px 0 0}
+.wa-civic-empty button{background:#3c4a51;color:#f5e4c9;border:1px solid #917d63;border-radius:4px;padding:9px 12px;cursor:pointer}
+.wa-upgrades{display:grid;gap:13px}
+.wa-upgrades-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wa-upgrades-header h3{margin:0;color:#f0dfc4;font-size:18px}
+.wa-upgrades-header p{font-size:12px;color:#aabbc8;margin:4px 0}
+.wa-upgrades-header button,.wa-upgrade-actions button{padding:9px 12px;border-radius:4px;border:1px solid #9d866b;background:#293844;color:#f3dcc1;cursor:pointer}
+.wa-upgrade-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wa-upgrade-metrics span{font-size:10px;color:#97adb9}
+.wa-upgrade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.wa-upgrade-card{display:grid;align-content:start;gap:10px;padding:15px;background:#182733;border:1px solid #3d5463;border-radius:6px}
+.wa-upgrade-card header{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px;color:#c8a77e}
+.wa-upgrade-card>strong{font-size:16px;color:#ecdfcf}
+.wa-upgrade-card>p{font-size:12px;color:#9cb1be;margin:0;min-height:20px}
+.wa-upgrade-details{display:flex;flex-wrap:wrap;gap:6px}
+.wa-upgrade-details span{font-size:11px;color:#bfcbd4;background:#2e3f4a;border-radius:3px;padding:4px 7px}
+.wa-upgrade-card footer{display:flex;gap:8px;margin-top:4px}
+.wa-upgrade-card footer button{padding:8px;border:1px solid #64717c;color:#e4d7c7;background:#273945;cursor:pointer;border-radius:3px}
+.wa-upgrade-status{border:1px solid #7a705f;color:#cebda4;padding:4px 7px;border-radius:12px;font-size:10px}
+.wa-upgrade-status.is-operational{border-color:#6b9a88;color:#aad9b7}
+.wa-upgrade-status.is-damaged{border-color:#ad7c4b;color:#f0bc87}
+.wa-upgrade-status.is-destroyed{border-color:#a65861;color:#f1a4ab}
+.wa-upgrade-edit{border:1px solid #8d7454;border-radius:5px;background:#172531}
+.wa-upgrade-edit>.wa-upgrades-header{padding:14px;border-bottom:1px solid #435361}
+.wa-upgrade-actions{display:flex;justify-content:flex-end;gap:9px}
+@media(max-width:900px){.wa-civic-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-civic-dashboard{grid-template-columns:1fr}.wa-upgrade-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.wa-civic-tabs button{flex:1 0 42%}.wa-civic-summary{grid-template-columns:1fr 1fr}.wa-civic-empty{flex-wrap:wrap}.wa-civic-empty button{width:100%}.wa-upgrade-metrics{grid-template-columns:1fr}}

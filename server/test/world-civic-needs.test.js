@@ -55,3 +55,35 @@ test('water and medicine shortages generate dedicated alerts',()=>{
  assert.ok(p.warnings.includes('water_shortfall'));
  assert.ok(p.warnings.includes('medicine_shortfall'));
 });
+
+test('uninhabited settlements have no provisions demand, unrest pressure or food warnings',()=>{
+ const abandoned={...settlement,population:0,unrest:50};
+ const p=civicSimulationPreview(abandoned,{...profile,enabled_mode:'managed',grace_cycles:0},[],[],0,5);
+ assert.equal(p.food_need,0);
+ assert.equal(p.heat_need,0);
+ assert.equal(p.water_need,0);
+ assert.equal(p.medicine_need,0);
+ assert.equal(p.food_days,null);
+ assert.deepEqual(p.warnings,[]);
+ assert.equal(p.pressure,0);
+ assert.equal(p.risk,0);
+ assert.equal(p.after_unrest,50);
+ assert.equal(p.food_used,0);
+ assert.equal(p.fuel_used,0);
+ assert.equal(p.water_used,0);
+ assert.equal(p.medicine_used,0);
+});
+
+test('completed clinic and defenses improve service and security readings',()=>{
+ const managed={...profile,enabled_mode:'managed',grace_cycles:0};
+ const healthy=[
+  {category:'clinic',status:'operational',condition_pct:100,service_bonus:30,defense_bonus:0,housing_bonus:0},
+  {category:'defense',status:'operational',condition_pct:100,service_bonus:0,defense_bonus:30,housing_bonus:0}
+ ];
+ const stores=[{resource_kind:'food',quantity:300,food_group:'grain'},{resource_kind:'water',quantity:300},{resource_kind:'medicine',quantity:30},{resource_kind:'fuel',quantity:300}];
+ const base=civicSimulationPreview({...settlement,security_score:30},managed,stores,[],70,2);
+ const upgraded=civicSimulationPreview({...settlement,security_score:30},managed,stores,[],70,2,[],healthy);
+ assert.equal(upgraded.effective_security,60);
+ assert.equal(upgraded.effective_medical_access,90);
+ assert.ok(upgraded.pressure<base.pressure);
+});
