@@ -222,18 +222,18 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(granaryStart.status,200,JSON.stringify(granaryStart.body));
   const granaryId=granaryStart.body.upgrade_id;
   const granaryFundPath=structurePath+'/projects/'+granaryStart.body.project_id+'/commit';
-  const insufficientGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:999999}),granaryFundPath);
+  const insufficientGranaryFund=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:999999}),granaryFundPath);
   assert.equal(insufficientGranaryFund.status,409,'project refuses material overfunding');
-  const firstGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:10}),granaryFundPath);
+  const firstGranaryFund=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:10}),granaryFundPath);
   assert.equal(firstGranaryFund.status,200,JSON.stringify(firstGranaryFund.body));
   assert.equal(firstGranaryFund.body.remaining_qty,20);
   await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-unfunded-granary','order',120);
   const stillUnfunded=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(Number(stillUnfunded.body.projects.find(p=>Number(p.id)===Number(granaryStart.body.project_id)).progress),0,'partially funded construction cannot consume labor');
-  const remainingGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:20}),granaryFundPath);
+  const remainingGranaryFund=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:20}),granaryFundPath);
   assert.equal(remainingGranaryFund.status,200,JSON.stringify(remainingGranaryFund.body));
   assert.equal(remainingGranaryFund.body.fully_funded,true);
-  const repeatedFunding=await worldAdministrationRoute(admin,request('POST',{quantity:1}),granaryFundPath);
+  const repeatedFunding=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:1}),granaryFundPath);
   assert.equal(repeatedFunding.status,409,'fully funded projects cannot debit more stock');
   const unbuiltStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(unbuiltStorage.body.storage_capacity.food,500,'unfinished granary cannot store extra food');
@@ -243,7 +243,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.ok(completedGranary.body.upgrades.some(u=>Number(u.id)===Number(granaryId)&&u.status==='operational'));
   const upgradeGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/improve');
   assert.equal(upgradeGranary.status,200,JSON.stringify(upgradeGranary.body));
-  const upgradeFunding=await worldAdministrationRoute(admin,request('POST',{quantity:60}),structurePath+'/projects/'+upgradeGranary.body.project_id+'/commit');
+  const upgradeFunding=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:60}),structurePath+'/projects/'+upgradeGranary.body.project_id+'/commit');
   assert.equal(upgradeFunding.status,200,JSON.stringify(upgradeFunding.body));
   const upgradingStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(upgradingStorage.body.storage_capacity.food,750,'upgrading retains the previous working level');
@@ -257,12 +257,37 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(stormAffected.body.storage_capacity.food,600,'damaged granary loses storage capacity until repaired');
   const repairGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/repair');
   assert.equal(repairGranary.status,200,JSON.stringify(repairGranary.body));
-  const repairFunding=await worldAdministrationRoute(admin,request('POST',{quantity:repairGranary.body.cost.material_required}),structurePath+'/projects/'+repairGranary.body.project_id+'/commit');
+  const repairFunding=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:repairGranary.body.cost.material_required}),structurePath+'/projects/'+repairGranary.body.project_id+'/commit');
   assert.equal(repairFunding.status,200,JSON.stringify(repairFunding.body));
   for(let tick=1;tick<=5;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-repair-'+tick,'order',120);
   const repaired=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(repaired.body.storage_capacity.food,1000,'repair restores storage without creating an unearned new level');
 
+  // Building templates can require several independently reserved crafted goods.
+  const [[oreBeforeCivicTest]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',100) ON DUPLICATE KEY UPDATE quantity=100");
+  const baseGranary=selectedTemplate.body.templates.find(t=>t.id==='granary');
+  const dualRecipe={...baseGranary,id:'ci-dual-material-granary',name:'CI Mixed Materials Granary',materials:[{material_id:'iron-ingot',units_per_level:20},{material_id:'iron-ore',units_per_level:10}],material_id:'iron-ingot',material_per_level:20,enabled:true};
+  const createdDual=await worldAdministrationRoute(admin,request('POST',dualRecipe),'/world-admin/civic/templates',{id,account_role:'domina'});
+  assert.equal(createdDual.status,200,JSON.stringify(createdDual.body));
+  const dualProject=await worldAdministrationRoute(admin,request('POST',{template_id:dualRecipe.id}),structurePath+'/from-template');
+  assert.equal(dualProject.status,200,JSON.stringify(dualProject.body));
+  const dualPath=structurePath+'/projects/'+dualProject.body.project_id+'/commit';
+  const dualNeeds=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(dualNeeds.body.projects.find(p=>Number(p.id)===Number(dualProject.body.project_id)).needs.length,2,'template snapshots both materials');
+  const dualIron=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ingot',quantity:20}),dualPath);
+  assert.equal(dualIron.status,200,JSON.stringify(dualIron.body));
+  assert.equal(dualIron.body.fully_funded,false,'one material type cannot fund a two-material project');
+  await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-dual-unfunded','order',120);
+  const incompleteDual=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(Number(incompleteDual.body.projects.find(p=>Number(p.id)===Number(dualProject.body.project_id)).progress),0);
+  const dualOre=await worldAdministrationRoute(admin,request('POST',{material_id:'iron-ore',quantity:10}),dualPath);
+  assert.equal(dualOre.status,200,JSON.stringify(dualOre.body));
+  assert.equal(dualOre.body.fully_funded,true);
+  for(let tick=1;tick<=6;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-dual-done-'+tick,'order',120);
+  const dualFinished=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(dualFinished.body.storage_capacity.food,1250,'full materials and labor unlock template effect');
+  await admin.execute("UPDATE fc_material_stock SET quantity=? WHERE material_id='iron-ore'",[Number(oreBeforeCivicTest?.quantity||0)]);
   await admin.execute("UPDATE fc_material_stock SET quantity=? WHERE material_id='iron-ingot'",[Number(ironBeforeCivicTest?.quantity||0)]); // Restore crafting fixture stock after the isolated civic test.
 
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
@@ -1086,7 +1111,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(npcOrderGoods.length,0,'NPC fictional supplies never touch the Order stock ledger');
   for(let day=9;day<=23;day++)await runSettlementSimulation(admin,new Date('2026-11-'+String(day).padStart(2,'0')+'T06:00:00Z'));
   const [[npcConstruction]]=await admin.execute("SELECT COUNT(*) AS n FROM world_civic_building_projects WHERE settlement_id=? AND owner_kind='npc'",[npcId]);
-  assert.ok(Number(npcConstruction.n)>0,'automated NPC settlement starts template-backed housing construction');
+  assert.equal(Number(npcConstruction.n),0,'NPC without a productive factory does not receive free civic construction points');
+  const [[idleNpcFunds]]=await admin.execute('SELECT development_points,last_industry_development_points FROM world_settlement_autosim WHERE settlement_id=?',[npcId]);
+  assert.equal(Number(idleNpcFunds.development_points),0,'population and workforce never passively mint development points');
+  assert.equal(Number(idleNpcFunds.last_industry_development_points),0);
   const [npcHistory]=await admin.execute('SELECT cycle_key FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
   assert.equal(npcHistory.length,new Set(npcHistory.map(x=>x.cycle_key)).size);
   const [[unowned]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_autosim WHERE settlement_id=?',[mineId]);
