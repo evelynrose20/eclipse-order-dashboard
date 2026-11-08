@@ -10,9 +10,9 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
  const addRow=kind=>{const item=items.find(i=>!draft.configuration[kind].some(x=>x.item_id===i.id));if(item)setConfig(kind,[...draft.configuration[kind],{item_id:item.id,qty:1}]);};
  const changeRule=(i,patch)=>setDraft(d=>({...d,rules:d.rules.map((r,j)=>i===j?{...r,...patch}:r)}));
  const changeCondition=(i,k,patch)=>changeRule(i,{when:draft.rules[i].when.map((p,j)=>j===k?{...p,...patch}:p)});
- async function submit(path,body,onDone){
+ async function submit(path,body,onDone,closeAfter=false){
   setBusy(true);setError('');
-  try{const response=await request(path,{method:'POST',body});onDone(response);if(onSaved)await onSaved();}
+  try{const response=await request(path,{method:'POST',body});onDone(response);if(closeAfter&&onSaved)await onSaved();}
   catch(e){setError(e.message||'Unable to save industry template')}
   finally{setBusy(false)}
  }
@@ -46,6 +46,6 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
    </section>
   </div>
   {test&&<div className="wa-industry-dryresult"><strong>Rule dry run</strong><span>{test.operations} operations · {test.blocked.length?test.blocked.join(', '):'No blocking conditions'}</span><small>{JSON.stringify(test.outputs)}</small></div>}
-  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',payload(),r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{})}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
+  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',payload(),r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
  </section>;
 }
