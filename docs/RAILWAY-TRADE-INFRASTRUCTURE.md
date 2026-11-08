@@ -12,6 +12,18 @@ Rail operations are edited in **World Administration → Territorial Map → Rai
 
 No existing world road/rail records are modified by the migration.
 
+## Lay track — redesigned drawing workflow
+
+Use **World Administration → Zone Territory Map → Lay track** to create railway geometry on the **original smooth cartographic map**. This is different from the **Railway** tab, which manages station platforms, freight, switches and crossings.
+
+1. Choose starting and destination settlements or saved junctions by clicking map markers or using the From/To controls. Route type stays locked to Railway while laying track.
+2. To add a curve, click the map. Each new bend inserts into the nearest part of the route rather than being appended out of order. Drag circular gold handles to refine the curve; Shift+click a handle to remove it.
+3. Optional **Trace track by dragging**: after choosing endpoints, enable the toggle and drag across open terrain to sketch the route. The sketch is reduced to at most 16 editable handles while retaining its shape. Nothing is saved until **Save railway**.
+4. **Undo bend**, **Straighten**, **Reverse**, and **Cancel draft** apply only to unsaved work. You can still select existing tracks under **Edit routes** and reposition their bends.
+5. To start a branch from a saved railway, use **Branch from route**, click directly on the visible track, and choose the branch destination. Curved rail snapping now follows the rendered curve, not the straight chord between control points.
+
+Clicking a selected track in **Edit routes** adds a bend to its draft instead of discarding unsaved changes. Existing railway records remain on the same map; no second track editor or automatic track conversion is created.
+
 ## Railway stations and platforms
 
 A station is anchored to an existing **rail-connected node** in the selected region/zone. To place a new one between two settlements, first use the existing route editor to split a rail line and create a saved shared node.
