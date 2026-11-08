@@ -22,6 +22,7 @@ export async function handleCivicExtras(pool,req,path,actor){
  if(!m)return null;
  const settlementId=Number(m[1]),kind=m[2],entryId=m[3]?Number(m[3]):null,dispatch=m[4];
  if(!Number.isSafeInteger(settlementId)||settlementId<1)return fail(400,'invalid_settlement');
+ if(kind==='cohorts'&&!entryId)return null; // Existing create route owns cohort insertion.
  if(kind==='cohorts'&&entryId&&['PUT','DELETE'].includes(req.method)){
   const b=req.method==='PUT'?await read(req):null;
   if(req.method==='PUT'&&!cohortValid(b))return fail(400,'invalid_civic_cohort');
