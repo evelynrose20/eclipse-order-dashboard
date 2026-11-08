@@ -42,18 +42,15 @@ test('unknown railway API paths return 404 without touching the database',async(
  const result=await handleRailInfrastructure(null,{method:'POST'},'/world-admin/rail/missing',null);
  assert.equal(result.status,404);
 });
-test('railway facility UI stays within original map and uses Font Awesome',async()=>{
+test('old graphical train facility system is archived behind the internal logistics menu',async()=>{
  const load=path=>readFile(new URL('../../'+path,import.meta.url),'utf8');
- const [map,panel,schema,setup]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/RailInfrastructurePanel.jsx'),load('server/sql/047_rail_infrastructure.sql'),load('server/src/setup-local.js')]);
- assert.match(map,/RailInfrastructurePanel/);assert.match(map,/\['rail','Railway'\]/);
- assert.match(panel,/Enable rail infrastructure on selected route/);
- for(const label of ['Stations','Platforms','Switches','Crossings','FREIGHT ROUTE CHECK'])assert.ok(panel.includes(label),label);
- assert.match(panel,/fa-solid/);
- for(const name of ['world_rail_stations','world_rail_platforms','world_rail_switches','world_rail_crossings'])assert.ok(schema.includes(name),name);
- assert.match(setup,/047_rail_infrastructure\.sql/);
- assert.doesNotMatch(map,/WorldNetworkEditor/);
+ const [map,menu,setup]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/InternalRail.jsx'),load('server/src/setup-local.js')]);
+ assert.doesNotMatch(map,/RailInfrastructurePanel|wtm-rail-symbol/);
+ assert.match(menu,/Internal Rail Logistics/);
+ assert.match(menu,/fa-solid fa-train/);
+ assert.match(menu,/ir-progress/);
+ assert.match(setup,/049_internal_rail_logistics\.sql/);
 });
-
 test('cross-zone freight requires an explicitly operational interzone station link',()=>{
  const remote={...dest,id:12,node_id:800,region_id:9,zone_id:40,name:'Distant Depot'};
  const remotePlatform={station_id:12,status:'operational',kind:'freight',capacity:30};
