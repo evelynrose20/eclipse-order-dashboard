@@ -53,3 +53,19 @@
 }
 @media(max-width:520px){.app-shell .topbar{align-items:center}.app-shell .top-actions .local-status{display:none}.app-shell .top-actions .view-switch{font-size:10px;padding:7px}.order-nav-brand{padding-top:19px}}
 @media(prefers-reduced-motion:reduce){.app-shell .order-nav{transition:none}}
+/* Compact desktop navigation: retain readable labels and full access to every group. */
+@media(min-width:921px){
+ .app-shell.eo-local .order-nav{width:242px;min-width:242px}
+ .app-shell.eo-local .order-nav-brand{padding:14px 12px 12px;gap:9px}
+ .app-shell.eo-local .order-nav-brand-icon{height:35px;width:35px;font-size:20px}
+ .app-shell.eo-local .order-nav-brand strong{font-size:17px}
+ .app-shell.eo-local .order-nav-workspace{padding:10px 13px 8px}
+ .app-shell.eo-local .order-nav-search{margin:4px 10px 9px;min-height:34px}
+ .app-shell.eo-local .order-nav-groups{padding:0 8px 10px}
+ .app-shell.eo-local .order-nav-group-head{padding:9px 9px 6px}
+ .app-shell.eo-local .order-nav-item{min-height:39px;padding:5px 8px;gap:8px}
+ .app-shell.eo-local .order-nav-symbol{width:21px;font-size:15px}
+ .app-shell.eo-local .order-nav-text strong{font-size:12px}
+ .app-shell.eo-local .order-nav-text small{font-size:10px;margin-top:2px}
+ .app-shell.eo-local .order-nav-footer{padding:10px 12px 12px}
+}

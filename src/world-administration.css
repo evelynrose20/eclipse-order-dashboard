@@ -270,3 +270,39 @@
  .wa-map-selection-panel .wa-inspector{grid-template-columns:1fr}
  .wa-map-selection-panel .wa-inspector>.wa-inspector-civic{grid-template-columns:1fr}
 }
+
+/* Map coordinate art is authored at 900 × 560. Keep that same ratio at every viewport
+   to prevent horizontally stretched terrain, mountain ranges, rail lines and labels. */
+.wa-map-main-panel .wtm-stage{
+  box-sizing:border-box;
+  width:min(100%,1150px,115dvh);
+  height:auto;
+  min-height:0;
+  max-height:none;
+  aspect-ratio:900 / 560;
+  margin:5px auto;
+}
+.wa-map-main-panel .wtm-map-frame{min-width:0}
+@media(max-width:700px){
+ .wa-map-main-panel .wtm-stage{
+  width:100%;
+  height:auto;
+  min-height:0;
+  aspect-ratio:900 / 560;
+ }
+}
+/* Compact the World Administration chrome without reducing legible type sizes. */
+.wa-root{gap:10px}
+.wa-heading{padding:13px 18px}
+.wa-heading h2{font-size:clamp(24px,2.4vw,34px);margin:4px 0}
+.wa-heading span{font-size:9px}
+.wa-tabs{padding-bottom:5px;gap:5px}
+.wa-tabs button{padding:8px 11px;min-height:34px}
+.wa-geography-picker{padding:9px 11px;gap:7px}
+.wa-geography-tabs>button{min-height:34px;padding:7px 12px}
+.wa-geography-tool,.wa-geography-create{min-height:34px;padding:7px 10px}
+.wa-zone-summary{padding:7px 11px}
+.wa-panel-title{padding:9px 12px}
+.wa-map-workspace{gap:9px}
+.wa-map-main-panel .wtm-map-title{padding:9px 8px 6px}
+.wa-map-main-panel .wtm-map-title strong{font-size:clamp(19px,2vw,26px)}
