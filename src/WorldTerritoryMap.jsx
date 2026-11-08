@@ -35,6 +35,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
+ const drawing=mode==='link'||mode==='track';
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
@@ -139,7 +140,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
   onSelect(String(s.id));
-  if(canEdit&&mode==='link'){
+  if(canEdit&&drawing){
    chooseEndpoint(Number(s.id));
   }
  }
@@ -276,8 +277,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
   if(mode==='rail'){setRailPoint(p);return}
-  if(junctionAction==='place'&&(mode==='link'||mode==='bend')){void createJunction(p);return}
-  if(mode==='link'&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
+  if(junctionAction==='place'&&(drawing||mode==='bend')){void createJunction(p);return}
+  if(drawing&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
    const line=pointsForRoute(currentRoute,old);
@@ -310,7 +311,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['rail','Railway'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('');if(id==='mountains')selectMountain('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['track','Lay track'],['rail','Railway'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setJunctionAction('');setNotice('');if(id==='track')setRouteType('rail');if(id==='mountains')selectMountain('')}}>{name}</button>)}
    </div>
 
   </div>}
@@ -363,18 +364,18 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
      </g>;
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
-    {previewPoints.length>=2&&mode==='link'&&<path className="wtm-planned-route" d={smoothRoadPath(previewPoints)}/>}
+    {previewPoints.length>=2&&drawing&&<path className={'wtm-planned-route '+(mode==='track'?'wtm-track-preview':'')} d={smoothRoadPath(previewPoints)}/>}
    </svg>
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
-   {canEdit&&junctionAction!=='split'&&((mode==='bend'&&currentRoute)||(mode==='link'&&routeStart!=null&&routeEnd!=null)||((mode==='link'||mode==='bend')&&junctionAction==='place'))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
+   {canEdit&&junctionAction!=='split'&&((mode==='bend'&&currentRoute)||(drawing&&routeStart!=null&&routeEnd!=null)||((drawing||mode==='bend')&&junctionAction==='place'))&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Click the map to add a route bend"/>}
    {canEdit&&mode==='rail'&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Choose a crossing point on the existing map"/>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
-   {mode==='link'&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><span className="wtm-plan-point" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
+   {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
 
    {(mode==='view'||mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
-    return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(mode==='link'&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
+    return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
    {(mode==='view'||mode==='rail')&&railStations.map(station=>{
     const node=graphNodes.get(Number(station.node_id)),p=graphPoint(node);
@@ -401,7 +402,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':mode==='link'?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
+   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':drawing?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
 
   </div>}
   {canEdit&&selectedNode&&(mode==='view'||mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
@@ -420,15 +421,15 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    {attachedSegments.length>0&&<p className="wtm-junction-warning">Deleting this junction also deletes its {attachedSegments.length} connected route segment{attachedSegments.length===1?'':'s'}. Moving or renaming preserves all connections.</p>}
   </section>}
   {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} focus={railFocus} onFocusHandled={()=>setRailFocus(null)} onClearPoint={()=>setRailPoint(null)}/>}
-  {canEdit&&(mode==='link'||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
-   <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{mode==='link'?'PLAN A NEW CONNECTION':'MODIFY EXISTING CONNECTIONS'}</span></div>
+  {canEdit&&(drawing||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
+   <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{drawing?(mode==='track'?'LAY A RAILWAY':'PLAN A NEW CONNECTION'):'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
     <div className="wtm-route-field"><label>Existing connections<select value={selectedRoute||''} onChange={e=>{const r=[...routes,...networkSegments].find(r=>(r.from_node_id?'graph:':'legacy:')+r.id===e.target.value);if(r)selectRoad(r);else setSelectedRoute(null)}}><option value="">Choose a route to edit</option>{[...routes,...networkSegments].map(r=><option value={(r.from_node_id?'graph:':'legacy:')+r.id} key={(r.from_node_id?'graph:':'legacy:')+r.id}>{r.route_name||ROUTE_OPTIONS.find(t=>t[0]===r.route_type)?.[1]||'Route'} · {r.from_node_id?(graphNodes.get(Number(r.from_node_id))?.name||'Node '+r.from_node_id)+' → '+(graphNodes.get(Number(r.to_node_id))?.name||'Node '+r.to_node_id):(byId.get(Number(r.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(r.to_settlement_id))?.name||'?')}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route type<select value={routeType} onChange={e=>{setRouteType(e.target.value);setRouteDirty(true)}}>{ROUTE_OPTIONS.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label></div>
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
-    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
+    <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{drawing?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
    </div>
-   {mode==='link'&&<div className="wtm-route-endpoint-pickers">
+   {drawing&&<div className="wtm-route-endpoint-pickers">
     <label>From — place or junction<select aria-label="Route starting endpoint" value={routeEndpoint(routeStart)} onChange={e=>chooseRouteEndpoint('from',e.target.value)}>
      <option value="">Choose starting location</option>{endpointOptions.map(option=><option key={option.kind+'-from-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
     </select></label>
@@ -436,7 +437,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
      <option value="">Choose destination</option>{endpointOptions.filter(option=>option.value!==routeEndpoint(routeStart)).map(option=><option key={option.kind+'-to-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
     </select></label>
    </div>}
-   <p className="wtm-route-help">{mode==='link'?'Choose two settlements or junctions on the map or using the endpoint selectors. Click the map to add smooth bends, then Save new route. Junctions are real shared connection points.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
+   <p className="wtm-route-help">{drawing?'Choose two settlements or junctions on the map or using the endpoint selectors. Click the map to add smooth bends, then Save new route. Junctions are real shared connection points.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
    <div className="wtm-junction-tools">
     <button type="button" className={junctionAction==='place'?'active':''} disabled={busy} onClick={()=>{setJunctionAction(v=>v==='place'?'':'place');setNotice('Click on the same map to place a junction.');}}><i className="fa-solid fa-location-dot"/> Place junction</button>
     <button type="button" className={junctionAction==='split'?'active':''} disabled={busy||!(networkSegments.length||routes.length)} onClick={()=>{setJunctionAction(v=>v==='split'?'':'split');setNotice('Click an existing route directly to create a shared junction.');}}><i className="fa-solid fa-code-branch"/> Branch from route</button>
@@ -445,8 +446,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     <small>New roads keep the original smooth bends. Choose a junction while planning a route; drag it with Move places.</small>
    </div>
    <div className="wtm-route-actions">
-    {mode==='link'?<>
-      <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>Save new route</button>
+    {drawing?<>
+      <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>{mode==='track'?'Save railway':'Save new route'}</button>
       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}>Undo bend</button>
       <button disabled={busy} onClick={()=>{setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route draft discarded.')}}>Cancel draft</button>
     </>:<>
