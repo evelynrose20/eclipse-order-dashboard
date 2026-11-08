@@ -160,3 +160,65 @@
 .wa-upgrade-section-heading>button:hover{border-color:#edc99a;background:#364a59}
 .wa-upgrade-section-empty{padding:15px;border:1px dashed #445665;border-radius:5px;color:#9db0bd;font-size:12px}
 @media(max-width:540px){.wa-upgrade-section-heading>button{width:100%}}
+
+
+/* NPC settlement observatory: separate from Order-controlled settlement tools. */
+.wa-npc-world{display:grid;gap:15px;min-width:0}
+.wa-npc-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border:1px solid #455768;background:#1a2a36;border-radius:6px}
+.wa-npc-heading h3{font-size:24px;color:#ecd8ba;margin:2px 0 6px}
+.wa-npc-heading p{font-size:12px;color:#aabcca;margin:0}
+.wa-npc-heading button{border:1px solid #9f8668;color:#e9cfad;background:#283946;padding:10px 15px;border-radius:5px;cursor:pointer}
+.wa-kicker{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:#c9a577;font-weight:700}
+.wa-npc-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wa-npc-summary>div,.wa-npc-stats>div{background:#1b2b38;border:1px solid #405665;border-radius:5px;display:grid;gap:5px;padding:15px;min-width:0}
+.wa-npc-summary small,.wa-npc-stats small{font-size:11px;color:#a6bbc7}
+.wa-npc-summary strong,.wa-npc-stats strong{font-size:19px;color:#f0ddc0}
+.wa-npc-layout{display:grid;grid-template-columns:minmax(225px,31%) minmax(0,1fr);gap:14px;align-items:start;min-width:0}
+.wa-npc-directory,.wa-npc-details{min-width:0;background:#192835;border:1px solid #415464;border-radius:6px;overflow:hidden}
+.wa-npc-filters{padding:12px;display:grid;gap:9px;border-bottom:1px solid #354856}
+.wa-npc-filters>input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #506778;border-radius:5px;color:#e4e9ed;background:#101d28}
+.wa-npc-filters label{display:flex;gap:7px;align-items:center;font-size:12px;color:#adbdc9}
+.wa-npc-list{display:grid;max-height:660px;overflow:auto}
+.wa-npc-list>button{border:0;border-bottom:1px solid #304451;background:transparent;color:#e0e6e9;padding:13px;display:flex;justify-content:space-between;gap:10px;text-align:left;cursor:pointer}
+.wa-npc-list>button.selected{background:#334450;border-left:3px solid #cbac80;padding-left:10px}
+.wa-npc-list>button:hover{background:#293e4c}
+.wa-npc-list>button>span{display:grid;gap:5px}
+.wa-npc-list small{font-size:10px;color:#9ab0c0}
+.wa-npc-list-right{text-align:right;flex-shrink:0}
+.wa-npc-list-right strong{color:#e8cba7}
+.wa-npc-details-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px;border-bottom:1px solid #405261}
+.wa-npc-details-head h3{margin:5px 0;font-size:22px;color:#f0dcc1}
+.wa-npc-details-head p{margin:0;color:#a5bac6;font-size:12px}
+.wa-npc-pill{border:1px solid #8e806d;border-radius:24px;color:#dec3a0;background:#2b3740;padding:6px 10px;font-size:11px}
+.wa-npc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:12px}
+.wa-npc-stats>div{padding:10px}
+.wa-npc-stats strong{font-size:16px}
+.wa-npc-section{border-top:1px solid #3b5160;padding:16px;display:grid;gap:11px}
+.wa-npc-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.wa-npc-section-title h4{margin:0;color:#efdbbb;font-size:15px}
+.wa-npc-section-title>span{color:#98acbc;font-size:11px}
+.wa-npc-bars{display:flex;align-items:flex-end;gap:4px;height:102px;padding:8px;border-bottom:1px solid #586a73;background:#14232f;border-radius:4px 4px 0 0;overflow:hidden}
+.wa-npc-bars>div{flex:1;min-width:4px;max-width:36px;background:linear-gradient(0deg,#607f7f,#bbac85);border-radius:3px 3px 0 0}
+.wa-npc-bars p{color:#9aafbc;font-size:12px;align-self:center}
+.wa-npc-subtle{color:#9badba;font-size:12px;margin:0;line-height:1.5}
+.wa-npc-supplies{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.wa-npc-supplies>div{padding:10px;background:#233441;border:1px solid #425363;border-radius:4px;display:grid;gap:6px}
+.wa-npc-supplies span{color:#adbdc9;font-size:11px}
+.wa-npc-supplies strong{color:#ecd0ab}
+.wa-npc-project{display:grid;grid-template-columns:minmax(100px,1fr) minmax(60px,1fr) 35px;align-items:center;gap:12px;padding:10px;background:#213240;border-radius:4px}
+.wa-npc-project>div:first-child{display:grid;gap:4px}
+.wa-npc-project small{color:#9eb1c2;font-size:10px}
+.wa-npc-project strong{color:#e4d4bc;font-size:12px}
+.wa-npc-project-progress{height:7px;border-radius:5px;background:#40505b;overflow:hidden}
+.wa-npc-project-progress>div{height:100%;background:#adba9f;border-radius:5px}
+.wa-npc-journal{border-left:2px solid #8f846c;display:grid;gap:5px;padding:6px 11px}
+.wa-npc-journal small{color:#a6b7c5}
+.wa-npc-journal strong{font-size:12px;color:#eed4b2}
+.wa-npc-journal span{font-size:11px;color:#aabec6}
+.wa-npc-settings{border:1px solid #455867;background:#21313f;border-radius:4px;padding:14px}
+.wa-npc-settings-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wa-npc-settings-row label{display:grid;gap:6px;color:#b6c2cb;font-size:11px}
+.wa-npc-settings-row select{background:#172532;color:#e3e7eb;border:1px solid #62717d;border-radius:4px;padding:9px;width:100%;min-width:0}
+.wa-clock-config{margin:8px 0}
+@media(max-width:1000px){.wa-npc-layout{grid-template-columns:1fr}.wa-npc-list{max-height:240px}.wa-npc-summary,.wa-npc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.wa-npc-heading{flex-wrap:wrap}.wa-npc-summary,.wa-npc-stats,.wa-npc-supplies{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-npc-settings-row{grid-template-columns:1fr}.wa-npc-project{grid-template-columns:minmax(70px,1fr) minmax(45px,1fr) 34px}}
