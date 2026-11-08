@@ -328,6 +328,26 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const protectedTrack=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/network/segments/'+t1.body.id);
   assert.equal(protectedTrack.status,409,'track referenced by switch/crossing cannot be silently deleted');
   assert.equal((await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/rail/stations/'+origin.body.id)).status,409,'platforms protect station from deletion');
+  // Link freight-ready stations across two different zone maps, without joining map coordinates.
+  const overviewRail=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,zone_id:Number(overviewZone.id),from_node_id:Number(nodeA.body.id),to_node_id:Number(nodeB.body.id),route_type:'rail',route_name:'Overview transfer rail',waypoints:[]}),'/world-admin/network/segments');
+  assert.equal(overviewRail.status,200,JSON.stringify(overviewRail.body));
+  const remoteStation=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,zone_id:Number(overviewZone.id),node_id:Number(nodeA.body.id),name:'Regional Transfer',status:'operational',freight_enabled:true,passenger_enabled:false,freight_capacity:100,notes:''}),'/world-admin/rail/stations');
+  assert.equal(remoteStation.status,200,JSON.stringify(remoteStation.body));
+  const remotePlatform=await worldAdministrationRoute(admin,request('POST',{station_id:Number(remoteStation.body.id),code:'F1',kind:'freight',track_length:50,capacity:40,status:'operational'}),'/world-admin/rail/platforms');
+  assert.equal(remotePlatform.status,200,JSON.stringify(remotePlatform.body));
+  const interzonePayload={from_station_id:Number(origin.body.id),to_station_id:Number(remoteStation.body.id),name:'Northern transfer',status:'planned',bidirectional:true,freight_enabled:true,notes:'Regional interchange'};
+  const interzone=await worldAdministrationRoute(admin,request('POST',interzonePayload),'/world-admin/rail/links');
+  assert.equal(interzone.status,200,JSON.stringify(interzone.body));
+  const previewInterzone=()=>worldAdministrationRoute(admin,request('POST',{origin_station_id:Number(origin.body.id),destination_station_id:Number(remoteStation.body.id)}),'/world-admin/rail/preview');
+  assert.equal((await previewInterzone()).body.available,false,'planned interzone link cannot transport freight');
+  const activatedInterzone=await worldAdministrationRoute(admin,request('PUT',{...interzonePayload,status:'operational'}),'/world-admin/rail/links/'+interzone.body.id);
+  assert.equal(activatedInterzone.status,200,JSON.stringify(activatedInterzone.body));
+  const allowedInterzone=await previewInterzone();
+  assert.equal(allowedInterzone.status,200,JSON.stringify(allowedInterzone.body));
+  assert.equal(allowedInterzone.body.available,true,'operational interzone link joins independent maps');
+  assert.deepEqual(allowedInterzone.body.link_ids,[Number(interzone.body.id)]);
+  const badLink=await worldAdministrationRoute(admin,request('POST',{...interzonePayload,to_station_id:Number(target.body.id)}),'/world-admin/rail/links');
+  assert.equal(badLink.status,400,'interzone link cannot join two stations in one zone');
   const railState=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
   assert.ok(railState.body.rail_stations.some(s=>Number(s.id)===Number(origin.body.id)&&s.freight_ready));
  const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
