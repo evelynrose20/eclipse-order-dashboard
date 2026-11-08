@@ -136,7 +136,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
     <strong>{tab==='stations'?item.name:tab==='platforms'?((stationById(item.station_id)?.name||'Station')+' · '+item.code):tab==='switches'?'Switch #'+item.id+' · Node '+item.node_id:item.name||'Crossing #'+item.id}</strong>
     <small>{tab==='stations'?(item.freight_ready?'Freight ready':stateLabel(item.status)):stateLabel(item.status)}</small>
    </button>)}
-   <button className="wtm-rail-new" type="button" disabled={!canEdit||busy||tab==='stations'&&!stationNodes.length||tab==='platforms'&&!stations.length||tab==='switches'&&!rails.length||tab==='crossings'&&(!rails.length||!roads.length)} onClick={()=>start(tab)}><i className="fa-solid fa-plus"/> Add {tab.slice(0,-1)}</button>
+   <button className="wtm-rail-new" type="button" disabled={!canEdit||busy||tab==='stations'&&!stationNodes.some(n=>!usedStationNodes.has(Number(n.id)))||tab==='platforms'&&!stations.length||tab==='switches'&&!switchCandidates.length||tab==='crossings'&&(!rails.length||!roads.length)} onClick={()=>start(tab)}><i className="fa-solid fa-plus"/> Add {tab.slice(0,-1)}</button>
   </div>}
   {!!legacyRoutes.length&&tab!=='links'&&<div className="wtm-rail-import">
    <label>Older route to connect<select value={oldRoute} onChange={e=>setOldRoute(e.target.value)}><option value="">Choose a single existing road or railway</option>{legacyRoutes.map(r=><option key={r.id} value={r.id}>{r.route_name||('Route '+r.id)} · {r.route_type}</option>)}</select></label>
