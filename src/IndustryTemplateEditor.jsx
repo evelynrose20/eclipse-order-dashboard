@@ -5,6 +5,8 @@ const heading=s=>s.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function IndustryTemplateEditor({template=null,items=[],request,onSaved,onCancel}){
  const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:defaults());
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
+ const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30});
+ const [scenarioStock,setScenarioStock]=useState({});
  const setConfig=(field,value)=>setDraft(d=>({...d,configuration:{...d.configuration,[field]:value}}));
  const changeRow=(kind,i,key,val)=>setConfig(kind,draft.configuration[kind].map((row,j)=>j===i?{...row,[key]:key==='qty'?Number(val):val}:row));
  const addRow=kind=>{const item=items.find(i=>!draft.configuration[kind].some(x=>x.item_id===i.id));if(item)setConfig(kind,[...draft.configuration[kind],{item_id:item.id,qty:1}]);};
@@ -45,7 +47,13 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
     {!draft.rules.length&&<p className="wa-industry-empty">No custom rules. The normal workforce, input, heat, power, level and capacity requirements still apply.</p>}
    </section>
   </div>
+  <details className="wa-civic-form"><summary>Dry-run scenario · simulate available workers, utilities and goods</summary><div className="wa-industry-form">
+   {[['level','Facility level'],['capacity_pct','Capacity %'],['workforce','Workers'],['heat_available','Heat available'],['power_available','Power available']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="1" value={scenario[key]} onChange={e=>setScenario({...scenario,[key]:Number(e.target.value)})}/></label>)}
+   <label>Facility state<select value={scenario.status} onChange={e=>setScenario({...scenario,status:e.target.value})}>{['operational','captured','liberated','rebuilding','damaged','paused'].map(status=><option value={status} key={status}>{heading(status)}</option>)}</select></label>
+   {draft.configuration.inputs.map(input=><label key={input.item_id}>{items.find(x=>x.id===input.item_id)?.name||input.item_id} available<input type="number" min="0" step=".001" value={scenarioStock[input.item_id]??100} onChange={e=>setScenarioStock({...scenarioStock,[input.item_id]:Number(e.target.value)})}/></label>)}
+   <p className="wide wa-npc-subtle">A dry run reads only these example numbers. It never creates a facility, moves stock, or commits a production cycle.</p>
+  </div></details>
   {test&&<div className="wa-industry-dryresult"><strong>Rule dry run</strong><span>{test.operations} operations · {test.blocked.length?test.blocked.join(', '):'No blocking conditions'}</span><small>{JSON.stringify(test.outputs)}</small></div>}
-  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',payload(),r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
+  <footer><button type="button" onClick={()=>submit('/world-admin/industry/rules/dry-run',{...payload(),facility:scenario,stock:Object.fromEntries(draft.configuration.inputs.map(x=>[x.item_id,scenarioStock[x.item_id]??100]))},r=>setTest(r.preview))} disabled={busy}>Dry-run rules</button><button type="button" className="wa-accent" disabled={busy} onClick={()=>submit(template?'/world-admin/industry/templates/'+template.id+'/versions':'/world-admin/industry/templates',payload(),()=>{},true)}>{busy?'Saving…':template?'Publish new version':'Create template'}</button></footer>
  </section>;
 }
