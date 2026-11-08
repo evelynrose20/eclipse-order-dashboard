@@ -87,8 +87,16 @@ export function industryProductionPreview(facility,config,rules,stock={},context
  if(!decision.allowed)fails.push('rule_blocked');
  // Outdoor operations slow during severe regional weather; all facilities remain subject to custom weather rules.
  const outdoor=['agriculture','mine','extraction'].includes(context.industry_category);
- const weatherPenalty=outdoor?context.weather==='blizzard'?.25:context.weather==='snow'?.7:context.weather==='rain'?.85:1:1;
+ const baseWeather=outdoor?(context.weather==='blizzard'?.25:context.weather==='snow'?.7:context.weather==='rain'?.85:1):1;
+ const temperature=Number(context.temperature_f??32);
+ const coldPenalty=outdoor?(temperature<=-20?.4:temperature<=0?.7:1):1;
+ const basePenalty=Math.min(baseWeather,coldPenalty);
+ const protection=Math.min(3,Math.max(0,Math.floor(Number(context.weather_protection_level)||0)));
+ const protectionRecovered=[0,.5,.85,1][protection];
+ const climatePowered=context.climate_powered!==false;
+ const weatherPenalty=basePenalty+(1-basePenalty)*(climatePowered?protectionRecovered:0);
  const operations=fails.length||decision.multiplier===0?0:Math.min(1000,Math.floor(Math.max(0,Math.min(...limits)*weatherPenalty)));
+
  const scale=(arr,multiplier=1)=>Object.fromEntries(arr.map(x=>[x.item_id,Math.round(x.qty*operations*multiplier*1000)/1000]));
- return {operations,throughput_multiplier:decision.multiplier,weather_multiplier:weatherPenalty,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs,decision.multiplier),byproducts:scale(config.byproducts||[],decision.multiplier),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
+ return {operations,throughput_multiplier:decision.multiplier,weather_multiplier:weatherPenalty,weather_protection_level:protection,cold_multiplier:coldPenalty,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs,decision.multiplier),byproducts:scale(config.byproducts||[],decision.multiplier),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
 }
