@@ -275,7 +275,7 @@
    to prevent horizontally stretched terrain, mountain ranges, rail lines and labels. */
 .wa-map-main-panel .wtm-stage{
   box-sizing:border-box;
-  width:min(100%,calc(max(420px,100dvh - 235px) * 900 / 560));
+  width:min(100%,1150px,115dvh);
   height:auto;
   min-height:0;
   max-height:none;
