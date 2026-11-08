@@ -109,3 +109,10 @@
 .wa-industry-control-alert strong{color:#f5d2aa}
 .wa-industry-control-alert p{font-size:12px;color:#d4b9a5;line-height:1.5;margin:0}
 .wa-industry-control-alert button{justify-self:start;padding:9px 12px;border:1px solid #b58b6b;border-radius:4px;background:#4c3a36;color:#fee0bf}
+
+/* Consolidated project navigation: campaign history lives under P3, not a duplicate sidebar page. */
+.wa-industry-campaigns{min-width:0;display:grid;gap:12px}
+.wa-industry-campaign-intro{padding:14px 17px;background:#20303c;border:1px solid #475b68;border-radius:5px}
+.wa-industry-campaign-intro h3{font-size:17px;margin:5px 0;color:#ecd3b1}
+.wa-industry-campaign-intro p{font-size:12px;color:#aec0ca;margin:0;line-height:1.6}
+.wa-industry-campaigns .eo-construction{min-width:0}
