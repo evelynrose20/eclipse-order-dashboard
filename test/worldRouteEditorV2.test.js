@@ -29,7 +29,7 @@ test('route planning is preview-first with explicit save and cancellation',async
  assert.match(map,/chooseEndpoint/);
  assert.doesNotMatch(map,/void saveRoute/);
  assert.match(map,/Endpoints selected/);
- assert.match(map,/e\.stopPropagation\(\);mapClick\(e\)/);
+ assert.match(map,/function routePathClick/);
 });
 test('existing roads are editable by route list with waypoint insertion and reset',async()=>{
  const map=await load('src/WorldTerritoryMap.jsx');
@@ -38,15 +38,13 @@ test('existing roads are editable by route list with waypoint insertion and rese
  assert.match(map,/selectRoad\(r\)/);
  assert.match(map,/setRouteDirty\(true\)/);
 });
-test('railways render track/sleeper symbols distinct from road and trail',async()=>{
- const map=await load('src/WorldTerritoryMap.jsx'),css=await load('src/world-territory-map.css');
- assert.match(map,/route\.route_type==='rail'/);
- assert.match(map,/wtm-rail-ties/);
- assert.match(map,/wtm-rail-center/);
- assert.match(css,/wtm-road-rail \.wtm-rail-ties/);
- assert.match(css,/wtm-road-rail \.wtm-rail-center/);
+test('railway construction and facilities no longer appear in territory map',async()=>{
+ const [admin,map,nav]=await Promise.all([load('src/WorldAdministration.jsx'),load('src/WorldTerritoryMap.jsx'),load('src/OrderNavigation.jsx')]);
+ assert.doesNotMatch(map,/RailInfrastructurePanel|\['track','Lay track'\]|\['rail','Railway'\]/);
+ assert.match(admin,/r\.route_type!=='rail'/);
+ assert.match(admin,/e\.route_type!=='rail'/);
+ assert.match(nav,/'internal-rail':'train'/);
 });
-
 test('map uses Font Awesome web-font icons and accepts production and civic markers',async()=>{
  const [map,form,server,html,css]=await Promise.all([
   load('src/WorldTerritoryMap.jsx'),load('src/WorldAdministration.jsx'),
