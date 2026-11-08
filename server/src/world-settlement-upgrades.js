@@ -8,15 +8,16 @@ async function audit(db,actor,action,id,detail=''){await db.execute('INSERT INTO
 const payload=b=>b&&typeof b.name==='string'&&b.name.trim().length>0&&b.name.length<=120&&categories.includes(b.category)&&statuses.includes(b.status)&&whole(b.condition_pct,0,100)&&whole(b.level,1,20)&&whole(b.housing_bonus,0,10000000)&&whole(b.service_bonus,0,100)&&whole(b.defense_bonus,0,100)&&typeof b.notes==='string'&&b.notes.length<=500&&(b.category==='housing'||b.housing_bonus===0)&&(b.category==='defense'||b.defense_bonus===0)&&(['clinic','water','food_storage','insulation','public_works'].includes(b.category)||b.service_bonus===0);
 export function upgradeEffects(upgrades=[]){
  let housing=0,service=0,defense=0;
- const byCategory={};
+ const byCategory={},serviceByCategory={};
  for(const u of upgrades){
   const factor=u.status==='operational'?Number(u.condition_pct)/100:u.status==='damaged'?Number(u.condition_pct)/200:0;
   housing+=Math.floor(Number(u.housing_bonus)*factor);
   service+=Math.floor(Number(u.service_bonus)*factor);
   defense+=Math.floor(Number(u.defense_bonus)*factor);
   byCategory[u.category]=(byCategory[u.category]||0)+1;
+  serviceByCategory[u.category]=(serviceByCategory[u.category]||0)+Math.floor(Number(u.service_bonus)*factor);
  }
- return {housing_bonus:housing,service_bonus:Math.min(100,service),defense_bonus:Math.min(100,defense),by_category:byCategory};
+ return {housing_bonus:housing,service_bonus:Math.min(100,service),defense_bonus:Math.min(100,defense),by_category:byCategory,service_by_category:serviceByCategory};
 }
 export function housingCapacity(settlement,upgrades=[]){return Number(settlement.housing_capacity||0)+upgradeEffects(upgrades).housing_bonus}
 export async function getSettlementUpgradeRecords(db,id,lock=false){
