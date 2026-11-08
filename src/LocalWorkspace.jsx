@@ -74,7 +74,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   setChamberAccess(false);
   request('/thralls/chamber').then(()=>{if(active)setChamberAccess(true)}).catch(()=>{if(active)setChamberAccess(false)});
   return()=>{active=false};
- },[profile.id,request]);
+ },[profile.id]);
  useEffect(()=>{if(tab==='chamber'&&!chamberAccess)setTab('overview')},[tab,chamberAccess]);
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
