@@ -91,7 +91,7 @@ export default function ThrallChamber({request}){
      </div>:<div className="chamber-assembly">
       <p className="chamber-helper">Eligible bound characters and your own opted-in characters appear as available. The apparatus must be offline to place anyone in the chair.</p>
       {canManage&&<div className="chamber-record">
-       <label>Bound character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
+       <label>Bound character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name}{c.is_own?' (My character)':''} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
        <button type="button" disabled={busy||machine.machine_status!=='offline'||!selectedSeat} onClick={()=>act('seat',{character_id:selectedSeat},'Character seated in the offline apparatus.')}>Secure character in chair</button>
       </div>}
       {machine.machine_status!=='offline'&&canManage&&<p className="chamber-helper">Set the apparatus to Offline before seating a character.</p>}
