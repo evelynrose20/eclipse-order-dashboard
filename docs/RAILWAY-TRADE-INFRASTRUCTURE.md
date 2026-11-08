@@ -6,7 +6,7 @@ Rail operations are edited in **World Administration → Territorial Map → Rai
 
 1. Back up the production MySQL database.
 2. Pull matching `main` frontend and Windows API revisions.
-3. Run `npm run setup:local` from `server/`; confirm `047_rail_infrastructure` in `schema_migrations`.
+3. Run `npm run setup:local` from `server/`; confirm `048_rail_interzone_links` (and `047_rail_infrastructure`) in `schema_migrations`.
 4. Restart the Windows API service.
 5. Check that the original railways, junctions, mountain ranges, and zone boundaries remain visually unchanged.
 
@@ -43,6 +43,20 @@ Station, switch, and crossing records are stored separately from route geometry.
 ## Older original-map routes
 
 The Railway panel offers **Enable rail infrastructure on selected route**. This converts *only the selected older road or rail line* into the shared graph, preserving its endpoints, type, name and bends. Other lines remain unchanged. It is not an automatic bulk conversion.
+
+## Railway management improvements and cross-map network links (migration 048)
+
+**Stations, Platforms, Switches, Crossings, Network links** are separate sections of the Railway facility editor, not the Lay track tool.
+
+- **Stations:** Add a station at a rail-connected settlement or junction. The form suggests an unused node and a name. After saving a station, use **Add platform here** directly from its record.
+- **Platforms:** A platform belongs to one station and is not another settlement icon. New platforms automatically receive the next available code (F1, F2, etc.) and a starting capacity; missing, duplicate or invalid inputs are flagged before saving. An operational freight platform and operational station with positive capacities are required for freight readiness.
+- **Switches:** Choose a shared junction where at least two rail segments meet. The form suggests its connected pair of tracks and an open status; save or change the pair's operating state.
+- **Crossings:** These are **local intersections** of a road/trail and railway inside one zone. Clicking the road/rail intersection attempts to fill in the matching track IDs and coordinates; review them before saving.
+- **Network links:** Two existing stations on **different zone maps**, whether in the same region or different regions, may be connected using an explicit rail network link. Specify the origin, destination, status, freight permission, and whether travel is bidirectional. The link is planned until explicitly made operational. This does not create a fake cross-zone line between unrelated percentages/coordinates.
+
+The freight route preview traverses operational local rail segments and approved interzone links, respecting freight-ready stations, switches, and closed crossings. It lists local segments and cross-zone link IDs. It **does not** dispatch trains, move materials, or invent trip distances. Within one zone, draw physical rail lines; between maps, use station links.
+
+**Deployment:** back up `eclipse_order` MySQL, pull the matching frontend and Windows API, run `npm run setup:local` in `server/`, verify migration `048_rail_interzone_links`, then restart the Windows API. The migration adds link records without modifying any saved map roads, trains, junctions, or stations.
 
 ## Trade readiness and subsequent phase
 
