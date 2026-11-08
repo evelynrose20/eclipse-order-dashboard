@@ -6,21 +6,27 @@ import './world-administration.css';
 const regionBlank={name:'',description:'',climate:'Garlean highlands',weather:'clear',temperature_c:-5,temperature_f:23,weather_mode:'garlean_seasonal',simulation_mode:'off',map_background_url:''};
 const cToF=c=>Math.round((Number(c)*9/5+32)*10)/10;
 const fToC=f=>Math.round((Number(f)-32)*5/9*100)/100;
-const settlementBlank=regionId=>({region_id:regionId||0,name:'',description:'',directory_faction_id:null,governing_faction_id:null,controlling_faction_id:null,supporting_faction_id:null,map_x:50,map_y:50,map_icon:'settlement',strategic_state:'peaceful',population:0,workforce:0,food_days:0,food_variety:50,heating_coverage:50,insulation:50,housing:50,medical_access:50,food_access:50,security_score:50,civil_stability:70,unrest:0,weather_exposure:50,simulation_enabled:false});
+const settlementBlank=(regionId,zoneId)=>({region_id:regionId||0,zone_id:zoneId||null,name:'',description:'',directory_faction_id:null,governing_faction_id:null,controlling_faction_id:null,supporting_faction_id:null,map_x:50,map_y:50,map_icon:'settlement',strategic_state:'peaceful',population:0,workforce:0,food_days:0,food_variety:50,heating_coverage:50,insulation:50,housing:50,medical_access:50,food_access:50,security_score:50,civil_stability:70,unrest:0,weather_exposure:50,simulation_enabled:false});
+const zoneBlank=regionId=>({region_id:Number(regionId),name:'',description:'',map_background_url:'',strategic_state:'peaceful',governing_faction_id:null,controlling_faction_id:null,supporting_faction_id:null});
 const civicFields=[['population','Residents',10000000],['workforce','Employed / available workers',10000000],['food_days','Food reserves (days)',99999],['food_variety','Food diversity',100],['heating_coverage','Heating coverage',100],['insulation','Insulation quality',100],['housing','Housing adequacy',100],['medical_access','Medical access',100],['food_access','Food access',100],['security_score','Public safety',100],['civil_stability','Civic stability',100],['unrest','Current unrest',100],['weather_exposure','Weather exposure',100]];
 const states=['peaceful','secure','contested','occupied','liberated','rebuilding','abandoned','destroyed'];
 const pretty=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());
 export default function WorldAdministration({request,readOnly=false}){
- const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[selected,setSelected]=useState('');
+ const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[zone,setZone]=useState(''),[selected,setSelected]=useState('');
  const [editing,setEditing]=useState(null),[editType,setEditType]=useState(''),[preview,setPreview]=useState(true);
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const load=async()=>{const result=await request('/world-admin');setData(result);setRegion(old=>result.regions.some(r=>String(r.id)===old)?old:String(result.regions[0]?.id||''));setSelected(old=>result.settlements.some(s=>String(s.id)===old)?old:String(result.settlements[0]?.id||''));return result};
+ const load=async()=>{const result=await request('/world-admin');setData(result);const currentRegion=result.regions.some(r=>String(r.id)===region)?region:String(result.regions[0]?.id||'');setRegion(currentRegion);setZone(old=>result.zones?.some(z=>String(z.id)===old&&String(z.region_id)===currentRegion)?old:String(result.zones?.find(z=>String(z.region_id)===currentRegion&&z.is_default)?.id||result.zones?.find(z=>String(z.region_id)===currentRegion)?.id||''));setSelected(old=>result.settlements.some(s=>String(s.id)===old)?old:String(result.settlements[0]?.id||''));return result};
  useEffect(()=>{load().catch(e=>setError(e.message||'Unable to open world records.'))},[]);
  const canEdit=!!data?.can_edit&&!readOnly;
- const regions=data?.regions||[],settlements=data?.settlements||[],factions=data?.factions||[],routes=data?.routes||[],networkNodes=data?.network_nodes||[],networkSegments=data?.network_segments||[],mountains=data?.mountains||[];
+ const regions=data?.regions||[],zones=data?.zones||[],settlements=data?.settlements||[],factions=data?.factions||[],routes=data?.routes||[],networkNodes=data?.network_nodes||[],networkSegments=data?.network_segments||[],mountains=data?.mountains||[];
  const activeRegion=regions.find(r=>String(r.id)===region);
- const local=settlements.filter(s=>String(s.region_id)===region);
- const current=settlements.find(s=>String(s.id)===selected);
+ const activeZone=zones.find(z=>String(z.id)===zone&&String(z.region_id)===region)||zones.find(z=>String(z.region_id)===region&&z.is_default)||zones.find(z=>String(z.region_id)===region);
+ const activeZoneId=String(activeZone?.id||'');
+ const zoneList=zones.filter(z=>String(z.region_id)===region);
+ const local=settlements.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId);
+ const current=local.find(s=>String(s.id)===selected);
+ const changeRegion=id=>{setRegion(id);const next=zones.find(z=>String(z.region_id)===id&&z.is_default)||zones.find(z=>String(z.region_id)===id);setZone(String(next?.id||''));setSelected('')};
+ const changeZone=id=>{setZone(id);setSelected('');setEditing(null)};
  const factionName=id=>factions.find(f=>f.id===id)?.name||'Not assigned';
  const previewOutlook=useMemo(()=>{if(!editing||editType!=='settlement')return null;
   const climate=regions.find(r=>Number(r.id)===Number(editing.region_id))||activeRegion;
@@ -45,8 +51,9 @@ export default function WorldAdministration({request,readOnly=false}){
    setEditing(null);setNotice('World record saved. No automatic simulation was run.');
   }catch(e){setError(e.message||'Save failed.')}finally{setBusy(false)}
  }
- const newSettlement=()=>{if(!region)return;setEditType('settlement');setEditing(settlementBlank(Number(region)))};
+ const newSettlement=()=>{if(!region||!activeZone)return;setEditType('settlement');setEditing(settlementBlank(Number(region),Number(activeZone.id)))};
  const editSettlement=s=>{setEditType('settlement');setEditing({...s})};
+ const editZone=z=>{if(!activeRegion)return;setEditType('zone');setEditing(z?{...z}:zoneBlank(activeRegion.id))};
  const editRegion=r=>{setEditType('region');setEditing(r?{...r,temperature_f:cToF(r.temperature_c),weather_mode:r.weather_mode||'garlean_seasonal'}:{...regionBlank})};
  return <section className="wa-root">
   <header className="wa-heading"><div><span>IMPERIAL ADMINISTRATION · NEW CASSIA & THE REALM</span><h2>World Administration</h2><p>Territories, civilian welfare, weather, heating, food variety and political relationships.</p></div>{canEdit&&<button className="wa-accent" onClick={()=>editRegion(null)}>+ New region</button>}</header>
