@@ -13,3 +13,17 @@ test('Saved cross-chat world-system plan covers the entire program',async()=>{
  const plan=await readFile(new URL('../docs/LIVING-WORLD-WAR-COMMAND-MASTER-PLAN.md',import.meta.url),'utf8');
  for(const word of ['food variety','heating','weather','unrest','ceruleum','trade','transport','military','Senate','Factions of the Realm','world builder','New Cassia'])assert.ok(plan.toLowerCase().includes(word.toLowerCase()),'Missing '+word);
 });
+
+test('P3 is the single sidebar destination while existing event-linked campaigns remain accessible',async()=>{
+ const workspace=await readFile(new URL('../src/LocalWorkspace.jsx',import.meta.url),'utf8');
+ const industry=await readFile(new URL('../src/IndustrySitesPanel.jsx',import.meta.url),'utf8');
+ const world=await readFile(new URL('../src/WorldAdministration.jsx',import.meta.url),'utf8');
+ assert.doesNotMatch(workspace,/\['construction','Construction Projects'/);
+ assert.match(workspace,/tab==='construction'&&<ConstructionProjects/);
+ assert.match(workspace,/onOpenConstruction=\{id=>\{setConstructionEventId\(id\);setTab\('construction'\)/);
+ assert.match(industry,/\['projects','Facility projects'/);
+ assert.match(industry,/\['campaigns','Campaign projects'/);
+ assert.match(industry,/tab==='campaigns'&&/);
+ assert.match(industry,/<ConstructionProjects request=\{request\}/);
+ assert.match(world,/IndustrySitesPanel request=\{request\} onChanged=\{load\} userId=\{userId\}/);
+});
