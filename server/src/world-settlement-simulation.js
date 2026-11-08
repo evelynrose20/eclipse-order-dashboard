@@ -81,15 +81,17 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  const step=targetJobs>beforeJobs?Math.max(1,Math.ceil((targetJobs-beforeJobs)*.18)):-Math.max(1,Math.ceil((beforeJobs-targetJobs)*.18));
  const workforce=cappedEmployment({...site,population:nextPopulation},Math.max(0,beforeJobs===targetJobs?beforeJobs:beforeJobs+step));
  const stability=clamp(beforeStability+(outcome.shortages.length?-2:1)),unrest=clamp(Number(site.unrest)+(outcome.shortages.length?2:-1));
+ const priorHealth=await workerHealthSnapshot(db,site.id);
+ const activeWorkforce=Math.max(0,workforce-priorHealth.sick_workers-priorHealth.injured_workers);
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
- let development=Number(state.development_points)+Math.max(3,workforce*.16);
+ let development=Number(state.development_points)+Math.max(0,activeWorkforce*.16);
  const ambient=npcEverydayStory(site,key,weather);
  let event=ambient.event,headline=ambient.headline;
  if(arrival.arrivals){event='arrivals';headline=arrival.arrivals+' new resident'+(arrival.arrivals===1?'':'s')+' settled in '+site.name}
  if(outcome.shortages.length){event='shortage';headline='Residents report '+outcome.shortages.join(', ')+' shortages'}
  let updates={};
  if(project){
-  const work=Math.max(6,Math.min(35,Math.round(workforce*.3)+8));
+  const work=activeWorkforce>0?Math.max(1,Math.min(35,Math.round(activeWorkforce*.3))):0;
   const progress=Math.min(100,Number(project.progress)+Math.round(work/projectDuration(project.kind)*100));
   if(progress>=100){
    if(project.kind==='housing')updates.housing_capacity=Number(site.housing_capacity)+Math.max(6,Math.round(Math.max(10,pop*.2)));
@@ -123,7 +125,8 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
 }
 async function advanceOrderStructures(db,site,key){
  const result={advanced:[],completed:[],blocked:[]};
- const workforce=Number(site.workforce||0);
+ const health=await workerHealthSnapshot(db,site.id);
+ const workforce=Math.max(0,Number(site.workforce||0)-health.sick_workers-health.injured_workers);
  if(workforce<=0)return result;
  const [structures]=await db.execute("SELECT * FROM world_settlement_upgrades WHERE settlement_id=? AND status='building' ORDER BY id FOR UPDATE",[site.id]);
  for(const item of structures){
