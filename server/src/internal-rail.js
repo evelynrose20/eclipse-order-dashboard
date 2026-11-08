@@ -13,8 +13,8 @@ async function read(req){let bytes=0;const parts=[];for await(const p of req){by
 async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const result=await fn(db);if(result.status===200)await db.commit();else await db.rollback();return result}catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}}
 async function stops(db){
  const [settlements]=await db.execute("SELECT id,name,region_id,zone_id FROM world_settlements WHERE controlling_faction_id='eclipse-order' OR governing_faction_id='eclipse-order' OR directory_faction_id='eclipse-order' ORDER BY name,id");
- const [fronts]=await db.execute("SELECT id,name,location FROM order_fronts WHERE ownership='order' AND status='active' ORDER BY name,id");
- return [...settlements.map(s=>({type:'settlement',id:Number(s.id),name:s.name,description:'Order settlement',region_id:s.region_id,zone_id:s.zone_id})),...fronts.map(f=>({type:'front',id:Number(f.id),name:f.name,description:'Order front · '+f.location}))];
+ const [fronts]=await db.execute("SELECT id,name,location,ownership FROM order_fronts WHERE status='active' ORDER BY name,id");
+ return [...settlements.map(s=>({type:'settlement',id:Number(s.id),name:s.name,description:'Order settlement',region_id:s.region_id,zone_id:s.zone_id})),...fronts.map(f=>({type:'front',id:Number(f.id),name:f.name,description:(f.ownership==='member'?'Member-run Order front':'Order front')+' · '+f.location}))];
 }
 function allowedStop(stops,type,key){return stops.some(s=>s.type===type&&Number(s.id)===Number(key))}
 export function journeyProgress(journey,now=new Date()){
