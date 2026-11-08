@@ -4,6 +4,8 @@ import './thrall-chamber.css';
 const channels=[{id:'upper',label:'Lacteal Reservoir',material:'Breast milk',icon:'flask'},{id:'lower',label:'Secondary Reservoir',material:'Biological collection',icon:'vial'}];
 const title=s=>String(s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 const stamp=s=>s?new Date(s).toLocaleString():'—';
+const lowerTypes={unclassified:'Unclassified',vaginal:'Vaginal collection',seminal:'Seminal collection',mixed:'Mixed collection',other:'Fantasy collection'};
+const anatomyLabel={vulva:'Vulva anatomy',penis:'Penis anatomy',mixed:'Mixed anatomy',other:'Fantasy anatomy',unspecified:'Anatomy not specified'};
 
 export default function ThrallChamber({request}){
  const [data,setData]=useState(null);
@@ -87,9 +89,9 @@ export default function ThrallChamber({request}){
       <p className="chamber-helper">Upper recorded: {occupant.upper_recorded} units · Lower recorded: {occupant.lower_recorded} units. Limits are controlled through the player's bound character dossier.</p>
       {data.can_release&&<div className="chamber-actions"><button type="button" disabled={busy} className="chamber-danger" onClick={()=>act('release',{},'Character released and apparatus switched offline.')}>Release character</button></div>}
      </div>:<div className="chamber-assembly">
-      <p className="chamber-helper">Only bound characters who have opted in to chamber seating appear as available. The apparatus must be offline to place anyone in the chair.</p>
+      <p className="chamber-helper">Eligible bound characters and your own opted-in characters appear as available. The apparatus must be offline to place anyone in the chair.</p>
       {canManage&&<div className="chamber-record">
-       <label>Bound character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
+       <label>Bound character<select value={selectedSeat} onChange={e=>setSeatChoice(e.target.value)}><option value="">Choose a character</option>{(data.roster||[]).filter(c=>c.allow_seating&&(c.allow_upper||c.allow_lower)).map(c=><option value={c.id} key={c.id}>{c.name} · {anatomyLabel[c.lower_anatomy]||'Unspecified'}</option>)}</select></label>
        <button type="button" disabled={busy||machine.machine_status!=='offline'||!selectedSeat} onClick={()=>act('seat',{character_id:selectedSeat},'Character seated in the offline apparatus.')}>Secure character in chair</button>
       </div>}
       {machine.machine_status!=='offline'&&canManage&&<p className="chamber-helper">Set the apparatus to Offline before seating a character.</p>}
@@ -102,14 +104,14 @@ export default function ThrallChamber({request}){
       return <div className="chamber-reservoir" key={c.id}>
        <div className="chamber-reservoir-top"><strong>{c.label}</strong><span>{volume} / {capacity} units</span></div>
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
-       <small>{c.material} · {pct}% of capacity</small>
+       <small>{c.id==='lower'?(lowerTypes[machine.lower_material_type]||'Unclassified'):c.material} · {pct}% of capacity</small>
        {canManage&&<div className="chamber-record"><label>Record fictional quantity<input type="number" min="1" max="1000" value={amounts[c.id]} onChange={e=>setAmounts(v=>({...v,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('record_collection',{channel:c.id,quantity:Number(amounts[c.id])},'Collection added to '+c.label)}>Record units</button><button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button></div>}
       </div>;
      })}</div>
     </section>
    </>}
    {view==='inventory'&&<section className="chamber-card"><div className="chamber-heading"><div><span>ALCHEMICAL ANNEX</span><h3>Collected batch inventory</h3></div><i className="fa-solid fa-box-archive"/></div>
-    {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':'Secondary biological'}</td><td>{b.quantity} units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
+    {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':(lowerTypes[b.material_type]||'Secondary biological')}</td><td>{b.quantity} units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
    </section>}
    {view==='history'&&<section className="chamber-card"><div className="chamber-heading"><div><span>SECURE RECORDS</span><h3>Activity ledger</h3></div><i className="fa-solid fa-book"/></div>{!data.history.length?<div className="chamber-empty">No recorded activity yet.</div>:<div className="chamber-history">{data.history.map(h=><div key={h.id}><span className="chamber-history-icon"><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{title(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {stamp(h.created_at)}</small></div></div>)}</div>}</section>}
    {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Batch placed into alchemical inventory.')){setShowBatch(false);setView('inventory')}}}>
