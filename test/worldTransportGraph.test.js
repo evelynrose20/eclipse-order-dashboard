@@ -66,7 +66,9 @@ test('cartographic map keeps roads but no longer shows train stations or rail co
  assert.match(map,/Plan a route/);
  assert.match(map,/Edit routes/);
  assert.match(map,/Mountains/);
- assert.match(admin,/networkSegments\.filter\(e=>e\.route_type!=='rail'/);
+ assert.match(admin,/networkSegments=\{networkSegments\.filter\(e=>String\(e\.region_id\)===region/);
+ assert.match(map,/wtm-rail-center/);
+ assert.match(map,/\['rail','Railway \(map only\)'\]/);
  assert.match(local,/InternalRail/);
 });
 
