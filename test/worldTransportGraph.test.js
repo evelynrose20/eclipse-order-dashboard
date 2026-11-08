@@ -84,7 +84,7 @@ test('rail laying uses the existing map and permits shaping, snapping and undo b
  assert.match(map,/draftWaypointUp/);
  assert.match(map,/mode==='track'\?'rail':routeType/);
  assert.match(map,/setNewRoutePoints\(old=>\{/);
- assert.match(map,/next\.splice\(closest\?\.i/);
+ assert.match(map,/insertRouteBend\(old,start,end,p\)/);
  assert.match(map,/Branch from route/);
  assert.match(map,/Straighten/);
  assert.match(map,/Reverse/);
