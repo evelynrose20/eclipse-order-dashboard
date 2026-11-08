@@ -26,7 +26,7 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const exposure=Number(settlement.weather_exposure)/100;
  const insulation=Number(settlement.insulation)/100;
  const temperatureDemand=Math.max(0,65-regionTempF)/65;
- const coverage=heatingAssets.length?Math.min(100,heatingAssets.reduce((n,a)=>n+(a.status==='offline'?0:Number(a.coverage_pct)*Number(a.condition_pct)/100),0)):Number(settlement.heating_coverage);
+ const coverage=heatingAssets.length?Math.min(100,heatingAssets.reduce((n,a)=>n+(a.status==='offline'?0:Number(a.coverage_pct)*Number(a.condition_pct)/100),0)):Number(settlement.heating_coverage??50);
  const heatNeed=population*Number(profile.heat_daily_per_resident)*temperatureDemand*(1-insulation*.65)*(0.6+exposure*.8)*(coverage/100);
  const foodDays=foodNeed?food/foodNeed:0;
  const heatDays=heatNeed?fuel/heatNeed:null;
