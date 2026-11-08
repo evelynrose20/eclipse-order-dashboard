@@ -8,7 +8,7 @@ async function audit(db,actor,action,id,detail){await db.execute('INSERT INTO wo
 async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const r=await fn(db);if(r.status===200)await db.commit();else await db.rollback();return r}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
 export async function climateForRegions(pool,regions,date=new Date()){
  const [profiles]=await pool.execute('SELECT * FROM world_region_climate_profiles');
- const [events]=await pool.execute('SELECT * FROM world_weather_events WHERE ends_on>=DATE_SUB(UTC_DATE(),INTERVAL 30 DAY) ORDER BY starts_on DESC,id DESC');
+ const [events]=await pool.execute("SELECT id,region_id,title,weather,temperature_f,DATE_FORMAT(starts_on,'%Y-%m-%d') AS starts_on,DATE_FORMAT(ends_on,'%Y-%m-%d') AS ends_on FROM world_weather_events WHERE ends_on>=DATE_SUB(UTC_DATE(),INTERVAL 30 DAY) ORDER BY starts_on DESC,id DESC");
  return regions.map(r=>({...r,climate_profile:(()=>{const p=profiles.find(p=>Number(p.region_id)===Number(r.id));return p?{...p,monthly_f:typeof p.monthly_f==='string'?JSON.parse(p.monthly_f):p.monthly_f}:null})(),weather_events:events.filter(e=>Number(e.region_id)===Number(r.id)),effective_weather:null})).map(r=>({...r,effective_weather:effectiveWeather(r,date)}));
 }
 export async function handleRegionClimate(pool,req,path,actor){
