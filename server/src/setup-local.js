@@ -105,6 +105,8 @@ async function main(){
   await pool.query(transportGraph);
   const worldZones=await readFile(new URL('../sql/046_world_zones.sql',import.meta.url),'utf8');
   await pool.query(worldZones);
+  const railInfrastructure=await readFile(new URL('../sql/047_rail_infrastructure.sql',import.meta.url),'utf8');
+  await pool.query(railInfrastructure);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
