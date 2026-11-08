@@ -121,6 +121,8 @@ async function main(){
   await pool.query(autosim);
   const industry=await readFile(new URL('../sql/054_world_industry_projects.sql',import.meta.url),'utf8');
   await pool.query(industry);
+  const independentSites=await readFile(new URL('../sql/055_independent_industry_sites.sql',import.meta.url),'utf8');
+  await pool.query(independentSites);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
