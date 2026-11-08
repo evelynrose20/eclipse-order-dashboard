@@ -44,21 +44,20 @@ export function civilianStorageCapacity(settlement,upgrades=[]){
          water:Math.max(100,population*12)+bonus.water_storage};
 }
 export function npcConstructionPreference(settlement,upgrades=[],stocks={}){
- const completed=upgrades.filter(u=>u.template_id&&u.status==='operational');
  const effects=civicInfrastructureEffects(upgrades);
  const population=safe(settlement.population);
  const housing=safe(settlement.housing_capacity)+effects.housing_capacity+
    upgrades.filter(u=>!u.template_id&&u.category==='housing'&&u.status==='operational').reduce((n,u)=>n+safe(u.housing_bonus),0);
- const owned=id=>completed.filter(x=>x.template_id===id).length;
- const foodReserve=Number(stocks.food_units||0);
- const waterReserve=Number(stocks.water_units||0);
- if(housing<=population+Math.max(2,Math.floor(population*.12)))return 'residential-quarter';
- if(foodReserve>=Math.max(100,population*10)&&owned('granary')<2)return 'granary';
- if(waterReserve<population*5||Number(settlement.water_access||50)<65)return 'waterworks';
- if(Number(settlement.medical_access||50)<65)return 'civic-clinic';
- if(owned('community-school')===0&&population>=15)return 'community-school';
- if(Number(settlement.security_score||50)<55)return 'perimeter-defenses';
- if(Number(settlement.insulation||50)<50)return 'winterproof-housing';
+ const reserve=Number(stocks.food_units||0);
+ const capacity=civilianStorageCapacity(settlement,upgrades);
+ const built=id=>upgrades.some(u=>u.category===id&&u.status==='operational');
+ if(housing<=population+Math.max(2,Math.floor(population*.12)))return 'housing';
+ if(reserve>=capacity.food*.75)return 'food_storage';
+ if(Number(stocks.water_units||0)<population*5||Number(settlement.water_access??50)<65)return 'water';
+ if(Number(settlement.medical_access||50)+effects.medical_access<65)return 'clinic';
+ if(!built('school')&&population>=15)return 'school';
+ if(Number(settlement.security_score||50)+effects.defense<55)return 'defense';
+ if(Number(settlement.insulation||50)+effects.insulation<50)return 'insulation';
  return null;
 }
 export function civicProjectCost(template,targetLevel){
