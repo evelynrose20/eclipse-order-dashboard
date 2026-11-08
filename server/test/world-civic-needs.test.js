@@ -73,3 +73,16 @@ test('uninhabited settlements have no provisions demand, unrest pressure or food
  assert.equal(p.water_used,0);
  assert.equal(p.medicine_used,0);
 });
+
+test('completed clinic and defenses improve service and security readings',()=>{
+ const managed={...profile,enabled_mode:'managed',grace_cycles:0};
+ const healthy=[
+  {category:'clinic',status:'operational',condition_pct:100,service_bonus:30,defense_bonus:0,housing_bonus:0},
+  {category:'defense',status:'operational',condition_pct:100,service_bonus:0,defense_bonus:30,housing_bonus:0}
+ ];
+ const base=civicSimulationPreview({...settlement,security_score:30},managed,[],[],32,2);
+ const upgraded=civicSimulationPreview({...settlement,security_score:30},managed,[],[],32,2,[],healthy);
+ assert.equal(upgraded.effective_security,60);
+ assert.equal(upgraded.effective_medical_access,90);
+ assert.ok(upgraded.pressure<base.pressure);
+});
