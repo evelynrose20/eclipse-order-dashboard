@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 import RailInfrastructurePanel from './RailInfrastructurePanel.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
+import {simplifyTrackStroke,insertRouteBend} from './track-drawing.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
@@ -36,13 +37,15 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
  const drawing=mode==='link'||mode==='track';
+ const [traceTrack,setTraceTrack]=useState(false),[tracePoints,setTracePoints]=useState([]);
+ const traceRef=useRef(null),ignoreClickRef=useRef(false);
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
  const [railPoint,setRailPoint]=useState(null),[railFocus,setRailFocus]=useState(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setRailPoint(null);setRailFocus(null);setError('');setNotice('')},[region?.id,zoneId]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setRailPoint(null);setRailFocus(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
@@ -279,14 +282,12 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   const p=coords(e);if(!p)return;
   if(mode==='rail'){setRailPoint(p);return}
   if(junctionAction==='place'&&(drawing||mode==='bend')){void createJunction(p);return}
-  if(drawing&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>{
+  if(ignoreClickRef.current){ignoreClickRef.current=false;return}
+  if(drawing&&routeStart!=null&&routeEnd!=null&&!traceTrack)setNewRoutePoints(old=>{
    if(old.length>=16||old.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<.45))return old;
    const start=pointForRef(routeStart),end=pointForRef(routeEnd);
    if(!start||!end)return old;
-   const line=[start,...old,end];
-   const distance=(a,b,q)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((q.x-a.x)*dx+(q.y-a.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(q.x-a.x-t*dx,q.y-a.y-t*dy)};
-   const closest=line.slice(1).map((q,i)=>({i,d:distance(line[i],q,p)})).sort((a,b)=>a.d-b.d)[0];
-   const next=[...old];next.splice(closest?.i??old.length,0,p);return next;
+   return insertRouteBend(old,start,end,p);
   });
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
@@ -302,6 +303,29 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   setSelectedRoute((r.from_node_id?'graph:':'legacy:')+r.id);setDraftWaypoints(normalizeWaypoints(r).map(p=>({...p})));setJunctionAction('');
   setRouteType(r.route_type);setRouteName(r.route_name||'');setRouteDirty(false);
   if(mode!=='bend'&&canEdit)setMode('bend');
+ }
+ function trackTraceDown(e){
+  if(!canEdit||busy||mode!=='track'||!traceTrack||routeStart==null||routeEnd==null||e.button!==0||e.target!==mapRef.current)return;
+  const p=coords(e);if(!p)return;
+  e.preventDefault();
+  traceRef.current=[p];setTracePoints([p]);
+  e.currentTarget.setPointerCapture(e.pointerId);
+ }
+ function trackTraceMove(e){
+  if(!traceRef.current)return;
+  const p=coords(e);if(!p)return;
+  const old=traceRef.current,last=old.at(-1);
+  if(Math.hypot(p.x-last.x,p.y-last.y)<.55)return;
+  const next=[...old,p];traceRef.current=next;setTracePoints(next);
+ }
+ function trackTraceUp(e){
+  if(!traceRef.current)return;
+  const points=traceRef.current;traceRef.current=null;
+  if(points.length>=3){
+   setNewRoutePoints(simplifyTrackStroke(points,16));setNotice('Track trace captured. Drag the handles to refine, then save.');
+   ignoreClickRef.current=true;
+  }
+  setTracePoints([]);
  }
  function draftWaypointDown(e,i){
   if(!canEdit||!drawing||busy)return;
@@ -341,7 +365,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   {notice&&<p className="wtm-note" role="status">{notice}</p>}
   <div className="wtm-map-frame">
   <div className="wtm-map-title"><span>STRATEGIC CARTOGRAPHY</span><strong>{region.name}</strong><small>{mode==='view'?'SURVEY VIEW':'CARTOGRAPHER MODE · '+mode.toUpperCase()}</small></div>
-  <div className={'wtm-stage '+(mode!=='view'?'wtm-editing':'')+(region.map_background_url?' wtm-with-image':'')} ref={mapRef} onClick={mapClick} style={region.map_background_url?{backgroundImage:'linear-gradient(#101b25a9,#101b25a9),url("'+region.map_background_url+'")'}:{}}>
+  <div className={'wtm-stage '+(mode!=='view'?'wtm-editing':'')+(region.map_background_url?' wtm-with-image':'')} ref={mapRef} onClick={mapClick} onPointerDown={trackTraceDown} onPointerMove={trackTraceMove} onPointerUp={trackTraceUp} onPointerCancel={trackTraceUp} style={region.map_background_url?{backgroundImage:'linear-gradient(#101b25a9,#101b25a9),url("'+region.map_background_url+'")'}:{}}>
    <svg className="wtm-terrain" viewBox="0 0 900 560" preserveAspectRatio="none" aria-hidden="true">
     <defs>
      <radialGradient id="wtm-map-vignette"><stop offset="0" stopColor="#405360" stopOpacity=".16"/><stop offset="1" stopColor="#050b12" stopOpacity=".85"/></radialGradient>
@@ -387,6 +411,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
     {previewPoints.length>=2&&drawing&&<path className={'wtm-planned-route '+(mode==='track'?'wtm-track-preview':'')} d={smoothRoadPath(previewPoints)}/>}
+   {mode==='track'&&tracePoints.length>=2&&<path className="wtm-track-trace" d={smoothRoadPath(tracePoints)}/> }
    </svg>
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
 
@@ -463,6 +488,10 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     <label>To — place or junction<select aria-label="Route destination endpoint" value={routeEndpoint(routeEnd)} onChange={e=>chooseRouteEndpoint('to',e.target.value)}>
      <option value="">Choose destination</option>{endpointOptions.filter(option=>option.value!==routeEndpoint(routeStart)).map(option=><option key={option.kind+'-to-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
     </select></label>
+   </div>}
+   {mode==='track'&&routeStart!=null&&routeEnd!=null&&<div className="wtm-track-options">
+     <label className="wtm-track-toggle"><input type="checkbox" checked={traceTrack} onChange={e=>{setTraceTrack(e.target.checked);setTracePoints([])}}/> <i className="fa-solid fa-pencil"/> Trace track by dragging</label>
+     <span>{traceTrack?'Drag across open terrain to sketch a curve, then adjust its handles.':'Click the map to add bends, drag handles to reshape. Shift+click a handle to remove it.'}</span>
    </div>}
    {mode==='track'&&<div className="wtm-track-guide"><i className="fa-solid fa-train-tram"/> Choose two endpoints. Click the map to curve the rails, then drag the gold handles to refine the line. To attach a branch to an existing line, use <strong>Branch from route</strong>.</div>}
    <p className="wtm-route-help">{drawing?'Choose two settlements or junctions on the map or using the endpoint selectors. Click the map to add smooth bends, then Save new route. Junctions are real shared connection points.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
