@@ -58,7 +58,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const validation=()=>{
   if(!editing)return '';
   if(tab==='stations')return !editing.name?.trim()?'Enter a station name.':!Number(editing.node_id)?'Choose a rail-connected junction or settlement.':'';
-  if(tab==='platforms')return !Number(editing.station_id)?'Select a station before adding its platform.':!editing.code?.trim()?'Enter a platform code (for example F1).':!Number.isInteger(Number(editing.track_length))||Number(editing.track_length)<1?'Track length must be at least 1.':!Number.isInteger(Number(editing.capacity))||Number(editing.capacity)<0?'Platform capacity must be zero or more.':'';
+  if(tab==='platforms')return !Number(editing.station_id)?'Select a station before adding its platform.':!editing.code?.trim()?'Enter a platform code (for example F1).':platforms.some(p=>Number(p.station_id)===Number(editing.station_id)&&Number(p.id)!==Number(editing.id)&&String(p.code).toLowerCase()===String(editing.code).trim().toLowerCase())?'This station already has a platform with that code.':!Number.isInteger(Number(editing.track_length))||Number(editing.track_length)<1?'Track length must be at least 1.':!Number.isInteger(Number(editing.capacity))||Number(editing.capacity)<0?'Platform capacity must be zero or more.':'';
   if(tab==='switches')return !Number(editing.node_id)?'Choose a shared junction.':!Number(editing.entry_segment_id)||!Number(editing.exit_segment_id)?'Choose both tracks that meet at the junction.':Number(editing.entry_segment_id)===Number(editing.exit_segment_id)?'Choose two different tracks.':'';
   if(tab==='crossings')return !Number(editing.rail_segment_id)||!Number(editing.road_segment_id)?'Choose both a railway and a road.':'';
   return '';
