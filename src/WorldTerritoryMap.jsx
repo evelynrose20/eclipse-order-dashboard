@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 import RailInfrastructurePanel from './RailInfrastructurePanel.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
-import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint} from './track-drawing.js';
+import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
@@ -328,7 +328,10 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   if(!traceRef.current)return;
   const points=traceRef.current;traceRef.current=null;
   if(points.length>=3){
-   setNewRoutePoints(simplifyTrackStroke(points,16));setNotice('Track trace captured. Drag the handles to refine, then save.');
+   const first=pointForRef(routeStart),last=pointForRef(routeEnd);
+   const oriented=orientTrackStroke(points,first,last);
+   const editable=simplifyTrackStroke(oriented,16).filter(p=>(!first||Math.hypot(p.x-first.x,p.y-first.y)>1)&&(!last||Math.hypot(p.x-last.x,p.y-last.y)>1));
+   setNewRoutePoints(editable);setNotice('Track trace captured. Drag the handles to refine, then save.');
    ignoreClickRef.current=true;
   }
   setTracePoints([]);
@@ -496,7 +499,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     </select></label>
    </div>}
    {mode==='track'&&routeStart!=null&&routeEnd!=null&&<div className="wtm-track-options">
-     <label className="wtm-track-toggle"><input type="checkbox" checked={traceTrack} onChange={e=>{setTraceTrack(e.target.checked);setTracePoints([])}}/> <i className="fa-solid fa-pencil"/> Trace track by dragging</label>
+     <label className="wtm-track-toggle"><input type="checkbox" checked={traceTrack} onChange={e=>{setTraceTrack(e.target.checked);setTracePoints([]);ignoreClickRef.current=false}}/> <i className="fa-solid fa-pencil"/> Trace track by dragging</label>
      <span>{traceTrack?'Drag across open terrain to sketch a curve, then adjust its handles.':'Click the map to add bends, drag handles to reshape. Shift+click a handle to remove it.'}</span>
    </div>}
    {mode==='track'&&<div className="wtm-track-guide"><i className="fa-solid fa-train-tram"/> Choose two endpoints. Click the map to curve the rails, then drag the gold handles to refine the line. To attach a branch to an existing line, use <strong>Branch from route</strong>.</div>}
