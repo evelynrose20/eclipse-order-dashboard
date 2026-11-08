@@ -19,6 +19,7 @@ import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {worldAdministrationRoute} from './world-administration.js';
 import {runSettlementSimulation} from './world-settlement-simulation.js';
+import {runIndustryAutomation} from './world-industry-engine.js';
 import {internalRailRoute} from './internal-rail.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
@@ -182,6 +183,8 @@ const settlementTick=async()=>{
  settlementTickRunning=true;
  try{
   const result=await runSettlementSimulation(pool,new Date());
+  const industry=await runIndustryAutomation(pool,new Date());
+  if(industry.production||industry.construction)console.log('[P3 Industry] Production cycles:',industry.production,'construction:',industry.construction);
   if(result.processed)console.log('[World simulation] Processed',result.processed,'autonomous settlement cycles');
  }catch(error){console.warn('[World simulation] Check unavailable:',error?.code||error?.name||'database_unavailable')}
  finally{settlementTickRunning=false}
