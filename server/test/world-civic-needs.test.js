@@ -55,3 +55,21 @@ test('water and medicine shortages generate dedicated alerts',()=>{
  assert.ok(p.warnings.includes('water_shortfall'));
  assert.ok(p.warnings.includes('medicine_shortfall'));
 });
+
+test('uninhabited settlements have no provisions demand, unrest pressure or food warnings',()=>{
+ const abandoned={...settlement,population:0,unrest:50};
+ const p=civicSimulationPreview(abandoned,{...profile,enabled_mode:'managed',grace_cycles:0},[],[],0,5);
+ assert.equal(p.food_need,0);
+ assert.equal(p.heat_need,0);
+ assert.equal(p.water_need,0);
+ assert.equal(p.medicine_need,0);
+ assert.equal(p.food_days,null);
+ assert.deepEqual(p.warnings,[]);
+ assert.equal(p.pressure,0);
+ assert.equal(p.risk,0);
+ assert.equal(p.after_unrest,50);
+ assert.equal(p.food_used,0);
+ assert.equal(p.fuel_used,0);
+ assert.equal(p.water_used,0);
+ assert.equal(p.medicine_used,0);
+});
