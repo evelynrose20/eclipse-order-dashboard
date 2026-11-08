@@ -225,3 +225,19 @@
 .wtm-junction-fields label{display:grid;gap:5px;font-size:11px;font-weight:800}
 .wtm-junction-fields input,.wtm-junction-fields select{min-width:0;width:100%;padding:9px;background:#101e29;border:1px solid #6d7d88;color:#f6eee0}
 .wtm-junction-warning{margin:0;font-size:12px;line-height:1.45;color:#f4caa6}
+
+
+/* Preserve the original cartographic highway appearance on BOTH legacy and connected roads.
+   Mountain-ridge stippling and trail/rail styles are deliberately separate. */
+.wtm-network .wtm-road-road .wtm-road-base{
+ fill:none;stroke:#080d13;stroke-width:7;stroke-dasharray:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+}
+.wtm-network .wtm-road-road .wtm-road-top{
+ fill:none;stroke:#d2bc93;stroke-width:3.2;stroke-dasharray:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:1;
+}
+.wtm-network .wtm-road-road.selected .wtm-road-top{stroke:#ffe1a8;stroke-width:4}
+.wtm-network .wtm-road-rail .wtm-road-top{stroke-dasharray:none}
+.wtm-route-endpoint-pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
+.wtm-route-endpoint-pickers label{display:grid;gap:5px;font-size:11px;font-weight:800;color:#d8e0de}
+.wtm-route-endpoint-pickers select{min-width:0;width:100%;padding:9px;background:#111f29;border:1px solid #9b927e;color:#f8eeda}
+.wtm-route-endpoint-pickers select:focus-visible{outline:2px solid #e9c78b;outline-offset:2px}
