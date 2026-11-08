@@ -144,7 +144,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  }
  if(path==='/world-admin/regions'&&req.method==='POST'){
   const b=await read(req);if(!regionFields(b))return fail(400,'invalid_region');
-  return transact(pool,async db=>{const [r]=await db.execute('INSERT INTO world_regions('+regionColumns.join(',')+',created_by) VALUES('+[...regionColumns,'created_by'].map(()=>'?').join(',')+')',[...values(b,regionColumns),actor.id]);await ensureOverviewZone(db,r.insertId,actor.id);await audit(db,actor.id,'create','region',r.insertId,b.name);return ok({id:r.insertId})});
+  return transact(pool,async db=>{const [r]=await db.execute('INSERT INTO world_regions('+regionColumns.join(',')+',created_by) VALUES('+[...regionColumns,'created_by'].map(()=>'?').join(',')+')',[...values(b,regionColumns),actor.id]);const overviewId=await ensureOverviewZone(db,r.insertId,actor.id);await audit(db,actor.id,'create','region',r.insertId,b.name);return ok({id:r.insertId,zone_id:overviewId})});
  }
  if((match=/^\/world-admin\/regions\/(\d+)$/.exec(path))&&req.method==='PUT'){
   const b=await read(req);if(!regionFields(b))return fail(400,'invalid_region');
