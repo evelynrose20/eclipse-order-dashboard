@@ -1,3 +1,4 @@
+import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
 import {beginCivicTemplateProject,advanceCivicTemplateProjects} from './world-civic-template-projects.js';
 import {advanceWorkerHealth,workerHealthSnapshot} from './world-worker-care.js';
@@ -89,7 +90,10 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  const stability=clamp(beforeStability+(outcome.shortages.length?-2:1)),unrest=clamp(Number(site.unrest)+(outcome.shortages.length?2:-1));
  const activeWorkforce=Math.max(0,workforce-priorHealth.sick_workers-priorHealth.injured_workers);
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
- let development=Number(state.development_points)+Math.max(3,activeWorkforce*.16);
+ const priorDevDate=state.last_industry_development_date?new Date(state.last_industry_development_date).toISOString().slice(0,10):null;
+ const industrial=priorDevDate===dateOf(now)?{date:dateOf(now),facilities:[],earned:0}:await npcIndustryDevelopmentForDay(db,site,now);
+ // No operational, productive NPC-owned facility: no free development points.
+ let development=Number(state.development_points)+industrial.earned;
  const ambient=npcEverydayStory(site,key,weather);
  let event=ambient.event,headline=ambient.headline;
  if(arrival.arrivals){event='arrivals';headline=arrival.arrivals+' new resident'+(arrival.arrivals===1?'':'s')+' settled in '+site.name}
@@ -149,9 +153,9 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  const education=await advanceEducation(db,{...site,population:nextPopulation,workforce},upgrades);
  const workerHealth=await advanceWorkerHealth(db,{...site,population:nextPopulation,workforce},upgrades,education,{cycle_key:key,temperature_f:weather,heating_coverage:site.heating_coverage,medicine_available:outcome.next.medicine,weather:weatherCondition});
  outcome.next.medicine=Math.max(0,round(outcome.next.medicine-workerHealth.medicine_required));
- const report={education,worker_health:workerHealth,template_construction:templateConstruction,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
+ const report={education,worker_health:workerHealth,industry_development:{earned:industrial.earned,facility_count:industrial.facilities.length},template_construction:templateConstruction,origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
  await db.execute('UPDATE world_settlements SET population=?,workforce=?,civil_stability=?,unrest=?,housing_capacity=COALESCE(?,housing_capacity),security_score=COALESCE(?,security_score),medical_access=COALESCE(?,medical_access),food_access=COALESCE(?,food_access),housing=COALESCE(?,housing) WHERE id=?',[nextPopulation,workforce,stability,unrest,updates.housing_capacity??null,updates.security_score??null,updates.medical_access??null,updates.food_access??null,updates.housing??null,site.id]);
- await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=?,food_units=?,water_units=?,fuel_units=?,medicine_units=?,development_points=? WHERE settlement_id=?',[key,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),site.id]);
+ await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=?,food_units=?,water_units=?,fuel_units=?,medicine_units=?,development_points=?,last_industry_development_date=IF(?, ?, last_industry_development_date),last_industry_development_points=? WHERE settlement_id=?',[key,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),industrial.earned>0?1:0,dateOf(now),industrial.earned,site.id]);
  await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,dateOf(now),'npc',pop,nextPopulation,workforce,beforeStability,stability,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),event,headline,JSON.stringify(report)]);
  return {settlement_id:site.id,origin:'npc',event,headline};
 }
@@ -280,7 +284,7 @@ async function read(req){let size=0;const chunks=[];for await(const c of req){si
 export async function settlementSimulationRoute(pool,req,path,actor){
  if(!command(actor))return {status:403,body:{error:'command_required'}};
  if(path==='/world-admin/simulation'&&req.method==='GET'){
-  const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
+  const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points,a.last_industry_development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
   const [healthStates]=await pool.execute('SELECT settlement_id,sick_workers,injured_workers FROM world_settlement_worker_health');
   const [educationStates]=await pool.execute('SELECT settlement_id,attainment FROM world_settlement_education');
   const [infrastructure]=await pool.execute('SELECT * FROM world_settlement_upgrades');
