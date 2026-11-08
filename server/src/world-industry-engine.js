@@ -163,7 +163,9 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
  await db.execute('INSERT INTO world_industry_project_ticks(project_id,cycle_key,labor_added) VALUES(?,?,?)',[id,key,labor]);
  await db.execute('UPDATE world_industry_projects SET labor_done=?,status=?,finished_at=IF(?,UTC_TIMESTAMP(),NULL) WHERE id=?',[updated,complete?'completed':'active',complete?1:0,id]);
  if(complete){
-  if(project.weather_upgrade_target){
+  if(project.equipment_repair){
+   await db.execute("UPDATE world_industry_facilities SET equipment_condition=100,status=IF(status='damaged','operational',status) WHERE id=?",[project.facility_id]);
+  }else if(project.weather_upgrade_target){
    const [[installed]]=await db.execute('SELECT weather_protection_level FROM world_industry_facilities WHERE id=? FOR UPDATE',[project.facility_id]);
    if(Number(installed.weather_protection_level)!==Number(project.weather_upgrade_target)-1)return {status:409,body:{error:'weather_upgrade_prerequisite_changed'}};
    await db.execute('UPDATE world_industry_facilities SET weather_protection_level=? WHERE id=?',[project.weather_upgrade_target,project.facility_id]);
@@ -175,7 +177,7 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
   if(project.result_status==='operational')await db.execute("UPDATE world_settlements SET strategic_state='rebuilding' WHERE id=(SELECT settlement_id FROM world_industry_facilities WHERE id=?) AND strategic_state IN ('destroyed','abandoned')",[project.facility_id]);
   }
  }
- return {status:200,body:{project_id:id,labor_added:labor,labor_done:updated,completed:complete,result_status:complete?(project.weather_upgrade_target?'climate_upgrade':project.result_status):null,weather_protection_level:complete?project.weather_upgrade_target||null:null,cycle_key:key}};
+ return {status:200,body:{project_id:id,labor_added:labor,labor_done:updated,completed:complete,result_status:complete?(project.equipment_repair?'equipment_repaired':project.weather_upgrade_target?'climate_upgrade':project.result_status):null,weather_protection_level:complete?project.weather_upgrade_target||null:null,cycle_key:key}};
 }
 export async function runIndustryAutomation(pool,now=new Date()){
  if(!pool)return {production:0,construction:0};
