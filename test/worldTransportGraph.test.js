@@ -59,3 +59,18 @@ test('original map lets users connect settlements and saved junctions, including
  assert.match(css,/stroke-dasharray:none/);
  assert.match(map,/wtm-mountains/);
 });
+
+test('railway map icons are compact Font Awesome badges that do not cover editable junctions',async()=>{
+ const [map,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/rail-infrastructure-panel.css')]);
+ assert.match(map,/mode==='view'\|\|mode==='rail'/);
+ assert.match(map,/rail-flip-x/);
+ assert.match(map,/rail-flip-y/);
+ assert.match(map,/fa-solid fa-train/);
+ assert.match(map,/fa-solid fa-code-branch/);
+ assert.match(map,/fa-solid fa-road-barrier/);
+ assert.match(css,/button\.wtm-rail-symbol\.station/);
+ assert.match(css,/border-radius:50%!important/);
+ assert.match(css,/font-size:10px!important/);
+ assert.match(css,/--rail-signal/);
+ assert.doesNotMatch(css,/width:27px;height:27px/);
+});
