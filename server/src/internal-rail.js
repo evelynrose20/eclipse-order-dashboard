@@ -113,9 +113,9 @@ export async function internalRailRoute(pool,req,path){
    await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE route_id=? AND status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)",[routeId]);
    const [active]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE route_id=? AND status='running' LIMIT 1 FOR UPDATE",[routeId]);
    if(active.length)return fail(409,'rail_journey_already_running');
-   const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP(3) AS now_utc');
-   const now=clock.now_utc;
-   const [created]=await db.execute('INSERT INTO order_internal_rail_journeys(route_id,departed_at,expected_arrival_at,dispatched_by) VALUES(?, ?,DATE_ADD(?,INTERVAL ? MINUTE),?)',[routeId,now,now,Number(route.duration_minutes),actor.id]);
+   // Store both times directly from the MySQL UTC clock, avoiding a local-time
+   // conversion when a Windows API process uses a non-UTC timezone.
+   const [created]=await db.execute('INSERT INTO order_internal_rail_journeys(route_id,departed_at,expected_arrival_at,dispatched_by) VALUES(?,UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL ? MINUTE),?)',[routeId,Number(route.duration_minutes),actor.id]);
    return ok({id:created.insertId,dispatched:true});
   });
  }
