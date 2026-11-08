@@ -68,3 +68,5 @@
 .ir-state.operational{border-color:#78a18c;color:#c1e8cf}
 .ir-state.closed{border-color:#b17a83;color:#f2b9bf}
 .ir-state.planned{border-color:#b29d6e;color:#f0daaa}
+
+.ir-state.damaged{color:#f3b0b4;border-color:#c16b76;background:rgba(125,43,53,.2)}
