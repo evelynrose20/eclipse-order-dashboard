@@ -1118,6 +1118,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const mineRepair=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+mineProjectId+'/advance',staff);
   assert.equal(mineRepair.status,200,JSON.stringify(mineRepair.body));
   assert.equal(mineRepair.body.completed,true);
+  await admin.execute("UPDATE world_industry_stock SET quantity=0 WHERE facility_id=? AND item_id='ceruleum-fuel'",[mineFacilityId]);
+  const unpoweredMine=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+mineFacilityId+'/preview',staff);
+  assert.equal(unpoweredMine.body.preview.operations,0,'powered mine cannot work with no actual fuel stock');
+  await admin.execute("UPDATE world_industry_stock SET quantity=10 WHERE facility_id=? AND item_id='ceruleum-fuel'",[mineFacilityId]);
   const mineRun=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
   assert.equal(mineRun.status,200,JSON.stringify(mineRun.body));
   assert.equal(mineRun.body.preview.outputs['iron-ore'],9);
