@@ -28,7 +28,7 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const temperatureDemand=Math.max(0,65-regionTempF)/65;
  const coverage=heatingAssets.length?Math.min(100,heatingAssets.reduce((n,a)=>n+(a.status==='offline'?0:Number(a.coverage_pct)*Number(a.condition_pct)/100),0)):Number(settlement.heating_coverage??50);
  const heatNeed=population*Number(profile.heat_daily_per_resident)*temperatureDemand*(1-insulation*.65)*(0.6+exposure*.8)*(coverage/100);
- const foodDays=foodNeed?food/foodNeed:0;
+ const foodDays=foodNeed?food/foodNeed:null;
  const heatDays=heatNeed?fuel/heatNeed:null;
  const seen=new Set(history.filter(h=>h.resource_kind==='food'&&Number(h.quantity_delta)>0&&h.food_group).map(h=>h.food_group));
  const deficit=foodNeed>food?clamp((foodNeed-food)/Math.max(1,foodNeed)*100):0;
@@ -37,10 +37,10 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  const dehydration=waterNeed>water?clamp((waterNeed-water)/Math.max(1,waterNeed)*100):0;
  const medicalShortage=medicineNeed>medicine?clamp((medicineNeed-medicine)/Math.max(0.001,medicineNeed)*100):0;
  const service=Math.round((100-Number(settlement.housing))*.12+(100-Number(settlement.medical_access))*.10+(100-Number(settlement.food_access))*.10);
- const pressure=clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service);
- const risk=clamp(pressure*.7+Number(settlement.unrest)*.3);
- const warnings=[...(foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(Number(settlement.housing)<60?['housing_public_works_needed']:[]),...(Number(settlement.medical_access)<60?['clinic_support_needed']:[]),...(Number(settlement.security_score)<45?['public_safety_support_needed']:[])];
- return {food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings};
+ const pressure=population>0?clamp(deficit*.34+chill*.22+dehydration*.24+medicalShortage*.08+monotony*.12+service):0;
+ const risk=population>0?clamp(pressure*.7+Number(settlement.unrest)*.3):0;
+ const warnings=[...(foodNeed>0&&foodDays<Number(profile.food_min_days)?['food_reserve_low']:[]),...(chill>0?['heating_shortfall']:[]),...(coverage<75&&temperatureDemand>.35?['heating_infrastructure_low']:[]),...(dehydration>0?['water_shortfall']:[]),...(medicalShortage>0?['medicine_shortfall']:[]),...(monotony>0?['limited_diet_variety']:[]),...(risk>=55?['civic_unrest_watch']:[]),...(regionTempF<5?['extreme_cold']:[]),...(Number(settlement.housing)<60?['housing_public_works_needed']:[]),...(Number(settlement.medical_access)<60?['clinic_support_needed']:[]),...(Number(settlement.security_score)<45?['public_safety_support_needed']:[])];
+ return {food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings:population>0?warnings:[]};
 }
 export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[]){
  const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets);
@@ -48,7 +48,7 @@ export function civicSimulationPreview(settlement,profile,stock,history,temperat
  const afterGrace=cycles>=Number(profile.grace_cycles);
  const beforeStability=Number(settlement.civil_stability),beforeUnrest=Number(settlement.unrest);
  // Bounded voluntary simulation. Never alters population or authorizes incidents.
- const shift=afterGrace&&eligible?Math.max(-3,Math.min(2,Math.round((40-metrics.pressure)/22))):0;
+ const shift=Number(settlement.population)>0&&afterGrace&&eligible?Math.max(-3,Math.min(2,Math.round((40-metrics.pressure)/22))):0;
  return {...metrics,food_used:eligible?Math.min(metrics.food_stock,metrics.food_need):0,fuel_used:eligible?Math.min(metrics.fuel_stock,metrics.heat_need):0,water_used:eligible?Math.min(metrics.water_stock,metrics.water_need):0,medicine_used:eligible?Math.min(metrics.medicine_stock,metrics.medicine_need):0,before_stability:beforeStability,after_stability:clamp(beforeStability+shift),before_unrest:beforeUnrest,after_unrest:clamp(beforeUnrest-shift),grace_active:!afterGrace,simulation_eligible:eligible};
 }
 async function context(db,id,lock=false,cycleDate=null){
