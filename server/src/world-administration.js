@@ -1,3 +1,4 @@
+import {civicTemplateCatalogRoute} from './world-civic-template-projects.js';
 import {resolveSession} from './auth.js';
 import {industryRoute} from './world-industry.js';
 import {settlementSimulationRoute} from './world-settlement-simulation.js';
@@ -106,6 +107,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  if(path==='/world-admin/simulation'||path.startsWith('/world-admin/simulation/'))return settlementSimulationRoute(pool,req,path,actor);
  const upgradeResponse=await handleSettlementUpgrades(pool,req,path,actor);
  if(upgradeResponse)return upgradeResponse;
+ if(path.startsWith('/world-admin/civic/templates'))return civicTemplateCatalogRoute(pool,req,path,actor);
  if(path.startsWith('/world-admin/civic/'))return handleCivicNeeds(pool,req,path,actor);
  if(path.startsWith('/world-admin/climate/'))return handleRegionClimate(pool,req,path,actor);
  if(path.startsWith('/world-admin/zones'))return await handleZones(pool,req,path,actor);
