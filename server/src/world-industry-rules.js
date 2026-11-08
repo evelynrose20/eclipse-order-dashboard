@@ -10,7 +10,7 @@ function validMaterials(values,allowEmpty=false){
 export function validateIndustryConfiguration(c){
  if(!c||typeof c!=='object'||Array.isArray(c))return 'configuration_required';
  if(!validMaterials(c.inputs,true)||!validMaterials(c.outputs)||!validMaterials(c.byproducts||[],true))return 'invalid_recipe_items';
- if(!integer(c.labor,0,10000)||!integer(c.heat,0,100000)||!integer(c.power,0,100000)||!integer(c.capacity,1,1000)||!integer(c.upgrade_level,1,20))return 'invalid_capacity_or_requirements';
+ if(!integer(c.labor,1,10000)||!integer(c.heat,0,100000)||!integer(c.power,0,100000)||!integer(c.capacity,1,100)||!integer(c.upgrade_level,1,20))return 'invalid_capacity_or_requirements';
  const produced=new Set([...c.outputs,...(c.byproducts||[])].map(x=>x.item_id));
  if(c.inputs.some(x=>produced.has(x.item_id)))return 'self_consuming_recipe';
  if(c.outputs.some(x=>(c.byproducts||[]).some(y=>y.item_id===x.item_id)))return 'duplicate_output_item';
