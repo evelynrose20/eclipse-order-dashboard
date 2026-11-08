@@ -1,0 +1,101 @@
+.wa-industry{display:grid;gap:14px;min-width:0;color:#e7e4df}
+.wa-industry button{cursor:pointer}
+.wa-industry-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;background:#182733;border:1px solid #435565;border-radius:6px}
+.wa-industry-heading h2{font-size:23px;color:#f0d7b6;margin:4px 0 7px}
+.wa-industry-heading p{font-size:12px;color:#acbdc9;margin:0;line-height:1.6}
+.wa-industry-heading>button,.wa-industry-blockhead button,.wa-industry-directory-heading button{background:#324553;border:1px solid #927d64;color:#f1ddc1;border-radius:5px;padding:9px 13px}
+.wa-industry-summary,.wa-industry-statgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wa-industry-summary>div,.wa-industry-statgrid>div{border:1px solid #405462;background:#1b2a36;border-radius:5px;padding:13px;display:grid;gap:7px}
+.wa-industry-summary small,.wa-industry-statgrid small{color:#a1b3c1;font-size:11px}
+.wa-industry-summary strong,.wa-industry-statgrid strong{color:#f1dabc;font-size:20px}
+.wa-industry-tabs{display:flex;gap:6px;flex-wrap:wrap;background:#182734;padding:9px;border:1px solid #405260;border-radius:6px}
+.wa-industry-tabs button{font-size:12px;padding:10px 13px;border-radius:5px;border:1px solid #3d5160;background:#243543;color:#bbc9d2;font-weight:650}
+.wa-industry-tabs button.active{background:#47493e;border-color:#d2b17f;color:#f3dfc4}
+.wa-industry-tabs button:hover{border-color:#a99b83}
+.wa-industry-layout{display:grid;grid-template-columns:minmax(225px,28%) minmax(0,1fr);gap:13px;min-width:0;align-items:start}
+.wa-industry-directory,.wa-industry-detail,.wa-industry-workspace{background:#182733;border:1px solid #415463;border-radius:6px;min-width:0}
+.wa-industry-directory{max-height:780px;overflow:auto}
+.wa-industry-directory-heading{display:flex;gap:7px;padding:12px;border-bottom:1px solid #3c5061}
+.wa-industry-directory-heading input{min-width:0;flex:1;padding:9px 10px;background:#101f2a;border:1px solid #516979;border-radius:5px;color:#e3e7ec}
+.wa-industry-site{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:14px;border:0;border-bottom:1px solid #2c4051;background:transparent;color:#e4daca;text-align:left;width:100%}
+.wa-industry-site.selected{border-left:3px solid #ccb089;padding-left:11px;background:#2b3e49}
+.wa-industry-site:hover{background:#314450}
+.wa-industry-site>span:first-child{display:grid;gap:5px;min-width:0}
+.wa-industry-site small{font-size:10px;color:#9cb0bf}
+.wa-industry-state{font-size:10px;color:#dfc5a2;border:1px solid #7b7968;border-radius:30px;padding:5px 8px;white-space:nowrap}
+.wa-industry-state.is-operational{color:#a9dfc3;border-color:#6e9f89}
+.wa-industry-state.is-captured,.wa-industry-state.is-ruined{color:#f2a5a5;border-color:#aa6e6e}
+.wa-industry-state.is-rebuilding,.wa-industry-state.is-liberated{color:#e8c993;border-color:#b39668}
+.wa-industry-detail>header{padding:19px;display:flex;align-items:start;justify-content:space-between;gap:12px;border-bottom:1px solid #405461}
+.wa-industry-detail>header h3{font-size:22px;color:#f2debd;margin:5px 0}
+.wa-industry-detail>header p{font-size:12px;color:#a5bbc9;margin:0}
+.wa-industry-statgrid{padding:12px}
+.wa-industry-statgrid>div{padding:10px}
+.wa-industry-statgrid strong{font-size:17px}
+.wa-industry-block{padding:15px;border-top:1px solid #384e5b;display:grid;gap:11px;min-width:0}
+.wa-industry-blockhead,.wa-industry-section-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.wa-industry-blockhead h3,.wa-industry-blockhead h4,.wa-industry-section-heading h4{color:#eecda5;margin:0;font-size:15px}
+.wa-industry-blockhead p{font-size:12px;color:#9eb3bf;margin:5px 0}
+.wa-industry-blockhead span{font-size:11px;color:#9eacb6}
+.wa-industry-recipe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.wa-industry-recipe>div{border:1px solid #445665;background:#223542;padding:12px;border-radius:4px;display:grid;gap:6px}
+.wa-industry-recipe strong{color:#e7c89e;font-size:12px}
+.wa-industry-recipe span{font-size:11px;color:#bfcbd3}
+.wa-industry-buttons,.wa-industry-statusline{display:flex;gap:8px;flex-wrap:wrap}
+.wa-industry-buttons button,.wa-industry-statusline button,.wa-industry-link{background:#304553;color:#e4d5c0;border:1px solid #647787;padding:9px 12px;border-radius:4px;font-size:12px}
+.wa-industry button:disabled{opacity:.48;cursor:not-allowed}
+.wa-industry-preview,.wa-industry-dryresult{display:grid;gap:7px;padding:12px;border-left:3px solid #99b69b;background:#253b3e}
+.wa-industry-preview strong,.wa-industry-dryresult strong{color:#d7eac9}
+.wa-industry-preview span,.wa-industry-preview small,.wa-industry-dryresult span,.wa-industry-dryresult small{font-size:12px;color:#b8c9cf}
+.wa-industry-stock,.wa-industry-supplygrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}
+.wa-industry-stock>div{display:flex;justify-content:space-between;gap:7px;padding:10px;background:#233743;border:1px solid #405767;border-radius:4px;font-size:12px}
+.wa-industry-stock strong{color:#ecd09f}
+.wa-industry-stock p{font-size:12px;color:#a1b5c0}
+.wa-industry-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px;align-items:end}
+.wa-industry-form label,.wa-industry-editor label,.wa-industry-rule-card label{min-width:0;display:grid;gap:6px;font-size:11px;color:#b7c3cb}
+.wa-industry-form input,.wa-industry-form select,.wa-industry-editor input,.wa-industry-editor select{background:#0f202b;border:1px solid #526879;border-radius:4px;color:#e7e8e9;padding:9px;min-width:0;width:100%;box-sizing:border-box}
+.wa-industry-form .wide{grid-column:1/-1}
+.wa-industry-form button{padding:9px 12px;border-radius:4px;background:#324957;color:#e9d3b8;border:1px solid #a28c70}
+.wa-industry-project-shortcut,.wa-industry-need{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#263846;color:#e8d6bd;border:1px solid #455968;border-radius:4px;padding:10px;font-size:12px}
+.wa-industry-workspace{padding:17px;display:grid;gap:15px}
+.wa-industry-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px}
+.wa-industry-cards article,.wa-industry-projects article{border:1px solid #496170;background:#22313d;border-radius:6px;padding:15px;display:grid;align-content:start;gap:9px}
+.wa-industry-cards article small,.wa-industry-projects article small{font-size:11px;color:#b0bec9}
+.wa-industry-cards article strong{color:#edcfa7;font-size:15px}
+.wa-industry-cards article p{margin:0;font-size:12px;color:#a6b9c6;line-height:1.5}
+.wa-industry-cards article button{margin-top:auto;background:#304656;border:1px solid #788491;color:#e5d9c7;border-radius:4px;padding:8px}
+.wa-industry-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.wa-industry-projects h4{margin:4px 0;font-size:15px;color:#edcfac}
+.wa-industry-projects .wa-industry-blockhead strong{font-size:16px;color:#cfe3bf}
+.wa-industry-progress{height:8px;background:#40525e;border-radius:6px;overflow:hidden}
+.wa-industry-progress>div{height:100%;background:#9db49d}
+.wa-industry-history{display:grid;grid-template-columns:1fr auto auto;gap:15px;align-items:center;border-bottom:1px solid #384c5c;padding:10px;font-size:12px}
+.wa-industry-history strong{color:#e4cfad}
+.wa-industry-history small{color:#99adb9}
+.wa-industry-overlay{position:fixed;inset:0;z-index:1000;background:rgba(8,16,24,.83);overflow:auto;padding:4vh max(14px,5vw);display:flex;align-items:flex-start;justify-content:center}
+.wa-industry-modal,.wa-industry-editor{width:min(980px,100%);box-sizing:border-box;background:#192b38;border:1px solid #8f785f;border-radius:7px;padding:18px;box-shadow:0 24px 60px #060b1099}
+.wa-industry-modal>header,.wa-industry-editor>header{display:flex;justify-content:space-between;align-items:flex-start;gap:13px;border-bottom:1px solid #425666;padding-bottom:14px}
+.wa-industry-modal>header h3,.wa-industry-editor>header h3{color:#eed7b5;margin:0;font-size:20px}
+.wa-industry-editor>header p{color:#adbfca;margin:7px 0 0;font-size:12px}
+.wa-industry-modal>header button,.wa-industry-editor>header button{background:#304352;color:#e5d1b5;border:1px solid #8c806f;padding:9px;border-radius:4px}
+.wa-industry-editor{display:grid;gap:15px}
+.wa-industry-editor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:11px}
+.wa-industry-rule-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.wa-industry-rule-layout>section{min-width:0;display:grid;align-content:start;gap:11px;background:#20323f;border:1px solid #3c5262;border-radius:5px;padding:13px}
+.wa-industry-rule-layout>section>h4{margin:0;color:#ebd1b0}
+.wa-industry-section-heading button,.wa-industry-editor footer button{border:1px solid #9a846b;background:#304556;border-radius:4px;color:#eed7b6;padding:8px 11px}
+.wa-industry-material-group{display:grid;gap:7px}
+.wa-industry-material-group h4{font-size:13px;color:#e3d0b7;margin:0}
+.wa-industry-material-line{display:grid;grid-template-columns:minmax(0,1fr) 95px 30px;gap:6px}
+.wa-industry-material-line button,.wa-industry-condition>button{background:#3a3a3e;color:#efc4c1;border:1px solid #78656a;border-radius:4px}
+.wa-industry-rule-card{display:grid;gap:11px;padding:12px;border:1px solid #57707d;border-radius:5px;background:#182b38}
+.wa-industry-rule-card strong{color:#edc79c}
+.wa-industry-condition{display:flex;gap:6px;align-items:end}
+.wa-industry-condition>*{min-width:0;flex:1}
+.wa-industry-condition>button{flex:0 0 30px;height:37px}
+.wa-industry-rule-card .wa-industry-link{width:fit-content}
+.wa-industry-empty{font-size:12px;color:#aabcc6}
+.wa-industry-editor footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.wa-industry-editor footer .wa-accent{background:#766045;color:#fff4e7}
+@media(max-width:960px){.wa-industry-layout{grid-template-columns:1fr}.wa-industry-directory{max-height:250px}.wa-industry-rule-layout{grid-template-columns:1fr}.wa-industry-summary,.wa-industry-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.wa-industry-heading{flex-wrap:wrap}.wa-industry-tabs button{flex:1 1 40%}.wa-industry-form{grid-template-columns:1fr}.wa-industry-recipe{grid-template-columns:1fr}.wa-industry-history{grid-template-columns:1fr}.wa-industry-form .wide{grid-column:1}.wa-industry-projects{grid-template-columns:minmax(0,1fr)}}
