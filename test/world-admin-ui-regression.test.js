@@ -49,14 +49,36 @@ test('map fills its available zone width and grows height without distorting ori
  assert.match(nav,/Compact desktop navigation/);
 });
 
-test('industry attaches to existing region map locations rather than offering a duplicate marker editor',async()=>{
+test('industry attachment defaults to all map factions and uses a browsable location wizard',async()=>{
  const {readFile}=await import('node:fs/promises');
- const jsx=await readFile(new URL('../src/IndustrySitesPanel.jsx',import.meta.url),'utf8');
- assert.match(jsx,/Attach production to a map location/);
- assert.match(jsx,/Existing map location/);
- assert.match(jsx,/categoryGroups\.map/);
- assert.match(jsx,/scopedSettlements/);
- assert.doesNotMatch(jsx,/Create mapped site/);
- assert.doesNotMatch(jsx,/setNewSite/);
- assert.doesNotMatch(jsx,/\/world-admin\/industry\/sites'/);
+ const panel=await readFile(new URL('../src/IndustrySitesPanel.jsx',import.meta.url),'utf8');
+ const wizard=await readFile(new URL('../src/IndustryFacilityWizard.jsx',import.meta.url),'utf8');
+ assert.match(panel,/useState\('all'\)/,'the old Order-only filter hides NPC farms');
+ assert.match(panel,/<IndustryFacilityWizard/);
+ assert.doesNotMatch(panel,/categoryGroups\.map/);
+ assert.doesNotMatch(panel,/Create mapped site/);
+ assert.match(wizard,/All locations/);
+ assert.match(wizard,/NPC factions/);
+ assert.match(wizard,/role="dialog"/);
+ assert.match(wizard,/loc\.strategic_state/);
+ assert.match(wizard,/Existing mapped locations/);
+});
+test('NPC-controlled destroyed farm is visible and searchable in industry location gallery',async()=>{
+ const vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'silent'});
+ try{
+  const {default:IndustryFacilityWizard,industryLocationOptions}=await vite.ssrLoadModule('/src/IndustryFacilityWizard.jsx');
+  const data={regions:[{id:1,name:'New Cassia'}],zones:[{id:2,region_id:1,name:'The Ashen Vale'}],settlements:[
+   {id:1,region_id:1,zone_id:2,name:'Castrum Moonlight',map_icon:'settlement',strategic_state:'secure',controlling_faction_id:'eclipse-order'},
+   {id:7,region_id:1,zone_id:2,name:'Red Willow',map_icon:'farm',strategic_state:'destroyed',controlling_faction_id:'veyholm-compact'}
+  ],sites:[],templates:[],items:[]};
+  const loc=industryLocationOptions(data);
+  assert.equal(loc.length,2);
+  assert.equal(loc[1].marker,'farm');
+  assert.equal(loc[1].condition,'destroyed');
+  const html=renderToString(React.createElement(IndustryFacilityWizard,{data,onCancel:()=>{},onSubmit:()=>{}}));
+  assert.match(html,/Red Willow/);
+  assert.match(html,/Destroyed/);
+  assert.match(html,/Veyholm|NPC faction/i);
+  assert.match(html,/Castrum Moonlight/);
+ }finally{await vite.close()}
 });
