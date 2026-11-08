@@ -70,7 +70,7 @@ async function context(db,id,lock=false,cycleDate=null){
  const [[profile]]=await db.execute("SELECT *,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles WHERE settlement_id=?",[id]);
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
  const [heatingAssets]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE settlement_id=? ORDER BY id',[id]);
- const [upgrades]=await db.execute('SELECT category,status,condition_pct,housing_bonus,defense_bonus,service_bonus FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
+ const [upgrades]=await db.execute('SELECT category,status,level,condition_pct,housing_bonus,defense_bonus,service_bonus FROM world_settlement_upgrades WHERE settlement_id=?',[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
@@ -92,7 +92,8 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const cohorts=simulatedPopulationGroups(data.settlement);
   const worker_health=await workerHealthSnapshot(pool,id);
   const medicalSnapshot=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades);
-  const medicalState=educationPreview(data.settlement,data.upgrades);
+  const [[educationState]]=await pool.execute('SELECT attainment FROM world_settlement_education WHERE settlement_id=?',[id]);
+  const medicalState=educationPreview(data.settlement,data.upgrades,educationState||{});
   const health_preview=workerHealthCycle({...worker_health,employed:settlementDemographics(data.settlement).employed,temperature_f:data.temperature_f,heating_coverage:medicalSnapshot.heating_coverage_effective,medical_access:data.settlement.medical_access,clinic_count:data.upgrades.filter(x=>x.category==='clinic'&&x.status==='operational').length||(Number(data.settlement.medical_access)>=65?1:0),trained_workers:medicalState.trained_workers,medicine_units:Math.max(0,medicalSnapshot.medicine_stock-medicalSnapshot.medicine_used)});
   const [incidents]=await pool.execute('SELECT * FROM world_civic_incidents WHERE settlement_id=? ORDER BY id DESC LIMIT 50',[id]);
   const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
