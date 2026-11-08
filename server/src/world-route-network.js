@@ -70,16 +70,17 @@ export async function handleTransportGraph(pool,req,path,actor){
  if(path==='/world-admin/network/import'&&req.method==='POST'){
   const b=await body(req);if(!ident(b?.region_id))return fail(400,'invalid_region');
   return tx(pool,async db=>{
-   const [legacy]=await db.execute('SELECT * FROM world_map_routes WHERE region_id=? ORDER BY id FOR UPDATE',[b.region_id]);
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);if(!zoneId)return fail(400,'zone_not_in_region');
+   const [legacy]=await db.execute('SELECT * FROM world_map_routes WHERE region_id=? AND zone_id=? ORDER BY id FOR UPDATE',[b.region_id,zoneId]);
    let count=0;
    for(const r of legacy){
     const from=await settlementNode(db,b.region_id,r.from_settlement_id,actor);
     const to=await settlementNode(db,b.region_id,r.to_settlement_id,actor);
     if(!from||!to)return fail(400,'legacy_route_endpoint_missing');
-    await db.execute('INSERT INTO world_route_segments(region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[b.region_id,from,to,r.route_type,r.route_name,typeof r.waypoints==='string'?r.waypoints:JSON.stringify(r.waypoints),actor.id]);
+    await db.execute('INSERT INTO world_route_segments(region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[b.region_id,zoneId,from,to,r.route_type,r.route_name,typeof r.waypoints==='string'?r.waypoints:JSON.stringify(r.waypoints),actor.id]);
     count++;
    }
-   if(count){await db.execute('DELETE FROM world_map_routes WHERE region_id=?',[b.region_id]);await audit(db,actor,'network_import',b.region_id)}
+   if(count){await db.execute('DELETE FROM world_map_routes WHERE region_id=? AND zone_id=?',[b.region_id,zoneId]);await audit(db,actor,'network_import',b.region_id)}
    return ok({imported:count});
   });
  }
@@ -91,9 +92,11 @@ export async function handleTransportGraph(pool,req,path,actor){
   if(b.settlement_id!=null&&!ident(b.settlement_id))return fail(400,'invalid_settlement');
   if(b.settlement_id==null&&(!point(b)||!kind(b.node_kind)||!name(b.name||'')))return fail(400,'invalid_node');
   return tx(pool,async db=>{
-   const [regions]=await db.execute('SELECT id FROM world_regions WHERE id=?',[b.region_id]);if(!regions.length)return fail(404,'region_not_found');
-   if(b.settlement_id!=null){const node=await settlementNode(db,b.region_id,b.settlement_id,actor);return node?ok({id:node}):fail(400,'settlement_outside_region')}
-   const [r]=await db.execute('INSERT INTO world_route_nodes(region_id,zone_id,name,node_kind,map_x,map_y,created_by) VALUES(?,?,?,?,?,?,?)',[b.region_id,(b.name||'').trim(),b.node_kind,b.x,b.y,actor.id]);
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);if(!zoneId)return fail(400,'zone_not_in_region');
+   if(b.settlement_id!=null){const [places]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND zone_id=? AND id=?',[b.region_id,zoneId,b.settlement_id]);
+    if(!places.length)return fail(400,'settlement_outside_zone');
+    const node=await settlementNode(db,b.region_id,b.settlement_id,actor);return node?ok({id:node}):fail(400,'settlement_outside_zone')}
+   const [r]=await db.execute('INSERT INTO world_route_nodes(region_id,zone_id,name,node_kind,map_x,map_y,created_by) VALUES(?,?,?,?,?,?,?)',[b.region_id,zoneId,(b.name||'').trim(),b.node_kind,b.x,b.y,actor.id]);
    await audit(db,actor,'network_node_create',r.insertId);return ok({id:r.insertId});
   });
  }
@@ -130,13 +133,14 @@ export async function handleTransportGraph(pool,req,path,actor){
  if(table==='segments'&&req.method==='POST'&&!id||table==='segments'&&req.method==='PUT'&&id&&!split){
   if(!ident(b?.region_id)||!ident(b?.from_node_id)||!ident(b?.to_node_id)||b.from_node_id===b.to_node_id||!validRouteType(b.route_type)||!name(b.route_name)||!validWaypoints(b.waypoints))return fail(400,'invalid_network_segment');
   return tx(pool,async db=>{
-   if(!await nodesIn(db,b.region_id,[b.from_node_id,b.to_node_id]))return fail(400,'nodes_must_share_region');
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);if(!zoneId)return fail(400,'zone_not_in_region');
+   if(!await nodesIn(db,b.region_id,zoneId,[b.from_node_id,b.to_node_id]))return fail(400,'nodes_must_share_zone');
    if(id){
-    const [r]=await db.execute('UPDATE world_route_segments SET from_node_id=?,to_node_id=?,route_type=?,route_name=?,waypoints=? WHERE id=? AND region_id=?',[b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),id,b.region_id]);
+    const [r]=await db.execute('UPDATE world_route_segments SET from_node_id=?,to_node_id=?,route_type=?,route_name=?,waypoints=? WHERE id=? AND region_id=? AND zone_id=?',[b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),id,b.region_id,zoneId]);
     if(!r.affectedRows)return fail(404,'segment_not_found');
     await audit(db,actor,'network_segment_edit',id);return ok({saved:true});
    }
-   const [r]=await db.execute('INSERT INTO world_route_segments(region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[b.region_id,b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),actor.id]);
+   const [r]=await db.execute('INSERT INTO world_route_segments(region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[b.region_id,zoneId,b.from_node_id,b.to_node_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),actor.id]);
    await audit(db,actor,'network_segment_create',r.insertId);return ok({id:r.insertId});
   });
  }
