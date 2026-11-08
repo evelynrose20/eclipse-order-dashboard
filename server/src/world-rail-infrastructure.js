@@ -37,7 +37,7 @@ async function checkCrossing(db,b,region,zone){
 }
 // A freight-ready station requires operational status, freight enabled and an
 // operational freight/mixed platform. This is metadata, not a cargo movement.
-export function freightReady(station,platforms){return station.status==='operational'&&Boolean(station.freight_enabled)&&platforms.some(p=>Number(p.station_id)===Number(station.id)&&p.status==='operational'&&['freight','mixed'].includes(p.kind)&&Number(p.capacity)>0)}
+export function freightReady(station,platforms){return station.status==='operational'&&Boolean(station.freight_enabled)&&Number(station.freight_capacity)>0&&platforms.some(p=>Number(p.station_id)===Number(station.id)&&p.status==='operational'&&['freight','mixed'].includes(p.kind)&&Number(p.capacity)>0)}
 export async function railRecords(pool){
  const [stations]=await pool.execute('SELECT * FROM world_rail_stations ORDER BY region_id,zone_id,name,id');
  const [platforms]=await pool.execute('SELECT * FROM world_rail_platforms ORDER BY station_id,code,id');
@@ -45,7 +45,50 @@ export async function railRecords(pool){
  const [crossings]=await pool.execute('SELECT * FROM world_rail_crossings ORDER BY region_id,zone_id,id');
  return {rail_stations:stations.map(s=>({...s,freight_enabled:!!s.freight_enabled,passenger_enabled:!!s.passenger_enabled,freight_ready:freightReady(s,platforms)})),rail_platforms:platforms,rail_switches:switches,rail_crossings:crossings};
 }
+// Read-only operational reachability preview for future Trade dispatch. No inventory is moved.
+export function planRailFreight({originId,destinationId,stations,platforms,segments,nodes,switches,crossings}){
+ const start=stations.find(s=>Number(s.id)===Number(originId));
+ const finish=stations.find(s=>Number(s.id)===Number(destinationId));
+ if(!start||!finish)return {available:false,reason:'station_not_found'};
+ if(!same(start,finish.region_id,finish.zone_id))return {available:false,reason:'stations_in_different_zones'};
+ if(!freightReady(start,platforms)||!freightReady(finish,platforms))return {available:false,reason:'freight_platform_not_ready'};
+ if(Number(start.id)===Number(finish.id))return {available:false,reason:'choose_distinct_stations'};
+ const blocked=new Set(crossings.filter(c=>same(c,start.region_id,start.zone_id)&&c.control_type!=='grade_separated'&&c.status!=='operational').map(c=>Number(c.rail_segment_id)));
+ const tracks=segments.filter(e=>same(e,start.region_id,start.zone_id)&&e.route_type==='rail'&&!blocked.has(Number(e.id)));
+ const adjacent=new Map();
+ for(const e of tracks){for(const n of [e.from_node_id,e.to_node_id]){const key=Number(n);if(!adjacent.has(key))adjacent.set(key,[]);adjacent.get(key).push(e)}}
+ const limits=switches.filter(sw=>same(sw,start.region_id,start.zone_id));
+ const queue=[{node:Number(start.node_id),previous:null,segments:[],usedSwitches:[]}],visited=new Set();
+ for(let i=0;i<queue.length;i++){
+  const current=queue[i];
+  if(current.node===Number(finish.node_id))return {available:true,segment_ids:current.segments,switch_ids:current.usedSwitches,reason:null,origin_station_id:Number(originId),destination_station_id:Number(destinationId)};
+  const key=current.node+'|'+(current.previous??'origin');
+  if(visited.has(key))continue;visited.add(key);
+  for(const edge of adjacent.get(current.node)||[]){
+   const edgeId=Number(edge.id);
+   if(edgeId===current.previous)continue;
+   let switchUsed=null;
+   if(current.previous!=null){
+    const options=limits.filter(sw=>Number(sw.node_id)===current.node);
+    const found=options.find(sw=>(Number(sw.entry_segment_id)===current.previous&&Number(sw.exit_segment_id)===edgeId)||(Number(sw.exit_segment_id)===current.previous&&Number(sw.entry_segment_id)===edgeId));
+    if(found?.status!=='open'&&(found||options.length>0||(adjacent.get(current.node)||[]).length>2))continue;
+    switchUsed=found?.id||null;
+   }
+   const nextNode=Number(edge.from_node_id)===current.node?Number(edge.to_node_id):Number(edge.from_node_id);
+   queue.push({node:nextNode,previous:edgeId,segments:[...current.segments,edgeId],usedSwitches:switchUsed?[...current.usedSwitches,Number(switchUsed)]:current.usedSwitches});
+  }
+ }
+ return {available:false,reason:'no_operational_rail_path',segment_ids:[],switch_ids:[]};
+}
 export async function handleRailInfrastructure(pool,req,path,actor){
+ if(path==='/world-admin/rail/preview'&&req.method==='POST'){
+  const b=await body(req);
+  if(!id(b?.origin_station_id)||!id(b?.destination_station_id))return fail(400,'invalid_freight_preview');
+  const records=await railRecords(pool);
+  const [nodes]=await pool.execute('SELECT id,region_id,zone_id FROM world_route_nodes');
+  const [segments]=await pool.execute("SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type FROM world_route_segments WHERE route_type='rail'");
+  return ok(planRailFreight({originId:b.origin_station_id,destinationId:b.destination_station_id,stations:records.rail_stations,platforms:records.rail_platforms,segments,nodes,switches:records.rail_switches,crossings:records.rail_crossings}));
+ }
  const route=/^\/world-admin\/rail\/(stations|platforms|switches|crossings)(?:\/(\d+))?$/.exec(path);
  if(!route)return fail(404,'rail_route_not_found');
  const [,table,rawId]=route,rowId=rawId?Number(rawId):null;
