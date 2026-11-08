@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -44,4 +44,12 @@ test('gender never determines lower reservoir classification',()=>{
  assert.equal(lowerMaterialForAnatomy('mixed'),'mixed');
  assert.equal(lowerMaterialForAnatomy('other'),'other');
  assert.equal(lowerMaterialForAnatomy('unspecified'),'unclassified');
+});
+
+test('fictional cycle amount comes from physiology, not user-entered limits',()=>{
+ assert.equal(simulatedCycleYield('upper',{lactation_state:'none'},0.9),0);
+ assert.equal(simulatedCycleYield('upper',{lactation_state:'established'},0.9),3);
+ assert.equal(simulatedCycleYield('upper',{lactation_state:'variable'},0),0);
+ assert.equal(simulatedCycleYield('lower',{},0.2),0);
+ assert.equal(simulatedCycleYield('lower',{},0.9),1);
 });
