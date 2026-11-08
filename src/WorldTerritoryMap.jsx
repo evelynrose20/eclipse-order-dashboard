@@ -198,13 +198,24 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    if(snapped?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(snapped.id)))}
    return;
   }
+  const nearLegacy=routes.map(edge=>{
+   const line=polyline(edge,byId);
+   const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
+   return {edge,distance:projected??Infinity};
+  }).sort((a,b)=>a.distance-b.distance)[0];
+  if(nearLegacy&&nearLegacy.distance<2){
+   const snapped=await mutation('/world-admin/network/legacy/'+nearLegacy.edge.id+'/branch','POST',p,'Junction joined to the older route.');
+   if(snapped?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(snapped.id)))}
+   return;
+  }
   const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
   if(data?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(data.id)))}
  }
  async function splitRoute(route,e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
-  const result=await mutation('/world-admin/network/segments/'+route.id+'/split','POST',p,'Shared junction inserted. Plan a route from it to create a branch.');
+  const endpoint=route.from_node_id?'/world-admin/network/segments/'+route.id+'/split':'/world-admin/network/legacy/'+route.id+'/branch';
+  const result=await mutation(endpoint,'POST',p,'Shared junction inserted into the selected route. Plan a route from it to branch.');
   if(result?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(result.id)))}
  }
 
@@ -345,7 +356,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
       <path d={p} className="wtm-road-base"/>
       <path d={p} className="wtm-road-top"/>
       {route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}
-      <path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();selectRoad(route)}}/>
+      <path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/>
      </g>;
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
@@ -403,7 +414,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    <p className="wtm-route-help">{mode==='link'?'Choose two settlements or junctions on the map or using the endpoint selectors. Click the map to add smooth bends, then Save new route. Junctions are real shared connection points.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
    <div className="wtm-junction-tools">
     <button type="button" className={junctionAction==='place'?'active':''} disabled={busy} onClick={()=>{setJunctionAction(v=>v==='place'?'':'place');setNotice('Click on the same map to place a junction.');}}><i className="fa-solid fa-location-dot"/> Place junction</button>
-    <button type="button" className={junctionAction==='split'?'active':''} disabled={busy||!networkSegments.length} onClick={()=>{setJunctionAction(v=>v==='split'?'':'split');setNotice('Click an existing route directly to create a shared junction.');}}><i className="fa-solid fa-code-branch"/> Branch from route</button>
+    <button type="button" className={junctionAction==='split'?'active':''} disabled={busy||!(networkSegments.length||routes.length)} onClick={()=>{setJunctionAction(v=>v==='split'?'':'split');setNotice('Click an existing route directly to create a shared junction.');}}><i className="fa-solid fa-code-branch"/> Branch from route</button>
     {routes.length>0&&<button type="button" disabled={busy} onClick={importLegacyRoutes}><i className="fa-solid fa-link"/> Connect {routes.length} older routes</button>}
     {junctionAction&&<button type="button" onClick={()=>setJunctionAction('')}>Done placing junctions</button>}
     <small>New roads keep the original smooth bends. Choose a junction while planning a route; drag it with Move places.</small>
