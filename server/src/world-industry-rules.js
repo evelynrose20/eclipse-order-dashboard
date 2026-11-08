@@ -83,7 +83,7 @@ export function industryProductionPreview(facility,config,rules,stock={},context
  const ctx={...context,level:Number(facility.level),workforce:availableWorkforce,heat_available:availableHeat,power_available:availablePower,capacity_pct:Number(facility.capacity_pct),status:facility.status};
  const decision=evaluateIndustryRules(rules,ctx);
  if(!decision.allowed)fails.push('rule_blocked');
- const operations=fails.length?0:Math.min(1000,Math.floor(Math.max(0,Math.min(...limits))*decision.multiplier));
- const scale=arr=>Object.fromEntries(arr.map(x=>[x.item_id,Math.round(x.qty*operations*1000)/1000]));
- return {operations,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs),byproducts:scale(config.byproducts||[]),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
+ const operations=fails.length||decision.multiplier===0?0:Math.min(1000,Math.floor(Math.max(0,Math.min(...limits))));
+ const scale=(arr,multiplier=1)=>Object.fromEntries(arr.map(x=>[x.item_id,Math.round(x.qty*operations*multiplier*1000)/1000]));
+ return {operations,throughput_multiplier:decision.multiplier,blocked:fails,rule_messages:decision.messages,inputs:scale(config.inputs),outputs:scale(config.outputs,decision.multiplier),byproducts:scale(config.byproducts||[],decision.multiplier),requirements:{labor:config.labor,heat:config.heat,power:config.power,capacity:config.capacity,upgrade_level:config.upgrade_level},limits:{capacity:cap,workforce:availableWorkforce,heat:availableHeat,power:availablePower}};
 }
