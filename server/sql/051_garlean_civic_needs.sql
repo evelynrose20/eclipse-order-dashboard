@@ -123,6 +123,21 @@ CREATE TABLE IF NOT EXISTS world_civic_shared_transfers (
  FOREIGN KEY(material_id) REFERENCES fc_materials(id),
  FOREIGN KEY(actor_id) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS world_civic_heating_assets (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ settlement_id BIGINT UNSIGNED NOT NULL,
+ name VARCHAR(120) NOT NULL,
+ coverage_pct TINYINT UNSIGNED NOT NULL DEFAULT 0,
+ condition_pct TINYINT UNSIGNED NOT NULL DEFAULT 100,
+ status ENUM('operational','damaged','offline') NOT NULL DEFAULT 'operational',
+ notes VARCHAR(450) NOT NULL DEFAULT '',
+ created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(settlement_id) REFERENCES world_settlements(id) ON DELETE CASCADE,
+ FOREIGN KEY(created_by) REFERENCES accounts(id),
+ CONSTRAINT chk_heat_asset_coverage CHECK(coverage_pct<=100),
+ CONSTRAINT chk_heat_asset_condition CHECK(condition_pct<=100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS world_civic_aid_contracts (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  settlement_id BIGINT UNSIGNED NOT NULL,
