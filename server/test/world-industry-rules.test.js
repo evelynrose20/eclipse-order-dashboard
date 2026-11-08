@@ -42,3 +42,10 @@ test('output multipliers never exceed workforce, input or capacity operation cap
  assert.equal(preview.outputs['ceruleum-fuel'],12);
  assert.equal(preview.throughput_multiplier,3);
 });
+
+test('industry templates cannot create unlimited outputs or zero-worker production',()=>{
+ assert.equal(validateIndustryConfiguration({...mine,labor:0}),'invalid_capacity_or_requirements');
+ assert.equal(validateIndustryConfiguration({...mine,capacity:1001}),'invalid_capacity_or_requirements');
+ assert.equal(validateIndustryConfiguration({...mine,outputs:[{item_id:'iron-ore',qty:99999999}]}),'invalid_recipe_items');
+ assert.equal(validateIndustryConfiguration({...mine,outputs:[{item_id:'iron-ore',qty:101}]}),'unbounded_production_output');
+});
