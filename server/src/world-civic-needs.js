@@ -43,7 +43,7 @@ function readings(settlement,profile,stock,history,regionTempF=32,heatingAssets=
  return {food_stock:food,fuel_stock:fuel,heating_coverage_effective:Math.round(coverage),water_stock:water,medicine_stock:medicine,food_need:foodNeed,water_need:waterNeed,medicine_need:medicineNeed,heat_need:Number(heatNeed.toFixed(3)),food_days:Number(foodDays.toFixed(2)),heat_days:heatDays===null?null:Number(heatDays.toFixed(2)),food_groups_30d:[...seen],pressure,risk,warnings};
 }
 export function civicSimulationPreview(settlement,profile,stock,history,temperatureF=32,cycles=0,heatingAssets=[]){
- const metrics=readings(settlement,profile,stock,history,temperatureF,heatingAssets);
+ const metrics=readings(settlement,{...settingsDefault,...profile},stock,history,temperatureF,heatingAssets);
  const eligible=profile.enabled_mode==='managed'||profile.enabled_mode==='detailed';
  const afterGrace=cycles>=Number(profile.grace_cycles);
  const beforeStability=Number(settlement.civil_stability),beforeUnrest=Number(settlement.unrest);
