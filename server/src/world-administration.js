@@ -217,11 +217,14 @@ async function worldAdministrationRouteCore(pool,req,path){
    if(!await referencesExist(db,b))return fail(400,'invalid_faction_reference');
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
-   const [[old]]=await db.execute('SELECT region_id,zone_id,population,workforce,housing_capacity FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
+   const [[old]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!old)return fail(404,'settlement_not_found');
    if(Number(old.region_id)!==b.region_id)return fail(409,'settlement_cannot_change_region');
    const [[cycle]]=await db.execute('SELECT id FROM world_settlement_sim_history WHERE settlement_id=? LIMIT 1',[Number(match[1])]);
-   if(cycle&&(Number(old.population)!==b.population||Number(old.workforce)!==b.workforce))return fail(409,'simulated_population_and_workforce_are_read_only');
+   if(cycle){
+    const simulatedFields=['population','workforce','food_days','food_variety','heating_coverage','insulation','housing','medical_access','food_access','security_score','civil_stability','unrest','weather_exposure'];
+    if(simulatedFields.some(k=>Number(old[k])!==Number(b[k]))||b.housing_capacity!==undefined&&Number(old.housing_capacity)!==Number(b.housing_capacity))return fail(409,'simulated_civic_values_are_read_only');
+   }
    const baseCapacity=b.housing_capacity===undefined?Number(old.housing_capacity):b.housing_capacity;
    if(!Number.isInteger(baseCapacity)||baseCapacity<0||baseCapacity>10000000)return fail(400,'invalid_housing_capacity');
    const savedUpgrades=await getSettlementUpgradeRecords(db,Number(match[1]),true);
