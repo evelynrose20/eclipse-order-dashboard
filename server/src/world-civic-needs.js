@@ -57,16 +57,17 @@ async function context(db,id,lock=false,cycleDate=null){
 }
 export async function handleCivicNeeds(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
- const match=/^\/world-admin\/civic\/(\d+)(?:\/(profile|stock|cohorts|preview|run|incidents))?(?:\/(\d+)\/review)?$/.exec(path);
+ const match=/^\/world-admin\/civic\/(\d+)(?:\/(profile|stock|transfer|cohorts|preview|run|incidents))?(?:\/(\d+)\/review)?$/.exec(path);
  if(!match)return fail(404,'not_found');
  const id=Number(match[1]),section=match[2]||'overview',reviewId=match[3]?Number(match[3]):null;
  if(!Number.isSafeInteger(id)||id<1)return fail(400,'invalid_settlement');
  if(req.method==='GET'&&section==='overview'){
   const data=await context(pool,id);if(!data)return fail(404,'settlement_not_found');
+  const [shared_materials]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
   const [cohorts]=await pool.execute('SELECT * FROM world_civic_cohorts WHERE settlement_id=? ORDER BY id',[id]);
   const [incidents]=await pool.execute('SELECT * FROM world_civic_incidents WHERE settlement_id=? ORDER BY id DESC LIMIT 50',[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,cohorts,incidents,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles)});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,cohorts,incidents,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles)});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
@@ -89,6 +90,26 @@ export async function handleCivicNeeds(pool,req,path,actor){
    await db.execute('INSERT INTO world_civic_stock(settlement_id,item_code,item_label,resource_kind,food_group,quantity) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),item_label=VALUES(item_label)',[id,b.item_code,b.item_label,b.resource_kind,b.food_group||null,next]);
    await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,actor_id) VALUES(?,?,?,?,?,?,?)',[id,b.item_code,b.resource_kind,b.food_group||null,b.quantity_delta,b.reason,actor.id]);
    await log(db,actor.id,'civic_delivery',id,b.item_code);return ok({saved:true,quantity:next});
+  });
+ }
+ if(req.method==='POST'&&section==='transfer'){
+  const b=await body(req);
+  if(!b||!safeText(b.material_id,48)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(b.material_id)||!integer(b.quantity,1,1000000)||!kinds.includes(b.resource_kind)||b.resource_kind==='food'&&!safeText(b.food_group,75)||!(b.food_group===null||b.food_group===''||safeText(b.food_group,75))||typeof b.request_key!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.request_key))return fail(400,'invalid_shared_civic_transfer');
+  return tx(pool,async db=>{
+   const [[old]]=await db.execute('SELECT id FROM world_civic_shared_transfers WHERE request_key=?',[b.request_key]);
+   if(old)return ok({saved:true,already_recorded:true});
+   const [[settlement]]=await db.execute('SELECT id FROM world_settlements WHERE id=? FOR UPDATE',[id]);if(!settlement)return fail(404,'settlement_not_found');
+   const [[material]]=await db.execute('SELECT m.id,m.name,s.quantity FROM fc_materials m JOIN fc_material_stock s ON s.material_id=m.id WHERE m.id=? FOR UPDATE',[b.material_id]);
+   if(!material)return fail(404,'shared_material_not_found');
+   if(Number(material.quantity)<b.quantity)return fail(409,'insufficient_shared_order_stock');
+   const [[classified]]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? AND item_code=? FOR UPDATE',[id,b.material_id]);
+   if(classified&&(classified.resource_kind!==b.resource_kind||String(classified.food_group||'')!==String(b.food_group||'')))return fail(409,'stock_item_classification_conflict');
+   await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[b.quantity,b.material_id,b.quantity]);
+   await db.execute('INSERT INTO world_civic_stock(settlement_id,item_code,item_label,resource_kind,food_group,quantity) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity),item_label=VALUES(item_label)',[id,b.material_id,material.name,b.resource_kind,b.resource_kind==='food'?b.food_group:null,b.quantity]);
+   await db.execute('INSERT INTO world_civic_shared_transfers(request_key,settlement_id,material_id,quantity,actor_id) VALUES(?,?,?,?,?)',[b.request_key,id,b.material_id,b.quantity,actor.id]);
+   await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,actor_id) VALUES(?,?,?,?,?,?,?)',[id,b.material_id,b.resource_kind,b.resource_kind==='food'?b.food_group:null,b.quantity,'Transfer from shared Order workshop stock',actor.id]);
+   await log(db,actor.id,'civic_shared_transfer',id,b.material_id+' x'+b.quantity);
+   return ok({saved:true,quantity:b.quantity});
   });
  }
  if(req.method==='POST'&&section==='cohorts'){
