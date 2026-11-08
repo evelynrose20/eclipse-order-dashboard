@@ -1039,7 +1039,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(npcView.status,200);
   assert.ok(npcView.body.settlements.some(x=>Number(x.id)===npcId&&x.ownership==='npc'));
   assert.ok(npcView.body.settlements.some(x=>Number(x.id)===mineId&&x.ownership==='order'));
-  const npcModeOff=await settlementSimulationRoute(admin,request('PUT',{mode:'off',cadence:'normal',paused:false}),'/world-admin/simulation/'+npcId+'/settings',{id:'00000000-0000-0000-0000-000000000000',account_role:'domina'});
+  const npcModeOff=await settlementSimulationRoute(admin,request('PUT',{mode:'off',cadence:'normal',paused:false}),'/world-admin/simulation/'+npcId+'/settings',{id,account_role:'domina'});
   assert.equal(npcModeOff.status,200);
  }finally{await admin.end();}
 });
