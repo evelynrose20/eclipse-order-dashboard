@@ -1,3 +1,4 @@
+import {settlementDemographics,cappedEmployment} from './world-demographics.js';
 import {climateForRegions} from './world-region-climate.js';
 import {civicSimulationPreview} from './world-civic-needs.js';
 import {previewPopulationChange} from './world-population-simulation.js';
@@ -15,7 +16,7 @@ export function simulationCycleKey(now,cadence='normal'){
 }
 export function npcSupplyCycle(input){
  const population=Math.max(0,Math.floor(Number(input.population)||0));
- const employed=Math.min(population,Math.floor(Number(input.workforce)||0));
+ const employed=cappedEmployment(input,input.workforce);
  const temperature=Number(input.temperature_f??32);
  const current={food:Number(input.food_units)||0,water:Number(input.water_units)||0,fuel:Number(input.fuel_units)||0,medicine:Number(input.medicine_units)||0};
  if(!population)return {next:current,shortages:[],consumption:{food:0,water:0,fuel:0,medicine:0},production:{food:0,water:0,fuel:0,medicine:0},risk:0};
@@ -73,10 +74,10 @@ async function applyNpcCycle(db,site,state,now,key,weather){
  const upgrades=[]; // NPC construction adds to baseline housing and services directly.
  const arrival=previewPopulationChange(site,upgrades,outcome.risk,outcome.risk<75);
  const nextPopulation=arrival.population_after;
- const targetJobs=Math.floor(nextPopulation*.55);
+ const targetJobs=Math.min(settlementDemographics({...site,population:nextPopulation}).eligible_workers,Math.floor(nextPopulation*.55));
  const beforeJobs=Number(site.workforce);
  const step=targetJobs>beforeJobs?Math.max(1,Math.ceil((targetJobs-beforeJobs)*.18)):-Math.max(1,Math.ceil((beforeJobs-targetJobs)*.18));
- const workforce=Math.min(nextPopulation,Math.max(0,beforeJobs===targetJobs?beforeJobs:beforeJobs+step));
+ const workforce=cappedEmployment({...site,population:nextPopulation},Math.max(0,beforeJobs===targetJobs?beforeJobs:beforeJobs+step));
  const stability=clamp(beforeStability+(outcome.shortages.length?-2:1)),unrest=clamp(Number(site.unrest)+(outcome.shortages.length?2:-1));
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
  let development=Number(state.development_points)+Math.max(3,workforce*.16);
@@ -216,7 +217,7 @@ export async function settlementSimulationRoute(pool,req,path,actor){
   const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");
-  return {status:200,body:{settlements:sites.map(s=>({...s,ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+  return {status:200,body:{settlements:sites.map(s=>({...s,demographics:settlementDemographics(s),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
  }
  const match=/^\/world-admin\/simulation\/(\d+)\/settings$/.exec(path);
  if(match&&req.method==='PUT'){
