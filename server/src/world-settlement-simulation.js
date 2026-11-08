@@ -115,15 +115,22 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
  // Legacy NPC construction records continue to completion but are no longer created.
  const [[ongoing]]=await db.execute("SELECT id FROM world_civic_building_projects WHERE settlement_id=? AND owner_kind='npc' AND status IN ('active','paused') LIMIT 1",[site.id]);
  if(!project&&!ongoing){
+  const damaged=upgrades.find(u=>u.template_id&&u.status==='damaged');
+  if(damaged){
+   const [[template]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=?',[damaged.template_id]);
+   if(template){
+    const repair=await beginCivicTemplateProject(db,{settlement:site,template,upgrade:damaged,owner_kind:'npc',npcDevelopment:development,repair:true});
+    if(repair.status===200){development-=repair.body.cost.npc_development_cost;event='construction';headline=damaged.name+' repair funded'}
+   }
+  }else{
   const preferred=npcConstructionPreference(site,upgrades,{...state,food_units:outcome.next.food,water_units:outcome.next.water});
   if(preferred){
    const [eligibleTemplates]=await db.execute('SELECT * FROM world_civic_building_templates WHERE category=? AND enabled=1 ORDER BY npc_development_cost/effect_per_level ASC,id',[preferred]);
    const template=eligibleTemplates[0];
    if(template){
-    const matches=upgrades.filter(u=>u.template_id===preferred&&u.status==='operational');
+    const matches=upgrades.filter(u=>u.template_id===template.id&&u.status==='operational');
     const candidate=matches.find(u=>Number(u.level)<Number(template.max_level))||null;
-    const upgrade=matches.length&& !candidate?null:candidate;
-    const expand=true;
+    const upgrade=candidate;
     const cost=civicProjectCost(template,upgrade?Number(upgrade.level)+1:1);
     if(expand&&development>=cost.npc_development_cost){
      const started=await beginCivicTemplateProject(db,{settlement:site,template,upgrade,owner_kind:'npc',npcDevelopment:development});
@@ -133,6 +140,7 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
      }
     }
    }
+  }
   }
  }
  const templateConstruction=await advanceCivicTemplateProjects(db,site,key,'npc',activeWorkforce);
