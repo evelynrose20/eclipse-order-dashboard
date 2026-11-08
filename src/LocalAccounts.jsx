@@ -25,7 +25,24 @@ const ERROR_MESSAGES={
  discord_only_registration:'Membership requests begin with Discord.',
  account_not_approved:'The Order has not approved your membership.',
  recruitment_closed:'The Order is not accepting new membership applications at present.',
- too_many_attempts:'Too many attempts. Try again later.'
+ too_many_attempts:'Too many attempts. Try again later.',
+ rail_route_invalid_fields:'Check both station selections, the service name and the journey duration.',
+ rail_route_order_stops_only:'Internal trains may serve Order-controlled settlements and active Order fronts only.',
+ rail_route_station_not_found:'Choose two saved internal railway stations.',
+ rail_route_distinct_stations_required:'The origin and destination must be stations at different locations.',
+ rail_station_invalid_fields:'Enter a station name, select an Order location and choose a platform count from 1 to 100.',
+ rail_station_order_stop_required:'Choose an Order-controlled settlement or an active Order front.',
+ rail_station_has_routes:'This station is used by a rail service. Retire or update those services before deleting it.',
+ rail_station_has_active_journey:'A train is currently travelling to or from this station.',
+ rail_stations_not_operational:'Both stations must be Operational before dispatching a train.',
+ rail_route_has_active_journey:'A train is currently running on this service. Cancel it or let it arrive before editing or retiring the service.',
+ rail_journey_already_running:'A train is already travelling on this service.',
+ rail_route_not_active:'Activate this service before dispatching a train.',
+ rail_route_stop_no_longer_order_owned:'The origin or destination is no longer an eligible Order location.',
+ rail_journey_not_running:'This journey has already arrived or was cancelled.',
+ rail_route_not_found:'This rail service could not be found. Refresh and try again.',
+ rail_station_not_found:'This railway station could not be found. Refresh and try again.',
+ rail_action_not_found:'This railway action is unavailable. Check that the Windows API has been updated.'
 };
 async function request(path,{method='GET',token,body}={}){
  let response;
