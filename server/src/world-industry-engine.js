@@ -101,7 +101,7 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
  const linked=await getIndustryPreview(db,project.facility_id);
  const workforce=Math.max(0,Math.floor(num(linked?.facility?.workforce)));
  if(!workforce)return {status:409,body:{error:'project_no_workers'}};
- const labor=Math.min(Math.max(0,Number(project.labor_required)-Number(project.labor_done)),Math.min(100,Math.max(1,Math.floor(workforce*.25))));
+ const labor=Math.min(Math.max(0,Number(project.labor_required)-Number(project.labor_done)),Math.min(100,Math.max(1,Math.floor(workforce))));
  const updated=Math.min(Number(project.labor_required),Number(project.labor_done)+labor);
  const complete=updated===Number(project.labor_required);
  await db.execute('INSERT INTO world_industry_project_ticks(project_id,cycle_key,labor_added) VALUES(?,?,?)',[id,key,labor]);
