@@ -25,3 +25,9 @@ test('extreme cold disrupts outdoor work even on clear days',()=>{
 test('unpowered advanced protection loses active benefits and output',()=>{
  assert.equal(preview(3,'blizzard',12,0).operations,0);
 });
+
+test('indoor manufacturing can be winterized against extreme cold',()=>{
+ const ctx={weather:'clear',temperature_f:-30,industry_category:'manufacturing'};
+ assert.equal(industryProductionPreview(facility,recipe,[],{},ctx).operations,75);
+ assert.equal(industryProductionPreview(facility,recipe,[],{},{...ctx,weather_protection_level:1}).operations,87);
+});
