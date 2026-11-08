@@ -5,7 +5,7 @@ const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2})
 const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grain',quantity_delta:0,reason:''};
 export default function CivicNeedsPanel({request,settlement,canEdit,onChanged}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const [movement,setMovement]=useState(defaults),[cohort,setCohort]=useState({label:'',residents:0,employed:0,housing_quality:50,medical_access:50,water_access:50});
+ const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults),[cohort,setCohort]=useState({label:'',residents:0,employed:0,housing_quality:50,medical_access:50,water_access:50});
  const [event,setEvent]=useState({kind:'petition',title:'',detail:''}),[cycleDate,setCycleDate]=useState(today()),[proposed,setProposed]=useState(null);
  const [profile,setProfile]=useState(null);
  async function load(){const d=await request('/world-admin/civic/'+settlement.id);setData(d);setProfile({...d.profile,paused:!!d.profile.paused})}
@@ -22,6 +22,15 @@ export default function CivicNeedsPanel({request,settlement,canEdit,onChanged}){
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   <div className="wa-civic-values">{[['Residents',format(settlement.population)],['Food reserves',format(p.food_days)+' days'],['Fuel reserves',p.heat_days===null?'No heating demand':format(p.heat_days)+' days'],['Food groups / 30 days',p.food_groups_30d.length],['Civic pressure',p.pressure+'/100'],['Projected unrest risk',p.risk+'/100']].map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>
   <p className="wa-hint">{p.warnings.length?'Alerts: '+p.warnings.map(x=>x.replaceAll('_',' ')).join(' · '):'No current civic alerts.'} Readings use recorded civilian stock only; member/front inventory is never touched.</p>
+  <h3>Deliver from shared Order workshop stores</h3>
+  <p className="wa-hint">This is an atomic, audited transfer from unreserved shared Order material stock only. Player-bound crafted goods and front-owned supplies are not available here.</p>
+  {canEdit&&<form className="wa-fields" onSubmit={e=>{e.preventDefault();mutate('/transfer','POST',{...transfer,quantity:Number(transfer.quantity),food_group:transfer.resource_kind==='food'?transfer.food_group:null,request_key:crypto.randomUUID()},'Shared workshop supplies delivered to civilian stores.')}}>
+   <label>Material<select required value={transfer.material_id} onChange={e=>setTransfer({...transfer,material_id:e.target.value})}><option value="">Choose shared material</option>{data.shared_materials?.filter(m=>Number(m.quantity)>0).map(m=><option key={m.id} value={m.id}>{m.name} ({format(m.quantity)} available)</option>)}</select></label>
+   <label>Use as<select value={transfer.resource_kind} onChange={e=>setTransfer({...transfer,resource_kind:e.target.value})}>{['food','fuel','water','medicine'].map(k=><option key={k} value={k}>{k}</option>)}</select></label>
+   {transfer.resource_kind==='food'&&<label>Food group<input required maxLength="75" value={transfer.food_group} onChange={e=>setTransfer({...transfer,food_group:e.target.value})}/></label>}
+   <label>Quantity<input required type="number" min="1" max="1000000" step="1" value={transfer.quantity} onChange={e=>setTransfer({...transfer,quantity:e.target.value})}/></label>
+   <button type="submit" disabled={busy||!transfer.material_id}>Transfer shared materials</button>
+  </form>}
   <h3>Food, heating and essentials</h3>
   <div className="wa-civic-values">{data.stock.map(s=><div key={s.item_code}><span>{s.item_label} · {s.resource_kind}{s.food_group?' / '+s.food_group:''}</span><strong>{format(s.quantity)}</strong></div>)}</div>
   {canEdit&&<form className="wa-fields" onSubmit={e=>{e.preventDefault();mutate('/stock','POST',{...movement,quantity_delta:num(movement.quantity_delta),food_group:movement.resource_kind==='food'?movement.food_group:null},'Civilian stock movement recorded.')}}>
