@@ -1031,8 +1031,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [npcOrderGoods]=await admin.execute('SELECT item_code FROM world_civic_movements WHERE settlement_id=?',[npcId]);
   assert.equal(npcOrderGoods.length,0,'NPC fictional supplies never touch the Order stock ledger');
   for(let day=9;day<=23;day++)await runSettlementSimulation(admin,new Date('2026-11-'+String(day).padStart(2,'0')+'T06:00:00Z'));
-  const [[npcConstruction]]=await admin.execute('SELECT COUNT(*) AS n FROM world_npc_construction WHERE settlement_id=?',[npcId]);
-  assert.ok(Number(npcConstruction.n)>0,'automated NPC settlement starts construction to provide homes');
+  const [[npcConstruction]]=await admin.execute("SELECT COUNT(*) AS n FROM world_civic_building_projects WHERE settlement_id=? AND owner_kind='npc'",[npcId]);
+  assert.ok(Number(npcConstruction.n)>0,'automated NPC settlement starts template-backed housing construction');
   const [npcHistory]=await admin.execute('SELECT cycle_key FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
   assert.equal(npcHistory.length,new Set(npcHistory.map(x=>x.cycle_key)).size);
   const [[unowned]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_autosim WHERE settlement_id=?',[mineId]);
