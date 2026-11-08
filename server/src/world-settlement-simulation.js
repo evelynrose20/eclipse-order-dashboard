@@ -47,8 +47,8 @@ const projectDuration=kind=>kind==='housing'?100:kind==='defenses'?120:90;
 async function ensureNpcRows(pool){
  // No seed settlements: only existing, explicitly NPC-controlled sites are eligible.
  await pool.execute(`INSERT IGNORE INTO world_settlement_autosim
- (settlement_id,mode,cadence,food_units,fuel_units,water_units,medicine_units)
- SELECT s.id,'automatic','normal',s.population*12,s.population*7,s.population*12,s.population*.2
+ (settlement_id,mode,ownership,cadence,food_units,fuel_units,water_units,medicine_units)
+ SELECT s.id,'automatic','npc','normal',s.population*12,s.population*7,s.population*12,s.population*.2
  FROM world_settlements s WHERE s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order'`);
 }
 async function applyNpcCycle(db,site,state,now,key,weather){
@@ -132,7 +132,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
 export async function runSettlementSimulation(pool,now=new Date()){
  if(!pool)return {processed:0};
  await ensureNpcRows(pool);
- const [sites]=await pool.execute("SELECT s.id FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE a.mode='automatic' AND a.paused=0 ORDER BY s.id LIMIT 150");
+ const [sites]=await pool.execute("SELECT s.id FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_civic_profiles p ON p.settlement_id=s.id JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE a.mode='automatic' AND a.paused=0 AND ((s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order') OR (s.controlling_faction_id='eclipse-order' AND s.simulation_enabled=1 AND r.simulation_mode='managed' AND p.enabled_mode IN ('managed','detailed') AND p.paused=0)) ORDER BY a.last_cycle_key ASC,s.id LIMIT 150");
  const results=[];
  for(const {id} of sites){
   const db=await pool.getConnection();
@@ -143,6 +143,12 @@ export async function runSettlementSimulation(pool,now=new Date()){
    if(!site||!state||state.mode!=='automatic'||state.paused){await db.rollback();continue}
    const ownership=settlementOwnership(site);
    if(ownership==='unclaimed'){await db.rollback();continue}
+   if(state.ownership!==ownership){
+    // Crossing the Order/NPC ownership boundary always disables automatic updates
+    // until a commander explicitly reviews and re-enables the new owner's policy.
+    await db.execute("UPDATE world_settlement_autosim SET mode='off',paused=1,ownership=? WHERE settlement_id=?",[ownership,id]);
+    await db.commit();continue;
+   }
    const cadence=ownership==='order'?'normal':state.cadence;
    const key=simulationCycleKey(now,cadence);
    if(state.last_cycle_key===key){await db.rollback();continue}
@@ -162,10 +168,10 @@ async function read(req){let size=0;const chunks=[];for await(const c of req){si
 export async function settlementSimulationRoute(pool,req,path,actor){
  if(!command(actor))return {status:403,body:{error:'command_required'}};
  if(path==='/world-admin/simulation'&&req.method==='GET'){
-  const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
+  const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");
-  return {status:200,body:{settlements:sites.map(s=>({...s,ownership:settlementOwnership(s),mode:s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+  return {status:200,body:{settlements:sites.map(s=>({...s,ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
  }
  const match=/^\/world-admin\/simulation\/(\d+)\/settings$/.exec(path);
  if(match&&req.method==='PUT'){
@@ -179,7 +185,7 @@ export async function settlementSimulationRoute(pool,req,path,actor){
    const ownership=settlementOwnership(site);
    if(ownership==='unclaimed'&&b.mode==='automatic')return await rollbackResponse(db,409,'unclaimed_settlement_cannot_auto_simulate');
    if(ownership==='order'&&b.cadence==='fast')return await rollbackResponse(db,409,'order_cycles_are_daily_at_most');
-   await db.execute("INSERT INTO world_settlement_autosim(settlement_id,mode,cadence,paused,food_units,fuel_units,water_units,medicine_units) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE mode=VALUES(mode),cadence=VALUES(cadence),paused=VALUES(paused)",[id,b.mode,b.cadence,b.paused?1:0,ownership==='npc'?site.population*12:0,ownership==='npc'?site.population*7:0,ownership==='npc'?site.population*12:0,ownership==='npc'?site.population*.2:0]);
+   await db.execute("INSERT INTO world_settlement_autosim(settlement_id,mode,ownership,cadence,paused,food_units,fuel_units,water_units,medicine_units) VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE mode=VALUES(mode),ownership=VALUES(ownership),cadence=VALUES(cadence),paused=VALUES(paused)",[id,b.mode,ownership==='order'?'order':'npc',b.cadence,b.paused?1:0,ownership==='npc'?site.population*12:0,ownership==='npc'?site.population*7:0,ownership==='npc'?site.population*12:0,ownership==='npc'?site.population*.2:0]);
    await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor.id,'simulation_policy','settlement',id,b.mode+' '+b.cadence+(b.paused?' paused':'')]);
    await db.commit();return {status:200,body:{saved:true}};
   }catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}
