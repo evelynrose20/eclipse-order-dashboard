@@ -118,8 +118,9 @@ export async function industryRoute(pool,req,path,actor){
   const id=Number(match[1]),b=await body(req);
   const allowed={captured:['liberated'],ruined:['liberated'],liberated:['rebuilding'],rebuilding:['damaged'],operational:['damaged','paused','captured'],paused:['operational','damaged'],damaged:['rebuilding','paused']};
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT status FROM world_industry_facilities WHERE id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT f.status,f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
+   if((f.owner_faction_id||null)!==(f.controlling_faction_id||null))return fail(409,'facility_ownership_changed');
    if(!allowed[f.status]?.includes(b?.status))return fail(409,'invalid_facility_transition');
    if(b.status==='operational'){
     const [[pending]]=await db.execute("SELECT id FROM world_industry_projects WHERE facility_id=? AND status IN ('planned','active','paused') LIMIT 1",[id]);
