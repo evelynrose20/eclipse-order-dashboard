@@ -296,6 +296,14 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    const next=[...old];next.splice(nearest?.i??old.length,0,p);setRouteDirty(true);return next;
   });
  }
+ function routePathClick(e,route){
+  e.stopPropagation();
+  if(junctionAction==='split'){void splitRoute(route,e);return}
+  const key=(route.from_node_id?'graph:':'legacy:')+route.id;
+  if(mode==='bend'&&selectedRoute===key&&currentRoute){mapClick(e);return}
+  if(drawing&&routeStart!=null&&routeEnd!=null){mapClick(e);return}
+  selectRoad(route);
+ }
  function selectRoad(r){
   if(mode==='move')return;
   setSelectedRoute((r.from_node_id?'graph:':'legacy:')+r.id);setDraftWaypoints(normalizeWaypoints(r).map(p=>({...p})));setJunctionAction('');
@@ -397,14 +405,14 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </svg>
    <div className="wtm-map-compass" aria-hidden="true"><span>N</span><b><i className="fa-solid fa-compass"/></b><small>S</small></div>
    <svg className="wtm-network" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Regional road network">
-     {networkSegments.map(route=>{const points=graphPoints(route),p=smoothRoadPath(points);return points.length<2?null:<g key={'graph-'+route.id} className={'wtm-road wtm-road-'+route.route_type+' '+routeClass(route.route_type)+(selectedRoute==='graph:'+route.id?' selected':'')}><path d={p} className="wtm-road-base"/><path d={p} className="wtm-road-top"/>{route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}<path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/></g>})}
+     {networkSegments.map(route=>{const points=graphPoints(route),p=smoothRoadPath(points);return points.length<2?null:<g key={'graph-'+route.id} className={'wtm-road wtm-road-'+route.route_type+' '+routeClass(route.route_type)+(selectedRoute==='graph:'+route.id?' selected':'')}><path d={p} className="wtm-road-base"/><path d={p} className="wtm-road-top"/>{route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}<path d={p} className="wtm-road-hit" onClick={e=>routePathClick(e,route)}/></g>})}
     {segments.map(route=>{
      const points=segmentPts(route),p=smoothRoadPath(points);
      return <g key={route.id} className={'wtm-road wtm-road-'+route.route_type+' '+routeClass(route.route_type)+(selectedRoute==='legacy:'+route.id?' selected':'')}>
       <path d={p} className="wtm-road-base"/>
       <path d={p} className="wtm-road-top"/>
       {route.route_type==='rail'&&<><path d={p} className="wtm-rail-ties"/><path d={p} className="wtm-rail-center"/></>}
-      <path d={p} className="wtm-road-hit" onClick={e=>{e.stopPropagation();if(junctionAction==='split')void splitRoute(route,e);else selectRoad(route)}}/>
+      <path d={p} className="wtm-road-hit" onClick={e=>routePathClick(e,route)}/>
      </g>;
     })}
     {currentRoute&&mode==='bend'&&activePoints.length>1&&<path d={smoothRoadPath(activePoints)} fill="none" stroke="#f2d4a0" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeDasharray="5 4"/>}
