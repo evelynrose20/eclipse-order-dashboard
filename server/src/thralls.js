@@ -30,6 +30,9 @@ async function readBody(req){
  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}
 }
 const isAmount=n=>Number.isInteger(n)&&n>=0&&n<=1000;
+export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status==='offline'&&!seat?.character_id&&Boolean(character?.allow_seating)&&(Boolean(character?.allow_upper)||Boolean(character?.allow_lower));
+export const withinContributionLimit=(prefs,seat,channel,amount)=>['upper','lower'].includes(channel)&&isAmount(amount)&&amount>0&&Boolean(prefs?.allow_seating)&&Boolean(prefs?.['allow_'+channel])&&Number(seat?.[channel+'_recorded']||0)+amount<=Number(prefs?.[channel+'_limit']||0);
+
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultPrefs={allow_upper:0,allow_lower:0,upper_limit:0,lower_limit:0,allow_seating:0};
 async function seatRoster(pool){
@@ -107,7 +110,7 @@ export async function thrallsRoute(pool,req,path){
    if(!uuid.test(data.character_id||''))return await rollback(cn,'invalid_character');
    const [rows]=await cn.execute("SELECT c.character_name,c.collar_bound,p.allow_seating,p.allow_upper,p.allow_lower FROM characters c JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks r ON r.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE c.id=? AND (c.collar_bound=1 OR cat.track='servitude') FOR UPDATE",[data.character_id]);
    const character=rows[0];
-   if(!character||!character.allow_seating||(!character.allow_upper&&!character.allow_lower))return await rollback(cn,'character_has_not_opted_in');
+   if(!canSeatCharacter(machine,seat,character))return await rollback(cn,'character_has_not_opted_in');
    await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0 WHERE id=1',[data.character_id,actor.id]);
    detail='Seated '+character.character_name+' with recorded player permission';
   }else if(action==='release'){
@@ -131,7 +134,7 @@ export async function thrallsRoute(pool,req,path){
    if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0)return await rollback(cn,'invalid_quantity');
    if(machine.machine_status!=='running'||machine[channel+'_status']!=='active'||!seat.character_id)return await rollback(cn,'assembly_not_active');
    const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
-   if(!prefs||!prefs.allow_seating||!prefs['allow_'+channel]||Number(seat[channel+'_recorded'])+amount>Number(prefs[channel+'_limit']))return await rollback(cn,'character_contribution_limit');
+   if(!withinContributionLimit(prefs,seat,channel,amount))return await rollback(cn,'character_contribution_limit');
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
    if(Number(machine[channel+'_volume'])+amount>Number(machine[channel+'_capacity']))return await rollback(cn,'reservoir_full');
    updates=[channel+'_volume='+channel+'_volume+?'];values=[amount];detail='Recorded '+amount+' fictional units in '+channel+' reservoir';
