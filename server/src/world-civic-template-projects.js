@@ -49,7 +49,7 @@ export async function beginCivicTemplateProject(db,{settlement,template,upgrade=
   const [created]=await db.execute("INSERT INTO world_settlement_upgrades(settlement_id,name,category,status,condition_pct,level,housing_bonus,service_bonus,defense_bonus,notes,material_id,material_cost,construction_progress,created_by,template_id,effect_snapshot,template_revision) VALUES(?,?,?,'building',100,1,0,0,0,'',NULL,0,0,?,?,?,?)",[settlement.id,template.name,template.category,actorId,template.id,effectSnapshot(template),template.revision]);
   upgradeId=created.insertId;
  }
- const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision) VALUES(?,?,?,?,'active',0,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,cost.labor_required,owner_kind==='order'?cost.material_id:null,owner_kind==='order'?cost.material_required:0,owner_kind==='npc'?1:0,cost.npc_development_cost,owner_kind,effectSnapshot(template),template.revision]);
+ const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision,created_by) VALUES(?,?,?,?,'active',0,?,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,cost.labor_required,owner_kind==='order'?cost.material_id:null,owner_kind==='order'?cost.material_required:0,owner_kind==='npc'?1:0,cost.npc_development_cost,owner_kind,effectSnapshot(template),template.revision,actorId]);
  return ok({project_id:p.insertId,upgrade_id:upgradeId,target_level:target,cost});
 }
 export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,healthyWorkers){
@@ -66,7 +66,7 @@ export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,h
    if(!available||Number(available.quantity)<Number(p.material_required)){result.blocked.push(p.id);continue}
    await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[p.material_required,p.material_id,p.material_required]);
    const [[stock]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=?',[p.material_id]);
-   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[p.material_id,-Number(p.material_required),stock.quantity,'project',null,'Settlement building #'+p.id]);
+   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[p.material_id,-Number(p.material_required),stock.quantity,'project',p.created_by,'Settlement building #'+p.id]);
    await db.execute('UPDATE world_civic_building_projects SET materials_paid=1 WHERE id=?',[p.id]);
   }
   const work=Math.min(capacity,Math.max(0,Math.ceil(capacity*.3)),Math.max(0,Number(p.labor_required)-Number(p.progress)),30);
