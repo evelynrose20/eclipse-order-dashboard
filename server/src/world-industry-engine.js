@@ -1,3 +1,4 @@
+import {weatherHazard} from './world-worker-hazards.js';
 import {climateForRegions} from './world-region-climate.js';
 import {settlementDemographics} from './world-demographics.js';
 import {industryProductionPreview} from './world-industry-rules.js';
@@ -45,8 +46,8 @@ export async function getIndustryPreview(db,id,lock=false){
  const stock=await stockSnapshot(db,id,lock);
  // Workers come from residents employed in this zone, not form inputs.
  // Equal allocation across all active sites prevents double-counting the same employees.
- const [labor]=await db.execute(`SELECT population,workforce
- FROM world_settlements WHERE region_id=? AND zone_id=? AND controlling_faction_id <=> ?`,
+ const [labor]=await db.execute(`SELECT s.id,s.population,s.workforce,COALESCE(h.sick_workers,0) AS sick_workers,COALESCE(h.injured_workers,0) AS injured_workers
+ FROM world_settlements s LEFT JOIN world_settlement_worker_health h ON h.settlement_id=s.id WHERE s.region_id=? AND s.zone_id=? AND s.controlling_faction_id <=> ?`,
  [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
  const [[sites]]=await db.execute(`SELECT COUNT(*) AS n FROM world_industry_facilities f
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
@@ -56,7 +57,8 @@ export async function getIndustryPreview(db,id,lock=false){
  AND COALESCE(s.controlling_faction_id,z.controlling_faction_id) <=> ?
  AND f.status IN ('operational','rebuilding','liberated')`,
  [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
- const availableWorkers=Math.floor(labor.reduce((sum,settlement)=>sum+settlementDemographics(settlement).employed,0)/Math.max(1,Number(sites.n)));
+ const availableWorkers=Math.floor(labor.reduce((sum,settlement)=>Math.max(0,sum+Math.max(0,settlementDemographics(settlement).employed-Number(settlement.sick_workers)-Number(settlement.injured_workers))),0)/Math.max(1,Number(sites.n)));
+ const staffSettlement=labor.find(x=>Number(x.id)===Number(facility.settlement_id))||labor.find(x=>settlementDemographics(x).employed>0)||null;
  // Ceruleum in the facility's own stock supplies heat and power; one unit = ten utility units.
  const utilityDemand=Number(config.heat)+Number(config.power);
  const fuel=Number(stock['ceruleum-fuel']||0);
@@ -69,7 +71,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const workforce=Math.max(0,availableWorkers);
  const availableHeat=utilityDemand>0?utilityCapacity*Number(config.heat):0;
  const availablePower=utilityDemand>0?utilityCapacity*Number(config.power):0;
- const effective={...facility,level:Math.max(1,Number(facility.level)),capacity_pct:Math.min(100,Math.max(0,Number(facility.capacity_pct))),workforce,heat_available:availableHeat,power_available:availablePower};
+ const effective={...facility,level:Math.max(1,Number(facility.level)),capacity_pct:Math.min(100,Math.max(0,Number(facility.capacity_pct))*Math.max(0,Number(facility.equipment_condition??100))/100),workforce,heat_available:availableHeat,power_available:availablePower};
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[facility.region_id]);
  const [climate]=region?await climateForRegions(db,[region]):[];
  const conditions=climate?.effective_weather||{};
@@ -82,6 +84,8 @@ export async function getIndustryPreview(db,id,lock=false){
  preview.utility_fuel_stock=fuel;
  preview.workers_available=workforce;
  preview.workers_required=config.labor;
+ preview.staff_settlement_id=staffSettlement?.id||null;
+ preview.equipment_condition=Number(facility.equipment_condition??100);
  preview.heat_required=config.heat;
  preview.power_required=config.power;
  if(['destroyed','abandoned'].includes(facility.map_condition))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['mapped_location_needs_rebuilding'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
@@ -110,7 +114,26 @@ export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry
  };
  if(preview.utility_fuel_required>0)await adjustFacilityStock(db,id,'ceruleum-fuel',-preview.utility_fuel_required,'consume','utility:'+key,actorId);
  await change(preview.inputs,-1,'consume');
- await change(preview.outputs,1,'produce');
+ const incident=weatherHazard({weather:preview.weather.condition,temperature_f:preview.weather.temperature_f,weather_protection_level:facility.weather_protection_level,industry_category:facility.industry_category,equipment_condition:facility.equipment_condition,workforce:preview.workers_available,facility_id:id,cycle_key:key});
+ const actualOutputs=Object.fromEntries(Object.entries(preview.outputs).map(([item,qty])=>[item,round(qty*(1-incident.crop_loss_pct/100))]));
+ await change(actualOutputs,1,'produce');
+ preview.outputs=actualOutputs;
+ preview.weather_incident=incident.triggered?incident:null;
+ if(incident.triggered){
+  await db.execute('INSERT INTO world_industry_weather_incidents(facility_id,cycle_key,weather,temperature_f,equipment_damage,crop_loss_pct,injured_workers,note) VALUES(?,?,?,?,?,?,?,?)',[id,key,preview.weather.condition,preview.weather.temperature_f,incident.damage,incident.crop_loss_pct,incident.injured_workers,'Weather damage during industry production']);
+  const changedStatus=incident.next_condition<=30?'damaged':facility.status;
+  await db.execute('UPDATE world_industry_facilities SET equipment_condition=?,status=? WHERE id=?',[incident.next_condition,changedStatus,id]);
+  if(preview.staff_settlement_id&&incident.injured_workers){
+   await db.execute('INSERT IGNORE INTO world_settlement_worker_health(settlement_id) VALUES(?)',[preview.staff_settlement_id]);
+   const [[health]]=await db.execute('SELECT sick_workers,injured_workers FROM world_settlement_worker_health WHERE settlement_id=? FOR UPDATE',[preview.staff_settlement_id]);
+   const [[home]]=await db.execute('SELECT population,workforce FROM world_settlements WHERE id=?',[preview.staff_settlement_id]);
+   const healthyCapacity=Math.max(0,settlementDemographics(home).employed-Number(health.sick_workers)-Number(health.injured_workers));
+   const added=Math.min(healthyCapacity,incident.injured_workers);
+   if(added)await db.execute('UPDATE world_settlement_worker_health SET injured_workers=injured_workers+? WHERE settlement_id=?',[added,preview.staff_settlement_id]);
+   preview.weather_incident.injured_workers=added;
+  }
+ }
+
  await change(preview.byproducts,1,'byproduct');
  await db.execute('INSERT INTO world_industry_cycles(facility_id,cycle_key,cycle_date,operations,configuration_version,report) VALUES(?,?,?,?,?,?)',[id,key,new Date(now).toISOString().slice(0,10),preview.operations,facility.template_version,JSON.stringify(preview)]);
  await db.execute('UPDATE world_industry_facilities SET last_cycle_key=? WHERE id=?',[key,id]);
@@ -148,6 +171,7 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
   await db.execute('UPDATE world_industry_facilities SET status=? WHERE id=?',[project.result_status,project.facility_id]);
   // A completed reconstruction repairs the destroyed map location only as far as
   // Rebuilding. Territorial security/control remains in the existing map editor.
+  if(project.result_status==='operational')await db.execute('UPDATE world_industry_facilities SET equipment_condition=100 WHERE id=?',[project.facility_id]);
   if(project.result_status==='operational')await db.execute("UPDATE world_settlements SET strategic_state='rebuilding' WHERE id=(SELECT settlement_id FROM world_industry_facilities WHERE id=?) AND strategic_state IN ('destroyed','abandoned')",[project.facility_id]);
   }
  }
