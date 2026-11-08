@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import SettlementUpgradesPanel from './SettlementUpgradesPanel.jsx';
+import SettlementClockPanel from './SettlementClockPanel.jsx';
 const today=()=>new Date().toISOString().slice(0,10);
 const num=v=>Number(v||0);
 const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
@@ -104,8 +105,9 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    <button type="button" onClick={()=>setTab('upgrades')}>View housing & structures</button>
   </div>}
   {tab==='policy'&&<div className="wa-civic-workspace">
+  <SettlementClockPanel request={request} settlement={settlement} regionMode={regionMode} profile={profile}/>
   <h3>Simulation policy and thresholds</h3>
-  <p className="wa-hint">Off is the default. Narrative generates warnings only. Managed/detailed require an explicit dated run. Pause immediately prevents new cycles. Unrest events remain proposals until approved.</p>
+  <p className="wa-hint">Off is the default for Order settlements. Narrative generates warnings only. Managed/Detailed may run manually or via the separately enabled Windows simulation clock. Pause prevents new cycles, and major RP events remain proposals until approved.</p>
   {canEdit&&profile&&<form className="wa-fields" onSubmit={e=>{e.preventDefault();mutate('/profile','PUT',{...profile,food_daily_per_resident:num(profile.food_daily_per_resident),heat_daily_per_resident:num(profile.heat_daily_per_resident),water_daily_per_resident:num(profile.water_daily_per_resident),medicine_daily_per_resident:num(profile.medicine_daily_per_resident),food_min_days:num(profile.food_min_days),minimum_variety:num(profile.minimum_variety),grace_cycles:num(profile.grace_cycles),paused:!!profile.paused},'Civic policy saved.')}}>
    <label>Mode<select value={profile.enabled_mode} onChange={e=>setProfile({...profile,enabled_mode:e.target.value})}>{['off','narrative','managed','detailed'].map(k=><option key={k} value={k}>{k}</option>)}</select></label>
    <label>Pause cycles<select value={profile.paused?'yes':'no'} onChange={e=>setProfile({...profile,paused:e.target.value==='yes'})}><option value="no">No</option><option value="yes">Yes</option></select></label>
