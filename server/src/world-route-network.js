@@ -2,6 +2,7 @@
 // Coordinates are 0-100 map percentages. Splitting and importing are atomic.
 import {validRouteType,validWaypoints} from './garlean-climate.js';
 import {zoneFor} from './world-zones.js';
+import {nearestSmoothRoutePoint} from './route-geometry.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const point=p=>p&&typeof p.x==='number'&&typeof p.y==='number'&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=100&&p.y>=0&&p.y<=100;
 const ident=n=>Number.isSafeInteger(n)&&n>0;
@@ -61,11 +62,7 @@ async function branchLegacyRoute(pool,req,legacyId,actor){
   const bends=typeof legacy.waypoints==='string'?JSON.parse(legacy.waypoints):legacy.waypoints;
   if(!validWaypoints(bends))return fail(409,'invalid_legacy_route_geometry');
   const points=[sitePoint(legacy.from_settlement_id),...bends,sitePoint(legacy.to_settlement_id)];
-  let best=null;
-  for(let i=0;i<points.length-1;i++){
-   const q=projected(b,points[i],points[i+1]);
-   if(!best||q.d<best.d)best={...q,index:i};
-  }
+  const best=nearestSmoothRoutePoint(points,b);
   if(!best||best.d>3)return fail(400,'junction_must_snap_to_route');
   const from=await settlementNode(db,legacy.region_id,legacy.from_settlement_id,actor);
   const to=await settlementNode(db,legacy.region_id,legacy.to_settlement_id,actor);
@@ -207,8 +204,7 @@ export async function handleTransportGraph(pool,req,path,actor){
    const [sites]=await db.execute('SELECT id,map_x,map_y FROM world_settlements WHERE id IN (?,?)',[from.settlement_id||0,to.settlement_id||0]);
    const at=n=>{const s=sites.find(v=>v.id===n.settlement_id);return s?{x:Number(s.map_x),y:Number(s.map_y)}:xy(n)};
    const points=[at(from),...(typeof edge.waypoints==='string'?JSON.parse(edge.waypoints):edge.waypoints),at(to)];
-   let best=null;
-   for(let i=0;i<points.length-1;i++){const q=projected(b,points[i],points[i+1]);if(!best||q.d<best.d)best={...q,index:i}}
+   const best=nearestSmoothRoutePoint(points,b);
    if(!best||best.d>3)return fail(400,'junction_must_snap_to_route');
    if(Math.hypot(best.x-points[0].x,best.y-points[0].y)<1)return ok({id:from.id,reused:true});
    if(Math.hypot(best.x-points.at(-1).x,best.y-points.at(-1).y)<1)return ok({id:to.id,reused:true});
