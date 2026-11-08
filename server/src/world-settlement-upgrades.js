@@ -53,7 +53,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
   if(req.method==='POST'){
    const [created]=await db.execute('INSERT INTO world_settlement_upgrades(settlement_id,name,category,status,condition_pct,level,housing_bonus,service_bonus,defense_bonus,notes,material_id,material_cost,construction_progress,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,...vals,b.status==='operational'?100:0,actor.id]);
    newId=created.insertId;
-  }else if(req.method==='PUT')await db.execute('UPDATE world_settlement_upgrades SET name=?,category=?,status=?,condition_pct=?,level=?,housing_bonus=?,service_bonus=?,defense_bonus=?,notes=?,material_id=?,material_cost=?,construction_progress=CASE WHEN ?='operational' THEN 100 WHEN ?='planned' THEN 0 ELSE construction_progress END WHERE id=? AND settlement_id=?',[...vals,b.status,b.status,upgradeId,id]);
+  }else if(req.method==='PUT')await db.execute("UPDATE world_settlement_upgrades SET name=?,category=?,status=?,condition_pct=?,level=?,housing_bonus=?,service_bonus=?,defense_bonus=?,notes=?,material_id=?,material_cost=?,construction_progress=CASE WHEN ?='operational' THEN 100 WHEN ?='planned' THEN 0 ELSE construction_progress END WHERE id=? AND settlement_id=?",[...vals,b.status,b.status,upgradeId,id]);
   else await db.execute('DELETE FROM world_settlement_upgrades WHERE id=? AND settlement_id=?',[upgradeId,id]);
   await audit(db,actor.id,'upgrade_'+req.method.toLowerCase(),id,String(newId));
   return ok({saved:true,id:newId});
