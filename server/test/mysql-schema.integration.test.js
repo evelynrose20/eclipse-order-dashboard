@@ -25,7 +25,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','052_settlement_upgrades.sql','053_autonomous_settlement_simulation.sql','054_world_industry_projects.sql','055_independent_industry_sites.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','052_settlement_upgrades.sql','053_autonomous_settlement_simulation.sql','054_world_industry_projects.sql','055_independent_industry_sites.sql','056_industry_map_location_templates.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -1237,6 +1237,51 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(takenFarm.body.preview.operations,0);
   assert.ok(takenFarm.body.preview.blocked.includes('facility_ownership_changed'),'zone takeover must stop independent farm production');
   await admin.execute("UPDATE world_zones SET controlling_faction_id='eclipse-order' WHERE id=?",[farmZone.zone_id]);
+  // A destroyed farm already on the territory map is a valid industrial
+  // location. Attaching a facility does not create a duplicate map marker.
+  const existingFarmMarker=await worldAdministrationRoute(admin,request('POST',{
+   ...worldPlace,zone_id:Number(farmZone.zone_id),name:'CI Destroyed Map Farm',
+   map_icon:'farm',strategic_state:'destroyed',population:0,workforce:0,housing_capacity:0,
+   controlling_faction_id:'eclipse-order'
+  }),'/world-admin/settlements');
+  assert.equal(existingFarmMarker.status,200,JSON.stringify(existingFarmMarker.body));
+  const mappedFarmId=Number(existingFarmMarker.body.id);
+  const [starterFarms]=await admin.execute("SELECT id FROM world_industry_templates WHERE slug='starter-working-farmland'");
+  assert.equal(starterFarms.length,1,'standard farmland starter template installed');
+  const linkedFarm=await industryRoute(admin,request('POST',{
+   settlement_id:mappedFarmId,site_id:null,template_id:Number(starterFarms[0].id),
+   name:'CI Restored Map Farm',status:'ruined',cycle_mode:'manual',cycle_cadence:'normal',notes:'Existing map marker'
+  }),'/world-admin/industry/facilities',staff);
+  assert.equal(linkedFarm.status,200,JSON.stringify(linkedFarm.body));
+  const linkedFarmId=Number(linkedFarm.body.id);
+  const [[locationCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_sites WHERE name='CI Destroyed Map Farm'");
+  assert.equal(Number(locationCount.n),0,'no duplicate independent map marker created');
+  // Even if a facility is technically operational, a destroyed map marker must
+  // block production until the linked construction project restores its condition.
+  await admin.execute("UPDATE world_industry_facilities SET status='operational' WHERE id=?",[linkedFarmId]);
+  const blockedFarm=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+linkedFarmId+'/preview',staff);
+  assert.equal(blockedFarm.status,200,JSON.stringify(blockedFarm.body));
+  assert.equal(blockedFarm.body.preview.operations,0);
+  assert.ok(blockedFarm.body.preview.blocked.includes('mapped_location_needs_rebuilding'));
+  await admin.execute("UPDATE world_industry_facilities SET status='ruined' WHERE id=?",[linkedFarmId]);
+  const restoreFarm=await industryRoute(admin,request('POST',{
+   facility_id:linkedFarmId,name:'CI Rebuild Map Farm',description:'Restore existing destroyed farm',
+   status:'active',result_status:'operational',labor_required:1,campaign_project_id:null,needs:[]
+  }),'/world-admin/industry/projects',staff);
+  assert.equal(restoreFarm.status,200,JSON.stringify(restoreFarm.body));
+  const restoreTick=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+restoreFarm.body.id+'/advance',staff);
+  assert.equal(restoreTick.status,200,JSON.stringify(restoreTick.body));
+  assert.equal(restoreTick.body.completed,true);
+  const [[repairedMarker]]=await admin.execute('SELECT strategic_state FROM world_settlements WHERE id=?',[mappedFarmId]);
+  assert.equal(repairedMarker.strategic_state,'rebuilding','reconstruction does not magically secure the entire location');
+  const readyFarm=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+linkedFarmId+'/preview',staff);
+  assert.equal(readyFarm.status,200);
+  assert.ok(readyFarm.body.preview.operations>0,'existing mapped farm operates only after reconstruction');
+  const [[starterKinds]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_templates WHERE slug IN ('starter-orchard','starter-fishery','starter-ore-mine','starter-ceruleum-drilling','starter-ceruleum-refinery','starter-ore-foundry','starter-assembly-workshop','starter-ceruleum-generator')");
+  assert.equal(Number(starterKinds.n),8,'additional production types installed');
+  await admin.query(await readFile(new URL('../sql/056_industry_map_location_templates.sql',import.meta.url),'utf8'));
+  const [[starterKindsAgain]]=await admin.execute("SELECT COUNT(*) AS n FROM world_industry_templates WHERE slug IN ('starter-orchard','starter-fishery','starter-ore-mine','starter-ceruleum-drilling','starter-ceruleum-refinery','starter-ore-foundry','starter-assembly-workshop','starter-ceruleum-generator')");
+  assert.equal(Number(starterKindsAgain.n),8,'re-running starter templates does not duplicate or reset recipes');
   await admin.query(await readFile(new URL('../sql/055_independent_industry_sites.sql',import.meta.url),'utf8'));
   const [[stillFarm]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_sites WHERE id=?',[farmSiteId]);
   assert.equal(Number(stillFarm.n),1,'repeat migration retains farm and production history');
