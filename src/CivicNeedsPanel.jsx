@@ -11,6 +11,8 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
  const [editingCohort,setEditingCohort]=useState(null);
  const [aid,setAid]=useState({name:'',material_id:'',resource_kind:'food',food_group:'grain',quantity:1,frequency:'weekly',active:true});
  const [aidEditing,setAidEditing]=useState(null);
+ const [heater,setHeater]=useState({name:'',coverage_pct:25,condition_pct:100,status:'operational',notes:''});
+ const [heaterEditing,setHeaterEditing]=useState(null);
  async function load(){const d=await request('/world-admin/civic/'+settlement.id);setData(d);setProfile({...d.profile,paused:!!d.profile.paused})}
  useEffect(()=>{setData(null);setError('');setNotice('');setProposed(null);load().catch(e=>setError(e.message))},[settlement.id]);
  async function mutate(path,method,body,success){
@@ -33,6 +35,16 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    {transfer.resource_kind==='food'&&<label>Food group<input required maxLength="75" value={transfer.food_group} onChange={e=>setTransfer({...transfer,food_group:e.target.value})}/></label>}
    <label>Quantity<input required type="number" min="1" max="1000000" step="1" value={transfer.quantity} onChange={e=>setTransfer({...transfer,quantity:e.target.value})}/></label>
    <button type="submit" disabled={busy||!transfer.material_id}>Transfer shared materials</button>
+  </form>}
+  <h3>Heating infrastructure</h3><p className="wa-hint">Operational facilities determine effective heating coverage; damaged and offline systems reduce the capacity of a settlement to keep homes warm. Fuel is only taken from civilian fuel stores during an authorized cycle.</p>
+  <div className="wa-civic-values"><div><span>Effective heating coverage</span><strong>{p.heating_coverage_effective}%</strong></div>{(data.heating_assets||[]).map(h=><div key={h.id}><span>{h.name} · {h.status} · {h.condition_pct}% condition</span><strong>{h.coverage_pct}% capacity</strong>{canEdit&&<span><button type="button" disabled={busy} onClick={()=>{setHeater({...h});setHeaterEditing(h.id)}}>Edit</button> <button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete this heating facility?'))mutate('/heating/'+h.id,'DELETE',null,'Heating facility removed.')}}>Remove</button></span>}</div>)}</div>
+  {canEdit&&<form className="wa-fields" onSubmit={e=>{e.preventDefault();const path=heaterEditing?'/heating/'+heaterEditing:'/heating';const method=heaterEditing?'PUT':'POST';mutate(path,method,{...heater,coverage_pct:Number(heater.coverage_pct),condition_pct:Number(heater.condition_pct)},heaterEditing?'Heating facility updated.':'Heating facility added.');setHeaterEditing(null);}}>
+   <label>Facility name<input required maxLength="120" value={heater.name} onChange={e=>setHeater({...heater,name:e.target.value})}/></label>
+   <label>Heating coverage %<input required type="number" min="0" max="100" step="1" value={heater.coverage_pct} onChange={e=>setHeater({...heater,coverage_pct:e.target.value})}/></label>
+   <label>Condition %<input required type="number" min="0" max="100" step="1" value={heater.condition_pct} onChange={e=>setHeater({...heater,condition_pct:e.target.value})}/></label>
+   <label>Status<select value={heater.status} onChange={e=>setHeater({...heater,status:e.target.value})}>{['operational','damaged','offline'].map(v=><option value={v} key={v}>{v}</option>)}</select></label>
+   <label className="wide">Notes<input maxLength="450" value={heater.notes||''} onChange={e=>setHeater({...heater,notes:e.target.value})}/></label>
+   <button type="submit" disabled={busy}>{heaterEditing?'Save heating facility':'Add heating facility'}</button>{heaterEditing&&<button type="button" onClick={()=>setHeaterEditing(null)}>Cancel edit</button>}
   </form>}
   <h3>Scheduled civilian relief</h3><p className="wa-hint">Aid contracts describe recurring delivery obligations. Deliveries are dispatched explicitly by staff, only from available unreserved Order workshop stock. No automatic offline transfers occur.</p>
   {(data.aid_contracts||[]).map(c=><div className="wa-civil-card" key={c.id}><strong>{c.name}</strong><p>{c.quantity} × {c.material_id} · {c.frequency} · {c.active?'Active':'Paused'}</p>{canEdit&&<div className="wa-controls"><button type="button" disabled={busy} onClick={()=>{setAid({...c,quantity:Number(c.quantity),active:!!c.active});setAidEditing(c.id)}}>Edit contract</button><button type="button" disabled={busy} onClick={()=>mutate('/aid/'+c.id,'PUT',{...c,quantity:Number(c.quantity),active:!c.active},c.active?'Aid contract paused.':'Aid contract enabled.')}>{c.active?'Pause':'Resume'}</button><button type="button" disabled={busy||!c.active} onClick={()=>{const due_date=window.prompt('Delivery date (YYYY-MM-DD)',today());if(due_date&&window.confirm('Dispatch '+c.quantity+' '+c.material_id+' from shared Order stores?'))mutate('/aid/'+c.id+'/dispatch','POST',{due_date},'Relief shipment dispatched.')}}>Dispatch supplies</button></div>}</div>)}
