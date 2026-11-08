@@ -61,8 +61,11 @@ export async function getIndustryPreview(db,id,lock=false){
  const utilityDemand=Number(config.heat)+Number(config.power);
  const fuel=Number(stock['ceruleum-fuel']||0);
  const recipeFuel=Number(config.inputs.find(x=>x.item_id==='ceruleum-fuel')?.qty||0);
- const fuelPerOperation=utilityDemand/10+recipeFuel;
- const utilityCapacity=utilityDemand>0?Math.floor((fuel+1e-7)/fuelPerOperation):0;
+ const climateLevel=Math.max(0,Math.min(3,Number(facility.weather_protection_level)||0));
+ // Shelters are passive; insulated machinery and active climate control need fuel.
+ const climateFuelRate=[0,0,.15,.5][climateLevel];
+ const fuelPerOperation=utilityDemand/10+recipeFuel+climateFuelRate;
+ const utilityCapacity=fuelPerOperation>0?Math.floor((fuel+1e-7)/fuelPerOperation):0;
  const workforce=Math.max(0,availableWorkers);
  const availableHeat=utilityDemand>0?utilityCapacity*Number(config.heat):0;
  const availablePower=utilityDemand>0?utilityCapacity*Number(config.power):0;
@@ -70,9 +73,12 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[facility.region_id]);
  const [climate]=region?await climateForRegions(db,[region]):[];
  const conditions=climate?.effective_weather||{};
- const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security),weather:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),industry_category:facility.industry_category});
+ const preview=industryProductionPreview(effective,config,rules,stock,{population:num(facility.population),stability:num(facility.stability),security:num(facility.security),weather:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),industry_category:facility.industry_category,weather_protection_level:climateLevel,climate_powered:climateFuelRate===0||utilityCapacity>0});
  preview.weather={condition:conditions.weather||'clear',temperature_f:Number(conditions.temperature_f??32),source:conditions.source||'unknown'};
- preview.utility_fuel_required=Math.round(preview.operations*utilityDemand/10*1000)/1000;
+ if(climateFuelRate>0&&utilityCapacity===0){preview.operations=0;preview.blocked.push('climate_control_needs_fuel');preview.inputs={};preview.outputs={};preview.byproducts={};}
+ preview.utility_fuel_required=Math.round(preview.operations*(utilityDemand/10+climateFuelRate)*1000)/1000;
+ preview.climate_fuel_per_operation=climateFuelRate;
+ preview.climate_upgrade_level=climateLevel;
  preview.utility_fuel_stock=fuel;
  preview.workers_available=workforce;
  preview.workers_required=config.labor;
@@ -134,12 +140,18 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
  await db.execute('INSERT INTO world_industry_project_ticks(project_id,cycle_key,labor_added) VALUES(?,?,?)',[id,key,labor]);
  await db.execute('UPDATE world_industry_projects SET labor_done=?,status=?,finished_at=IF(?,UTC_TIMESTAMP(),NULL) WHERE id=?',[updated,complete?'completed':'active',complete?1:0,id]);
  if(complete){
+  if(project.weather_upgrade_target){
+   const [[installed]]=await db.execute('SELECT weather_protection_level FROM world_industry_facilities WHERE id=? FOR UPDATE',[project.facility_id]);
+   if(Number(installed.weather_protection_level)!==Number(project.weather_upgrade_target)-1)return {status:409,body:{error:'weather_upgrade_prerequisite_changed'}};
+   await db.execute('UPDATE world_industry_facilities SET weather_protection_level=? WHERE id=?',[project.weather_upgrade_target,project.facility_id]);
+  }else{
   await db.execute('UPDATE world_industry_facilities SET status=? WHERE id=?',[project.result_status,project.facility_id]);
   // A completed reconstruction repairs the destroyed map location only as far as
   // Rebuilding. Territorial security/control remains in the existing map editor.
   if(project.result_status==='operational')await db.execute("UPDATE world_settlements SET strategic_state='rebuilding' WHERE id=(SELECT settlement_id FROM world_industry_facilities WHERE id=?) AND strategic_state IN ('destroyed','abandoned')",[project.facility_id]);
+  }
  }
- return {status:200,body:{project_id:id,labor_added:labor,labor_done:updated,completed:complete,result_status:complete?project.result_status:null,cycle_key:key}};
+ return {status:200,body:{project_id:id,labor_added:labor,labor_done:updated,completed:complete,result_status:complete?(project.weather_upgrade_target?'climate_upgrade':project.result_status):null,weather_protection_level:complete?project.weather_upgrade_target||null:null,cycle_key:key}};
 }
 export async function runIndustryAutomation(pool,now=new Date()){
  if(!pool)return {production:0,construction:0};
