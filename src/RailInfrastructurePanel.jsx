@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './rail-infrastructure-panel.css';
 const stateOptions=['planned','operational','closed','damaged'];
 const stateLabel=s=>s.replaceAll('_',' ').replace(/^./,x=>x.toUpperCase());
+const routeReason={station_not_found:'Choose two saved railway stations.',stations_in_different_zones:'The two stations must belong to the same zone.',freight_platform_not_ready:'Both stations need operational freight platforms and handling capacity.',choose_distinct_stations:'Choose two different stations.',no_operational_rail_path:'No available rail route. Check junction switches, closed tracks and crossing states.'};
 const asNum=v=>Number(v);
 const blankStation=(region,zone)=>({region_id:Number(region),zone_id:Number(zone),node_id:'',name:'',status:'planned',freight_enabled:true,passenger_enabled:false,freight_capacity:0,notes:''});
 const blankPlatform=id=>({station_id:Number(id),code:'',kind:'freight',track_length:1,capacity:0,status:'planned'});
@@ -88,7 +89,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
    <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{stations.map(st=><option value={st.id} key={st.id}>{st.name}{st.freight_ready?' · Freight ready':''}</option>)}</select></label>
    <label>Destination<select value={freightTo} onChange={e=>{setFreightTo(e.target.value);setFreightPreview(null)}}><option value="">Choose destination</option>{stations.filter(st=>String(st.id)!==String(freightFrom)).map(st=><option value={st.id} key={st.id}>{st.name}</option>)}</select></label>
    <button type="button" disabled={!freightFrom||!freightTo||busy} onClick={previewFreight}><i className="fa-solid fa-route"/> Check route</button>
-   {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+String(freightPreview.reason||'unknown').replaceAll('_',' ')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
+   {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+(routeReason[freightPreview.reason]||'This railway route is not available')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
   </div>}
   {tab==='stations'&&!stationNodes.length&&<p className="wtm-rail-help">Create a railway track between shared map nodes before adding a station. Stations attach to existing rail-connected nodes.</p>}
   {tab==='crossings'&&<p className="wtm-rail-help">Choose a railway and road, then click their intersection on the original map. Crossing status and control type can prevent future freight traversal.</p>}
