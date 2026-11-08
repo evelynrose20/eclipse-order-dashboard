@@ -1,5 +1,5 @@
 import {resolveSession} from './auth.js';
-import {handleCivicNeeds} from './world-civic-needs.js';
+import {handleCivicNeeds,civicSimulationPreview} from './world-civic-needs.js';
 import {climateForRegions,handleRegionClimate} from './world-region-climate.js';
 import {handleTransportGraph} from './world-route-network.js';
 import {handleRailInfrastructure} from './world-rail-infrastructure.js';
@@ -52,9 +52,37 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_mountain_ranges ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
+  // Staff-only civic summary. Return actual civic mode and ledger-based needs
+  // instead of the legacy settlement's simulation_enabled flag alone.
+  const civicSummaries=new Map();
+  if(command&&settlements.length){
+   const [profiles]=await pool.execute("SELECT settlement_id,enabled_mode,paused,food_daily_per_resident,heat_daily_per_resident,water_daily_per_resident,medicine_daily_per_resident,food_min_days,minimum_variety,grace_cycles,DATE_FORMAT(last_cycle_date,'%Y-%m-%d') AS last_cycle_date FROM world_civic_profiles");
+   const [stock]=await pool.execute("SELECT settlement_id,item_code,resource_kind,food_group,quantity FROM world_civic_stock");
+   const [heaters]=await pool.execute("SELECT settlement_id,coverage_pct,condition_pct,status FROM world_civic_heating_assets");
+   const [history]=await pool.execute("SELECT settlement_id,resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE created_at>=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)");
+   const [cycleCounts]=await pool.execute("SELECT settlement_id,COUNT(*) AS n FROM world_civic_cycles GROUP BY settlement_id");
+   for(const site of settlements){
+    const profile=profiles.find(p=>Number(p.settlement_id)===Number(site.id));
+    const region=effective.find(r=>Number(r.id)===Number(site.region_id));
+    const enabled=!!site.simulation_enabled;
+    const mode=!enabled||region?.simulation_mode==='off'?'off':profile?.paused?'paused':!profile||profile.enabled_mode==='off'?'off':region?.simulation_mode==='narrative'?'narrative':profile.enabled_mode==='narrative'?'narrative':region?.simulation_mode==='managed'?profile.enabled_mode:'off';
+    const stores=stock.filter(x=>Number(x.settlement_id)===Number(site.id));
+    const preview=civicSimulationPreview(site,profile||{enabled_mode:'off',grace_cycles:2},stores,history.filter(x=>Number(x.settlement_id)===Number(site.id)),Number(region?.effective_weather?.temperature_f??32),Number(cycleCounts.find(x=>Number(x.settlement_id)===Number(site.id))?.n||0),heaters.filter(x=>Number(x.settlement_id)===Number(site.id)));
+    civicSummaries.set(site.id,{
+     mode,enabled,configured:!!profile,paused:!!profile?.paused,
+     food_days:preview.food_days,heat_days:preview.heat_days,
+     food_stock:preview.food_stock,fuel_stock:preview.fuel_stock,
+     water_stock:preview.water_stock,medicine_stock:preview.medicine_stock,
+     heating_coverage:preview.heating_coverage_effective,
+     unrest_risk:preview.risk,warnings:preview.warnings,
+     last_cycle_date:profile?.last_cycle_date||null,
+     has_stock:stores.length>0
+    });
+   }
+  }
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
-  return ok({can_edit:command,regions:effective.map(r=>command?r:{...r,climate_profile:null,weather_events:[],effective_weather:r.effective_weather?.source==='dm_weather_event'?{...r.effective_weather,event_title:undefined}:r.effective_weather}),zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),settlements:safe.map(s=>({...s,simulation_enabled:!!s.simulation_enabled,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
+  return ok({can_edit:command,regions:effective.map(r=>command?r:{...r,climate_profile:null,weather_events:[],effective_weather:r.effective_weather?.source==='dm_weather_event'?{...r.effective_weather,event_title:undefined}:r.effective_weather}),zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),settlements:safe.map(s=>command?({...s,simulation_enabled:!!s.simulation_enabled,civic_summary:civicSummaries.get(s.id)||null,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})}):({id:s.id,region_id:s.region_id,zone_id:s.zone_id,name:s.name,description:s.description,map_x:s.map_x,map_y:s.map_y,map_icon:s.map_icon,strategic_state:s.strategic_state,directory_faction_id:s.directory_faction_id,governing_faction_id:s.governing_faction_id,controlling_faction_id:s.controlling_faction_id,supporting_faction_id:s.supporting_faction_id,population:s.population})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
  }
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/civic/'))return handleCivicNeeds(pool,req,path,actor);
