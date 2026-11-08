@@ -153,3 +153,10 @@ updated: 2026-11-07
 - Keep **world state**, **site control**, **government**, **support**, and **faction reputation** distinct.
 
 - [x] Searchable Font Awesome map icon picker with user-entered safe Free Solid names and expanded forestry, ceruleum, rail and military site categories (no schema changes).
+
+### Settlement infrastructure & welfare usability (2026-11-08)
+- [x] Empty settlements have **no civilian provisions requirement, food shortage, heating demand, water/medicine consumption, or civic unrest pressure**; existing stocks remain intact.
+- [x] Population increases require available housing capacity. New empty settlements start with no homes; existing residents retain baseline housing during migration 052. Occupied housing cannot be destroyed or removed until residents are accommodated.
+- [x] Editable physical settlement upgrades: housing, defenses, clinics, waterworks, granaries, insulation and public works, with planned/building/operational/damaged/destroyed states and scaled effective benefits.
+- [x] Civic Welfare reorganized as a compact tabbed staff workspace. Weather editing is collapsed; player-facing civilian information remains readable.
+- [x] New MySQL migration 052 and integration/unit coverage. Windows API must run setup and restart to load the schema.
