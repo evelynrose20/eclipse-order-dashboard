@@ -12,7 +12,7 @@ The staff-only **World Administration → Industry & Projects** workspace separa
 2. Create a Facility template with inputs, outputs, byproducts, worker/heat/power demands, operations per cycle (maximum 1,000), and required site level (1–20).
 3. Add declarative rules under Condition & action: comparisons against status, level, workforce, heat, power, capacity, population, stability, or security. Actions are Allow, Block, or a bounded output multiplier. Predicates are data, not scripts. The server validates them and rejects circular input/output dependencies, including active pinned template versions.
 4. Use the dry-run scenario to check sample worker, input, heat and power availability before publishing.
-5. Publishing a revision creates an immutable template version. Existing facilities retain their previously selected version and recipe.
+5. The editor defaults to **Update current version**, which changes that version in place and updates all facilities pinned to it. Full prior configuration/rules are preserved in `world_industry_template_edit_history`, and completed cycle reports retain their outputs. **Create new version** is an explicit alternative: existing facilities remain pinned to their previous version. Version updates are validated against catalog entries and circular production dependencies.
 
 ## Facility life cycle
 
@@ -72,3 +72,12 @@ Use **World Administration → Territorial Map** to create and position farms, o
 A location whose map state is **Destroyed** or **Abandoned** can receive an industrial facility and a funded rebuilding project, but no production may run until the facility is operational **and** its location is no longer destroyed/abandoned. Successful industrial reconstruction moves a destroyed/abandoned location only to **Rebuilding**, not Secure, and leaves territorial control to the existing map system.
 
 For installs using migration 055, previously created independent industrial markers and their facilities are retained and remain selectable under legacy independent site records. The old separate new-marker form is removed from the industry UI; new locations are authored in one place, the territory map editor. Migration **056_industry_map_location_templates.sql** adds non-destructive examples for orchards, fisheries, ore mines, ceruleum drilling, refining, foundries, workshops and generators in addition to previous farming, ranching, timber and quarry examples. Custom templates remain supported for every other map icon.
+
+## Schools, trained residents and weather exposure (migrations 057–058)
+
+- Operational school upgrades provide 25 pupil places per level, scaled by condition. Planned, damaged and destroyed school structures do not enroll residents.
+- Education attainment is persisted per settlement, starts at 20/100 for existing settlements, and advances only on committed simulation cycles with school enrollment. Children and youth are the pupil pool; training never creates additional workers.
+- NPC Settlement pages display school seats, enrollment, excluded pupils, education attainment and a trained-worker subset. This is a foundational skill estimate, not yet a job-by-job certification market.
+- Regional fictional Garlean weather and any active weather events affect outdoor agriculture, mining and extraction. Snow reduces maximum outdoor throughput to 70%, rain to 85%, and blizzard to 25%; staff may add validated temperature and weather predicates in the template rule builder. Indoor manufacturing is not automatically slowed by those outdoor multipliers.
+- Edit-in-place is a deliberate recipe change for facilities pinned to the current version. An immutable prior snapshot is saved before every edit. To preserve existing facility recipes, explicitly create a new version instead.
+- Run migrations 057 and 058 with the normal Windows `setup:local` flow before restarting the Windows API. They retain settlements, stocks, facility history and existing templates.
