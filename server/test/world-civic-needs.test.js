@@ -80,8 +80,9 @@ test('completed clinic and defenses improve service and security readings',()=>{
   {category:'clinic',status:'operational',condition_pct:100,service_bonus:30,defense_bonus:0,housing_bonus:0},
   {category:'defense',status:'operational',condition_pct:100,service_bonus:0,defense_bonus:30,housing_bonus:0}
  ];
- const base=civicSimulationPreview({...settlement,security_score:30},managed,[],[],32,2);
- const upgraded=civicSimulationPreview({...settlement,security_score:30},managed,[],[],32,2,[],healthy);
+ const stores=[{resource_kind:'food',quantity:300,food_group:'grain'},{resource_kind:'water',quantity:300},{resource_kind:'medicine',quantity:30},{resource_kind:'fuel',quantity:300}];
+ const base=civicSimulationPreview({...settlement,security_score:30},managed,stores,[],70,2);
+ const upgraded=civicSimulationPreview({...settlement,security_score:30},managed,stores,[],70,2,[],healthy);
  assert.equal(upgraded.effective_security,60);
  assert.equal(upgraded.effective_medical_access,90);
  assert.ok(upgraded.pressure<base.pressure);
