@@ -41,9 +41,12 @@ test('existing roads are editable by route list with waypoint insertion and rese
 test('railway construction and facilities no longer appear in territory map',async()=>{
  const [admin,map,nav]=await Promise.all([load('src/WorldAdministration.jsx'),load('src/WorldTerritoryMap.jsx'),load('src/OrderNavigation.jsx')]);
  assert.doesNotMatch(map,/RailInfrastructurePanel|\['track','Lay track'\]|\['rail','Railway'\]/);
- assert.match(admin,/r\.route_type!=='rail'/);
- assert.match(admin,/e\.route_type!=='rail'/);
+ assert.match(admin,/routes=\{routes\.filter\(r=>String\(r\.region_id\)===region/);
+ assert.match(admin,/networkSegments=\{networkSegments\.filter\(e=>String\(e\.region_id\)===region/);
  assert.match(nav,/'internal-rail':'train'/);
+ assert.match(map,/\['rail','Railway \(map only\)'\]/);
+ assert.match(map,/wtm-rail-ties/);
+ assert.doesNotMatch(admin,/Windows railway API needs updating/);
 });
 test('map uses Font Awesome web-font icons and accepts production and civic markers',async()=>{
  const [map,form,server,html,css]=await Promise.all([
