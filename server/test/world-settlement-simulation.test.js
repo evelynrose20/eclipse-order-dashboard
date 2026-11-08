@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {settlementOwnership,simulationCycleKey,npcSupplyCycle,npcProjectChoice} from '../src/world-settlement-simulation.js';
+import {settlementOwnership,simulationCycleKey,npcSupplyCycle,npcProjectChoice,npcEverydayStory} from '../src/world-settlement-simulation.js';
 
 test('ownership never treats unclaimed or Order settlements as NPC sites',()=>{
  assert.equal(settlementOwnership({controlling_faction_id:'eclipse-order'}),'order');
@@ -22,4 +22,13 @@ test('NPCs with no residents do not consume supplies or generate resources',()=>
 test('NPC village requires housing expansion before its population can grow further',()=>{
  assert.equal(npcProjectChoice({population:20,housing_capacity:20,security_score:90,medical_access:90,food_access:90,housing:90},null),'housing');
  assert.equal(npcProjectChoice({population:20,housing_capacity:50,security_score:20,medical_access:90,food_access:90,housing:90},null),'defenses');
+});
+
+test('NPC community stories are deterministic and never invent violent political outcomes',()=>{
+ const site={id:12,population:75};
+ const a=npcEverydayStory(site,'2026-11-08',16);
+ const b=npcEverydayStory(site,'2026-11-08',16);
+ assert.deepEqual(a,b);
+ assert.ok(['routine','community'].includes(a.event));
+ assert.deepEqual(npcEverydayStory({...site,population:0},'2026-11-08',-20).event,'idle');
 });
