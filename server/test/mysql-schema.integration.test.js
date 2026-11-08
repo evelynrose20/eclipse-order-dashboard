@@ -318,6 +318,24 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(defaultPlatform.kind,'freight');
   assert.equal(Number(defaultPlatform.track_length),1);
   assert.equal(Number(defaultPlatform.capacity),10);
+  const editedPlatform=await worldAdministrationRoute(admin,request('PUT',{
+   station_id:Number(origin.body.id),code:'F2',kind:'Mixed',track_length:'8',
+   capacity:'125',status:'Damaged'
+  }),'/world-admin/rail/platforms/'+platformWithoutOptionalFields.body.id);
+  assert.equal(editedPlatform.status,200,JSON.stringify(editedPlatform.body));
+  const [[editedPlatformRow]]=await admin.execute('SELECT code,kind,track_length,capacity,status FROM world_rail_platforms WHERE id=?',[platformWithoutOptionalFields.body.id]);
+  assert.equal(editedPlatformRow.kind,'mixed','role updates persist alongside capacity edits');
+  assert.equal(editedPlatformRow.status,'damaged','display-cased status normalizes before validation');
+  assert.equal(Number(editedPlatformRow.capacity),125,'capacity persists when status changes in the same save');
+  assert.equal(Number(editedPlatformRow.track_length),8,'track length persists with other field edits');
+  const statusOnly=await worldAdministrationRoute(admin,request('PUT',{
+   station_id:Number(origin.body.id),status:'Operational'
+  }),'/world-admin/rail/platforms/'+platformWithoutOptionalFields.body.id);
+  assert.equal(statusOnly.status,200,JSON.stringify(statusOnly.body));
+  const [[afterStatusChange]]=await admin.execute('SELECT capacity,kind,status FROM world_rail_platforms WHERE id=?',[platformWithoutOptionalFields.body.id]);
+  assert.equal(afterStatusChange.status,'operational');
+  assert.equal(Number(afterStatusChange.capacity),125,'status-only updates keep previously edited capacity');
+  assert.equal(afterStatusChange.kind,'mixed');
   const invalidPlatformStation=await worldAdministrationRoute(admin,request('POST',{code:'F3'}),'/world-admin/rail/platforms');
   assert.equal(invalidPlatformStation.status,400);
   assert.equal(invalidPlatformStation.body.error,'rail_platform_station_required');
