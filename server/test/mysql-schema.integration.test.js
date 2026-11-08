@@ -1227,6 +1227,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const mapSites=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
   assert.equal(mapSites.status,200);
   assert.ok(mapSites.body.industry_sites.some(site=>site.id===farmSiteId),'standalone farm appears on zone territory map');
+  await admin.execute("UPDATE world_zones SET controlling_faction_id='house-kurogane' WHERE id=?",[farmZone.zone_id]);
+  const takenFarm=await industryRoute(admin,request('GET'),'/world-admin/industry/facilities/'+farmId+'/preview',staff);
+  assert.equal(takenFarm.status,200);
+  assert.equal(takenFarm.body.preview.operations,0);
+  assert.ok(takenFarm.body.preview.blocked.includes('facility_ownership_changed'),'zone takeover must stop independent farm production');
+  await admin.execute("UPDATE world_zones SET controlling_faction_id='eclipse-order' WHERE id=?",[farmZone.zone_id]);
   await admin.query(await readFile(new URL('../sql/055_independent_industry_sites.sql',import.meta.url),'utf8'));
   const [[stillFarm]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_sites WHERE id=?',[farmSiteId]);
   assert.equal(Number(stillFarm.n),1,'repeat migration retains farm and production history');
