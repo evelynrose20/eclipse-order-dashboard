@@ -145,6 +145,8 @@ async function main(){
   await pool.query(chamberCharacterProfiles);
   const simulation=await readFile(new URL('../sql/064_chamber_simulation.sql',import.meta.url),'utf8');
   await pool.query(simulation);
+  const dailyChamber=await readFile(new URL('../sql/065_chamber_daily_output.sql',import.meta.url),'utf8');
+  await pool.query(dailyChamber);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
