@@ -175,7 +175,9 @@ export async function handleRailInfrastructure(pool,req,path,actor){
   });
  }
  if(table==='platforms'){
-  if(req.method!=='DELETE'&&!platformFields(b))return fail(400,'invalid_rail_platform');
+  // Normalize optional creation values on the API, too. An older browser must
+  // not depend on client-only defaults or send a blank code into validation.
+  if(req.method!=='DELETE'&&(!b||!id(b.station_id)))return fail(400,'rail_platform_station_required');
   return tx(pool,async db=>{
    if(req.method==='DELETE'){
     const [r]=await db.execute('DELETE FROM world_rail_platforms WHERE id=?',[rowId]);
@@ -183,17 +185,36 @@ export async function handleRailInfrastructure(pool,req,path,actor){
     await audit(db,actor,'rail_platform_delete',rowId);return ok({saved:true});
    }
    const station=await stationIn(db,b.station_id);if(!station)return fail(404,'station_not_found');
-   const [duplicate]=await db.execute('SELECT id FROM world_rail_platforms WHERE station_id=? AND LOWER(code)=LOWER(?) AND id<>? LIMIT 1',[b.station_id,b.code.trim(),rowId||0]);
+   const [[previous]]=req.method==='PUT'?await db.execute('SELECT * FROM world_rail_platforms WHERE id=?',[rowId]):[[null]];
+   if(req.method==='PUT'&&!previous)return fail(404,'platform_not_found');
+   if(previous&&Number(previous.station_id)!==Number(b.station_id))return fail(409,'platform_station_change_not_allowed');
+   const platform={
+    station_id:Number(b.station_id),
+    code:typeof b.code==='string'&&b.code.trim()?b.code.trim():previous?.code||'',
+    kind:b.kind??previous?.kind??'freight',
+    track_length:b.track_length??previous?.track_length??1,
+    capacity:b.capacity??previous?.capacity??10,
+    status:b.status??previous?.status??'planned'
+   };
+   if(!platform.code&&req.method==='POST'){
+    const [used]=await db.execute('SELECT code FROM world_rail_platforms WHERE station_id=? FOR UPDATE',[platform.station_id]);
+    const names=new Set(used.map(p=>String(p.code).toLowerCase()));
+    let i=1;while(names.has('f'+i))i++;
+    platform.code='F'+i;
+   }
+   if(!named(platform.code,30,true))return fail(400,'rail_platform_code_invalid');
+   if(!platformKinds.includes(platform.kind))return fail(400,'rail_platform_kind_invalid');
+   if(!bounded(platform.track_length,1000000)||Number(platform.track_length)<1)return fail(400,'rail_platform_track_length_invalid');
+   if(!bounded(platform.capacity,1000000))return fail(400,'rail_platform_capacity_invalid');
+   if(!statuses.includes(platform.status))return fail(400,'rail_platform_status_invalid');
+   const [duplicate]=await db.execute('SELECT id FROM world_rail_platforms WHERE station_id=? AND LOWER(code)=LOWER(?) AND id<>? LIMIT 1',[platform.station_id,platform.code,rowId||0]);
    if(duplicate.length)return fail(409,'platform_code_already_exists');
    if(req.method==='PUT'){
-    const [[old]]=await db.execute('SELECT station_id FROM world_rail_platforms WHERE id=?',[rowId]);
-    if(!old)return fail(404,'platform_not_found');
-    if(Number(old.station_id)!==Number(b.station_id))return fail(409,'platform_station_change_not_allowed');
-    await db.execute('UPDATE world_rail_platforms SET code=?,kind=?,track_length=?,capacity=?,status=? WHERE id=?',[...platformValues(b),rowId]);
+    await db.execute('UPDATE world_rail_platforms SET code=?,kind=?,track_length=?,capacity=?,status=? WHERE id=?',[...platformValues(platform),rowId]);
     await audit(db,actor,'rail_platform_update',rowId);return ok({saved:true});
    }
-   const [r]=await db.execute('INSERT INTO world_rail_platforms(station_id,code,kind,track_length,capacity,status) VALUES(?,?,?,?,?,?)',[b.station_id,...platformValues(b)]);
-   await audit(db,actor,'rail_platform_create',r.insertId);return ok({id:r.insertId});
+   const [r]=await db.execute('INSERT INTO world_rail_platforms(station_id,code,kind,track_length,capacity,status) VALUES(?,?,?,?,?,?)',[platform.station_id,...platformValues(platform)]);
+   await audit(db,actor,'rail_platform_create',r.insertId);return ok({id:r.insertId,code:platform.code});
   });
  }
  if(table==='switches'){
