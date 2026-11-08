@@ -42,4 +42,33 @@ SET @old_settlement_required := (SELECT IF(IS_NULLABLE='NO',
 PREPARE industry_settlement_optional FROM @old_settlement_required;
 EXECUTE industry_settlement_optional;
 DEALLOCATE PREPARE industry_settlement_optional;
+
+-- Safe starter agriculture and forestry catalog. Never rewrite customized items.
+INSERT IGNORE INTO world_industry_items(id,name,category,workshop_material_id,description) VALUES
+ ('grain','Grain','raw',NULL,'Harvested cereal and staple grain'),
+ ('vegetables','Vegetables','raw',NULL,'Harvested field vegetables'),
+ ('logs','Raw Logs','raw',NULL,'Timber from working forests'),
+ ('sawn-timber','Sawn Timber','refined',NULL,'Processed boards and structural wood'),
+ ('animal-produce','Livestock Produce','raw',NULL,'Meat, hides and other ranch goods'),
+ ('quarried-stone','Quarried Stone','raw',NULL,'Stone from an active quarry');
+-- These are ordinary versioned templates. A staff-published update creates v2;
+-- running setup never resets the published version or player progress.
+INSERT IGNORE INTO world_industry_templates(name,slug,category,current_version,archived,created_by) VALUES
+ ('Working Farmland','starter-working-farmland','agriculture',1,0,NULL),
+ ('Logging Camp','starter-logging-camp','extraction',1,0,NULL),
+ ('Livestock Ranch','starter-livestock-ranch','agriculture',1,0,NULL),
+ ('Stone Quarry','starter-stone-quarry','mine',1,0,NULL),
+ ('Timber Mill','starter-timber-mill','manufacturing',1,0,NULL);
+INSERT IGNORE INTO world_industry_template_versions(template_id,version,configuration,rules)
+ SELECT id,1,
+ CASE slug
+ WHEN 'starter-working-farmland' THEN JSON_OBJECT('inputs',JSON_ARRAY(),'outputs',JSON_ARRAY(JSON_OBJECT('item_id','grain','qty',4),JSON_OBJECT('item_id','vegetables','qty',2)),'byproducts',JSON_ARRAY(),'labor',2,'heat',0,'power',0,'capacity',3,'upgrade_level',1)
+ WHEN 'starter-logging-camp' THEN JSON_OBJECT('inputs',JSON_ARRAY(),'outputs',JSON_ARRAY(JSON_OBJECT('item_id','logs','qty',3)),'byproducts',JSON_ARRAY(),'labor',3,'heat',0,'power',0,'capacity',3,'upgrade_level',1)
+ WHEN 'starter-livestock-ranch' THEN JSON_OBJECT('inputs',JSON_ARRAY(),'outputs',JSON_ARRAY(JSON_OBJECT('item_id','animal-produce','qty',2)),'byproducts',JSON_ARRAY(),'labor',2,'heat',0,'power',0,'capacity',3,'upgrade_level',1)
+ WHEN 'starter-stone-quarry' THEN JSON_OBJECT('inputs',JSON_ARRAY(),'outputs',JSON_ARRAY(JSON_OBJECT('item_id','quarried-stone','qty',4)),'byproducts',JSON_ARRAY(),'labor',3,'heat',0,'power',0,'capacity',3,'upgrade_level',1)
+ WHEN 'starter-timber-mill' THEN JSON_OBJECT('inputs',JSON_ARRAY(JSON_OBJECT('item_id','logs','qty',3)),'outputs',JSON_ARRAY(JSON_OBJECT('item_id','sawn-timber','qty',2)),'byproducts',JSON_ARRAY(),'labor',3,'heat',0,'power',1,'capacity',3,'upgrade_level',1)
+ END,
+ JSON_ARRAY()
+ FROM world_industry_templates WHERE slug IN ('starter-working-farmland','starter-logging-camp','starter-livestock-ranch','starter-stone-quarry','starter-timber-mill');
+
 INSERT INTO schema_migrations(version) VALUES('055_independent_industry_sites') ON DUPLICATE KEY UPDATE version=VALUES(version);
