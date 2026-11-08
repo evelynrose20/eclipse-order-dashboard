@@ -344,7 +344,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {mode==='link'&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><span className="wtm-plan-point" key={i} style={{left:p.x+'%',top:p.y+'%'}}/>)}
 
-   {(mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
+   {(mode==='view'||mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(mode==='link'&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
@@ -353,10 +353,10 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement icon to place it. Positions save on release.':mode==='link'?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites or select an existing route to edit it.'}</span>
+   <span>{mode==='mountains'?'Click the map to place mountain ridge points; name and save the range below.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':mode==='link'?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
 
   </div>}
-  {canEdit&&selectedNode&&(mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
+  {canEdit&&selectedNode&&(mode==='view'||mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
    <div className="wtm-route-heading"><strong><i className="fa-solid fa-circle-nodes"/> JUNCTION #{selectedNode.id}</strong><span>{attachedSegments.length} CONNECTED SEGMENTS</span></div>
    <div className="wtm-junction-fields">
     <label>Name<input maxLength={120} value={junctionDraft.name} onChange={e=>setJunctionDraft(v=>({...v,name:e.target.value}))}/></label>
