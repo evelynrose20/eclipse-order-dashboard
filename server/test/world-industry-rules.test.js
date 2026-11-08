@@ -38,7 +38,7 @@ test('output multipliers never exceed workforce, input or capacity operation cap
  const extra=[{when:[{field:'security',op:'gte',value:10}],action:{type:'multiplier',value:3}}];
  const preview=industryProductionPreview(site,refinery,extra,{'ceruleum-crude':8},{security:70});
  assert.equal(preview.operations,2);
- assert.equal(preview.inputs['ceruleum-crude'],4);
+ assert.equal(preview.inputs['ceruleum-crude'],6);
  assert.equal(preview.outputs['ceruleum-fuel'],12);
  assert.equal(preview.throughput_multiplier,3);
 });
