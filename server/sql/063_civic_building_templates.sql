@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS world_civic_building_projects (
  settlement_id BIGINT UNSIGNED NOT NULL,
  template_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  target_level TINYINT UNSIGNED NOT NULL,
+ project_kind ENUM('build','upgrade','repair') NOT NULL DEFAULT 'build',
  effect_snapshot JSON NOT NULL,
  template_revision INT UNSIGNED NOT NULL,
  created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NULL,
@@ -65,7 +66,7 @@ CREATE TABLE IF NOT EXISTS world_civic_building_projects (
  FOREIGN KEY(template_id) REFERENCES world_civic_building_templates(id),
  FOREIGN KEY(created_by) REFERENCES accounts(id),
  INDEX ix_civic_project_settlement(settlement_id,status),
- UNIQUE KEY uq_civic_project_level(upgrade_id,target_level)
+ INDEX ix_civic_project_level(upgrade_id,target_level,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS world_civic_building_project_ticks(
  project_id BIGINT UNSIGNED NOT NULL,
