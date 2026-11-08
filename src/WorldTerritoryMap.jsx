@@ -376,9 +376,25 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(mode==='link'&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
-   {railStations.map(station=>{const node=graphNodes.get(Number(station.node_id)),p=graphPoint(node);return p?<button type="button" key={'station-'+station.id} className="wtm-rail-symbol station" data-state={station.status} style={{left:p.x+'%',top:p.y+'%'}} title={station.name+' · '+station.status+' · '+(station.freight_ready?'freight ready':'freight not ready')} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'stations',id:station.id})}} aria-label={'Railway station '+station.name}><i className="fa-solid fa-train"/></button>:null})}
-   {railSwitches.map(sw=>{const p=graphPoint(graphNodes.get(Number(sw.node_id)));return p?<button type="button" key={'switch-'+sw.id} className="wtm-rail-symbol switch" data-state={sw.status} style={{left:p.x+'%',top:p.y+'%'}} title={'Rail switch #'+sw.id+' · '+sw.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'switches',id:sw.id})}} aria-label={'Rail switch '+sw.id}><i className="fa-solid fa-code-branch"/></button>:null})}
-   {railCrossings.map(c=><button type="button" key={'crossing-'+c.id} className="wtm-rail-symbol crossing" data-state={c.status} style={{left:Number(c.map_x)+'%',top:Number(c.map_y)+'%'}} title={(c.name||'Rail crossing')+' · '+c.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailPoint({x:Number(c.map_x),y:Number(c.map_y)});setRailFocus({kind:'crossings',id:c.id})}} aria-label={'Rail crossing '+(c.name||c.id)}><i className="fa-solid fa-road-barrier"/></button>)}
+   {(mode==='view'||mode==='rail')&&railStations.map(station=>{
+    const node=graphNodes.get(Number(station.node_id)),p=graphPoint(node);
+    if(!p)return null;
+    const position=p.x>84?'rail-flip-x ':'';
+    const vertical=p.y<15?'rail-flip-y ':'';
+    return <button type="button" key={'station-'+station.id} className={'wtm-rail-symbol station '+position+vertical} data-state={station.status} data-freight={station.freight_ready?'ready':'unavailable'} style={{left:p.x+'%',top:p.y+'%'}} title={station.name+' · '+station.status+' · '+(station.freight_ready?'Freight ready':'Freight unavailable')} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'stations',id:station.id})}} aria-label={'Edit railway station '+station.name}>
+     <i className="fa-solid fa-train" aria-hidden="true"/>
+    </button>
+   })}
+   {(mode==='view'||mode==='rail')&&railSwitches.map(sw=>{
+    const p=graphPoint(graphNodes.get(Number(sw.node_id)));
+    if(!p)return null;
+    return <button type="button" key={'switch-'+sw.id} className={'wtm-rail-symbol switch '+(p.x>84?'rail-flip-x ':'')+(p.y>86?'rail-flip-y ':'')} data-state={sw.status} style={{left:p.x+'%',top:p.y+'%'}} title={'Rail switch #'+sw.id+' · '+sw.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'switches',id:sw.id})}} aria-label={'Edit rail switch '+sw.id}>
+     <i className="fa-solid fa-code-branch" aria-hidden="true"/>
+    </button>
+   })}
+   {(mode==='view'||mode==='rail')&&railCrossings.map(c=><button type="button" key={'crossing-'+c.id} className="wtm-rail-symbol crossing" data-state={c.status} style={{left:Number(c.map_x)+'%',top:Number(c.map_y)+'%'}} title={(c.name||'Rail crossing')+' · '+c.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailPoint({x:Number(c.map_x),y:Number(c.map_y)});setRailFocus({kind:'crossings',id:c.id})}} aria-label={'Edit rail crossing '+(c.name||c.id)}>
+    <i className="fa-solid fa-road-barrier" aria-hidden="true"/>
+   </button>)}
    {mode==='rail'&&railPoint&&<span className="wtm-rail-position" style={{left:railPoint.x+'%',top:railPoint.y+'%'}}/>}
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
