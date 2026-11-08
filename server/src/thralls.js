@@ -72,8 +72,8 @@ export async function thrallsRoute(pool,req,path){
   if(req.method!=='PUT')return forbidden(405,'method_not_allowed');
   if(!owner)return forbidden(403,'character_owner_required');
   const body=await readBody(req);
-  if(!body||!['allow_upper','allow_lower','allow_seating'].every(k=>typeof body[k]==='boolean')||!GENDER_IDENTITIES.includes(body.gender_identity)||!LOWER_ANATOMIES.includes(body.lower_anatomy)||!LACTATION_STATES.includes(body.lactation_state))return forbidden(400,'invalid_contribution_preferences');
-  const next={allow_upper:body.allow_upper,allow_lower:body.allow_lower,allow_seating:body.allow_seating,gender_identity:body.gender_identity,lower_anatomy:body.lower_anatomy,lactation_state:body.lactation_state};
+  if(!body||typeof body.allow_seating!=='boolean'||!GENDER_IDENTITIES.includes(body.gender_identity)||!LOWER_ANATOMIES.includes(body.lower_anatomy)||!LACTATION_STATES.includes(body.lactation_state))return forbidden(400,'invalid_contribution_preferences');
+  const next={allow_upper:body.lactation_state!=='none',allow_lower:body.lower_anatomy!=='unspecified',allow_seating:body.allow_seating,gender_identity:body.gender_identity,lower_anatomy:body.lower_anatomy,lactation_state:body.lactation_state};
   const cn=await pool.getConnection();
   try{
    await cn.beginTransaction();
