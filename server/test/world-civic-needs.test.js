@@ -38,3 +38,20 @@ test('civic score changes remain bounded',()=>{
  assert.ok(p.after_stability>=0&&p.after_stability<=100);
  assert.ok(p.after_unrest>=0&&p.after_unrest<=100);
 });
+
+test('damaged or offline heat plant increases cold stress, while warm days need no fuel',()=>{
+ const managed={...profile,enabled_mode:'managed',grace_cycles:0};
+ const healthy=[{status:'operational',coverage_pct:95,condition_pct:100}];
+ const offline=[{status:'offline',coverage_pct:95,condition_pct:100}];
+ const warm=civicSimulationPreview(settlement,managed,[food,fuel],[],85,2,healthy);
+ const heated=civicSimulationPreview(settlement,managed,[food,fuel],[],0,2,healthy);
+ const broken=civicSimulationPreview(settlement,managed,[food,fuel],[],0,2,offline);
+ assert.equal(warm.heat_need,0);
+ assert.equal(broken.heating_coverage_effective,0);
+ assert.ok(broken.pressure>heated.pressure);
+});
+test('water and medicine shortages generate dedicated alerts',()=>{
+ const p=civicSimulationPreview(settlement,profile,[food,fuel],[],38);
+ assert.ok(p.warnings.includes('water_shortfall'));
+ assert.ok(p.warnings.includes('medicine_shortfall'));
+});
