@@ -40,7 +40,7 @@ export const LOWER_ANATOMIES=['unspecified','vulva','penis','mixed','other'];
 export const lowerMaterialForAnatomy=anatomy=>({vulva:'vaginal',penis:'seminal',mixed:'mixed',other:'other'})[anatomy]||'unclassified';
 async function seatRoster(pool,actor){
  const [rows]=await pool.execute("SELECT c.id,c.character_name AS name,c.player_account_id,COALESCE(p.allow_seating,0) AS allow_seating,COALESCE(p.allow_upper,0) AS allow_upper,COALESCE(p.allow_lower,0) AS allow_lower,COALESCE(p.upper_limit,0) AS upper_limit,COALESCE(p.lower_limit,0) AS lower_limit,COALESCE(p.gender_identity,'unspecified') AS gender_identity,COALESCE(p.lower_anatomy,'unspecified') AS lower_anatomy FROM characters c LEFT JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks cr ON cr.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=cr.rank_code WHERE (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) AND p.allow_seating=1 ORDER BY c.character_name",[actor.id]);
- return rows;
+ return rows.map(row=>({...row,is_own:row.player_account_id===actor.id}));
 }
 
 export async function thrallsRoute(pool,req,path){
