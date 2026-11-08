@@ -241,3 +241,41 @@
 .wtm-route-endpoint-pickers label{display:grid;gap:5px;font-size:11px;font-weight:800;color:#d8e0de}
 .wtm-route-endpoint-pickers select{min-width:0;width:100%;padding:9px;background:#111f29;border:1px solid #9b927e;color:#f8eeda}
 .wtm-route-endpoint-pickers select:focus-visible{outline:2px solid #e9c78b;outline-offset:2px}
+
+
+/* Rail laying uses the same cartographic geometry as the saved tracks. */
+.wtm-stage.wtm-editing:has(.wtm-track-preview){cursor:crosshair}
+.wtm-planned-route.wtm-track-preview{
+ stroke:#ead7b2;stroke-width:4;stroke-dasharray:9 4;
+ filter:drop-shadow(0 0 2px #070f18);pointer-events:none
+}
+.wtm-stage button.wtm-waypoint.wtm-draft-handle,
+.app-shell.eo-local .wtm-stage button.wtm-waypoint.wtm-draft-handle{
+ z-index:9!important;
+ background:#f5d99a!important;
+ border:2px solid #273843!important;
+ border-radius:50%!important;
+ width:19px!important;height:19px!important;
+ min-width:19px!important;min-height:19px!important;
+ box-shadow:0 0 0 2px #ffe2a446,0 2px 6px #000a!important;
+ cursor:grab!important;touch-action:none
+}
+.wtm-stage button.wtm-waypoint.wtm-draft-handle:active{cursor:grabbing!important}
+.wtm-stage button.wtm-waypoint.wtm-draft-handle:focus-visible{outline:2px solid #fff0ba;outline-offset:2px}
+.wtm-track-guide{
+ display:flex;gap:9px;align-items:center;padding:10px 12px;
+ background:#1a313c;border-left:3px solid #d2ae73;
+ color:#dbe5e7;font-size:12px;line-height:1.55
+}
+.wtm-track-guide i{color:#ead19e;font-size:17px}
+.wtm-track-steps{
+ display:flex;gap:8px;align-items:center;flex-wrap:wrap
+}
+.wtm-track-steps>span{
+ display:inline-flex;gap:6px;align-items:center;
+ padding:7px 10px;background:#1b2a34;border:1px solid #566a76;
+ color:#97aab4;border-radius:3px;font-size:11px;font-weight:800
+}
+.wtm-track-steps>span.current{color:#f9dbac;border-color:#d5a968;background:#3f3533}
+.wtm-track-steps>span.done{color:#b9e2ca;border-color:#638a76}
+.wtm-route-actions button i{margin-right:5px}
