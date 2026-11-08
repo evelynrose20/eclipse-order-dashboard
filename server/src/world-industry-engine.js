@@ -29,7 +29,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[facility]]=await db.execute(`SELECT f.*,COALESCE(s.population,0) AS population,
  COALESCE(s.civil_stability,70) AS stability,COALESCE(s.security_score,50) AS security,
  COALESCE(s.name,site.name) AS location_name,COALESCE(s.region_id,site.region_id) AS region_id,
- COALESCE(s.zone_id,site.zone_id) AS zone_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
+ COALESCE(s.zone_id,site.zone_id) AS zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
  FROM world_industry_facilities f
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_sites site ON site.id=f.site_id
@@ -71,6 +71,7 @@ export async function getIndustryPreview(db,id,lock=false){
  preview.workers_required=config.labor;
  preview.heat_required=config.heat;
  preview.power_required=config.power;
+ if(['destroyed','abandoned'].includes(facility.map_condition))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['mapped_location_needs_rebuilding'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  if((facility.owner_faction_id||null)!==(facility.controlling_faction_id||null))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['facility_ownership_changed'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  return {facility,config,rules,stock,preview};
 }
@@ -127,6 +128,9 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
  await db.execute('UPDATE world_industry_projects SET labor_done=?,status=?,finished_at=IF(?,UTC_TIMESTAMP(),NULL) WHERE id=?',[updated,complete?'completed':'active',complete?1:0,id]);
  if(complete){
   await db.execute('UPDATE world_industry_facilities SET status=? WHERE id=?',[project.result_status,project.facility_id]);
+  // A completed reconstruction repairs the destroyed map location only as far as
+  // Rebuilding. Territorial security/control remains in the existing map editor.
+  if(project.result_status==='operational')await db.execute("UPDATE world_settlements SET strategic_state='rebuilding' WHERE id=(SELECT settlement_id FROM world_industry_facilities WHERE id=?) AND strategic_state IN ('destroyed','abandoned')",[project.facility_id]);
  }
  return {status:200,body:{project_id:id,labor_added:labor,labor_done:updated,completed:complete,result_status:complete?project.result_status:null,cycle_key:key}};
 }
