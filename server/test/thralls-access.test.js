@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -53,4 +53,11 @@ test('fictional cycle amount comes from physiology, not user-entered limits',()=
  assert.equal(simulatedCycleYield('upper',{lactation_state:'variable'},0),0);
  assert.equal(simulatedCycleYield('lower',{},0.2),0);
  assert.equal(simulatedCycleYield('lower',{},0.9),1);
+});
+
+test('vaginal anatomy enables lower collection even with stale stored flag',()=>{
+ assert.deepEqual(availableChamberChannels({lower_anatomy:'vulva',lactation_state:'none',allow_lower:0}),{upper:false,lower:true});
+ assert.deepEqual(availableChamberChannels({lower_anatomy:'penis',lactation_state:'none',allow_lower:0}),{upper:false,lower:true});
+ assert.deepEqual(availableChamberChannels({lower_anatomy:'unspecified',lactation_state:'established',allow_lower:1}),{upper:true,lower:false});
+ assert.deepEqual(availableChamberChannels({lower_anatomy:'mixed',lactation_state:'variable'}),{upper:true,lower:true});
 });
