@@ -5,14 +5,17 @@ export const CIVIC_EFFECT_KEYS={
 };
 const safe=(n)=>Math.max(0,Math.floor(Number(n)||0));
 const json=v=>typeof v==='string'?JSON.parse(v):v;
+const effectCaps={housing_capacity:500,defense:25,medical_access:25,water_daily:1000,food_capacity:5000,insulation:25,public_works:25,school_places:250};
+const materialRatios={housing_capacity:5,defense:1,medical_access:1,water_daily:10,food_capacity:20,insulation:1,public_works:1,school_places:5};
+const npcRatios={housing_capacity:10,defense:3,medical_access:3,water_daily:15,food_capacity:25,insulation:3,public_works:3,school_places:10};
 export function validateCivicTemplate(t){
  if(!t||typeof t.name!=='string'||!t.name.trim()||t.name.length>120||
     typeof t.description!=='string'||t.description.length>400||!(t.category in CIVIC_EFFECT_KEYS)||
     t.effect_key!==CIVIC_EFFECT_KEYS[t.category]||
-    !Number.isInteger(t.effect_per_level)||t.effect_per_level<1||t.effect_per_level>100000||
-    !Number.isInteger(t.material_per_level)||t.material_per_level<1||t.material_per_level>10000||
-    !Number.isInteger(t.npc_development_cost)||t.npc_development_cost<1||t.npc_development_cost>10000||
-    !Number.isInteger(t.construction_labor)||t.construction_labor<10||t.construction_labor>100000||
+    !Number.isInteger(t.effect_per_level)||t.effect_per_level<1||t.effect_per_level>effectCaps[t.effect_key]||t.effect_per_level>t.material_per_level*materialRatios[t.effect_key]||t.effect_per_level>t.npc_development_cost*npcRatios[t.effect_key]||
+    !Number.isInteger(t.material_per_level)||t.material_per_level<5||t.material_per_level>10000||
+    !Number.isInteger(t.npc_development_cost)||t.npc_development_cost<5||t.npc_development_cost>10000||
+    !Number.isInteger(t.construction_labor)||t.construction_labor<50||t.construction_labor>100000||
     !Number.isInteger(t.max_level)||t.max_level<1||t.max_level>10||
     typeof t.material_id!=='string'||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(t.material_id)||
     typeof t.enabled!=='boolean')return 'invalid_civic_template';
