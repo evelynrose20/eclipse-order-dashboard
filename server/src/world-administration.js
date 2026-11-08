@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {handleTransportGraph} from './world-route-network.js';
+import {handleRailInfrastructure} from './world-rail-infrastructure.js';
 
 import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
@@ -55,6 +56,8 @@ async function worldAdministrationRouteCore(pool,req,path){
  }
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/zones'))return await handleZones(pool,req,path,actor);
+ // Existing staff rail API is retained for backwards compatibility; the map no longer exposes it.
+ if(path.startsWith('/world-admin/rail/'))return await handleRailInfrastructure(pool,req,path,actor);
  if(path.startsWith('/world-admin/network/'))return await handleTransportGraph(pool,req,path,actor);
  let match;
  // Map-only state changes never rewrite the settlement's civilian records.
