@@ -292,6 +292,44 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(emptyZone.status,200);
   const deleteEmptyZone=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/zones/'+emptyZone.body.id);
   assert.equal(deleteEmptyZone.status,200,'empty zones can be deleted');
+
+  // Railway station, platform, junction switch and crossing smoke/integration tests.
+  const railDepot=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,zone_id:newZoneId,x:76,y:50,node_kind:'junction',name:'Rail freight depot'}),'/world-admin/network/nodes');
+  const railBranch=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,zone_id:newZoneId,x:76,y:12,node_kind:'junction',name:'Secondary rail branch'}),'/world-admin/network/nodes');
+  assert.equal(railDepot.status,200,JSON.stringify(railDepot.body));assert.equal(railBranch.status,200,JSON.stringify(railBranch.body));
+  const railBase={region_id:wrid,zone_id:newZoneId,route_type:'rail',route_name:'North rail',waypoints:[]};
+  const t1=await worldAdministrationRoute(admin,request('POST',{...railBase,from_node_id:watchNode.body.id,to_node_id:zoneJunction.body.id}),'/world-admin/network/segments');
+  const t2=await worldAdministrationRoute(admin,request('POST',{...railBase,from_node_id:zoneJunction.body.id,to_node_id:railDepot.body.id}),'/world-admin/network/segments');
+  const t3=await worldAdministrationRoute(admin,request('POST',{...railBase,from_node_id:zoneJunction.body.id,to_node_id:railBranch.body.id}),'/world-admin/network/segments');
+  for(const track of [t1,t2,t3])assert.equal(track.status,200,JSON.stringify(track.body));
+  const stationBase={region_id:wrid,zone_id:newZoneId,node_id:Number(watchNode.body.id),name:'Watch Depot',status:'operational',freight_enabled:true,passenger_enabled:false,freight_capacity:100,notes:''};
+  const origin=await worldAdministrationRoute(admin,request('POST',stationBase),'/world-admin/rail/stations');
+  const target=await worldAdministrationRoute(admin,request('POST',{...stationBase,node_id:Number(railDepot.body.id),name:'Freight Depot'}),'/world-admin/rail/stations');
+  assert.equal(origin.status,200,JSON.stringify(origin.body));assert.equal(target.status,200,JSON.stringify(target.body));
+  for(const stationId of [origin.body.id,target.body.id]){
+    const platform=await worldAdministrationRoute(admin,request('POST',{station_id:Number(stationId),code:'F1',kind:'freight',track_length:25,capacity:30,status:'operational'}),'/world-admin/rail/platforms');
+    assert.equal(platform.status,200,JSON.stringify(platform.body));
+  }
+  const preview=()=>worldAdministrationRoute(admin,request('POST',{origin_station_id:Number(origin.body.id),destination_station_id:Number(target.body.id)}),'/world-admin/rail/preview');
+  assert.equal((await preview()).body.available,false,'three-track junction must configure an open switch');
+  const turnout={node_id:Number(zoneJunction.body.id),entry_segment_id:Number(t1.body.id),exit_segment_id:Number(t2.body.id),status:'open',notes:''};
+  const switchAdded=await worldAdministrationRoute(admin,request('POST',turnout),'/world-admin/rail/switches');
+  assert.equal(switchAdded.status,200,JSON.stringify(switchAdded.body));
+  assert.equal((await preview()).body.available,true);
+  const closeSwitch=await worldAdministrationRoute(admin,request('PUT',{...turnout,status:'closed'}),'/world-admin/rail/switches/'+switchAdded.body.id);
+  assert.equal(closeSwitch.status,200);assert.equal((await preview()).body.available,false);
+  const reopen=await worldAdministrationRoute(admin,request('PUT',turnout),'/world-admin/rail/switches/'+switchAdded.body.id);assert.equal(reopen.status,200);
+  const crossingBase={region_id:wrid,zone_id:newZoneId,rail_segment_id:Number(t1.body.id),road_segment_id:Number(localZoneRoad.body.id),name:'Watch crossing',map_x:25,map_y:50,control_type:'gated',status:'planned',notes:''};
+  const crossing=await worldAdministrationRoute(admin,request('POST',crossingBase),'/world-admin/rail/crossings');
+  assert.equal(crossing.status,200,JSON.stringify(crossing.body));
+  assert.equal((await preview()).body.available,false,'unfinished crossing blocks rail freight');
+  const openCrossing=await worldAdministrationRoute(admin,request('PUT',{...crossingBase,status:'operational'}),'/world-admin/rail/crossings/'+crossing.body.id);
+  assert.equal(openCrossing.status,200);assert.equal((await preview()).body.available,true);
+  const protectedTrack=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/network/segments/'+t1.body.id);
+  assert.equal(protectedTrack.status,409,'track referenced by switch/crossing cannot be silently deleted');
+  assert.equal((await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/rail/stations/'+origin.body.id)).status,409,'platforms protect station from deletion');
+  const railState=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
+  assert.ok(railState.body.rail_stations.some(s=>Number(s.id)===Number(origin.body.id)&&s.freight_ready));
  const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
   assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
