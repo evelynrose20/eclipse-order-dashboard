@@ -19,21 +19,34 @@ async function noCycle(db,c,excluding=null){
  const [pinned]=await db.execute("SELECT DISTINCT v.configuration FROM world_industry_facilities f JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version WHERE f.status IN ('operational','rebuilding','liberated','damaged')");
  return !industryDependenciesHaveCycle([...rows.map(r=>array(r.configuration)),...pinned.map(r=>array(r.configuration)),c]);
 }
-const validFacility=b=>b&&whole(b.settlement_id,1,Number.MAX_SAFE_INTEGER)&&whole(b.template_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&['captured','liberated','ruined','rebuilding','operational','damaged','paused'].includes(b.status)&&whole(b.level,1,20)&&whole(b.capacity_pct,0,100)&&whole(b.workforce,0,10000000)&&num(b.heat_available,0,1000000)&&num(b.power_available,0,1000000)&&['off','manual','automatic'].includes(b.cycle_mode)&&['slow','normal','fast'].includes(b.cycle_cadence)&&typeof b.notes==='string'&&b.notes.length<=500;
+const validFacility=b=>b&&(whole(b.settlement_id,1,Number.MAX_SAFE_INTEGER)!==whole(b.site_id,1,Number.MAX_SAFE_INTEGER))&&whole(b.template_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&['captured','liberated','ruined','rebuilding','operational','damaged','paused'].includes(b.status)&&['off','manual','automatic'].includes(b.cycle_mode)&&['slow','normal','fast'].includes(b.cycle_cadence)&&typeof b.notes==='string'&&b.notes.length<=500;
 const validProject=b=>b&&whole(b.facility_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.name,140)&&typeof b.description==='string'&&b.description.length<=500&&['planned','active'].includes(b.status)&&['liberated','rebuilding','operational','damaged'].includes(b.result_status)&&whole(b.labor_required,1,1000000)&&Array.isArray(b.needs)&&b.needs.length<=20&&b.needs.every(x=>validItemId(x.item_id)&&num(x.qty,0.001,1000000))&&new Set(b.needs.map(x=>x.item_id)).size===b.needs.length&&(b.campaign_project_id==null||whole(b.campaign_project_id,1,Number.MAX_SAFE_INTEGER));
 async function summary(pool){
  const [items]=await pool.execute('SELECT i.*,m.name AS workshop_name,COALESCE(st.quantity,0) AS shared_qty FROM world_industry_items i LEFT JOIN fc_materials m ON m.id=i.workshop_material_id LEFT JOIN fc_material_stock st ON st.material_id=m.id ORDER BY i.name');
  const [workshop]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
  const [templates]=await pool.execute('SELECT t.id,t.name,t.slug,t.category,t.current_version,t.archived,v.configuration,v.rules FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version ORDER BY t.name');
- const [facilities]=await pool.execute('SELECT f.*,s.name AS settlement_name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce AS settlement_workers,t.name AS template_name,t.category AS template_category,v.configuration AS template_configuration,v.rules AS template_rules FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id JOIN world_industry_templates t ON t.id=f.template_id JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version ORDER BY f.id DESC');
+ const [facilities]=await pool.execute(`SELECT f.*,COALESCE(s.name,site.name) AS settlement_name,
+ COALESCE(s.region_id,site.region_id) AS region_id,COALESCE(s.zone_id,site.zone_id) AS zone_id,
+ COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id,
+ COALESCE(s.population,0) AS population,t.name AS template_name,t.category AS template_category,
+ v.configuration AS template_configuration,v.rules AS template_rules
+ FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id
+ LEFT JOIN world_industry_sites site ON site.id=f.site_id
+ LEFT JOIN world_zones z ON z.id=site.zone_id
+ JOIN world_industry_templates t ON t.id=f.template_id
+ JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version
+ ORDER BY f.id DESC`);
  const [projects]=await pool.execute('SELECT p.*,f.name AS facility_name,f.settlement_id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id ORDER BY p.id DESC');
  const [needs]=await pool.execute('SELECT * FROM world_industry_project_needs ORDER BY project_id,item_id');
  const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0 ORDER BY facility_id,item_id');
  const [cycles]=await pool.execute('SELECT facility_id,cycle_key,cycle_date,operations,configuration_version FROM world_industry_cycles ORDER BY created_at DESC LIMIT 100');
  const [ledger]=await pool.execute('SELECT facility_id,item_id,delta,balance_after,action,reference_key,created_at FROM world_industry_ledger ORDER BY id DESC LIMIT 150');
  const [settlements]=await pool.execute('SELECT id,name,controlling_faction_id,region_id,zone_id,population,workforce FROM world_settlements ORDER BY name');
+ const [sites]=await pool.execute('SELECT site.*,z.controlling_faction_id AS controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id ORDER BY site.name');
+ const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
+ const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');
  const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
- return ok({items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,campaigns});
+ return ok({items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
@@ -82,33 +95,54 @@ export async function industryRoute(pool,req,path,actor){
   const fake={status:b.facility?.status||'operational',level:Number(b.facility?.level||1),capacity_pct:Number(b.facility?.capacity_pct??100),workforce:Number(b.facility?.workforce||0),heat_available:Number(b.facility?.heat_available||0),power_available:Number(b.facility?.power_available||0)};
   return ok({preview:industryProductionPreview(fake,b.configuration,b.rules,b.stock||{},{population:0,stability:80,security:50})});
  }
+ if(path==='/world-admin/industry/sites'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||!txt(b.name,140)||!['farm','ranch','lumberyard','quarry','mine','refinery','workshop','plant','power','other'].includes(b.kind)||!whole(b.region_id,1,Number.MAX_SAFE_INTEGER)||!whole(b.zone_id,1,Number.MAX_SAFE_INTEGER)||!num(b.map_x,0,100)||!num(b.map_y,0,100)||typeof b.description!=='string'||b.description.length>500)return fail(400,'invalid_industry_site');
+  return atomicIndustry(pool,async db=>{
+   const [[zone]]=await db.execute('SELECT id,controlling_faction_id FROM world_zones WHERE id=? AND region_id=?',[b.zone_id,b.region_id]);
+   if(!zone)return fail(404,'zone_not_found');
+   const [result]=await db.execute('INSERT INTO world_industry_sites(region_id,zone_id,name,kind,description,controlling_faction_id,map_x,map_y,created_by) VALUES(?,?,?,?,?,?,?,?,?)',[b.region_id,b.zone_id,b.name.trim(),b.kind,b.description,zone.controlling_faction_id||null,b.map_x,b.map_y,actor.id]);
+   await audit(db,actor.id,'industry',result.insertId,'site_create',b.name);
+   return ok({id:result.insertId});
+  });
+ }
  if(path==='/world-admin/industry/facilities'&&req.method==='POST'){
   const b=await body(req);if(!validFacility(b))return fail(400,'invalid_facility');
   return atomicIndustry(pool,async db=>{
-   const [[site]]=await db.execute('SELECT id,population,workforce,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
+   let loc;
+   if(b.site_id){
+    [[loc]]=await db.execute('SELECT site.id,z.controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id WHERE site.id=? FOR UPDATE',[b.site_id]);
+   }else{
+    [[loc]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
+   }
    const [[template]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? AND archived=0',[b.template_id]);
-   if(!site||!template)return fail(404,'site_or_template_not_found');
-   const [[assigned]]=await db.execute('SELECT COALESCE(SUM(workforce),0) AS n FROM world_industry_facilities WHERE settlement_id=?',[b.settlement_id]);
-   if(Number(assigned.n)+b.workforce>Number(site.workforce))return fail(409,'facility_workers_exceed_settlement');
-   const [r]=await db.execute('INSERT INTO world_industry_facilities(settlement_id,owner_faction_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.settlement_id,site.controlling_faction_id||null,b.template_id,template.current_version,b.name.trim(),b.status,b.level,b.capacity_pct,b.workforce,b.heat_available,b.power_available,b.cycle_mode,b.cycle_cadence,b.notes,actor.id]);
-   await audit(db,actor.id,'industry',r.insertId,'facility_create',b.name);return ok({id:r.insertId});
+   if(!loc||!template)return fail(404,'site_or_template_not_found');
+   // Workers, fuel, level and output capacity are simulated. No initial numbers from the form.
+   const [created]=await db.execute(`INSERT INTO world_industry_facilities
+   (settlement_id,site_id,owner_faction_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by)
+   VALUES(?,?,?,?,?,?,?,1,100,0,0,0,?,?,?,?)`,
+   [b.settlement_id||null,b.site_id||null,loc.controlling_faction_id||null,b.template_id,template.current_version,b.name.trim(),b.status==='captured'?'captured':'ruined',b.cycle_mode,b.cycle_cadence,b.notes,actor.id]);
+   await audit(db,actor.id,'industry',created.insertId,'facility_create',b.name);
+   return ok({id:created.insertId});
   });
  }
  if((match=/^\/world-admin\/industry\/facilities\/(\d+)$/.exec(path))&&req.method==='PUT'){
-  const id=Number(match[1]),b=await body(req);if(!b||!txt(b.name,140)||!whole(b.level,1,20)||!whole(b.capacity_pct,0,100)||!whole(b.workforce,0,10000000)||!num(b.heat_available,0,1000000)||!num(b.power_available,0,1000000)||!['off','manual','automatic'].includes(b.cycle_mode)||!['slow','normal','fast'].includes(b.cycle_cadence)||typeof b.notes!=='string'||b.notes.length>500)return fail(400,'invalid_facility_settings');
+  const id=Number(match[1]),b=await body(req);
+  if(!b||!txt(b.name,140)||!['off','manual','automatic'].includes(b.cycle_mode)||!['slow','normal','fast'].includes(b.cycle_cadence)||typeof b.notes!=='string'||b.notes.length>500)return fail(400,'invalid_facility_settings');
+  if(['workforce','heat_available','power_available','level','capacity_pct','status','settlement_id','site_id','owner_faction_id'].some(k=>Object.hasOwn(b,k)))return fail(400,'simulated_resources_read_only');
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT f.id,f.settlement_id,s.workforce AS settlement_workforce FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT id,cycle_cadence,last_cycle_key FROM world_industry_facilities WHERE id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
-   const [[assigned]]=await db.execute('SELECT COALESCE(SUM(workforce),0) AS n FROM world_industry_facilities WHERE settlement_id=?',[f.settlement_id]);
-   if(Number(assigned.n)-Number((await db.execute('SELECT workforce FROM world_industry_facilities WHERE id=?',[id]))[0][0].workforce)+b.workforce>Number(f.settlement_workforce))return fail(409,'facility_workers_exceed_settlement');
-   await db.execute('UPDATE world_industry_facilities SET name=?,level=?,capacity_pct=?,workforce=?,heat_available=?,power_available=?,cycle_mode=?,cycle_cadence=?,notes=? WHERE id=?',[b.name.trim(),b.level,b.capacity_pct,b.workforce,b.heat_available,b.power_available,b.cycle_mode,b.cycle_cadence,b.notes,id]);
-   await audit(db,actor.id,'industry',id,'facility_settings',b.cycle_mode);return ok({saved:true});
+   if(f.last_cycle_key&&f.cycle_cadence!==b.cycle_cadence)return fail(409,'production_cadence_locked_after_first_cycle');
+   await db.execute('UPDATE world_industry_facilities SET name=?,cycle_mode=?,cycle_cadence=?,notes=? WHERE id=?',[b.name.trim(),b.cycle_mode,b.cycle_cadence,b.notes,id]);
+   await audit(db,actor.id,'industry',id,'facility_settings',b.cycle_mode);
+   return ok({saved:true});
   });
  }
  if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/reconcile$/.exec(path))&&req.method==='POST'){
   const id=Number(match[1]);
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT f.owner_faction_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
    if((f.owner_faction_id||null)===(f.controlling_faction_id||null))return fail(409,'facility_ownership_unchanged');
    await db.execute("UPDATE world_industry_facilities SET owner_faction_id=?,status='captured',cycle_mode='off',last_cycle_key=NULL WHERE id=?",[f.controlling_faction_id||null,id]);
@@ -120,7 +154,7 @@ export async function industryRoute(pool,req,path,actor){
   const id=Number(match[1]),b=await body(req);
   const allowed={captured:['liberated'],ruined:['liberated'],liberated:['rebuilding'],rebuilding:['damaged'],operational:['damaged','paused','captured'],paused:['operational','damaged'],damaged:['rebuilding','paused']};
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT f.status,f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT f.status,f.owner_faction_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
    if((f.owner_faction_id||null)!==(f.controlling_faction_id||null))return fail(409,'facility_ownership_changed');
    if(!allowed[f.status]?.includes(b?.status))return fail(409,'invalid_facility_transition');
