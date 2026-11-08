@@ -192,7 +192,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const initialProfile={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:2,grace_cycles:0,enabled_mode:'managed',paused:false};
   const civicProfile=await worldAdministrationRoute(admin,request('PUT',initialProfile),'/world-admin/civic/'+mineId+'/profile');
   assert.equal(civicProfile.status,200,JSON.stringify(civicProfile.body));
-  await admin.execute('UPDATE fc_material_stock SET quantity=500 WHERE material_id=?',['wild-herbs']);
+  await admin.execute('INSERT INTO fc_material_stock(material_id,quantity) VALUES(?,500) ON DUPLICATE KEY UPDATE quantity=500',['wild-herbs']);
   const relief={name:'Weekly healing supplies',material_id:'wild-herbs',resource_kind:'medicine',food_group:null,quantity:15,frequency:'weekly',active:true};
   const aid=await worldAdministrationRoute(admin,request('POST',relief),'/world-admin/civic/'+mineId+'/aid');
   assert.equal(aid.status,200,JSON.stringify(aid.body));
