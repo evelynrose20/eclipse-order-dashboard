@@ -1,0 +1,141 @@
+// Railway infrastructure is operational metadata on the original shared map graph.
+// Stations, switches and crossings do NOT duplicate or replace saved road geometry.
+const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
+const id=n=>Number.isSafeInteger(Number(n))&&Number(n)>0;
+const bounded=(n,max)=>Number.isInteger(Number(n))&&Number(n)>=0&&Number(n)<=max;
+const named=(s,max,required=false)=>typeof s==='string'&&s.length<=max&&(!required||s.trim().length>0);
+const statuses=['planned','operational','closed','damaged'],platformKinds=['freight','passenger','mixed','siding'],switchStates=['open','closed','damaged'],controls=['gated','ungated','signal','grade_separated'];
+async function body(req){let size=0;const chunks=[];for await(const c of req){size+=c.length;if(size>16000)return null;chunks.push(c)}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}}
+async function tx(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const result=await fn(db);if(result.status===200)await db.commit();else await db.rollback();return result}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
+async function audit(db,actor,action,target){await db.execute("INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)",[actor.id,action,'rail',target,'Railway infrastructure edited'])}
+const same=(r,region,zone)=>Number(r?.region_id)===Number(region)&&Number(r?.zone_id)===Number(zone);
+async function nodeIn(db,node,region,zone){const [[n]]=await db.execute('SELECT * FROM world_route_nodes WHERE id=?',[node]);return same(n,region,zone)?n:null}
+async function edgeIn(db,edge,region,zone,type){const [[e]]=await db.execute('SELECT * FROM world_route_segments WHERE id=?',[edge]);return same(e,region,zone)&&(!type||e.route_type===type)?e:null}
+async function railAtNode(db,nodeId,region,zone){const [e]=await db.execute("SELECT id FROM world_route_segments WHERE region_id=? AND zone_id=? AND route_type='rail' AND (from_node_id=? OR to_node_id=?) LIMIT 1",[region,zone,nodeId,nodeId]);return e.length>0}
+async function stationIn(db,id){const [[row]]=await db.execute('SELECT * FROM world_rail_stations WHERE id=?',[id]);return row}
+const stationFields=b=>b&&id(b.region_id)&&id(b.zone_id)&&id(b.node_id)&&named(b.name,140,true)&&statuses.includes(b.status)&&typeof b.freight_enabled==='boolean'&&typeof b.passenger_enabled==='boolean'&&bounded(b.freight_capacity,1000000)&&named(b.notes,1200);
+const stationValues=b=>[b.name.trim(),b.status,b.freight_enabled?1:0,b.passenger_enabled?1:0,Number(b.freight_capacity),b.notes];
+const platformFields=b=>b&&id(b.station_id)&&named(b.code,30,true)&&platformKinds.includes(b.kind)&&bounded(b.track_length,1000000)&&Number(b.track_length)>0&&bounded(b.capacity,1000000)&&statuses.includes(b.status);
+const platformValues=b=>[b.code.trim(),b.kind,Number(b.track_length),Number(b.capacity),b.status];
+const switchFields=b=>b&&id(b.node_id)&&id(b.entry_segment_id)&&id(b.exit_segment_id)&&Number(b.entry_segment_id)!==Number(b.exit_segment_id)&&switchStates.includes(b.status)&&named(b.notes,500);
+const crossingFields=b=>b&&id(b.rail_segment_id)&&id(b.road_segment_id)&&named(b.name,140)&&typeof b.map_x==='number'&&typeof b.map_y==='number'&&[b.map_x,b.map_y].every(v=>Number.isFinite(v)&&v>=0&&v<=100)&&controls.includes(b.control_type)&&statuses.includes(b.status)&&named(b.notes,500);
+const crossingValues=b=>[b.name.trim(),b.map_x,b.map_y,b.control_type,b.status,b.notes];
+async function routePoints(db,e){const [nodes]=await db.execute('SELECT id,settlement_id,map_x,map_y FROM world_route_nodes WHERE id IN (?,?)',[e.from_node_id,e.to_node_id]);
+ if(nodes.length!==2)return [];
+ const [places]=await db.execute('SELECT id,map_x,map_y FROM world_settlements WHERE id IN (?,?)',[nodes[0].settlement_id||0,nodes[1].settlement_id||0]);
+ const at=nodeId=>{const n=nodes.find(n=>Number(n.id)===Number(nodeId)),s=places.find(s=>Number(s.id)===Number(n?.settlement_id));return {x:Number(s?.map_x??n?.map_x),y:Number(s?.map_y??n?.map_y)}};
+ const bends=typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints;
+ return [at(e.from_node_id),...(Array.isArray(bends)?bends:[]),at(e.to_node_id)];
+}
+function polyDistance(p,points){let best=Infinity;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t))}return best}
+async function checkCrossing(db,b,region,zone){
+ const rail=await edgeIn(db,b.rail_segment_id,region,zone,'rail'),road=await edgeIn(db,b.road_segment_id,region,zone);
+ if(!rail||!road||!['road','trail'].includes(road.route_type))return fail(400,'crossing_requires_rail_and_road_in_zone');
+ const p={x:b.map_x,y:b.map_y};
+ if(polyDistance(p,await routePoints(db,rail))>3||polyDistance(p,await routePoints(db,road))>3)return fail(400,'crossing_location_not_on_both_routes');
+ return null;
+}
+// A freight-ready station requires operational status, freight enabled and an
+// operational freight/mixed platform. This is metadata, not a cargo movement.
+export function freightReady(station,platforms){return station.status==='operational'&&Boolean(station.freight_enabled)&&platforms.some(p=>Number(p.station_id)===Number(station.id)&&p.status==='operational'&&['freight','mixed'].includes(p.kind)&&Number(p.capacity)>0)}
+export async function railRecords(pool){
+ const [stations]=await pool.execute('SELECT * FROM world_rail_stations ORDER BY region_id,zone_id,name,id');
+ const [platforms]=await pool.execute('SELECT * FROM world_rail_platforms ORDER BY station_id,code,id');
+ const [switches]=await pool.execute('SELECT * FROM world_rail_switches ORDER BY node_id,id');
+ const [crossings]=await pool.execute('SELECT * FROM world_rail_crossings ORDER BY region_id,zone_id,id');
+ return {rail_stations:stations.map(s=>({...s,freight_enabled:!!s.freight_enabled,passenger_enabled:!!s.passenger_enabled,freight_ready:freightReady(s,platforms)})),rail_platforms:platforms,rail_switches:switches,rail_crossings:crossings};
+}
+export async function handleRailInfrastructure(pool,req,path,actor){
+ const route=/^\/world-admin\/rail\/(stations|platforms|switches|crossings)(?:\/(\d+))?$/.exec(path);
+ if(!route)return fail(404,'rail_route_not_found');
+ const [,table,rawId]=route,rowId=rawId?Number(rawId):null;
+ if(!['POST','PUT','DELETE'].includes(req.method))return fail(405,'method_not_allowed');
+ if((req.method==='POST'&&rowId)||(req.method!=='POST'&&!rowId))return fail(400,'invalid_rail_request');
+ const b=req.method==='DELETE'?null:await body(req);
+ if(table==='stations'){
+  if(b&&!stationFields(b))return fail(400,'invalid_rail_station');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const station=await stationIn(db,rowId);if(!station)return fail(404,'station_not_found');
+    const [platforms]=await db.execute('SELECT id FROM world_rail_platforms WHERE station_id=? LIMIT 1',[rowId]);
+    if(platforms.length)return fail(409,'station_has_platforms');
+    await db.execute('DELETE FROM world_rail_stations WHERE id=?',[rowId]);await audit(db,actor,'rail_station_delete',rowId);return ok({saved:true});
+   }
+   const n=await nodeIn(db,b.node_id,b.region_id,b.zone_id);
+   if(!n||!await railAtNode(db,b.node_id,b.region_id,b.zone_id))return fail(400,'station_requires_connected_rail_node');
+   if(req.method==='PUT'){
+    const previous=await stationIn(db,rowId);if(!previous)return fail(404,'station_not_found');
+    if(!same(previous,b.region_id,b.zone_id)||Number(previous.node_id)!==Number(b.node_id))return fail(409,'station_node_change_not_allowed');
+    await db.execute('UPDATE world_rail_stations SET name=?,status=?,freight_enabled=?,passenger_enabled=?,freight_capacity=?,notes=? WHERE id=?',[...stationValues(b),rowId]);
+    await audit(db,actor,'rail_station_update',rowId);return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_rail_stations(region_id,zone_id,node_id,name,status,freight_enabled,passenger_enabled,freight_capacity,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)',[b.region_id,b.zone_id,b.node_id,...stationValues(b),actor.id]);
+   await audit(db,actor,'rail_station_create',r.insertId);return ok({id:r.insertId});
+  });
+ }
+ if(table==='platforms'){
+  if(b&&!platformFields(b))return fail(400,'invalid_rail_platform');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const [r]=await db.execute('DELETE FROM world_rail_platforms WHERE id=?',[rowId]);
+    if(!r.affectedRows)return fail(404,'platform_not_found');
+    await audit(db,actor,'rail_platform_delete',rowId);return ok({saved:true});
+   }
+   const station=await stationIn(db,b.station_id);if(!station)return fail(404,'station_not_found');
+   if(req.method==='PUT'){
+    const [[old]]=await db.execute('SELECT station_id FROM world_rail_platforms WHERE id=?',[rowId]);
+    if(!old)return fail(404,'platform_not_found');
+    if(Number(old.station_id)!==Number(b.station_id))return fail(409,'platform_station_change_not_allowed');
+    await db.execute('UPDATE world_rail_platforms SET code=?,kind=?,track_length=?,capacity=?,status=? WHERE id=?',[...platformValues(b),rowId]);
+    await audit(db,actor,'rail_platform_update',rowId);return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_rail_platforms(station_id,code,kind,track_length,capacity,status) VALUES(?,?,?,?,?,?)',[b.station_id,...platformValues(b)]);
+   await audit(db,actor,'rail_platform_create',r.insertId);return ok({id:r.insertId});
+  });
+ }
+ if(table==='switches'){
+  if(b&&!switchFields(b))return fail(400,'invalid_rail_switch');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const [r]=await db.execute('DELETE FROM world_rail_switches WHERE id=?',[rowId]);if(!r.affectedRows)return fail(404,'switch_not_found');
+    await audit(db,actor,'rail_switch_delete',rowId);return ok({saved:true});
+   }
+   const [[node]]=await db.execute('SELECT * FROM world_route_nodes WHERE id=?',[b.node_id]);
+   if(!node||!['rail_switch','junction'].includes(node.node_kind))return fail(400,'switch_requires_rail_junction');
+   const a=await edgeIn(db,b.entry_segment_id,node.region_id,node.zone_id,'rail'),c=await edgeIn(db,b.exit_segment_id,node.region_id,node.zone_id,'rail');
+   if(!a||!c||![Number(a.from_node_id),Number(a.to_node_id)].includes(Number(node.id))||![Number(c.from_node_id),Number(c.to_node_id)].includes(Number(node.id)))return fail(400,'switch_tracks_must_meet_at_node');
+   const [first,second]=[Number(a.id),Number(c.id)].sort((x,y)=>x-y);
+   if(req.method==='PUT'){
+    const [[old]]=await db.execute('SELECT node_id FROM world_rail_switches WHERE id=?',[rowId]);
+    if(!old)return fail(404,'switch_not_found');
+    if(Number(old.node_id)!==Number(b.node_id))return fail(409,'switch_node_change_not_allowed');
+    await db.execute('UPDATE world_rail_switches SET entry_segment_id=?,exit_segment_id=?,status=?,notes=? WHERE id=?',[first,second,b.status,b.notes,rowId]);
+    await audit(db,actor,'rail_switch_update',rowId);return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_rail_switches(region_id,zone_id,node_id,entry_segment_id,exit_segment_id,status,notes) VALUES(?,?,?,?,?,?,?)',[node.region_id,node.zone_id,node.id,first,second,b.status,b.notes]);
+   await audit(db,actor,'rail_switch_create',r.insertId);return ok({id:r.insertId});
+  });
+ }
+ if(table==='crossings'){
+  if(b&&!crossingFields(b))return fail(400,'invalid_rail_crossing');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const [r]=await db.execute('DELETE FROM world_rail_crossings WHERE id=?',[rowId]);if(!r.affectedRows)return fail(404,'crossing_not_found');
+    await audit(db,actor,'rail_crossing_delete',rowId);return ok({saved:true});
+   }
+   const region=Number(b.region_id),zone=Number(b.zone_id);
+   if(!id(region)||!id(zone))return fail(400,'invalid_crossing_zone');
+   const invalid=await checkCrossing(db,b,region,zone);if(invalid)return invalid;
+   if(req.method==='PUT'){
+    const [[old]]=await db.execute('SELECT region_id,zone_id FROM world_rail_crossings WHERE id=?',[rowId]);
+    if(!old)return fail(404,'crossing_not_found');
+    if(!same(old,region,zone))return fail(409,'crossing_zone_change_not_allowed');
+    await db.execute('UPDATE world_rail_crossings SET rail_segment_id=?,road_segment_id=?,name=?,map_x=?,map_y=?,control_type=?,status=?,notes=? WHERE id=?',[b.rail_segment_id,b.road_segment_id,...crossingValues(b),rowId]);
+    await audit(db,actor,'rail_crossing_update',rowId);return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_rail_crossings(region_id,zone_id,rail_segment_id,road_segment_id,name,map_x,map_y,control_type,status,notes) VALUES(?,?,?,?,?,?,?,?,?,?)',[region,zone,b.rail_segment_id,b.road_segment_id,...crossingValues(b)]);
+   await audit(db,actor,'rail_crossing_create',r.insertId);return ok({id:r.insertId});
+  });
+ }
+ return fail(404,'rail_route_not_found');
+}
