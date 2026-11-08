@@ -50,7 +50,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   const effective=await climateForRegions(pool,regions,now);
   const [zones]=await pool.execute('SELECT * FROM world_zones ORDER BY region_id,is_default DESC,id');
   const [settlements]=await pool.execute('SELECT s.* FROM world_settlements s ORDER BY s.region_id,s.id');
-  const [industrySites]=command?await pool.execute('SELECT id,region_id,zone_id,name,kind,map_x,map_y,controlling_faction_id FROM world_industry_sites ORDER BY id'):[[]];
+  const [industrySites]=command?await pool.execute('SELECT site.id,site.region_id,site.zone_id,site.name,site.kind,site.map_x,site.map_y,z.controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id ORDER BY site.id'):[[]];
   const [simulationHistory]=command?await pool.execute('SELECT DISTINCT settlement_id FROM world_settlement_sim_history'):[[]];
   const [upgrades]=await pool.execute('SELECT id,settlement_id,name,category,status,condition_pct,level,housing_bonus,service_bonus,defense_bonus FROM world_settlement_upgrades ORDER BY settlement_id,id');
   const [routes]=await pool.execute('SELECT id,region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
