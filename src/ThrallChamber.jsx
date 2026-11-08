@@ -76,6 +76,11 @@ export default function ThrallChamber({request}){
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
       {channels.map(c=><div className="chamber-assembly" key={c.id}>
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
+       {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
+        <div><span>CHARACTER AVAILABLE TODAY</span><strong>{data.daily[c.id].remaining} <small>/ {data.daily[c.id].maximum} units</small></strong></div>
+        <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
+        <small>Replenishes at 00:00 UTC · Existing collected stock is retained.</small>
+       </div>}
        <div className="chamber-buttons">{['ready','active','maintenance','offline'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
       {!canManage&&<p className="chamber-helper">Your rank permits viewing this workspace. Staff and Household ranks can modify chamber controls and records.</p>}
@@ -106,7 +111,7 @@ export default function ThrallChamber({request}){
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
        <small>{c.id==='lower'?(lowerTypes[machine.lower_material_type]||'Unclassified'):c.material} · {pct}% of capacity</small>
        {canManage&&<div className="chamber-record">
-        <button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'} onClick={()=>act('run_cycle',{channel:c.id},'Collection cycle complete. Reservoirs and activity ledger updated.')}>Run collection cycle</button>
+        <button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'||(data.daily&&data.daily[c.id].remaining===0)} onClick={()=>act('run_cycle',{channel:c.id},'Collection cycle complete. Reservoirs and activity ledger updated.')}>Run collection cycle</button>
         <button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button>
        </div>}
       </div>;
