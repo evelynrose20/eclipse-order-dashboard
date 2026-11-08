@@ -44,8 +44,8 @@ updated: 2026-11-07
 - [x] Add Secure, Abandoned, and Destroyed settlement conditions without changing owner/controller.
 - [x] Add explicit route drafting, a selectable existing-route registry, draggable/insertable bends, editing route types and railway cartographic tracks.
 - [x] Shared road junctions/rail switches independent of settlements, allowing saved route branching and splitting.
-- [x] Railway stations and freight/passenger platforms, track switch pairings, railway-road crossings and read-only freight route readiness (migration 047).
-- [ ] Live train dispatch, rolling stock, cargo manifests, crossing timing, fuel and simulation integration (P4).
+- [x] **Superseded/archived:** visual railway stations, rail switches, crossings and map track management (migrations 045–048). Existing records preserved, but the map controls are removed by request.
+- [x] **Internal Rail Logistics (migration 049):** staff-only menu tabs for named stations at Order settlements/fronts, configurable services, timed train dispatch and journey progress/history with train icon (no map-based tracks).\n- [ ] Inventory-safe cargo manifests, reserved front stock, fuel and automatic delivery settlements (future P4; current train operation is schedule/RP tracking only).
 - [ ] **Deferred by request:** ownership polygons/borders are unnecessary for the current compact maps.
 - [ ] **Deferred by request:** separate public/secret map layers are unnecessary for the current maps.
 - [ ] Multiple supporting factions, separate beneficiaries/protectorates and territorial history.
@@ -125,18 +125,18 @@ updated: 2026-11-07
 - [x] Font Awesome web-font icons for major site and dashboard controls; map facility icon picker includes lumber yards, logging, sawmills, quarries, rail stations and more.
 - [x] Authenticated road/rail graph tables with shared junctions and rail switches (migration 045).
 - [x] Create branches, snap to existing nodes and route segments, split segments at saved junctions, move a junction and retain all attached connections.
-- [x] Preview and save road, trail, railway, air-route and waterway edges with editable bend points.
+- [x] Preview and save road, trail, air-route and waterway edges with editable bend points. Former rail geometry is archived and no longer edited via the map.
 - [x] Explicit transaction-safe conversion of older settlement-to-settlement routes without losing waypoints or track types.
 - [x] MySQL 8 integration tests covering junction splits, branches, moves and import.
-- [ ] Production Windows API migrations 046–047 and browser acceptance test: switch zones, place settlements and routes, edit controls, and confirm the overview map remains intact.
+- [ ] Production Windows API migrations through 049 and browser acceptance test: menu stations, timed train dispatch, visible train progress, plus unchanged road/mountain maps.
 
 ## Current release checklist
 
 - [ ] Back up production MySQL.
 - [ ] Pull latest matching frontend and Windows API code.
-- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–047, including 047_rail_infrastructure.
+- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–049, including 049_internal_rail_logistics.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
-- [ ] Browser test all edit operations, including Plan a route / Edit routes: split a rail line, attach a branch, move the shared switch, save and reload.
+- [ ] Browser test creating stations at Order-controlled settlements/fronts, same-zone/cross-zone/cross-region rail services, live progress, arrival and cancellation.
 - [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
 - [ ] Confirm master plan and this checklist are readable in Obsidian.
 
