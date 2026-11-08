@@ -1,3 +1,4 @@
+import {workerHealthSnapshot} from './world-worker-care.js';
 import {climateForRegions} from './world-region-climate.js';
 import {handleCivicExtras} from './world-civic-extras.js';
 import {upgradeEffects} from './world-settlement-upgrades.js';
@@ -86,11 +87,12 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const data=await context(pool,id);if(!data)return fail(404,'settlement_not_found');
   const [shared_materials]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
   const cohorts=simulatedPopulationGroups(data.settlement);
+  const worker_health=await workerHealthSnapshot(pool,id);
   const [incidents]=await pool.execute('SELECT * FROM world_civic_incidents WHERE settlement_id=? ORDER BY id DESC LIMIT 50',[id]);
   const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
   const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades),population_simulation:previewPopulationChange(data.settlement,data.upgrades,civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades).risk,!!data.settlement.simulation_enabled&&data.region_mode==='managed'&&!data.profile.paused&&['managed','detailed'].includes(data.profile.enabled_mode))});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,worker_health,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades),population_simulation:previewPopulationChange(data.settlement,data.upgrades,civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades).risk,!!data.settlement.simulation_enabled&&data.region_mode==='managed'&&!data.profile.paused&&['managed','detailed'].includes(data.profile.enabled_mode))});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
