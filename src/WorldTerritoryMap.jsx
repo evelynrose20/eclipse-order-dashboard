@@ -30,7 +30,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],networkNodes=[],networkSegments=[],mountains=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -39,7 +39,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setError('');setNotice('')},[region?.id]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
@@ -68,7 +68,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   setNotice(id==null?'Endpoint cleared.':'Route endpoint selected. Add bends or save the connection.');
  };
  const chooseEndpoint=id=>{if(routeStart==null||routeEnd!=null){setRouteStart(id);setRouteEnd(null);setNewRoutePoints([]);setNotice('Select the destination, then draw bends before saving.');return}if(Number(routeStart)===Number(id)){setRouteStart(null);return}setRouteEnd(id);setNotice('Endpoints selected. Draw bends on the map, then save.')};
- const editableRoute=currentRoute?(graphSelected?{region_id:Number(region.id),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:{region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}):null;
+ const editableRoute=currentRoute?(graphSelected?{region_id:Number(region.id),zone_id:Number(zoneId),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:{region_id:Number(region.id),zone_id:Number(zoneId),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}):null;
  const previewPoints=routeStart!=null&&routeEnd!=null&&pointForRef(routeStart)&&pointForRef(routeEnd)?[pointForRef(routeStart),...newRoutePoints,pointForRef(routeEnd)]:[];
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
  const segmentPts=r=>polyline(r,byId);
@@ -124,7 +124,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   if(!canEdit||busy||!mountainName.trim()||mountainPoints.length<2)return;
   setBusy(true);setError('');setNotice('');
   try{
-   await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),name:mountainName.trim(),points:mountainPoints}});
+   await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),name:mountainName.trim(),points:mountainPoints}});
    await reload();selectMountain('');setNotice('Mountain range saved.');
   }catch(e){setError(e.message||'Mountain range could not be saved.')}finally{setBusy(false)}
  }
@@ -169,7 +169,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   if(Number(id)<0){const node=networkNodes.find(n=>Number(n.id)===-Number(id)&&!n.settlement_id);if(!node)throw new Error('Selected junction is no longer on this map. Reload the region.');return Number(node.id)}
   const previous=networkNodes.find(n=>n.settlement_id!=null&&Number(n.settlement_id)===Number(id));
   if(previous)return Number(previous.id);
-  const data=await request('/world-admin/network/nodes',{method:'POST',body:{region_id:Number(region.id),settlement_id:Number(id)}});
+  const data=await request('/world-admin/network/nodes',{method:'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),settlement_id:Number(id)}});
   if(!data?.id)throw new Error('Unable to connect the settlement.');
   return Number(data.id);
  }
@@ -179,7 +179,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   try{
    const from=await endpointNode(routeStart),to=await endpointNode(routeEnd);
    if(from===to)throw new Error('A route must have two different endpoints.');
-   const saved=await request('/world-admin/network/segments',{method:'POST',body:{region_id:Number(region.id),from_node_id:from,to_node_id:to,route_type:routeType,route_name:routeName,waypoints:newRoutePoints}});
+   const saved=await request('/world-admin/network/segments',{method:'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),from_node_id:from,to_node_id:to,route_type:routeType,route_name:routeName,waypoints:newRoutePoints}});
    if(!saved?.id)throw new Error('The server did not confirm the new connection.');
    await reload();setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route saved on the existing map.');
   }catch(e){setError(e.message||'Unable to save this connection.')}finally{setBusy(false)}
@@ -208,7 +208,7 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
    if(snapped?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(snapped.id)))}
    return;
   }
-  const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
+  const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),zone_id:Number(zoneId),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
   if(data?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(data.id)))}
  }
  async function splitRoute(route,e){
