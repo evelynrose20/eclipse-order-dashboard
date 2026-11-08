@@ -15,6 +15,7 @@ const fmt=n=>Number(n||0).toLocaleString();
 const title=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,k=>k.toUpperCase());
 export default function SettlementUpgradesPanel({settlement,request,onChanged,materials=[],openChooser=false}){
  const [data,setData]=useState(null),[draft,setDraft]=useState(null),[addMenu,setAddMenu]=useState(Boolean(openChooser)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ useEffect(()=>{if(openChooser)setAddMenu(true)},[openChooser]);
  const root='/world-admin/settlements/'+settlement.id+'/upgrades';
  const load=async()=>{const r=await request(root);setData(r)};
  useEffect(()=>{setData(null);setDraft(null);load().catch(e=>setError(e.message||'Unable to load upgrades'))},[settlement.id]);
