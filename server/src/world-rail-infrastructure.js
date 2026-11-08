@@ -126,6 +126,8 @@ export async function handleRailInfrastructure(pool,req,path,actor){
    const [stations]=await db.execute('SELECT id,region_id,zone_id FROM world_rail_stations WHERE id IN (?,?)',[b.from_station_id,b.to_station_id]);
    if(stations.length!==2)return fail(400,'rail_link_station_missing');
    if(same(stations[0],stations[1].region_id,stations[1].zone_id))return fail(400,'rail_link_requires_distinct_zones');
+   const [previous]=await db.execute('SELECT id FROM world_rail_interzone_links WHERE ((from_station_id=? AND to_station_id=?) OR (from_station_id=? AND to_station_id=?)) AND id<>? LIMIT 1',[b.from_station_id,b.to_station_id,b.to_station_id,b.from_station_id,linkId||0]);
+   if(previous.length)return fail(409,'rail_link_already_exists');
    const from=Number(b.from_station_id),to=Number(b.to_station_id);
    const values=[from,to,b.name.trim(),b.status,b.bidirectional?1:0,b.freight_enabled?1:0,b.notes];
    if(req.method==='PUT'){
@@ -173,7 +175,7 @@ export async function handleRailInfrastructure(pool,req,path,actor){
   });
  }
  if(table==='platforms'){
-  if(b&&!platformFields(b))return fail(400,'invalid_rail_platform');
+  if(req.method!=='DELETE'&&!platformFields(b))return fail(400,'invalid_rail_platform');
   return tx(pool,async db=>{
    if(req.method==='DELETE'){
     const [r]=await db.execute('DELETE FROM world_rail_platforms WHERE id=?',[rowId]);
@@ -181,6 +183,8 @@ export async function handleRailInfrastructure(pool,req,path,actor){
     await audit(db,actor,'rail_platform_delete',rowId);return ok({saved:true});
    }
    const station=await stationIn(db,b.station_id);if(!station)return fail(404,'station_not_found');
+   const [duplicate]=await db.execute('SELECT id FROM world_rail_platforms WHERE station_id=? AND LOWER(code)=LOWER(?) AND id<>? LIMIT 1',[b.station_id,b.code.trim(),rowId||0]);
+   if(duplicate.length)return fail(409,'platform_code_already_exists');
    if(req.method==='PUT'){
     const [[old]]=await db.execute('SELECT station_id FROM world_rail_platforms WHERE id=?',[rowId]);
     if(!old)return fail(404,'platform_not_found');
