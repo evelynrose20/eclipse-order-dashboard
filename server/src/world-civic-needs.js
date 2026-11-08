@@ -53,7 +53,7 @@ async function context(db,id,lock=false,cycleDate=null){
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
  const [climate]=await climateForRegions(db,[region],cycleDate?new Date(cycleDate+'T12:00:00Z'):new Date());
  const tempF=climate.effective_weather.temperature_f;
- return {settlement,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
+ return {settlement,region_mode:region.simulation_mode,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
 export async function handleCivicNeeds(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
@@ -147,7 +147,8 @@ export async function handleCivicNeeds(pool,req,path,actor){
    const data=await context(db,id,commit,b.cycle_date);if(!data)return fail(404,'settlement_not_found');
    const report=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles);
    if(!commit)return ok({preview:report,committed:false});
-   if(!report.simulation_eligible||data.profile.paused||!data.settlement.simulation_enabled)return fail(409,'civic_simulation_not_enabled');
+   if(!report.simulation_eligible||data.profile.paused||!data.settlement.simulation_enabled||data.region_mode!=='managed')return fail(409,'civic_simulation_not_enabled');
+   if(data.profile.last_cycle_date&&b.cycle_date<=String(data.profile.last_cycle_date).slice(0,10))return fail(409,'civic_cycle_out_of_order');
    const [[old]]=await db.execute('SELECT id FROM world_civic_cycles WHERE settlement_id=? AND cycle_date=?',[id,b.cycle_date]);
    if(old)return fail(409,'civic_cycle_already_committed');
    // Consume each category deterministically by item code. Never draw from character/front inventory.
