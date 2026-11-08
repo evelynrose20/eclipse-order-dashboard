@@ -2,13 +2,13 @@
 
 ## Current system (migration 049)
 
-The old map railway construction, station icons, track switches and crossing management have been **retired from the user interface**. No map geometry is required for internal train services. Existing map railway tables (migrations 045–048) and previously saved tracks/facilities remain in MySQL as archived data; this rollout does **not** delete or migrate them into new services.
+The dedicated railway station icons, track-switch controls, crossings, and separate **Lay track** tool have been retired from the map. **Existing railway lines remain visible on the territory map**, with their original railway styling. The regular **Plan a route / Edit routes** tools retain a **Railway (map only)** route type for drawing and shaping decorative rail lines. No drawn map geometry is required for internal train services. Existing map railway tables (migrations 045–048) and previously saved tracks/facilities remain in MySQL; route geometry remains visible on the map; this rollout does **not** delete or migrate them into new services.
 
-In the dashboard sidebar, open **Industry & Logistics → Internal Rail Logistics** (train icon), alongside **Trade Routes**. This is a **command-only** workspace available to Domina and High Command, not the public trade-contract system. The map's roads, trails, waterways, skyways, settlements, and mountains remain unchanged.
+In the dashboard sidebar, open **Industry & Logistics → Internal Rail Logistics** (train icon), alongside **Trade Routes**. This is a **command-only** workspace available to Domina and High Command, not the public trade-contract system. The map's road, trail, railway, waterway and skyway lines, settlements, and mountains remain available.
 
 ### Stations tab
 
-Create a named internal railway station at an **Order-controlled settlement** or an **active Order-owned front** (not a personal front). Set its operating status (Planned, Operational, Closed), platform count (1–100), and descriptive notes. Stations are ordinary directory records and never appear as map markers. They have no rails, crossing signals, or geometry to edit. A station used by a service cannot be deleted until the services are dealt with.
+Create a named internal railway station at an **Order-controlled settlement** or an **active Order-owned front** (not a personal front). Set its operating status (Planned, Operational, Closed, Damaged), platform count (1–100), and descriptive notes. Stations are ordinary directory records and never appear as map markers. They have no rails, crossing signals, or geometry to edit. A station used by a service cannot be deleted until the services are dealt with.
 
 ### Rail Services tab
 
@@ -20,7 +20,7 @@ This phase is **operational scheduling and RP tracking only**: it does not autom
 
 ### Data retention / migration
 
-Migration `049_internal_rail_logistics.sql` creates additive tables for stations, services and train journeys. It does not remove legacy railway schema or old saved tracks. Run `npm run setup:local` after a database backup and pulling the latest `main` on the Windows host, then restart the Windows API service. All previously applied migrations (including 045–048) remain in place.
+Migration `049_internal_rail_logistics.sql` creates additive tables for stations, services and train journeys. Migration `050_internal_rail_damaged.sql` adds the **Damaged** station status safely to existing installations. It does not remove legacy railway schema or old saved tracks. Run `npm run setup:local` after a database backup and pulling the latest `main` on the Windows host, then restart the Windows API service. All previously applied migrations (including 045–048) remain in place.
 
 ### Acceptance checklist
 
@@ -30,5 +30,5 @@ Migration `049_internal_rail_logistics.sql` creates additive tables for stations
 - Dispatch; verify that the train badge advances and ETA updates.
 - Attempt a second dispatch before arrival; it should be refused.
 - Cancel the train or allow its ETA to pass; verify journey history persists across reload/restart.
-- Confirm that the territory map has no railway station badges, rail laying tab, switches or crossings editor.
+- Confirm that the territory map still shows railway lines and permits **Railway (map only)** editing through the normal route editor, while station badges, the Lay track tab, switches and crossings editor are absent.
 - Confirm old tracks and facility data were not deleted from MySQL and unrelated roads remain editable.
