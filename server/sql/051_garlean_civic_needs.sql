@@ -106,4 +106,17 @@ CREATE TABLE IF NOT EXISTS world_weather_events (
  FOREIGN KEY(created_by) REFERENCES accounts(id),
  INDEX ix_weather_event_region_dates(region_id,starts_on,ends_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS world_civic_shared_transfers (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ request_key CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ settlement_id BIGINT UNSIGNED NOT NULL,
+ material_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ quantity INT UNSIGNED NOT NULL,
+ actor_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_civic_shared_transfer(request_key),
+ FOREIGN KEY(settlement_id) REFERENCES world_settlements(id) ON DELETE CASCADE,
+ FOREIGN KEY(material_id) REFERENCES fc_materials(id),
+ FOREIGN KEY(actor_id) REFERENCES accounts(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT INTO schema_migrations(version) VALUES('051_garlean_civic_needs') ON DUPLICATE KEY UPDATE version=VALUES(version);
