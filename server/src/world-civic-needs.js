@@ -1,4 +1,4 @@
-import {effectiveWeather} from './garlean-climate.js';
+import {climateForRegions} from './world-region-climate.js';
 // Staff-controlled civilian ledger. Never touches player/front inventory.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -50,7 +50,9 @@ async function context(db,id,lock=false){
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code'+(lock?' FOR UPDATE':''),[id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
- const tempF=effectiveWeather(settlement).temperature_f;
+ const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
+ const [climate]=await climateForRegions(db,[region]);
+ const tempF=climate.effective_weather.temperature_f;
  return {settlement,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
 export async function handleCivicNeeds(pool,req,path,actor){
