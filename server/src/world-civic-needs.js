@@ -1,3 +1,4 @@
+import {advanceCivicTemplateProjects} from './world-civic-template-projects.js';
 import {civilianStorageCapacity,waterworksProduction} from './world-civic-building-templates.js';
 import {workerHealthCycle} from './world-worker-hazards.js';
 import {educationPreview} from './world-education.js';
@@ -208,6 +209,9 @@ export async function handleCivicNeeds(pool,req,path,actor){
      await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,cycle_key,actor_id) VALUES(?,?,?,?,?,?,?,?)',[id,item.item_code,kind,item.food_group||null,-delta,'Authorized civilian cycle',b.cycle_date,actor.id]);
     }
    }
+   const health=await workerHealthSnapshot(db,id);
+   const availableWorkers=Math.max(0,settlementDemographics(data.settlement).employed-health.sick_workers-health.injured_workers);
+   report.template_construction=await advanceCivicTemplateProjects(db,data.settlement,b.cycle_date,'order',availableWorkers);
    const remainingFoodDays=report.food_need>0?Math.max(0,(report.food_stock-report.food_used)/report.food_need):0;
    const varietyScore=Math.min(100,Math.round(report.food_groups_30d.length/Math.max(1,Number(data.profile.minimum_variety))*100));
    await db.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=?,population=? WHERE id=?',[Math.min(99999,remainingFoodDays),varietyScore,report.after_stability,report.after_unrest,population.population_after,id]);
