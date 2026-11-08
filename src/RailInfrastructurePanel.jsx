@@ -5,7 +5,11 @@ const stateLabel=s=>s.replaceAll('_',' ').replace(/^./,x=>x.toUpperCase());
 const routeReason={station_not_found:'Choose two saved railway stations.',stations_in_different_zones:'The two stations must belong to the same zone.',freight_platform_not_ready:'Both stations need operational freight platforms and handling capacity.',choose_distinct_stations:'Choose two different stations.',no_operational_rail_path:'No available rail route. Check junction switches, closed tracks and crossing states.'};
 const asNum=v=>Number(v);
 const blankStation=(region,zone)=>({region_id:Number(region),zone_id:Number(zone),node_id:'',name:'',status:'planned',freight_enabled:true,passenger_enabled:false,freight_capacity:0,notes:''});
-const blankPlatform=id=>({station_id:Number(id),code:'',kind:'freight',track_length:1,capacity:0,status:'planned'});
+const blankPlatform=(id,platforms=[])=>{
+ const existing=new Set(platforms.filter(p=>Number(p.station_id)===Number(id)).map(p=>String(p.code).toLowerCase()));
+ let index=1;while(existing.has('f'+index))index++;
+ return {station_id:Number(id),code:'F'+index,kind:'freight',track_length:1,capacity:10,status:'planned'};
+};
 const blankSwitch=()=>({node_id:'',entry_segment_id:'',exit_segment_id:'',status:'open',notes:''});
 const blankCross=(region,zone,p)=>({region_id:Number(region),zone_id:Number(zone),rail_segment_id:'',road_segment_id:'',name:'',map_x:p?.x??50,map_y:p?.y??50,control_type:'gated',status:'planned',notes:''});
 export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint,focus,onFocusHandled}){
@@ -34,11 +38,19 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  function start(kind,existing=null){
   setTab(kind);setError('');setMessage('');setRecord(existing);
   if(existing){setEditing({...existing});return}
-  setEditing(kind==='stations'?blankStation(regionId,zoneId):kind==='platforms'?blankPlatform(selectedStation?.id||stations[0]?.id||0):kind==='switches'?blankSwitch():blankCross(regionId,zoneId,point));
+  setEditing(kind==='stations'?blankStation(regionId,zoneId):kind==='platforms'?blankPlatform(selectedStation?.id||stations[0]?.id||0,platforms):kind==='switches'?blankSwitch():blankCross(regionId,zoneId,point));
  }
  function choose(kind,item){setTab(kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
  const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:crossings;
- const validStation=tab==='stations'?editing?.name?.trim()&&editing?.node_id: true;
+ const validation=()=>{
+  if(!editing)return '';
+  if(tab==='stations')return !editing.name?.trim()?'Enter a station name.':!Number(editing.node_id)?'Choose a rail-connected junction or settlement.':'';
+  if(tab==='platforms')return !Number(editing.station_id)?'Select a station before adding its platform.':!editing.code?.trim()?'Enter a platform code (for example F1).':!Number.isInteger(Number(editing.track_length))||Number(editing.track_length)<1?'Track length must be at least 1.':!Number.isInteger(Number(editing.capacity))||Number(editing.capacity)<0?'Platform capacity must be zero or more.':'';
+  if(tab==='switches')return !Number(editing.node_id)?'Choose a shared junction.':!Number(editing.entry_segment_id)||!Number(editing.exit_segment_id)?'Choose both tracks that meet at the junction.':Number(editing.entry_segment_id)===Number(editing.exit_segment_id)?'Choose two different tracks.':'';
+  if(tab==='crossings')return !Number(editing.rail_segment_id)||!Number(editing.road_segment_id)?'Choose both a railway and a road.':'';
+  return '';
+ };
+ const formError=validation();
  async function previewFreight(){
   if(!freightFrom||!freightTo||busy)return;
   setBusy(true);setError('');setFreightPreview(null);
@@ -53,6 +65,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  }
  async function save(){
   if(!editing||!canEdit||busy)return;
+  const invalid=validation();if(invalid){setError(invalid);return}
   const payload=tab==='stations'?{...editing,region_id:Number(regionId),zone_id:Number(zoneId),node_id:asNum(editing.node_id),freight_capacity:asNum(editing.freight_capacity),freight_enabled:!!editing.freight_enabled,passenger_enabled:!!editing.passenger_enabled}:
     tab==='platforms'?{...editing,station_id:asNum(editing.station_id),track_length:asNum(editing.track_length),capacity:asNum(editing.capacity)}:
     tab==='switches'?{...editing,node_id:asNum(editing.node_id),entry_segment_id:asNum(editing.entry_segment_id),exit_segment_id:asNum(editing.exit_segment_id)}:
@@ -91,6 +104,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
    <button type="button" disabled={!freightFrom||!freightTo||busy} onClick={previewFreight}><i className="fa-solid fa-route"/> Check route</button>
    {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+(routeReason[freightPreview.reason]||'This railway route is not available')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
   </div>}
+  {tab==='platforms'&&!stations.length&&<p className="wtm-rail-help">Create a railway station first. Platforms are facilities within a station, not separate points on the map.</p>}
   {tab==='stations'&&!stationNodes.length&&<p className="wtm-rail-help">Create a railway track between shared map nodes before adding a station. Stations attach to existing rail-connected nodes.</p>}
   {tab==='crossings'&&<p className="wtm-rail-help">Choose a railway and road, then click their intersection on the original map. Crossing status and control type can prevent future freight traversal.</p>}
   {tab==='switches'&&<p className="wtm-rail-help">Connect two railway segments to a shared junction first. Configure which track pair is open, closed or damaged; no train is dispatched automatically.</p>}
@@ -105,7 +119,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
      <label className="wide">Operational notes<textarea rows={2} maxLength={1200} value={editing.notes||''} onChange={e=>update('notes',e.target.value)}/></label>
     </>}
     {tab==='platforms'&&<>
-     <label>Station<select disabled={!!editing.id} value={editing.station_id||''} onChange={e=>update('station_id',e.target.value)}>{stations.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+     <label>Station<select disabled={!!editing.id} value={editing.station_id||''} onChange={e=>{const b=blankPlatform(Number(e.target.value),platforms);setEditing(old=>({...old,station_id:b.station_id,code:b.code}))}}>{stations.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
      <label>Platform code<input maxLength={30} value={editing.code||''} onChange={e=>update('code',e.target.value)}/></label>
      <label>Platform role<select value={editing.kind} onChange={e=>update('kind',e.target.value)}>{['freight','passenger','mixed','siding'].map(v=><option key={v}>{v}</option>)}</select></label>
      <label>Track length (relative units)<input type="number" min="1" max="1000000" value={editing.track_length??1} onChange={e=>update('track_length',e.target.value)}/></label>
@@ -129,7 +143,8 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
      <label>Status<select value={editing.status} onChange={e=>update('status',e.target.value)}>{stateOptions.map(v=><option key={v}>{stateLabel(v)}</option>)}</select></label>
      <label className="wide">Notes<input maxLength={500} value={editing.notes||''} onChange={e=>update('notes',e.target.value)}/></label>
     </>}
-    <div className="wtm-rail-actions wide"><button type="button" onClick={save} disabled={busy||tab==='stations'&&!validStation}><i className="fa-solid fa-floppy-disk"/> Save {tab.slice(0,-1)}</button><button type="button" onClick={()=>{setEditing(null);setRecord(null);onClearPoint?.()}} disabled={busy}>Cancel</button>{!!editing.id&&<button type="button" onClick={remove} disabled={busy}><i className="fa-solid fa-trash-can"/> Delete</button>}</div>
+    {formError&&<p className="wtm-rail-help wide" role="status">{formError}</p>}
+    <div className="wtm-rail-actions wide"><button type="button" onClick={save} disabled={busy||!!formError}><i className="fa-solid fa-floppy-disk"/> Save {tab.slice(0,-1)}</button><button type="button" onClick={()=>{setEditing(null);setRecord(null);onClearPoint?.()}} disabled={busy}>Cancel</button>{!!editing.id&&<button type="button" onClick={remove} disabled={busy}><i className="fa-solid fa-trash-can"/> Delete</button>}</div>
   </div>}
  </section>;
 }
