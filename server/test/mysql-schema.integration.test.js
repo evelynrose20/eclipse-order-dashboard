@@ -1,3 +1,4 @@
+import {advanceCivicTemplateProjects} from '../src/world-civic-template-projects.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -210,7 +211,31 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const newWall=await worldAdministrationRoute(admin,request('POST',defense),structurePath);
   assert.equal(newWall.status,200,JSON.stringify(newWall.body));
   const [[wallCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_settlement_upgrades WHERE settlement_id=? AND category='defense'",[emptyId]);
-  assert.equal(Number(wallCount.n),1);
+  assert.equal(Number(wallCount.n),1); 
+  // The same template-backed buildings are real projects, not editable free bonuses.
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ingot',1000) ON DUPLICATE KEY UPDATE quantity=GREATEST(quantity,1000)");
+  const selectedTemplate=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(selectedTemplate.status,200);
+  assert.ok(selectedTemplate.body.templates.some(t=>t.id==='granary'));
+  const granaryStart=await worldAdministrationRoute(admin,request('POST',{template_id:'granary'}),structurePath+'/from-template');
+  assert.equal(granaryStart.status,200,JSON.stringify(granaryStart.body));
+  const granaryId=granaryStart.body.upgrade_id;
+  const unbuiltStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(unbuiltStorage.body.storage_capacity.food,500,'unfinished granary cannot store extra food');
+  for(let tick=1;tick<=6;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-'+tick,'order',120);
+  const completedGranary=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(completedGranary.body.storage_capacity.food,750,'completed granary raises the food limit by 250');
+  assert.ok(completedGranary.body.upgrades.some(u=>Number(u.id)===Number(granaryId)&&u.status==='operational'));
+  const upgradeGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/improve');
+  assert.equal(upgradeGranary.status,200,JSON.stringify(upgradeGranary.body));
+  const upgradingStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(upgradingStorage.body.storage_capacity.food,750,'upgrading retains the previous working level');
+  for(let tick=1;tick<=10;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-upgrade-'+tick,'order',120);
+  const fullyUpgraded=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(fullyUpgraded.body.storage_capacity.food,1000,'level 2 granary holds 500 additional food');
+  const invalidFreeLevel=await worldAdministrationRoute(admin,request('PUT',{...building,id:granaryId,category:'food_storage',level:10,housing_bonus:0}),structurePath+'/'+granaryId);
+  assert.equal(invalidFreeLevel.status,409,'a template building cannot gain free levels through editable fields');
+
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
   const generatedCohorts=await worldAdministrationRoute(admin,request('GET'),'/world-admin/civic/'+mineId);
   assert.equal(generatedCohorts.status,200,JSON.stringify(generatedCohorts.body));
