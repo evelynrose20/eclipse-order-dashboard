@@ -40,8 +40,16 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[version]]=await db.execute('SELECT configuration,rules FROM world_industry_template_versions WHERE template_id=? AND version=?',[facility.template_id,facility.template_version]);
  const config=typeof version.configuration==='string'?JSON.parse(version.configuration):version.configuration;
  const rules=typeof version.rules==='string'?JSON.parse(version.rules):version.rules;
- const [zoneWorkforce]=await db.execute('SELECT workforce FROM world_settlements WHERE region_id=? AND zone_id=? AND controlling_faction_id <=> ?',[facility.region_id,facility.zone_id,facility.controlling_faction_id||null]);
- const workers=zoneWorkforce.reduce((n,r)=>n+Number(r.workforce||0),0);
+ // Only the last committed autonomous civic cycle certifies a workforce. Staff
+ // typing large numbers into the settlement editor cannot create factory labor.
+ const [zoneWorkforce]=await db.execute(`SELECT LEAST(500,FLOOR(s.population*0.6),h.workforce_after) AS workforce
+ FROM world_settlements s
+ JOIN world_settlement_sim_history h ON h.id=(
+  SELECT MAX(history.id) FROM world_settlement_sim_history history WHERE history.settlement_id=s.id
+ )
+ WHERE s.region_id=? AND s.zone_id=? AND s.controlling_faction_id <=> ?`,
+ [facility.region_id,facility.zone_id,facility.controlling_faction_id||null]);
+ const workers=zoneWorkforce.reduce((n,row)=>n+Math.max(0,Number(row.workforce||0)),0);
  const [otherFacilities]=await db.execute(`SELECT f.id,v.configuration FROM world_industry_facilities f
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_locations l ON l.id=f.location_id
