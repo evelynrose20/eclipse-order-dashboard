@@ -45,32 +45,41 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
  const chosenLabel=selectedTemplate?.name||kinds.find(x=>x[0]===chosen)?.[1]||'Structure';
  const effectText=x=>({housing_capacity:'housing places',defense:'defense',medical_access:'medical access',water_daily:'water units per cycle',food_capacity:'food storage units',insulation:'insulation',public_works:'public works',school_places:'student places'})[x]||title(x);
  const snapshot=x=>{try{return typeof x==='string'?JSON.parse(x):x||{}}catch{return {}}};
- const costFor=(t,level)=>({material:t?.material_id||'iron-ingot',units:Number(t?.material_per_level||0)*level,labor:Number(t?.construction_labor||0)*level,npc:Number(t?.npc_development_cost||0)*level});
- const commitProjectSupply=async project=>{
-  const remaining=Math.max(0,Number(project.material_required)-Number(project.committed_qty));
-  const amount=Number(contributionAmounts[project.id]||remaining);
+ const costFor=(t,level)=>({materials:(t?.materials?.length?t.materials:[{material_id:t?.material_id,units_per_level:t?.material_per_level}]).map(m=>({material_id:m.material_id,required_qty:Number(m.units_per_level||0)*level})),labor:Number(t?.construction_labor||0)*level,npc:Number(t?.npc_development_cost||0)*level});
+ const commitProjectSupply=async(project,need)=>{
+  const remaining=Math.max(0,Number(need.required_qty)-Number(need.committed_qty));
+  const key=project.id+':'+need.material_id;
+  const amount=Number(contributionAmounts[key]??remaining);
   if(!Number.isInteger(amount)||amount<1||amount>remaining){setError('Choose a quantity between 1 and the remaining requirement.');return}
   setBusy(true);setError('');setNotice('');
   try{
-   await request(root+'/projects/'+project.id+'/commit',{method:'POST',body:{quantity:amount}});
-   setContributionAmounts(v=>({...v,[project.id]:''}));
-   await load();
-   await onChanged?.();
-   setNotice('Materials committed to this construction project.');
-  }catch(e){setError(e.message||'Unable to commit project materials')}finally{setBusy(false)}
+   await request(root+'/projects/'+project.id+'/commit',{method:'POST',body:{material_id:need.material_id,quantity:amount}});
+   setContributionAmounts(v=>({...v,[key]:''}));
+   await load();await onChanged?.();
+   setNotice('Materials reserved for this construction project.');
+  }catch(e){setError(e.message||'Unable to commit construction supplies')}finally{setBusy(false)}
  };
  const projectSupplies=project=>{
-  const required=Number(project.material_required||0),committed=Number(project.committed_qty||0);
-  const remaining=Math.max(0,required-committed);
-  const available=Number((data.available_materials||[]).find(x=>x.material_id===project.material_id)?.quantity||0);
-  const amount=contributionAmounts[project.id]??String(Math.min(remaining,available));
+  const needs=project.needs||[];
+  const required=needs.reduce((n,line)=>n+Number(line.required_qty||0),0);
+  const committed=needs.reduce((n,line)=>n+Number(line.committed_qty||0),0);
+  const funded=needs.length>0&&needs.every(line=>Number(line.committed_qty)>=Number(line.required_qty));
   return <div className="wa-civic-project-supplies" key={project.id}>
    <div className="wa-industry-choice-heading"><strong>{project.project_kind==='build'?'Build':project.project_kind==='repair'?'Repair':'Upgrade'} · {data.upgrades.find(u=>Number(u.id)===Number(project.upgrade_id))?.name||'Building'} · Level {project.target_level}</strong><span>{project.status}</span></div>
-   <div className="wa-upgrade-details"><span>Required: {fmt(required)} {project.material_id}</span><span>Committed: {fmt(committed)}</span><span>Remaining: {fmt(remaining)}</span><span>Shared stock: {fmt(available)}</span><span>Labor: {fmt(project.progress)} / {fmt(project.labor_required)}</span></div>
+   <div className="wa-upgrade-details"><span>{needs.length} material types</span><span>{fmt(committed)} / {fmt(required)} total units committed</span><span>Labor: {fmt(project.progress)} / {fmt(project.labor_required)}</span></div>
    <div className="wa-civic-supply-progress" role="progressbar" aria-label="Construction materials committed" aria-valuemin={0} aria-valuemax={Math.max(1,required)} aria-valuenow={committed}><span style={{width:(required?Math.min(100,committed/required*100):100)+'%'}}/></div>
-   {project.status==='active'&&remaining>0&&<div className="wa-civic-supply-commit"><label>Commit from shared Order stock<input aria-label={'Material quantity for project '+project.id} type="number" min="1" max={remaining} step="1" value={amount} onChange={e=>setContributionAmounts(v=>({...v,[project.id]:e.target.value}))}/></label><button type="button" disabled={busy||available<1||Number(amount)<1||Number(amount)>Math.min(available,remaining)} onClick={()=>commitProjectSupply(project)}>Commit materials</button></div>}
-   {project.status==='active'&&remaining===0&&<p className="wa-npc-subtle">Fully supplied. Available workers advance the project during settlement simulation cycles.</p>}
-   {(data.contributions||[]).filter(c=>Number(c.project_id)===Number(project.id)).slice(0,5).map(c=><small key={c.id}>Committed {fmt(c.quantity)} {c.material_id} · {new Date(c.contributed_at).toLocaleDateString()}</small>)}
+   {needs.map(need=>{
+    const remaining=Math.max(0,Number(need.required_qty)-Number(need.committed_qty));
+    const stock=Number((data.available_materials||[]).find(x=>x.material_id===need.material_id)?.quantity||0);
+    const key=project.id+':'+need.material_id;
+    const amount=contributionAmounts[key]??String(Math.min(remaining,stock));
+    return <div className="wa-civic-need-line" key={need.material_id}>
+     <div className="wa-upgrade-details"><strong>{(data.available_materials||[]).find(x=>x.material_id===need.material_id)?.name||need.material_id}</strong><span>Required: {fmt(need.required_qty)}</span><span>Committed: {fmt(need.committed_qty)}</span><span>Remaining: {fmt(remaining)}</span><span>Shared stock: {fmt(stock)}</span></div>
+     {project.status==='active'&&remaining>0&&<div className="wa-civic-supply-commit"><label>Commit units<input aria-label={'Commit '+need.material_id+' for project '+project.id} type="number" min="1" max={remaining} step="1" value={amount} onChange={e=>setContributionAmounts(v=>({...v,[key]:e.target.value}))}/></label><button type="button" disabled={busy||stock<1||!Number.isInteger(Number(amount))||Number(amount)<1||Number(amount)>Math.min(stock,remaining)} onClick={()=>commitProjectSupply(project,need)}>Commit materials</button></div>}
+    </div>
+   })}
+   {project.status==='active'&&funded&&<p className="wa-npc-subtle">Every material is fully supplied. Available workers advance the project during settlement cycles.</p>}
+   {(data.contributions||[]).filter(c=>Number(c.project_id)===Number(project.id)).slice(0,8).map(c=><small key={c.id}>Committed {fmt(c.quantity)} {c.material_id} · {new Date(c.contributed_at).toLocaleDateString()}</small>)}
   </div>
  };
  const renderStructure=(u)=><article className="wa-upgrade-card" key={u.id}>
@@ -117,7 +126,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
        <div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className={'fa-solid '+categoryIcon[t.category]} aria-hidden="true"/></span>{chosen===t.id&&<span className="wa-industry-location-status is-secure">SELECTED</span>}</div>
        <strong>{t.name}</strong><span className="wa-industry-location-meta">{t.description}</span>
        <small>+{fmt(t.effect_per_level)} {effectText(t.effect_key)} per level</small>
-       <small>Construction: {fmt(t.material_per_level)} {t.material_id} · {fmt(t.construction_labor)} labor</small>
+       <small>Construction: {(t.materials||[{material_id:t.material_id,units_per_level:t.material_per_level}]).map(m=>fmt(m.units_per_level)+' '+m.material_id).join(' · ')} · {fmt(t.construction_labor)} labor</small>
       </button>)}
      </div>
      <footer className="wa-industry-attach-foot"><span>{chosen?chosenLabel+' selected':'Select a structure type to continue.'}</span><button type="button" className="wa-industry-primary" disabled={!chosen} onClick={()=>setStep('details')}>Continue to construction <i className="fa-solid fa-chevron-right" aria-hidden="true"/></button></footer>
