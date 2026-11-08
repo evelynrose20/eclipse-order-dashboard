@@ -29,6 +29,13 @@ export async function handleCivicExtras(pool,req,path,actor){
   if(req.method==='POST'&&entryId||req.method!=='POST'&&!entryId)return fail(400,'invalid_heating_asset_request');
   return tx(pool,async db=>{
    const [[site]]=await db.execute('SELECT id FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);if(!site)return fail(404,'settlement_not_found');
+   const [[cycled]]=await db.execute('SELECT id FROM world_settlement_sim_history WHERE settlement_id=? LIMIT 1',[settlementId]);
+   if(cycled){
+    if(req.method==='POST'||req.method==='DELETE')return fail(409,'simulated_heat_requires_funded_public_works');
+    const [[old]]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE id=? AND settlement_id=? FOR UPDATE',[entryId,settlementId]);
+    if(!old)return fail(404,'heating_asset_not_found');
+    if(Number(b.coverage_pct)>Number(old.coverage_pct)||Number(b.condition_pct)>Number(old.condition_pct)||old.status!=='operational'&&b.status==='operational')return fail(409,'simulated_heat_cannot_be_increased_manually');
+   }
    if(req.method==='DELETE'){
     const [deleted]=await db.execute('DELETE FROM world_civic_heating_assets WHERE id=? AND settlement_id=?',[entryId,settlementId]);
     if(!deleted.affectedRows)return fail(404,'heating_asset_not_found');
