@@ -40,12 +40,16 @@ SET @effect_col := (SELECT IF(COUNT(*)=0,'ALTER TABLE world_settlement_upgrades 
 PREPARE civic_effect_col FROM @effect_col; EXECUTE civic_effect_col; DEALLOCATE PREPARE civic_effect_col;
 SET @revision_col := (SELECT IF(COUNT(*)=0,'ALTER TABLE world_settlement_upgrades ADD COLUMN template_revision INT UNSIGNED NULL','DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_settlement_upgrades' AND column_name='template_revision');
 PREPARE civic_revision_col FROM @revision_col; EXECUTE civic_revision_col; DEALLOCATE PREPARE civic_revision_col;
+ALTER TABLE world_settlement_upgrades MODIFY COLUMN created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NULL;
 CREATE TABLE IF NOT EXISTS world_civic_building_projects (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  upgrade_id BIGINT UNSIGNED NOT NULL,
  settlement_id BIGINT UNSIGNED NOT NULL,
  template_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  target_level TINYINT UNSIGNED NOT NULL,
+ effect_snapshot JSON NOT NULL,
+ template_revision INT UNSIGNED NOT NULL,
+ created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NULL,
  status ENUM('active','completed','paused') NOT NULL DEFAULT 'active',
  progress INT UNSIGNED NOT NULL DEFAULT 0,
  labor_required INT UNSIGNED NOT NULL,
@@ -59,6 +63,7 @@ CREATE TABLE IF NOT EXISTS world_civic_building_projects (
  FOREIGN KEY(upgrade_id) REFERENCES world_settlement_upgrades(id) ON DELETE CASCADE,
  FOREIGN KEY(settlement_id) REFERENCES world_settlements(id) ON DELETE CASCADE,
  FOREIGN KEY(template_id) REFERENCES world_civic_building_templates(id),
+ FOREIGN KEY(created_by) REFERENCES accounts(id),
  INDEX ix_civic_project_settlement(settlement_id,status),
  UNIQUE KEY uq_civic_project_level(upgrade_id,target_level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
