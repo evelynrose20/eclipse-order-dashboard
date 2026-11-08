@@ -6,7 +6,8 @@ const kinds=[
  ['water','Waterworks','Improves fresh water access'],
  ['food_storage','Granaries','Improves food storage and logistics'],
  ['insulation','Weatherproofing','Improves protection against cold'],
- ['public_works','Public works','Improves settlement services']
+ ['public_works','Public works','Improves settlement services'],
+ ['school','School','Provides education and trained workers']
 ];
 const states=['planned','building','operational','damaged','destroyed'];
 const blank={name:'',category:'housing',status:'planned',condition_pct:100,level:1,housing_bonus:10,service_bonus:0,defense_bonus:0,notes:'',material_id:'',material_cost:0};
@@ -28,6 +29,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
  const sections=[
   {key:'housing',title:'Housing infrastructure',subtitle:'Residential buildings and available accommodation',icon:'fa-house',categories:['housing'],add:'Add housing'},
   {key:'defense',title:'Defensive infrastructure',subtitle:'Walls, watchtowers and fortifications',icon:'fa-shield-halved',categories:['defense'],add:'Add defenses'},
+  {key:'education',title:'Education',subtitle:'Schools and places for young residents',icon:'fa-graduation-cap',categories:['school'],add:'Add school'},
   {key:'services',title:'Civic infrastructure',subtitle:'Clinics, waterworks, granaries and public works',icon:'fa-city',categories:['clinic','water','food_storage','insulation','public_works'],add:'Add civic structure'}
  ];
  const beginCategory=(category)=>setDraft({...blank,category,housing_bonus:category==='housing'?10:0,defense_bonus:category==='defense'?10:0,service_bonus:!['housing','defense'].includes(category)?10:0});
@@ -59,7 +61,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
    <div className="wa-upgrades-header"><h3>{draft.id?'Manage':'Add'} structure</h3><button type="button" onClick={()=>setDraft(null)}>Close</button></div>
    <form onSubmit={e=>{e.preventDefault();const b={...draft,level:Number(draft.level),condition_pct:Number(draft.condition_pct),housing_bonus:Number(draft.housing_bonus),service_bonus:Number(draft.service_bonus),defense_bonus:Number(draft.defense_bonus),material_id:draft.material_id||null,material_cost:Number(draft.material_cost||0)};save(draft.id?'PUT':'POST',draft.id?'/'+draft.id:'',b,draft.id?'Structure updated.':'Structure added.')}} className="wa-fields">
     <label>Name<input required maxLength="120" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
-    <label>Category<select value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value,housing_bonus:e.target.value==='housing'?10:0,defense_bonus:e.target.value==='defense'?10:0,service_bonus:['clinic','water','food_storage','insulation','public_works'].includes(e.target.value)?10:0})}>{kinds.map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
+    <label>Category<select value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value,housing_bonus:e.target.value==='housing'?10:0,defense_bonus:e.target.value==='defense'?10:0,service_bonus:['clinic','water','food_storage','insulation','public_works','school'].includes(e.target.value)?10:0})}>{kinds.map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
     <label>State<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})}>{states.map(x=><option key={x} value={x}>{title(x)}</option>)}</select></label>
     <label>Level<input type="number" required min="1" max="20" step="1" value={draft.level} onChange={e=>setDraft({...draft,level:e.target.value})}/></label>
     <label>Condition %<input type="number" required min="0" max="100" step="1" value={draft.condition_pct} onChange={e=>setDraft({...draft,condition_pct:e.target.value})}/></label>
