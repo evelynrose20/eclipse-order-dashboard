@@ -66,7 +66,7 @@ export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,h
    if(!available||Number(available.quantity)<Number(p.material_required)){result.blocked.push(p.id);continue}
    await db.execute('UPDATE fc_material_stock SET quantity=quantity-? WHERE material_id=? AND quantity>=?',[p.material_required,p.material_id,p.material_required]);
    const [[stock]]=await db.execute('SELECT quantity FROM fc_material_stock WHERE material_id=?',[p.material_id]);
-   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[p.material_id,-Number(p.material_required),stock.quantity,'project',p.created_by,'Settlement building #'+p.id]);
+   await db.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,note) VALUES(?,?,?,?,?,?)',[p.material_id,-Number(p.material_required),stock.quantity,'upgrade',p.created_by,'Settlement building #'+p.id]);
    await db.execute('UPDATE world_civic_building_projects SET materials_paid=1 WHERE id=?',[p.id]);
   }
   const work=Math.min(capacity,Math.max(0,Math.ceil(capacity*.3)),Math.max(0,Number(p.labor_required)-Number(p.progress)),30);
