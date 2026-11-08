@@ -5,6 +5,10 @@ const bounded=n=>Math.min(100,Math.max(0,Math.floor(Number(n)||0)));
 export function schoolCapacity(upgrades=[]){
  return upgrades.reduce((sum,u)=>{
   if(u.category!=='school'||u.status!=='operational')return sum;
+  if(u.template_id){
+   const saved=typeof u.effect_snapshot==='string'?JSON.parse(u.effect_snapshot):u.effect_snapshot;
+   if(saved?.key==='school_places')return sum+Math.floor((Number(saved.per_level)||0)*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
+  }
   return sum+Math.floor(25*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
  },0);
 }
