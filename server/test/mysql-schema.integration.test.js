@@ -227,6 +227,24 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
  const importedRoute=await worldAdministrationRoute(admin,request('POST',{region_id:wrid}),'/world-admin/network/import');assert.equal(importedRoute.status,200,JSON.stringify(importedRoute.body));assert.equal(importedRoute.body.imported,1);
  const [imported]=await admin.execute("SELECT route_name,waypoints FROM world_route_segments WHERE route_name='Old trail'");assert.equal(imported.length,1);
  const [legacyLeft]=await admin.execute('SELECT id FROM world_map_routes WHERE region_id=?',[wrid]);assert.equal(legacyLeft.length,0);
+
+  // Split just one older smooth road into a durable shared junction.
+  const oldSmooth=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:mineId,to_settlement_id:portId,route_type:'road',route_name:'Old smooth road',waypoints:[{x:60,y:40}]}),'/world-admin/routes');
+  assert.equal(oldSmooth.status,200,JSON.stringify(oldSmooth.body));
+  const untouched=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_settlement_id:mineId,to_settlement_id:portId,route_type:'trail',route_name:'Untouched trail',waypoints:[]}),'/world-admin/routes');
+  assert.equal(untouched.status,200,JSON.stringify(untouched.body));
+  const smoothSplit=await worldAdministrationRoute(admin,request('POST',{x:60,y:40}),'/world-admin/network/legacy/'+oldSmooth.body.id+'/branch');
+  assert.equal(smoothSplit.status,200,JSON.stringify(smoothSplit.body));
+  const [smoothSegments]=await admin.execute("SELECT route_type FROM world_route_segments WHERE route_name='Old smooth road'");
+  assert.equal(smoothSegments.length,2);
+  assert.ok(smoothSegments.every(r=>r.route_type==='road'));
+  const [untouchedRows]=await admin.execute('SELECT id FROM world_map_routes WHERE id=?',[untouched.body.id]);
+  assert.equal(untouchedRows.length,1,'unrelated existing roads are untouched');
+  const joinedBranch=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,from_node_id:Number(smoothSplit.body.id),to_node_id:Number(branchNode.body.id),route_type:'road',route_name:'Connected branch',waypoints:[]}),'/world-admin/network/segments');
+  assert.equal(joinedBranch.status,200,JSON.stringify(joinedBranch.body));
+  const [joinedRoads]=await admin.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=?',[smoothSplit.body.id,smoothSplit.body.id]);
+  assert.equal(joinedRoads.length,3,'the junction joins both road halves and the new branch');
+
  const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
   assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
