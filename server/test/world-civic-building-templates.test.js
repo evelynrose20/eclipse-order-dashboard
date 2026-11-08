@@ -40,6 +40,8 @@ test('template recipe imposes bounded effort and prevents fake effect category',
  const t={name:'Granary',description:'Food store',category:'food_storage',effect_key:'food_capacity',effect_per_level:250,material_id:'iron-ingot',material_per_level:30,npc_development_cost:15,construction_labor:135,max_level:8,enabled:true};
  assert.equal(validateCivicTemplate(t),null);
  assert.equal(validateCivicTemplate({...t,effect_key:'housing_capacity'}),'invalid_civic_template');
+ assert.equal(validateCivicTemplate({...t,effect_per_level:5000,material_per_level:5,npc_development_cost:5}),'invalid_civic_template','templates cannot generate huge free capacity');
+ assert.equal(validateCivicTemplate({...t,material_per_level:0}),'invalid_civic_template','resources cannot be waived');
  assert.deepEqual(civicProjectCost(t,2),{material_id:'iron-ingot',material_required:60,labor_required:270,npc_development_cost:30});
 });
 test('NPC decisions choose building categories based on real shortages',()=>{
