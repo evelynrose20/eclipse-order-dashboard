@@ -29,3 +29,17 @@ test('one original cartographic editor handles shared junctions, smooth curves a
  assert.match(css,/\.wtm-junction-tools/);
  assert.match(css,/\.wtm-stage button\.wtm-junction/);
 });
+
+test('junctions are selectable, draggable and removable from the original map',async()=>{
+ const [map,css,api]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css'),load('server/src/world-route-network.js')]);
+ for(const fn of ['selectJunction','junctionPointerDown','junctionPointerMove','junctionPointerUp','saveJunction','deleteJunction'])assert.ok(map.includes(fn),fn);
+ for(const item of ['Save junction','Delete junction','CONNECTED SEGMENTS','Map X','Map Y','Rail switch'])assert.ok(map.includes(item),item);
+ assert.match(map,/mode==='view'\|\|mode==='link'/);
+ assert.match(map,/window\.confirm\(warning\)/);
+ assert.match(map,/delete_connected_segments:true/);
+ assert.match(api,/explicit_segment_removal_required/);
+ assert.match(api,/network_node_remove_with_segments/);
+ assert.match(css,/\.wtm-stage \.wtm-pin-icon > i\.fa-solid/);
+ assert.match(css,/transform:none!important/);
+ assert.match(css,/\.wtm-junction-editor/);
+});
