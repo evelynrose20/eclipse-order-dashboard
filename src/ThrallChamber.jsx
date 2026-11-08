@@ -18,6 +18,7 @@ export default function ThrallChamber({request}){
  const [seatChoice,setSeatChoice]=useState('');
  const load=async()=>setData(await request('/thralls/chamber'));
  useEffect(()=>{let active=true;request('/thralls/chamber').then(d=>{if(active)setData(d)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
+ useEffect(()=>{const tick=setInterval(()=>{request('/thralls/chamber').then(setData).catch(()=>{})},60000);return()=>clearInterval(tick)},[]);
  const canManage=Boolean(data?.can_manage);
  async function act(action,fields={},message='Updated'){
   if(!canManage)return;
