@@ -99,3 +99,8 @@
 .wa-industry-editor footer .wa-accent{background:#766045;color:#fff4e7}
 @media(max-width:960px){.wa-industry-layout{grid-template-columns:1fr}.wa-industry-directory{max-height:250px}.wa-industry-rule-layout{grid-template-columns:1fr}.wa-industry-summary,.wa-industry-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.wa-industry-heading{flex-wrap:wrap}.wa-industry-tabs button{flex:1 1 40%}.wa-industry-form{grid-template-columns:1fr}.wa-industry-recipe{grid-template-columns:1fr}.wa-industry-history{grid-template-columns:1fr}.wa-industry-form .wide{grid-column:1}.wa-industry-projects{grid-template-columns:minmax(0,1fr)}}
+
+.wa-industry-scopes{display:flex;gap:6px;flex-wrap:wrap}
+.wa-industry-scopes button{display:flex;align-items:center;gap:7px;border:1px solid #475b69;border-radius:5px;padding:9px 12px;background:#20313e;color:#afc2cd;font-size:12px}
+.wa-industry-scopes button.active{border-color:#cbad7d;background:#3c4144;color:#f5e5c9}
+.wa-industry-scopes small{padding:2px 6px;border-radius:30px;background:#364957;color:#c8d5dc}
