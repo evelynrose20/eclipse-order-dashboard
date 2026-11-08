@@ -34,22 +34,25 @@ export async function civicTemplateCatalogRoute(pool,req,path,actor){
  });
 }
 export function effectSnapshot(t){return JSON.stringify({key:t.effect_key,per_level:Number(t.effect_per_level)});}
-export async function beginCivicTemplateProject(db,{settlement,template,upgrade=null,owner_kind='order',actorId=null,npcDevelopment=0}){
- if(!template?.enabled)return fail(409,'template_disabled');
- const target=upgrade?Number(upgrade.level)+1:1;
- if(target>Number(template.max_level))return fail(409,'maximum_building_level');
+export async function beginCivicTemplateProject(db,{settlement,template,upgrade=null,owner_kind='order',actorId=null,npcDevelopment=0,repair=false}){
+ if(!template||(!template.enabled&&!repair))return fail(409,'template_disabled');
+ if(repair&&(!upgrade||upgrade.status!=='damaged'))return fail(409,'repair_requires_damaged_building');
+ const target=repair?Number(upgrade.level):upgrade?Number(upgrade.level)+1:1;
+ if(!repair&&target>Number(template.max_level))return fail(409,'maximum_building_level');
  if(upgrade){
   const [[pending]]=await db.execute("SELECT id FROM world_civic_building_projects WHERE upgrade_id=? AND status IN ('active','paused') LIMIT 1",[upgrade.id]);
   if(pending)return fail(409,'building_project_already_active');
  }
- const cost=civicProjectCost(template,target);
+ const baseCost=civicProjectCost(template,target);
+ const factor=repair?Math.max(.2,(100-Number(upgrade.condition_pct||0))/100)*.5:1;
+ const cost=repair?{...baseCost,material_required:Math.max(1,Math.ceil(baseCost.material_required*factor)),labor_required:Math.max(10,Math.ceil(baseCost.labor_required*factor)),npc_development_cost:Math.max(1,Math.ceil(baseCost.npc_development_cost*factor))}:baseCost;
  if(owner_kind==='npc'&&npcDevelopment<cost.npc_development_cost)return fail(409,'npc_development_insufficient');
  let upgradeId=upgrade?.id;
  if(!upgradeId){
   const [created]=await db.execute("INSERT INTO world_settlement_upgrades(settlement_id,name,category,status,condition_pct,level,housing_bonus,service_bonus,defense_bonus,notes,material_id,material_cost,construction_progress,created_by,template_id,effect_snapshot,template_revision) VALUES(?,?,?,'building',100,1,0,0,0,'',NULL,0,0,?,?,?,?)",[settlement.id,template.name,template.category,actorId,template.id,effectSnapshot(template),template.revision]);
   upgradeId=created.insertId;
  }
- const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision,created_by) VALUES(?,?,?,?,'active',0,?,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,cost.labor_required,owner_kind==='order'?cost.material_id:null,owner_kind==='order'?cost.material_required:0,owner_kind==='npc'?1:0,cost.npc_development_cost,owner_kind,effectSnapshot(template),template.revision,actorId]);
+ const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,project_kind,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision,created_by) VALUES(?,?,?,?,?,'active',0,?,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,repair?'repair':upgrade?'upgrade':'build',cost.labor_required,owner_kind==='order'?cost.material_id:null,owner_kind==='order'?cost.material_required:0,owner_kind==='npc'?1:0,cost.npc_development_cost,owner_kind,repair?JSON.stringify(parse(upgrade.effect_snapshot)):effectSnapshot(template),repair?upgrade.template_revision:template.revision,actorId]);
  return ok({project_id:p.insertId,upgrade_id:upgradeId,target_level:target,cost});
 }
 export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,healthyWorkers){
@@ -78,8 +81,9 @@ export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,h
   if(done){
    const [[building]]=await db.execute('SELECT id,level,status FROM world_settlement_upgrades WHERE id=? FOR UPDATE',[p.upgrade_id]);
    if(!building)return fail(409,'building_missing');
-   if(Number(p.target_level)>1&&Number(building.level)!==Number(p.target_level)-1)return fail(409,'building_level_changed');
-   await db.execute("UPDATE world_settlement_upgrades SET level=?,status='operational',condition_pct=100,construction_progress=100,effect_snapshot=?,template_revision=? WHERE id=?",[p.target_level,parse(p.effect_snapshot)?JSON.stringify(parse(p.effect_snapshot)):p.effect_snapshot,p.template_revision,p.upgrade_id]);
+   if(p.project_kind==='repair'&&Number(building.level)!==Number(p.target_level))return fail(409,'building_level_changed');
+   if(p.project_kind!=='repair'&&Number(p.target_level)>1&&Number(building.level)!==Number(p.target_level)-1)return fail(409,'building_level_changed');
+   await db.execute("UPDATE world_settlement_upgrades SET level=?,status='operational',condition_pct=100,construction_progress=100,effect_snapshot=?,template_revision=? WHERE id=?",[p.target_level,JSON.stringify(parse(p.effect_snapshot)),p.template_revision,p.upgrade_id]);
    result.completed.push({id:p.id,upgrade_id:p.upgrade_id,level:p.target_level});
   }else{
    if(Number(p.target_level)===1)await db.execute('UPDATE world_settlement_upgrades SET construction_progress=? WHERE id=?',[Math.min(99,Math.floor(next/Number(p.labor_required)*100)),p.upgrade_id]);
