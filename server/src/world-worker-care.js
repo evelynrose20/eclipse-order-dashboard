@@ -1,3 +1,4 @@
+import {upgradeEffects} from './world-settlement-upgrades.js';
 import {settlementDemographics} from './world-demographics.js';
 import {workerHealthCycle} from './world-worker-hazards.js';
 import {educationPreview} from './world-education.js';
@@ -14,12 +15,14 @@ export async function advanceWorkerHealth(db,settlement,upgrades,education,optio
  const d=settlementDemographics(settlement);
  const clinics=upgrades.filter(x=>x.category==='clinic'&&x.status==='operational').length;
  // Existing NPC civilian medical service can stand in for a completed hospital.
- const clinic_count=clinics||(Number(settlement.medical_access)>=65?1:0);
+ const effects=upgradeEffects(upgrades);
+ const effectiveMedicalAccess=Math.min(100,Math.max(0,Number(settlement.medical_access||0)+Number(effects.service_by_category.clinic||0)+Number(effects.infrastructure.medical_access||0)));
+ const clinic_count=clinics||(effectiveMedicalAccess>=65?1:0);
  const state=education||educationPreview(settlement,upgrades);
  const outcome=workerHealthCycle({
   ...prior,population:settlement.population,employed:d.employed,temperature_f:options.temperature_f,
   heating_coverage:options.heating_coverage??settlement.heating_coverage,
-  medical_access:settlement.medical_access,clinic_count,trained_workers:state.trained_workers,
+  medical_access:effectiveMedicalAccess,clinic_count,trained_workers:state.trained_workers,
   medicine_units:options.medicine_available,weather:options.weather
  });
  await db.execute('UPDATE world_settlement_worker_health SET sick_workers=?,injured_workers=?,last_care_cycle=?,last_illness_cycle=? WHERE settlement_id=?',[outcome.sick_workers,outcome.injured_workers,cycleKey,cycleKey,settlement.id]);
