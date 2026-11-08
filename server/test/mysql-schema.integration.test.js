@@ -1094,7 +1094,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(refineryTemplate.status,200,JSON.stringify(refineryTemplate.body));
   const invalidLoop=await makeTemplate('ci-loop','Circular test refinery','refinery',{...refiningConfig,inputs:[{item_id:'ceruleum-fuel',qty:1}],outputs:[{item_id:'ceruleum-crude',qty:1}],byproducts:[]});
   assert.equal(invalidLoop.status,409,'circular industry input/output dependencies must be rejected');
-  const factorySettings={settlement_id:mineId,template_id:oreTemplate.body.template_id,name:'CI Reclaimed Voidsent Mine',status:'captured',level:1,capacity_pct:100,workforce:12,heat_available:0,power_available:20,cycle_mode:'manual',cycle_cadence:'normal',notes:'Liberation scenario'};
+  const factorySettings={settlement_id:mineId,template_id:oreTemplate.body.template_id,name:'CI Reclaimed Voidsent Mine',status:'captured',level:1,capacity_pct:100,workforce:9,heat_available:0,power_available:20,cycle_mode:'manual',cycle_cadence:'normal',notes:'Liberation scenario'};
   const mineFacility=await industryRoute(admin,request('POST',factorySettings),'/world-admin/industry/facilities',staff);
   assert.equal(mineFacility.status,200,JSON.stringify(mineFacility.body));
   const mineFacilityId=Number(mineFacility.body.id);
