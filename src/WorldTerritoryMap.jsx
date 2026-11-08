@@ -1,11 +1,10 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
-import RailInfrastructurePanel from './RailInfrastructurePanel.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
 import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
-export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway'],['skyway','Air route'],['waterway','Water route']];
+export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['skyway','Air route'],['waterway','Water route']];
 const iconFor=name=>'fa-solid fa-'+(ICON_OPTIONS.find(x=>x[0]===name)?.[2]||(/^(fa-[a-z0-9-]{1,29})$/.test(name||'')?name.slice(3):'house'));
 const pct=n=>Math.min(100,Math.max(0,Math.round(Number(n)*100)/100));
 const routeClass=type=>'wa-route-'+(type||'road');
@@ -42,10 +41,10 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
- const [railPoint,setRailPoint]=useState(null),[railFocus,setRailFocus]=useState(null);
+
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setRailPoint(null);setRailFocus(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
@@ -278,7 +277,6 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
-  if(mode==='rail'){setRailPoint(p);return}
   if(junctionAction==='place'&&(drawing||mode==='bend')){void createJunction(p);return}
   if(ignoreClickRef.current){ignoreClickRef.current=false;return}
   if(drawing&&routeStart!=null&&routeEnd!=null&&!traceTrack)setNewRoutePoints(old=>{
@@ -366,7 +364,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['track','Lay track'],['rail','Railway'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setJunctionAction('');setNotice('');if(id==='track')setRouteType('rail');if(id==='mountains')selectMountain('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['mountains','Mountains']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setJunctionAction('');setNotice('');if(id==='track')setRouteType('rail');if(id==='mountains')selectMountain('')}}>{name}</button>)}
    </div>
 
   </div>}
@@ -424,7 +422,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </svg>
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
 
-   {canEdit&&mode==='rail'&&<div className="wtm-route-draw" onClick={e=>{e.stopPropagation();mapClick(e)}} aria-label="Choose a crossing point on the existing map"/>}
+
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-draw" title="Click to add a mountain point" onClick={e=>{const p=coords(e);if(p)setMountainPoints(old=>old.length<16?[...old,p]:old)}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
@@ -433,26 +431,6 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
-   {(mode==='view'||mode==='rail')&&railStations.map(station=>{
-    const node=graphNodes.get(Number(station.node_id)),p=graphPoint(node);
-    if(!p)return null;
-    const position=p.x>84?'rail-flip-x ':'';
-    const vertical=p.y<15?'rail-flip-y ':'';
-    return <button type="button" key={'station-'+station.id} className={'wtm-rail-symbol station '+position+vertical} data-state={station.status} data-freight={station.freight_ready?'ready':'unavailable'} style={{left:p.x+'%',top:p.y+'%'}} title={station.name+' · '+station.status+' · '+(station.freight_ready?'Freight ready':'Freight unavailable')} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'stations',id:station.id})}} aria-label={'Edit railway station '+station.name}>
-     <i className="fa-solid fa-train" aria-hidden="true"/>
-    </button>
-   })}
-   {(mode==='view'||mode==='rail')&&railSwitches.map(sw=>{
-    const p=graphPoint(graphNodes.get(Number(sw.node_id)));
-    if(!p)return null;
-    return <button type="button" key={'switch-'+sw.id} className={'wtm-rail-symbol switch '+(p.x>84?'rail-flip-x ':'')+(p.y>86?'rail-flip-y ':'')} data-state={sw.status} style={{left:p.x+'%',top:p.y+'%'}} title={'Rail switch #'+sw.id+' · '+sw.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailFocus({kind:'switches',id:sw.id})}} aria-label={'Edit rail switch '+sw.id}>
-     <i className="fa-solid fa-code-branch" aria-hidden="true"/>
-    </button>
-   })}
-   {(mode==='view'||mode==='rail')&&railCrossings.map(c=><button type="button" key={'crossing-'+c.id} className="wtm-rail-symbol crossing" data-state={c.status} style={{left:Number(c.map_x)+'%',top:Number(c.map_y)+'%'}} title={(c.name||'Rail crossing')+' · '+c.status} onClick={e=>{e.stopPropagation();setMode('rail');setRailPoint({x:Number(c.map_x),y:Number(c.map_y)});setRailFocus({kind:'crossings',id:c.id})}} aria-label={'Edit rail crossing '+(c.name||c.id)}>
-    <i className="fa-solid fa-road-barrier" aria-hidden="true"/>
-   </button>)}
-   {mode==='rail'&&railPoint&&<span className="wtm-rail-position" style={{left:railPoint.x+'%',top:railPoint.y+'%'}}/>}
    {!displayed.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
   </div>
@@ -476,7 +454,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </div>
    {attachedSegments.length>0&&<p className="wtm-junction-warning">Deleting this junction also deletes its {attachedSegments.length} connected route segment{attachedSegments.length===1?'':'s'}. Moving or renaming preserves all connections.</p>}
   </section>}
-  {canEdit&&mode==='rail'&&<RailInfrastructurePanel regionId={region.id} zoneId={zoneId} nodes={networkNodes} segments={networkSegments} legacyRoutes={routes} settlements={displayed} stations={railStations} platforms={railPlatforms} switches={railSwitches} crossings={railCrossings} allStations={allRailStations} links={railLinks} zones={allZones} regions={allRegions} canEdit={canEdit} request={request} onSaved={reload} point={railPoint} focus={railFocus} onFocusHandled={()=>setRailFocus(null)} onClearPoint={()=>setRailPoint(null)}/>}
+
   {canEdit&&(drawing||mode==='bend')&&<section className="wtm-route-editor" aria-label="Route construction and railway editor">
    <div className="wtm-route-heading"><strong>ROUTE NETWORK EDITOR</strong><span>{drawing?(mode==='track'?'LAY A RAILWAY':'PLAN A NEW CONNECTION'):'MODIFY EXISTING CONNECTIONS'}</span></div>
    <div className="wtm-route-grid">
