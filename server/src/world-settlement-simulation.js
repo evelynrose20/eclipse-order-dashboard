@@ -43,6 +43,22 @@ export function npcProjectChoice(site,openProject){
 }
 const projectNames={housing:'Residential quarter',defenses:'Perimeter defenses',clinic:'Civic clinic',waterworks:'Waterworks',market:'Market district'};
 const projectDuration=kind=>kind==='housing'?100:kind==='defenses'?120:90;
+export function npcEverydayStory(site,key,temperature){
+ const population=Number(site.population||0);
+ if(!population)return {event:'idle',headline:'The uninhabited outpost awaits new settlers'};
+ const hash=[...String(key)+String(site.id)].reduce((n,c)=>(n*33+c.charCodeAt(0))%9973,19);
+ if(hash%4!==0)return {event:'routine',headline:'Everyday life continued through the settlement'};
+ const stories=temperature<25?[
+  'Neighbors organized a small winter warming gathering',
+  'Local workers cleared snow from community paths',
+  'Civic volunteers inspected heating shelters'
+ ]:[
+  'Local merchants held a modest market day',
+  'Residents organized repairs to shared pathways',
+  'Apprentices helped maintain local workshops'
+ ];
+ return {event:'community',headline:stories[hash%stories.length]};
+}
 
 async function ensureNpcRows(pool){
  // No seed settlements: only existing, explicitly NPC-controlled sites are eligible.
@@ -63,7 +79,9 @@ async function applyNpcCycle(db,site,state,now,key,weather){
  const workforce=Math.min(nextPopulation,Math.max(0,beforeJobs===targetJobs?beforeJobs:beforeJobs+step));
  const stability=clamp(beforeStability+(outcome.shortages.length?-2:1)),unrest=clamp(Number(site.unrest)+(outcome.shortages.length?2:-1));
  const [[project]]=await db.execute("SELECT * FROM world_npc_construction WHERE settlement_id=? AND status='building' ORDER BY id LIMIT 1 FOR UPDATE",[site.id]);
- let development=Number(state.development_points)+Math.max(3,workforce*.16),event='routine',headline='Settlement services continued operating';
+ let development=Number(state.development_points)+Math.max(3,workforce*.16);
+ const ambient=npcEverydayStory(site,key,weather);
+ let event=ambient.event,headline=ambient.headline;
  if(arrival.arrivals){event='arrivals';headline=arrival.arrivals+' new resident'+(arrival.arrivals===1?'':'s')+' settled in '+site.name}
  if(outcome.shortages.length){event='shortage';headline='Residents report '+outcome.shortages.join(', ')+' shortages'}
  let updates={};
@@ -78,7 +96,10 @@ async function applyNpcCycle(db,site,state,now,key,weather){
    if(project.kind==='waterworks')updates.housing=clamp(Number(site.housing)+7);
    await db.execute("UPDATE world_npc_construction SET progress=100,status='completed',finished_on=? WHERE id=?",[dateOf(now),project.id]);
    event='construction';headline=project.name+' completed';development=Math.max(0,development-15);
-  }else await db.execute('UPDATE world_npc_construction SET progress=? WHERE id=?',[progress,project.id]);
+  }else{
+   await db.execute('UPDATE world_npc_construction SET progress=? WHERE id=?',[progress,project.id]);
+   if([25,50,75].some(mark=>Number(project.progress)<mark&&progress>=mark)&&event!=='shortage'){event='construction';headline=project.name+' reached '+progress+'% completion'}
+  }
  }else{
   const choice=npcProjectChoice(site,null);
   if(choice&&development>=10){
@@ -87,6 +108,7 @@ async function applyNpcCycle(db,site,state,now,key,weather){
    if(event==='routine'){event='construction';headline=projectNames[choice]+' construction began'}
   }
  }
+ if(arrival.arrivals&&[10,25,50,100,250,500,1000,2500,5000].some(mark=>pop<mark&&nextPopulation>=mark)&&event!=='shortage'){event='milestone';headline=site.name+' reached '+nextPopulation+' residents'}
  const report={origin:'npc',temperature_f:weather,population_before:pop,population_after:nextPopulation,workforce_before:beforeJobs,workforce_after:workforce,arrivals:arrival.arrivals,shortages:outcome.shortages,consumption:outcome.consumption,production:outcome.production,project_event:event,stability_before:beforeStability,stability_after:stability};
  await db.execute('UPDATE world_settlements SET population=?,workforce=?,civil_stability=?,unrest=?,housing_capacity=COALESCE(?,housing_capacity),security_score=COALESCE(?,security_score),medical_access=COALESCE(?,medical_access),food_access=COALESCE(?,food_access),housing=COALESCE(?,housing) WHERE id=?',[nextPopulation,workforce,stability,unrest,updates.housing_capacity??null,updates.security_score??null,updates.medical_access??null,updates.food_access??null,updates.housing??null,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=?,food_units=?,water_units=?,fuel_units=?,medicine_units=?,development_points=? WHERE settlement_id=?',[key,outcome.next.food,outcome.next.water,outcome.next.fuel,outcome.next.medicine,round(development),site.id]);
