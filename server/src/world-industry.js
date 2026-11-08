@@ -83,12 +83,12 @@ export async function industryRoute(pool,req,path,actor){
  if(path==='/world-admin/industry/facilities'&&req.method==='POST'){
   const b=await body(req);if(!validFacility(b))return fail(400,'invalid_facility');
   return atomicIndustry(pool,async db=>{
-   const [[site]]=await db.execute('SELECT id,population,workforce FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
+   const [[site]]=await db.execute('SELECT id,population,workforce,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
    const [[template]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? AND archived=0',[b.template_id]);
    if(!site||!template)return fail(404,'site_or_template_not_found');
    const [[assigned]]=await db.execute('SELECT COALESCE(SUM(workforce),0) AS n FROM world_industry_facilities WHERE settlement_id=?',[b.settlement_id]);
    if(Number(assigned.n)+b.workforce>Number(site.workforce))return fail(409,'facility_workers_exceed_settlement');
-   const [r]=await db.execute('INSERT INTO world_industry_facilities(settlement_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.settlement_id,b.template_id,template.current_version,b.name.trim(),b.status,b.level,b.capacity_pct,b.workforce,b.heat_available,b.power_available,b.cycle_mode,b.cycle_cadence,b.notes,actor.id]);
+   const [r]=await db.execute('INSERT INTO world_industry_facilities(settlement_id,owner_faction_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.settlement_id,site.controlling_faction_id||null,b.template_id,template.current_version,b.name.trim(),b.status,b.level,b.capacity_pct,b.workforce,b.heat_available,b.power_available,b.cycle_mode,b.cycle_cadence,b.notes,actor.id]);
    await audit(db,actor.id,'industry',r.insertId,'facility_create',b.name);return ok({id:r.insertId});
   });
  }
@@ -101,6 +101,17 @@ export async function industryRoute(pool,req,path,actor){
    if(Number(assigned.n)-Number((await db.execute('SELECT workforce FROM world_industry_facilities WHERE id=?',[id]))[0][0].workforce)+b.workforce>Number(f.settlement_workforce))return fail(409,'facility_workers_exceed_settlement');
    await db.execute('UPDATE world_industry_facilities SET name=?,level=?,capacity_pct=?,workforce=?,heat_available=?,power_available=?,cycle_mode=?,cycle_cadence=?,notes=? WHERE id=?',[b.name.trim(),b.level,b.capacity_pct,b.workforce,b.heat_available,b.power_available,b.cycle_mode,b.cycle_cadence,b.notes,id]);
    await audit(db,actor.id,'industry',id,'facility_settings',b.cycle_mode);return ok({saved:true});
+  });
+ }
+ if((match=/^\\/world-admin\\/industry\\/facilities\\/(\\d+)\\/reconcile$/.exec(path))&&req.method==='POST'){
+  const id=Number(match[1]);
+  return atomicIndustry(pool,async db=>{
+   const [[f]]=await db.execute('SELECT f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[id]);
+   if(!f)return fail(404,'facility_not_found');
+   if((f.owner_faction_id||null)===(f.controlling_faction_id||null))return fail(409,'facility_ownership_unchanged');
+   await db.execute("UPDATE world_industry_facilities SET owner_faction_id=?,status='captured',cycle_mode='off',last_cycle_key=NULL WHERE id=?",[f.controlling_faction_id||null,id]);
+   await audit(db,actor.id,'industry',id,'facility_control_review',String(f.owner_faction_id||'unclaimed')+' -> '+String(f.controlling_faction_id||'unclaimed'));
+   return ok({saved:true,status:'captured',production:'off'});
   });
  }
  if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/transition$/.exec(path))&&req.method==='POST'){
