@@ -43,7 +43,7 @@ export function civicSimulationPreview(settlement,profile,stock,history,temperat
  const shift=afterGrace&&eligible?Math.max(-3,Math.min(2,Math.round((40-metrics.pressure)/22))):0;
  return {...metrics,food_used:eligible?Math.min(metrics.food_stock,metrics.food_need):0,fuel_used:eligible?Math.min(metrics.fuel_stock,metrics.heat_need):0,before_stability:beforeStability,after_stability:clamp(beforeStability+shift),before_unrest:beforeUnrest,after_unrest:clamp(beforeUnrest-shift),grace_active:!afterGrace,simulation_eligible:eligible};
 }
-async function context(db,id,lock=false){
+async function context(db,id,lock=false,cycleDate=null){
  const [[settlement]]=await db.execute('SELECT s.*,r.temperature_c,r.weather_mode,r.weather FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?'+(lock?' FOR UPDATE':''),[id]);
  if(!settlement)return null;
  const [[profile]]=await db.execute('SELECT * FROM world_civic_profiles WHERE settlement_id=?',[id]);
@@ -51,7 +51,7 @@ async function context(db,id,lock=false){
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[id]);
  const [[cycles]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[id]);
  const [[region]]=await db.execute('SELECT * FROM world_regions WHERE id=?',[settlement.region_id]);
- const [climate]=await climateForRegions(db,[region]);
+ const [climate]=await climateForRegions(db,[region],cycleDate?new Date(cycleDate+'T12:00:00Z'):new Date());
  const tempF=climate.effective_weather.temperature_f;
  return {settlement,profile:{...settingsDefault,...profile},stock,history,cycles:Number(cycles.n),temperature_f:tempF};
 }
@@ -123,7 +123,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
  if(['POST'].includes(req.method)&&['preview','run'].includes(section)){
   const b=await body(req);if(!b||!/^\d{4}-\d{2}-\d{2}$/.test(b.cycle_date)||Number.isNaN(Date.parse(b.cycle_date+'T00:00:00Z')))return fail(400,'invalid_cycle_date');
   const preview=async(db,commit)=>{
-   const data=await context(db,id,commit);if(!data)return fail(404,'settlement_not_found');
+   const data=await context(db,id,commit,b.cycle_date);if(!data)return fail(404,'settlement_not_found');
    const report=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles);
    if(!commit)return ok({preview:report,committed:false});
    if(!report.simulation_eligible||data.profile.paused||!data.settlement.simulation_enabled)return fail(409,'civic_simulation_not_enabled');
