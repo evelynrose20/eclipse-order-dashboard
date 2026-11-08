@@ -93,6 +93,9 @@ updated: 2026-11-07
 - [ ] Regular shipments, emergency aid, faction support agreements and custom trade contracts.
 - [ ] In-transit inventory and destination receipt; no double-spending or double delivery.
 - [ ] Weather disruptions and DM-created convoy events.
+- [ ] trade between settlements for food.
+- [ ] Heat needing ceruleum
+- [ ] Insulation needing to be made at industry
 
 ## P5 — Military forces
 
