@@ -60,37 +60,13 @@ test('original map lets users connect settlements and saved junctions, including
  assert.match(map,/wtm-mountains/);
 });
 
-test('railway map icons are compact Font Awesome badges that do not cover editable junctions',async()=>{
- const [map,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/rail-infrastructure-panel.css')]);
- assert.match(map,/mode==='view'\|\|mode==='rail'/);
- assert.match(map,/rail-flip-x/);
- assert.match(map,/rail-flip-y/);
- assert.match(map,/fa-solid fa-train/);
- assert.match(map,/fa-solid fa-code-branch/);
- assert.match(map,/fa-solid fa-road-barrier/);
- assert.match(css,/button\.wtm-rail-symbol\.station/);
- assert.match(css,/border-radius:50%!important/);
- assert.match(css,/font-size:10px!important/);
- assert.match(css,/--rail-signal/);
- assert.doesNotMatch(css,/width:27px;height:27px/);
+test('cartographic map keeps roads but no longer shows train stations or rail construction',async()=>{
+ const [map,admin,local]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/WorldAdministration.jsx'),load('src/LocalWorkspace.jsx')]);
+ assert.doesNotMatch(map,/RailInfrastructurePanel|wtm-rail-symbol|\['track','Lay track'\]|\['rail','Railway'\]/);
+ assert.match(map,/Plan a route/);
+ assert.match(map,/Edit routes/);
+ assert.match(map,/Mountains/);
+ assert.match(admin,/networkSegments\.filter\(e=>e\.route_type!=='rail'/);
+ assert.match(local,/InternalRail/);
 });
 
-test('rail laying uses the existing map and permits shaping, snapping and undo before save',async()=>{
- const [map,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css')]);
- assert.match(map,/\['track','Lay track'\]/);
- assert.match(map,/const drawing=mode==='link'\|\|mode==='track'/);
- assert.match(map,/draftWaypointDown/);
- assert.match(map,/draftWaypointMove/);
- assert.match(map,/draftWaypointUp/);
- assert.match(map,/mode==='track'\?'rail':routeType/);
- assert.match(map,/setNewRoutePoints\(old=>\{/);
- assert.match(map,/insertRouteBend\(old,start,end,p\)/);
- assert.match(map,/Branch from route/);
- assert.match(map,/Straighten/);
- assert.match(map,/Reverse/);
- assert.match(map,/Save railway/);
- assert.doesNotMatch(map,/junctionAction!=='split'.*wtm-route-draw/);
- assert.match(css,/wtm-track-preview/);
- assert.match(css,/wtm-draft-handle/);
- assert.match(css,/wtm-track-steps/);
-});
