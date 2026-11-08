@@ -7,7 +7,8 @@ const blankStation=(region,zone)=>({region_id:Number(region),zone_id:Number(zone
 const blankPlatform=id=>({station_id:Number(id),code:'',kind:'freight',track_length:1,capacity:0,status:'planned'});
 const blankSwitch=()=>({node_id:'',entry_segment_id:'',exit_segment_id:'',status:'open',notes:''});
 const blankCross=(region,zone,p)=>({region_id:Number(region),zone_id:Number(zone),rail_segment_id:'',road_segment_id:'',name:'',map_x:p?.x??50,map_y:p?.y??50,control_type:'gated',status:'planned',notes:''});
-export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint}){
+export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint}){
+ const [oldRoute,setOldRoute]=useState('');
  const [tab,setTab]=useState('stations'),[record,setRecord]=useState(null),[editing,setEditing]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const zoneNodes=nodes.filter(n=>Number(n.zone_id)===Number(zoneId)),zoneSegments=segments.filter(e=>Number(e.zone_id)===Number(zoneId));
  const rails=zoneSegments.filter(e=>e.route_type==='rail'),roads=zoneSegments.filter(e=>['road','trail'].includes(e.route_type));
@@ -28,6 +29,12 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  function choose(kind,item){setTab(kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
  const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:crossings;
  const validStation=tab==='stations'?editing?.name?.trim()&&editing?.node_id: true;
+ async function promote(){
+  if(!oldRoute||!canEdit||busy)return;
+  setBusy(true);setError('');setMessage('');
+  try{await request('/world-admin/network/legacy/'+oldRoute+'/promote',{method:'POST',body:{}});await onSaved?.();setOldRoute('');setMessage('Selected older route now supports station and crossing connections. Its bends and type were preserved.')}
+  catch(e){setError(e?.message||'Unable to connect the older route.')}finally{setBusy(false)}
+ }
  async function save(){
   if(!editing||!canEdit||busy)return;
   const payload=tab==='stations'?{...editing,region_id:Number(regionId),zone_id:Number(zoneId),node_id:asNum(editing.node_id),freight_capacity:asNum(editing.freight_capacity),freight_enabled:!!editing.freight_enabled,passenger_enabled:!!editing.passenger_enabled}:
@@ -57,6 +64,10 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
    </button>)}
    <button className="wtm-rail-new" type="button" disabled={!canEdit||busy||tab==='stations'&&!stationNodes.length||tab==='platforms'&&!stations.length||tab==='switches'&&!rails.length||tab==='crossings'&&(!rails.length||!roads.length)} onClick={()=>start(tab)}><i className="fa-solid fa-plus"/> Add {tab.slice(0,-1)}</button>
   </div>
+  {!!legacyRoutes.length&&<div className="wtm-rail-import">
+   <label>Older route to connect<select value={oldRoute} onChange={e=>setOldRoute(e.target.value)}><option value="">Choose a single existing road or railway</option>{legacyRoutes.map(r=><option key={r.id} value={r.id}>{r.route_name||('Route '+r.id)} · {r.route_type}</option>)}</select></label>
+   <button type="button" disabled={!canEdit||!oldRoute||busy} onClick={promote}><i className="fa-solid fa-link"/> Enable rail infrastructure on selected route</button>
+  </div>}
   {tab==='stations'&&!stationNodes.length&&<p className="wtm-rail-help">Create a railway track between shared map nodes before adding a station. Stations attach to existing rail-connected nodes.</p>}
   {tab==='crossings'&&<p className="wtm-rail-help">Choose a railway and road, then click their intersection on the original map. Crossing status and control type can prevent future freight traversal.</p>}
   {tab==='switches'&&<p className="wtm-rail-help">Connect two railway segments to a shared junction first. Configure which track pair is open, closed or damaged; no train is dispatched automatically.</p>}
