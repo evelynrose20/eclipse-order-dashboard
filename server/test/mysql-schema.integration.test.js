@@ -318,7 +318,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal((await preview()).body.available,true);
   const closeSwitch=await worldAdministrationRoute(admin,request('PUT',{...turnout,status:'closed'}),'/world-admin/rail/switches/'+switchAdded.body.id);
   assert.equal(closeSwitch.status,200);assert.equal((await preview()).body.available,false);
-  const reopen=await worldAdministrationRoute(admin,request('PUT',turnout),'/world-admin/rail/switches/'+switchAdded.body.id);assert.equal(reopen.status,200);
+  const railReopened=await worldAdministrationRoute(admin,request('PUT',turnout),'/world-admin/rail/switches/'+switchAdded.body.id);assert.equal(railReopened.status,200);
   const crossingBase={region_id:wrid,zone_id:newZoneId,rail_segment_id:Number(t1.body.id),road_segment_id:Number(localZoneRoad.body.id),name:'Watch crossing',map_x:25,map_y:50,control_type:'gated',status:'planned',notes:''};
   const crossing=await worldAdministrationRoute(admin,request('POST',crossingBase),'/world-admin/rail/crossings');
   assert.equal(crossing.status,200,JSON.stringify(crossing.body));
