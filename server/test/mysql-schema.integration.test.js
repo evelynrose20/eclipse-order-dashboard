@@ -197,8 +197,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const aid=await worldAdministrationRoute(admin,request('POST',relief),'/world-admin/civic/'+mineId+'/aid');
   assert.equal(aid.status,200,JSON.stringify(aid.body));
   const dispatchPath='/world-admin/civic/'+mineId+'/aid/'+aid.body.id+'/dispatch';
-  const dispatched=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-08'}),dispatchPath);
-  assert.equal(dispatched.status,200,JSON.stringify(dispatched.body));
+  const civilianAidDispatch=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-08'}),dispatchPath);
+  assert.equal(civilianAidDispatch.status,200,JSON.stringify(civilianAidDispatch.body));
   const duplicateAid=await worldAdministrationRoute(admin,request('POST',{due_date:'2026-11-08'}),dispatchPath);
   assert.equal(duplicateAid.status,200);
   assert.equal(duplicateAid.body.already_dispatched,true);
