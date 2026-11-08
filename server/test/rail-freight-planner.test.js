@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {freightReady,planRailFreight,handleRailInfrastructure} from '../src/world-rail-infrastructure.js';
+import {freightReady,planRailFreight,planRailFreightNetwork,handleRailInfrastructure} from '../src/world-rail-infrastructure.js';
 const zone=1,region=1;
 const origin={id:10,region_id:region,zone_id:zone,node_id:1,name:'Mine',status:'operational',freight_enabled:true,freight_capacity:100};
 const dest={...origin,id:11,node_id:4,name:'Depot'};
@@ -52,4 +52,27 @@ test('railway facility UI stays within original map and uses Font Awesome',async
  for(const name of ['world_rail_stations','world_rail_platforms','world_rail_switches','world_rail_crossings'])assert.ok(schema.includes(name),name);
  assert.match(setup,/047_rail_infrastructure\.sql/);
  assert.doesNotMatch(map,/WorldNetworkEditor/);
+});
+
+test('cross-zone freight requires an explicitly operational interzone station link',()=>{
+ const remote={...dest,id:12,node_id:800,region_id:9,zone_id:40,name:'Distant Depot'};
+ const remotePlatform={station_id:12,status:'operational',kind:'freight',capacity:30};
+ const stations=[origin,dest,remote],ready=[...platforms,remotePlatform];
+ const args={originId:10,destinationId:12,stations,platforms:ready,segments,nodes:[],switches:[junction],crossings:[],links:[]};
+ assert.equal(planRailFreightNetwork(args).reason,'no_interzone_rail_path');
+ const link={id:2,from_station_id:11,to_station_id:12,status:'operational',freight_enabled:true,bidirectional:true};
+ const good=planRailFreightNetwork({...args,links:[link]});
+ assert.equal(good.available,true);
+ assert.deepEqual(good.link_ids,[2]);
+ assert.deepEqual(good.segment_ids,[100,101]);
+ assert.equal(planRailFreightNetwork({...args,links:[{...link,status:'closed'}]}).available,false);
+ assert.equal(planRailFreightNetwork({...args,links:[{...link,freight_enabled:false}]}).available,false);
+ assert.equal(planRailFreightNetwork({...args,links:[{...link,bidirectional:false}],originId:12,destinationId:10}).available,false);
+});
+test('cross-zone links can traverse several regions through operational stations',()=>{
+ const intermediate={...origin,id:20,node_id:900,zone_id:7,region_id:7};
+ const final={...dest,id:21,node_id:901,zone_id:8,region_id:8};
+ const links=[{id:1,from_station_id:10,to_station_id:20,status:'operational',freight_enabled:true,bidirectional:true},{id:2,from_station_id:20,to_station_id:21,status:'operational',freight_enabled:true,bidirectional:true}];
+ const stations=[origin,intermediate,final],platforms=[{station_id:10,status:'operational',kind:'freight',capacity:10},{station_id:20,status:'operational',kind:'freight',capacity:10},{station_id:21,status:'operational',kind:'freight',capacity:10}];
+ assert.deepEqual(planRailFreightNetwork({originId:10,destinationId:21,stations,platforms,segments:[],nodes:[],switches:[],crossings:[],links}).link_ids,[1,2]);
 });
