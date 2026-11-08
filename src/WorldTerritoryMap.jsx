@@ -55,6 +55,18 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
  const pointsForRoute=(r,waypoints=normalizeWaypoints(r))=>r?.from_node_id?graphPoints(r,waypoints):r?polyline({...r,waypoints},byId):[];
  const pointForRef=id=>id==null?null:Number(id)<0?graphPoint(graphNodes.get(-Number(id))):(()=>{const site=byId.get(Number(id));return site?{x:Number(site.map_x),y:Number(site.map_y)}:null})();
  const labelForRef=id=>id==null?'Choose endpoint':Number(id)<0?(graphNodes.get(-Number(id))?.name||'Junction #'+(-Number(id))):(byId.get(Number(id))?.name||'Unknown place');
+ // Route endpoints are site IDs (positive) or saved junction IDs (negative).
+ // This stable representation also powers the accessible selectors below.
+ const endpointOptions=[...displayed.map(site=>({value:String(site.id),label:site.name,kind:'site'})),...networkNodes.filter(n=>!n.settlement_id).map(n=>({value:String(-Number(n.id)),label:(n.name||'Junction #'+n.id)+(n.node_kind==='rail_switch'?' · rail switch':''),kind:'junction'}))];
+ const routeEndpoint=(id)=>id==null?'':String(id);
+ const chooseRouteEndpoint=(side,value)=>{
+  const id=value===''?null:Number(value);
+  if(side==='from'){setRouteStart(id);setRouteEnd(previous=>previous===id?null:previous);}
+  else {setRouteEnd(id);}
+  setNewRoutePoints([]);
+  setError('');
+  setNotice(id==null?'Endpoint cleared.':'Route endpoint selected. Add bends or save the connection.');
+ };
  const chooseEndpoint=id=>{if(routeStart==null||routeEnd!=null){setRouteStart(id);setRouteEnd(null);setNewRoutePoints([]);setNotice('Select the destination, then draw bends before saving.');return}if(Number(routeStart)===Number(id)){setRouteStart(null);return}setRouteEnd(id);setNotice('Endpoints selected. Draw bends on the map, then save.')};
  const editableRoute=currentRoute?(graphSelected?{region_id:Number(region.id),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:{region_id:Number(region.id),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}):null;
  const previewPoints=routeStart!=null&&routeEnd!=null&&pointForRef(routeStart)&&pointForRef(routeEnd)?[pointForRef(routeStart),...newRoutePoints,pointForRef(routeEnd)]:[];
@@ -154,8 +166,8 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   finally{setBusy(false)}
  }
  async function endpointNode(id){
-  if(Number(id)<0)return -Number(id);
-  const previous=networkNodes.find(n=>Number(n.settlement_id)===Number(id));
+  if(Number(id)<0){const node=networkNodes.find(n=>Number(n.id)===-Number(id)&&!n.settlement_id);if(!node)throw new Error('Selected junction is no longer on this map. Reload the region.');return Number(node.id)}
+  const previous=networkNodes.find(n=>n.settlement_id!=null&&Number(n.settlement_id)===Number(id));
   if(previous)return Number(previous.id);
   const data=await request('/world-admin/network/nodes',{method:'POST',body:{region_id:Number(region.id),settlement_id:Number(id)}});
   if(!data?.id)throw new Error('Unable to connect the settlement.');
@@ -167,13 +179,14 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   try{
    const from=await endpointNode(routeStart),to=await endpointNode(routeEnd);
    if(from===to)throw new Error('A route must have two different endpoints.');
-   await request('/world-admin/network/segments',{method:'POST',body:{region_id:Number(region.id),from_node_id:from,to_node_id:to,route_type:routeType,route_name:routeName,waypoints:newRoutePoints}});
+   const saved=await request('/world-admin/network/segments',{method:'POST',body:{region_id:Number(region.id),from_node_id:from,to_node_id:to,route_type:routeType,route_name:routeName,waypoints:newRoutePoints}});
+   if(!saved?.id)throw new Error('The server did not confirm the new connection.');
    await reload();setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route saved on the existing map.');
   }catch(e){setError(e.message||'Unable to save this connection.')}finally{setBusy(false)}
  }
  async function createJunction(p){
   const candidate=networkNodes.find(n=>{const at=graphPoint(graphNodes.get(Number(n.id)));return at&&Math.hypot(at.x-p.x,at.y-p.y)<2});
-  if(candidate){setNotice('A connection point already exists here. Choose it as your endpoint.');setJunctionAction('');return}
+  if(candidate){setNotice('Junction selected as the start of your new route.');setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(candidate.id)));return}
   if(displayed.some(site=>Math.hypot(Number(site.map_x)-p.x,Number(site.map_y)-p.y)<2)){setNotice('Choose the settlement directly when planning a route.');setJunctionAction('');return}
   const nearest=networkSegments.map(edge=>{
    const line=graphPoints(edge);
@@ -182,17 +195,17 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
   }).sort((a,b)=>a.distance-b.distance)[0];
   if(nearest&&nearest.distance<2){
    const snapped=await mutation('/world-admin/network/segments/'+nearest.edge.id+'/split','POST',p,'Junction snapped to the existing route.');
-   if(snapped?.id)setJunctionAction('');
+   if(snapped?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(snapped.id)))}
    return;
   }
   const data=await mutation('/world-admin/network/nodes','POST',{region_id:Number(region.id),x:p.x,y:p.y,node_kind:routeType==='rail'?'rail_switch':'junction',name:''},'Junction placed. Select it to connect a route.');
-  if(data?.id)setJunctionAction('');
+  if(data?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(data.id)))}
  }
  async function splitRoute(route,e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
   const result=await mutation('/world-admin/network/segments/'+route.id+'/split','POST',p,'Shared junction inserted. Plan a route from it to create a branch.');
-  if(result?.id){setJunctionAction('');setMode('link');chooseEndpoint(-Number(result.id))}
+  if(result?.id){setJunctionAction('');setMode('link');chooseRouteEndpoint('from',String(-Number(result.id)))}
  }
 
  function selectJunction(n){
@@ -379,7 +392,15 @@ export default function WorldTerritoryMap({region,settlements,routes=[],networkN
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
     <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{mode==='link'?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
    </div>
-   <p className="wtm-route-help">{mode==='link'?'Select two settlements or junctions on this map, add optional bends and save. To branch from a road, use Branch from route first.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
+   {mode==='link'&&<div className="wtm-route-endpoint-pickers">
+    <label>From — place or junction<select aria-label="Route starting endpoint" value={routeEndpoint(routeStart)} onChange={e=>chooseRouteEndpoint('from',e.target.value)}>
+     <option value="">Choose starting location</option>{endpointOptions.map(option=><option key={option.kind+'-from-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
+    </select></label>
+    <label>To — place or junction<select aria-label="Route destination endpoint" value={routeEndpoint(routeEnd)} onChange={e=>chooseRouteEndpoint('to',e.target.value)}>
+     <option value="">Choose destination</option>{endpointOptions.filter(option=>option.value!==routeEndpoint(routeStart)).map(option=><option key={option.kind+'-to-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
+    </select></label>
+   </div>}
+   <p className="wtm-route-help">{mode==='link'?'Choose two settlements or junctions on the map or using the endpoint selectors. Click the map to add smooth bends, then Save new route. Junctions are real shared connection points.':'Choose a road or railway in this same editor. Click to insert a bend at the nearest segment and drag its handles; saving preserves the original curved style.'}</p>
    <div className="wtm-junction-tools">
     <button type="button" className={junctionAction==='place'?'active':''} disabled={busy} onClick={()=>{setJunctionAction(v=>v==='place'?'':'place');setNotice('Click on the same map to place a junction.');}}><i className="fa-solid fa-location-dot"/> Place junction</button>
     <button type="button" className={junctionAction==='split'?'active':''} disabled={busy||!networkSegments.length} onClick={()=>{setJunctionAction(v=>v==='split'?'':'split');setNotice('Click an existing route directly to create a shared junction.');}}><i className="fa-solid fa-code-branch"/> Branch from route</button>
