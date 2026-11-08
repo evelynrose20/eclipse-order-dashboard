@@ -9,7 +9,7 @@ async function tx(pool,fn){const db=await pool.getConnection();try{await db.begi
 export async function climateForRegions(pool,regions,date=new Date()){
  const [profiles]=await pool.execute('SELECT * FROM world_region_climate_profiles');
  const [events]=await pool.execute('SELECT * FROM world_weather_events WHERE ends_on>=DATE_SUB(UTC_DATE(),INTERVAL 30 DAY) ORDER BY starts_on DESC,id DESC');
- return regions.map(r=>({...r,climate_profile:profiles.find(p=>Number(p.region_id)===Number(r.id))||null,weather_events:events.filter(e=>Number(e.region_id)===Number(r.id)),effective_weather:null})).map(r=>({...r,effective_weather:effectiveWeather(r,date)}));
+ return regions.map(r=>({...r,climate_profile:(()=>{const p=profiles.find(p=>Number(p.region_id)===Number(r.id));return p?{...p,monthly_f:typeof p.monthly_f==='string'?JSON.parse(p.monthly_f):p.monthly_f}:null})(),weather_events:events.filter(e=>Number(e.region_id)===Number(r.id)),effective_weather:null})).map(r=>({...r,effective_weather:effectiveWeather(r,date)}));
 }
 export async function handleRegionClimate(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
