@@ -221,6 +221,20 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const granaryStart=await worldAdministrationRoute(admin,request('POST',{template_id:'granary'}),structurePath+'/from-template');
   assert.equal(granaryStart.status,200,JSON.stringify(granaryStart.body));
   const granaryId=granaryStart.body.upgrade_id;
+  const granaryFundPath=structurePath+'/projects/'+granaryStart.body.project_id+'/commit';
+  const insufficientGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:999999}),granaryFundPath);
+  assert.equal(insufficientGranaryFund.status,409,'project refuses material overfunding');
+  const firstGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:10}),granaryFundPath);
+  assert.equal(firstGranaryFund.status,200,JSON.stringify(firstGranaryFund.body));
+  assert.equal(firstGranaryFund.body.remaining_qty,20);
+  await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-unfunded-granary','order',120);
+  const stillUnfunded=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(Number(stillUnfunded.body.projects.find(p=>Number(p.id)===Number(granaryStart.body.project_id)).progress),0,'partially funded construction cannot consume labor');
+  const remainingGranaryFund=await worldAdministrationRoute(admin,request('POST',{quantity:20}),granaryFundPath);
+  assert.equal(remainingGranaryFund.status,200,JSON.stringify(remainingGranaryFund.body));
+  assert.equal(remainingGranaryFund.body.fully_funded,true);
+  const repeatedFunding=await worldAdministrationRoute(admin,request('POST',{quantity:1}),granaryFundPath);
+  assert.equal(repeatedFunding.status,409,'fully funded projects cannot debit more stock');
   const unbuiltStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(unbuiltStorage.body.storage_capacity.food,500,'unfinished granary cannot store extra food');
   for(let tick=1;tick<=6;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-'+tick,'order',120);
@@ -229,6 +243,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.ok(completedGranary.body.upgrades.some(u=>Number(u.id)===Number(granaryId)&&u.status==='operational'));
   const upgradeGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/improve');
   assert.equal(upgradeGranary.status,200,JSON.stringify(upgradeGranary.body));
+  const upgradeFunding=await worldAdministrationRoute(admin,request('POST',{quantity:60}),structurePath+'/projects/'+upgradeGranary.body.project_id+'/commit');
+  assert.equal(upgradeFunding.status,200,JSON.stringify(upgradeFunding.body));
   const upgradingStorage=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(upgradingStorage.body.storage_capacity.food,750,'upgrading retains the previous working level');
   for(let tick=1;tick<=10;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-upgrade-'+tick,'order',120);
@@ -241,6 +257,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(stormAffected.body.storage_capacity.food,600,'damaged granary loses storage capacity until repaired');
   const repairGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/repair');
   assert.equal(repairGranary.status,200,JSON.stringify(repairGranary.body));
+  const repairFunding=await worldAdministrationRoute(admin,request('POST',{quantity:repairGranary.body.cost.material_required}),structurePath+'/projects/'+repairGranary.body.project_id+'/commit');
+  assert.equal(repairFunding.status,200,JSON.stringify(repairFunding.body));
   for(let tick=1;tick<=5;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-repair-'+tick,'order',120);
   const repaired=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(repaired.body.storage_capacity.food,1000,'repair restores storage without creating an unearned new level');
