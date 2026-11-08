@@ -27,11 +27,12 @@ async function summary(pool){
  const [templates]=await pool.execute('SELECT t.id,t.name,t.slug,t.category,t.current_version,t.archived,v.configuration,v.rules FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version ORDER BY t.name');
  const [facilities]=await pool.execute(`SELECT f.*,COALESCE(s.name,site.name) AS settlement_name,
  COALESCE(s.region_id,site.region_id) AS region_id,COALESCE(s.zone_id,site.zone_id) AS zone_id,
- COALESCE(s.controlling_faction_id,site.controlling_faction_id) AS controlling_faction_id,
+ COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id,
  COALESCE(s.population,0) AS population,t.name AS template_name,t.category AS template_category,
  v.configuration AS template_configuration,v.rules AS template_rules
  FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_sites site ON site.id=f.site_id
+ LEFT JOIN world_zones z ON z.id=site.zone_id
  JOIN world_industry_templates t ON t.id=f.template_id
  JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version
  ORDER BY f.id DESC`);
@@ -41,7 +42,7 @@ async function summary(pool){
  const [cycles]=await pool.execute('SELECT facility_id,cycle_key,cycle_date,operations,configuration_version FROM world_industry_cycles ORDER BY created_at DESC LIMIT 100');
  const [ledger]=await pool.execute('SELECT facility_id,item_id,delta,balance_after,action,reference_key,created_at FROM world_industry_ledger ORDER BY id DESC LIMIT 150');
  const [settlements]=await pool.execute('SELECT id,name,controlling_faction_id,region_id,zone_id,population,workforce FROM world_settlements ORDER BY name');
- const [sites]=await pool.execute('SELECT * FROM world_industry_sites ORDER BY name');
+ const [sites]=await pool.execute('SELECT site.*,z.controlling_faction_id AS controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id ORDER BY site.name');
  const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
  const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');
  const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
@@ -110,7 +111,7 @@ export async function industryRoute(pool,req,path,actor){
   return atomicIndustry(pool,async db=>{
    let loc;
    if(b.site_id){
-    [[loc]]=await db.execute('SELECT id,controlling_faction_id FROM world_industry_sites WHERE id=? FOR UPDATE',[b.site_id]);
+    [[loc]]=await db.execute('SELECT site.id,z.controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id WHERE site.id=? FOR UPDATE',[b.site_id]);
    }else{
     [[loc]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
    }
@@ -141,7 +142,7 @@ export async function industryRoute(pool,req,path,actor){
  if((match=/^\/world-admin\/industry\/facilities\/(\d+)\/reconcile$/.exec(path))&&req.method==='POST'){
   const id=Number(match[1]);
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT f.owner_faction_id,COALESCE(s.controlling_faction_id,site.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id WHERE f.id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT f.owner_faction_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
    if((f.owner_faction_id||null)===(f.controlling_faction_id||null))return fail(409,'facility_ownership_unchanged');
    await db.execute("UPDATE world_industry_facilities SET owner_faction_id=?,status='captured',cycle_mode='off',last_cycle_key=NULL WHERE id=?",[f.controlling_faction_id||null,id]);
@@ -153,7 +154,7 @@ export async function industryRoute(pool,req,path,actor){
   const id=Number(match[1]),b=await body(req);
   const allowed={captured:['liberated'],ruined:['liberated'],liberated:['rebuilding'],rebuilding:['damaged'],operational:['damaged','paused','captured'],paused:['operational','damaged'],damaged:['rebuilding','paused']};
   return atomicIndustry(pool,async db=>{
-   const [[f]]=await db.execute('SELECT f.status,f.owner_faction_id,COALESCE(s.controlling_faction_id,site.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id WHERE f.id=? FOR UPDATE',[id]);
+   const [[f]]=await db.execute('SELECT f.status,f.owner_faction_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.id=? FOR UPDATE',[id]);
    if(!f)return fail(404,'facility_not_found');
    if((f.owner_faction_id||null)!==(f.controlling_faction_id||null))return fail(409,'facility_ownership_changed');
    if(!allowed[f.status]?.includes(b?.status))return fail(409,'invalid_facility_transition');
