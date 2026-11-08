@@ -43,7 +43,8 @@ export async function railRecords(pool){
  const [platforms]=await pool.execute('SELECT * FROM world_rail_platforms ORDER BY station_id,code,id');
  const [switches]=await pool.execute('SELECT * FROM world_rail_switches ORDER BY node_id,id');
  const [crossings]=await pool.execute('SELECT * FROM world_rail_crossings ORDER BY region_id,zone_id,id');
- return {rail_stations:stations.map(s=>({...s,freight_enabled:!!s.freight_enabled,passenger_enabled:!!s.passenger_enabled,freight_ready:freightReady(s,platforms)})),rail_platforms:platforms,rail_switches:switches,rail_crossings:crossings};
+ const [links]=await pool.execute('SELECT * FROM world_rail_interzone_links ORDER BY id');
+ return {rail_stations:stations.map(s=>({...s,freight_enabled:!!s.freight_enabled,passenger_enabled:!!s.passenger_enabled,freight_ready:freightReady(s,platforms)})),rail_platforms:platforms,rail_switches:switches,rail_crossings:crossings,rail_links:links.map(l=>({...l,bidirectional:!!l.bidirectional,freight_enabled:!!l.freight_enabled}))};
 }
 // Read-only operational reachability preview for future Trade dispatch. No inventory is moved.
 export function planRailFreight({originId,destinationId,stations,platforms,segments,nodes,switches,crossings}){
@@ -80,14 +81,69 @@ export function planRailFreight({originId,destinationId,stations,platforms,segme
  }
  return {available:false,reason:'no_operational_rail_path',segment_ids:[],switch_ids:[]};
 }
+// Compose local railway checks and explicit station-to-station transfers.
+// No coordinate-based links are inferred between different zone maps.
+export function planRailFreightNetwork({originId,destinationId,stations,platforms,segments,nodes,switches,crossings,links=[]}){
+ const from=stations.find(x=>Number(x.id)===Number(originId));
+ const to=stations.find(x=>Number(x.id)===Number(destinationId));
+ if(!from||!to)return {available:false,reason:'station_not_found'};
+ if(same(from,to.region_id,to.zone_id))return {...planRailFreight({originId,destinationId,stations,platforms,segments,nodes,switches,crossings}),link_ids:[]};
+ const ready=stations.filter(st=>freightReady(st,platforms));
+ if(!ready.some(st=>Number(st.id)===Number(originId))||!ready.some(st=>Number(st.id)===Number(destinationId)))return {available:false,reason:'freight_platform_not_ready'};
+ const adjacent=new Map(ready.map(st=>[Number(st.id),[]]));
+ for(let i=0;i<ready.length;i++)for(let j=i+1;j<ready.length;j++){
+  const a=ready[i],b=ready[j];if(!same(a,b.region_id,b.zone_id))continue;
+  const path=planRailFreight({originId:a.id,destinationId:b.id,stations,platforms,segments,nodes,switches,crossings});
+  if(path.available){adjacent.get(Number(a.id)).push({to:Number(b.id),segments:path.segment_ids,links:[]});adjacent.get(Number(b.id)).push({to:Number(a.id),segments:[...path.segment_ids].reverse(),links:[]})}
+ }
+ for(const link of links){
+  if(link.status!=='operational'||!link.freight_enabled)continue;
+  const a=Number(link.from_station_id),b=Number(link.to_station_id);
+  if(!adjacent.has(a)||!adjacent.has(b))continue;
+  adjacent.get(a).push({to:b,segments:[],links:[Number(link.id)]});
+  if(link.bidirectional)adjacent.get(b).push({to:a,segments:[],links:[Number(link.id)]});
+ }
+ const queue=[{station:Number(originId),segments:[],links:[]}],visited=new Set();
+ for(let i=0;i<queue.length;i++){
+  const p=queue[i];if(visited.has(p.station))continue;visited.add(p.station);
+  if(p.station===Number(destinationId))return {available:true,reason:null,segment_ids:p.segments,link_ids:p.links,origin_station_id:Number(originId),destination_station_id:Number(destinationId)};
+  for(const edge of adjacent.get(p.station)||[])if(!visited.has(edge.to))queue.push({station:edge.to,segments:[...p.segments,...edge.segments],links:[...p.links,...edge.links]});
+ }
+ return {available:false,reason:'no_interzone_rail_path',segment_ids:[],link_ids:[]};
+}
 export async function handleRailInfrastructure(pool,req,path,actor){
+ if(path==='/world-admin/rail/links'&&(req.method==='POST'||req.method==='PUT')||/^\/world-admin\/rail\/links\/\d+$/.test(path)&&['PUT','DELETE'].includes(req.method)){
+  const match=/^\/world-admin\/rail\/links(?:\/(\d+))?$/.exec(path),linkId=match?.[1]?Number(match[1]):null;
+  if(!match||req.method==='POST'&&linkId||req.method!=='POST'&&!linkId)return fail(400,'invalid_rail_link');
+  const b=req.method==='DELETE'?null:await body(req);
+  if(b&&(!id(b.from_station_id)||!id(b.to_station_id)||Number(b.from_station_id)===Number(b.to_station_id)||!named(b.name,140)||!named(b.notes,1200)||!statuses.includes(b.status)||typeof b.freight_enabled!=='boolean'||typeof b.bidirectional!=='boolean'))return fail(400,'invalid_rail_link');
+  return tx(pool,async db=>{
+   if(req.method==='DELETE'){
+    const [removed]=await db.execute('DELETE FROM world_rail_interzone_links WHERE id=?',[linkId]);
+    if(!removed.affectedRows)return fail(404,'rail_link_not_found');
+    await audit(db,actor,'rail_link_delete',linkId);return ok({saved:true});
+   }
+   const [stations]=await db.execute('SELECT id,region_id,zone_id FROM world_rail_stations WHERE id IN (?,?)',[b.from_station_id,b.to_station_id]);
+   if(stations.length!==2)return fail(400,'rail_link_station_missing');
+   if(same(stations[0],stations[1].region_id,stations[1].zone_id))return fail(400,'rail_link_requires_distinct_zones');
+   const [from,to]=[Number(b.from_station_id),Number(b.to_station_id)].sort((x,y)=>x-y);
+   const values=[from,to,b.name.trim(),b.status,b.bidirectional?1:0,b.freight_enabled?1:0,b.notes];
+   if(req.method==='PUT'){
+    const [existing]=await db.execute('SELECT id FROM world_rail_interzone_links WHERE id=?',[linkId]);if(!existing.length)return fail(404,'rail_link_not_found');
+    await db.execute('UPDATE world_rail_interzone_links SET from_station_id=?,to_station_id=?,name=?,status=?,bidirectional=?,freight_enabled=?,notes=? WHERE id=?',[...values,linkId]);
+    await audit(db,actor,'rail_link_update',linkId);return ok({saved:true});
+   }
+   const [r]=await db.execute('INSERT INTO world_rail_interzone_links(from_station_id,to_station_id,name,status,bidirectional,freight_enabled,notes,created_by) VALUES(?,?,?,?,?,?,?,?)',[...values,actor.id]);
+   await audit(db,actor,'rail_link_create',r.insertId);return ok({id:r.insertId});
+  });
+ }
  if(path==='/world-admin/rail/preview'&&req.method==='POST'){
   const b=await body(req);
   if(!id(b?.origin_station_id)||!id(b?.destination_station_id))return fail(400,'invalid_freight_preview');
   const records=await railRecords(pool);
   const [nodes]=await pool.execute('SELECT id,region_id,zone_id FROM world_route_nodes');
   const [segments]=await pool.execute("SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type FROM world_route_segments WHERE route_type='rail'");
-  return ok(planRailFreight({originId:b.origin_station_id,destinationId:b.destination_station_id,stations:records.rail_stations,platforms:records.rail_platforms,segments,nodes,switches:records.rail_switches,crossings:records.rail_crossings}));
+  return ok(planRailFreightNetwork({originId:b.origin_station_id,destinationId:b.destination_station_id,stations:records.rail_stations,platforms:records.rail_platforms,segments,nodes,switches:records.rail_switches,crossings:records.rail_crossings,links:records.rail_links}));
  }
  const route=/^\/world-admin\/rail\/(stations|platforms|switches|crossings)(?:\/(\d+))?$/.exec(path);
  if(!route)return fail(404,'rail_route_not_found');
