@@ -2,12 +2,12 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
-const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',fronts:'store',treasury:'coins',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears'};
+const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast','internal-rail':'train',fronts:'store',treasury:'coins',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears'};
 const navIcon=id=>'fa-solid fa-'+(FA_NAV[id]||'circle');
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
- scenes:'activities',encounters:'activities',events:'activities',construction:'world',factions:'world',world:'world',workshop:'economy',trade:'economy',fronts:'economy',treasury:'economy',
+ scenes:'activities',encounters:'activities',events:'activities',construction:'world',factions:'world',world:'world',workshop:'economy',trade:'economy','internal-rail':'economy',fronts:'economy',treasury:'economy',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',lore:'administration',
  settings:'administration'
@@ -23,7 +23,7 @@ const GROUPS=[
 ];
 const DESCRIPTIONS={
  overview:'Your starting point',roster:'Browse the Order',sheet:'Details and progression',
- scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
+ scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts','internal-rail':'Order-operated settlement and front train services',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'The Order’s governing chamber and charter',
