@@ -40,7 +40,7 @@ export async function handleTransportGraph(pool,req,path,actor){
    return ok({imported:count});
   });
  }
- if(!m)return null;
+ if(!m)return fail(404,'network_route_not_found');
  const table=m[1],id=m[2]?Number(m[2]):null,split=m[3];
  const b=req.method==='DELETE'?null:await body(req);
  if(table==='nodes'&&req.method==='POST'&&!id){
