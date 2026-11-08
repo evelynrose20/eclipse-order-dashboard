@@ -116,7 +116,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
-  else if((pathname==='/thralls/chamber'||pathname==='/thralls/chamber/actions'))result=await thrallsRoute(pool,req,pathname);
+  else if(pathname==='/thralls/chamber'||pathname==='/thralls/chamber/actions'||/^\/thralls\/characters\/[0-9a-f-]{36}\/contributions$/.test(pathname))result=await thrallsRoute(pool,req,pathname);
   else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
   else if(pathname==='/commerce'||pathname.startsWith('/commerce/'))result=await commerceRoute(pool,req,pathname);
