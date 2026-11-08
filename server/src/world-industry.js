@@ -39,6 +39,7 @@ async function summary(pool){
  const [projects]=await pool.execute('SELECT p.*,f.name AS facility_name,f.settlement_id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id ORDER BY p.id DESC');
  const [needs]=await pool.execute('SELECT * FROM world_industry_project_needs ORDER BY project_id,item_id');
  const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0 ORDER BY facility_id,item_id');
+ const [weatherIncidents]=await pool.execute('SELECT facility_id,cycle_key,weather,temperature_f,equipment_damage,crop_loss_pct,injured_workers,note,created_at FROM world_industry_weather_incidents ORDER BY id DESC LIMIT 150');
  const [cycles]=await pool.execute('SELECT facility_id,cycle_key,cycle_date,operations,configuration_version FROM world_industry_cycles ORDER BY created_at DESC LIMIT 100');
  const [ledger]=await pool.execute('SELECT facility_id,item_id,delta,balance_after,action,reference_key,created_at FROM world_industry_ledger ORDER BY id DESC LIMIT 150');
  const [settlements]=await pool.execute('SELECT id,name,description,map_icon,strategic_state,controlling_faction_id,region_id,zone_id,population,workforce FROM world_settlements ORDER BY name');
@@ -46,7 +47,7 @@ async function summary(pool){
  const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
  const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');
  const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
- return ok({items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
+ return ok({items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),weather_incidents:weatherIncidents.filter(x=>x.facility_id===f.id).slice(0,12),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
