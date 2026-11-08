@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS world_industry_template_versions (
 CREATE TABLE IF NOT EXISTS world_industry_facilities (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  settlement_id BIGINT UNSIGNED NOT NULL,
+ owner_faction_id VARCHAR(45) CHARACTER SET ascii COLLATE ascii_general_ci NULL,
  template_id BIGINT UNSIGNED NOT NULL,
  template_version SMALLINT UNSIGNED NOT NULL,
  name VARCHAR(140) NOT NULL,
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS world_industry_facilities (
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  FOREIGN KEY(settlement_id) REFERENCES world_settlements(id) ON DELETE CASCADE,
+ FOREIGN KEY(owner_faction_id) REFERENCES order_factions(id) ON DELETE SET NULL,
  FOREIGN KEY(template_id,template_version) REFERENCES world_industry_template_versions(template_id,version),
  FOREIGN KEY(created_by) REFERENCES accounts(id),
  INDEX ix_world_facility_settlement(settlement_id,status),
