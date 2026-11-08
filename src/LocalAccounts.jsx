@@ -16,7 +16,7 @@ const ERROR_MESSAGES={
  assembly_not_active:'An occupied chair and active assembly are required to record a collection.',
  character_owner_required:'Only the character\'s player may change these permissions.',
  chamber_not_initialized:'Run the Windows API database setup to initialize the chamber.',
- cycle_not_ready:'This assembly needs five minutes between fictional collection cycles.',
+ cycle_not_ready:'This assembly requires five minutes between collection cycles.',
  collection_not_available:'This collection category is unavailable for the character’s recorded anatomy or lactation state.',
  anatomy_not_configured:'Set the character anatomy in the Chamber section of their dossier.',
  decant_lower_reservoir_first:'The lower reservoir holds a different collection type. Decant or clear it before recording this type.',
