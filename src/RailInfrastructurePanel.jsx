@@ -9,6 +9,7 @@ const blankSwitch=()=>({node_id:'',entry_segment_id:'',exit_segment_id:'',status
 const blankCross=(region,zone,p)=>({region_id:Number(region),zone_id:Number(zone),rail_segment_id:'',road_segment_id:'',name:'',map_x:p?.x??50,map_y:p?.y??50,control_type:'gated',status:'planned',notes:''});
 export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segments=[],legacyRoutes=[],settlements=[],stations=[],platforms=[],switches=[],crossings=[],canEdit,request,onSaved,point,onClearPoint}){
  const [oldRoute,setOldRoute]=useState('');
+ const [freightFrom,setFreightFrom]=useState(''),[freightTo,setFreightTo]=useState(''),[freightPreview,setFreightPreview]=useState(null);
  const [tab,setTab]=useState('stations'),[record,setRecord]=useState(null),[editing,setEditing]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const zoneNodes=nodes.filter(n=>Number(n.zone_id)===Number(zoneId)),zoneSegments=segments.filter(e=>Number(e.zone_id)===Number(zoneId));
  const rails=zoneSegments.filter(e=>e.route_type==='rail'),roads=zoneSegments.filter(e=>['road','trail'].includes(e.route_type));
@@ -17,7 +18,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const nodeLabel=n=>n.name||settlements.find(s=>Number(s.id)===Number(n.settlement_id))?.name||'Junction #'+n.id;
  const selectedStation=stations.find(s=>Number(s.id)===Number(record?.station_id??record?.id));
  const pairs=useMemo(()=>{const id=Number(editing?.node_id);return rails.filter(e=>Number(e.from_node_id)===id||Number(e.to_node_id)===id)},[rails,editing?.node_id]);
- useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('')},[regionId,zoneId]);
+ useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('');setFreightFrom('');setFreightTo('');setFreightPreview(null)},[regionId,zoneId]);
  useEffect(()=>{if(point&&tab==='crossings'&&editing)setEditing(old=>old?{...old,map_x:point.x,map_y:point.y}:old)},[point?.x,point?.y,tab]);
  const update=(key,value)=>setEditing(old=>({...old,[key]:value}));
  const labelEdge=e=>e.route_name||('Track #'+e.id);
@@ -29,6 +30,12 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  function choose(kind,item){setTab(kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
  const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:crossings;
  const validStation=tab==='stations'?editing?.name?.trim()&&editing?.node_id: true;
+ async function previewFreight(){
+  if(!freightFrom||!freightTo||busy)return;
+  setBusy(true);setError('');setFreightPreview(null);
+  try{const result=await request('/world-admin/rail/preview',{method:'POST',body:{origin_station_id:Number(freightFrom),destination_station_id:Number(freightTo)}});setFreightPreview(result)}
+  catch(e){setError(e?.message||'Unable to check this rail route.')}finally{setBusy(false)}
+ }
  async function promote(){
   if(!oldRoute||!canEdit||busy)return;
   setBusy(true);setError('');setMessage('');
@@ -67,6 +74,13 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
   {!!legacyRoutes.length&&<div className="wtm-rail-import">
    <label>Older route to connect<select value={oldRoute} onChange={e=>setOldRoute(e.target.value)}><option value="">Choose a single existing road or railway</option>{legacyRoutes.map(r=><option key={r.id} value={r.id}>{r.route_name||('Route '+r.id)} · {r.route_type}</option>)}</select></label>
    <button type="button" disabled={!canEdit||!oldRoute||busy} onClick={promote}><i className="fa-solid fa-link"/> Enable rail infrastructure on selected route</button>
+  </div>}
+  {stations.length>=2&&<div className="wtm-rail-freight-check" aria-label="Freight railway route check">
+   <strong><i className="fa-solid fa-train-subway"/> FREIGHT ROUTE CHECK</strong>
+   <label>Origin<select value={freightFrom} onChange={e=>{setFreightFrom(e.target.value);setFreightPreview(null)}}><option value="">Choose origin station</option>{stations.map(st=><option value={st.id} key={st.id}>{st.name}{st.freight_ready?' · Freight ready':''}</option>)}</select></label>
+   <label>Destination<select value={freightTo} onChange={e=>{setFreightTo(e.target.value);setFreightPreview(null)}}><option value="">Choose destination</option>{stations.filter(st=>String(st.id)!==String(freightFrom)).map(st=><option value={st.id} key={st.id}>{st.name}</option>)}</select></label>
+   <button type="button" disabled={!freightFrom||!freightTo||busy} onClick={previewFreight}><i className="fa-solid fa-route"/> Check route</button>
+   {freightPreview&&<p role="status" className={freightPreview.available?'freight-good':'freight-blocked'}>{freightPreview.available?'Railway connection available through '+freightPreview.segment_ids.length+' track segment(s).':'Unavailable: '+String(freightPreview.reason||'unknown').replaceAll('_',' ')+'.'} This is a read-only check; no inventory or trains are moved.</p>}
   </div>}
   {tab==='stations'&&!stationNodes.length&&<p className="wtm-rail-help">Create a railway track between shared map nodes before adding a station. Stations attach to existing rail-connected nodes.</p>}
   {tab==='crossings'&&<p className="wtm-rail-help">Choose a railway and road, then click their intersection on the original map. Crossing status and control type can prevent future freight traversal.</p>}
