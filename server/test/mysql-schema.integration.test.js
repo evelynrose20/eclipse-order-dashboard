@@ -310,6 +310,17 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
     const platform=await worldAdministrationRoute(admin,request('POST',{station_id:Number(stationId),code:'F1',kind:'freight',track_length:25,capacity:30,status:'operational'}),'/world-admin/rail/platforms');
     assert.equal(platform.status,200,JSON.stringify(platform.body));
   }
+  const platformWithoutOptionalFields=await worldAdministrationRoute(admin,request('POST',{station_id:Number(origin.body.id)}),'/world-admin/rail/platforms');
+  assert.equal(platformWithoutOptionalFields.status,200,JSON.stringify(platformWithoutOptionalFields.body));
+  assert.equal(platformWithoutOptionalFields.body.code,'F2','API generates an available platform code rather than rejecting older browser requests');
+  const [[defaultPlatform]]=await admin.execute('SELECT code,kind,track_length,capacity,status FROM world_rail_platforms WHERE id=?',[platformWithoutOptionalFields.body.id]);
+  assert.equal(defaultPlatform.code,'F2');
+  assert.equal(defaultPlatform.kind,'freight');
+  assert.equal(Number(defaultPlatform.track_length),1);
+  assert.equal(Number(defaultPlatform.capacity),10);
+  const invalidPlatformStation=await worldAdministrationRoute(admin,request('POST',{code:'F3'}),'/world-admin/rail/platforms');
+  assert.equal(invalidPlatformStation.status,400);
+  assert.equal(invalidPlatformStation.body.error,'rail_platform_station_required');
   const preview=()=>worldAdministrationRoute(admin,request('POST',{origin_station_id:Number(origin.body.id),destination_station_id:Number(target.body.id)}),'/world-admin/rail/preview');
   assert.equal((await preview()).body.available,false,'three-track junction must configure an open switch');
   const turnout={node_id:Number(zoneJunction.body.id),entry_segment_id:Number(t1.body.id),exit_segment_id:Number(t2.body.id),status:'open',notes:''};
