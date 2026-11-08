@@ -5,3 +5,23 @@
 .side-bottom .side-identity strong{font-size:12px;color:#f4e7e5}
 .side-bottom .side-identity small{font-size:11px;color:#b1bdc1}
 .side-bottom .monogram{flex-shrink:0}
+
+/* Data-dense desktop layout: reduce unused space rather than scaling text or zooming. */
+@media(min-width:921px){
+ .app-shell.eo-local .content{max-width:1920px;padding:17px clamp(14px,1.8vw,30px) 34px}
+ .app-shell.eo-local .topbar{height:54px;padding-inline:clamp(14px,1.8vw,30px)}
+ .app-shell.eo-local .page-intro{margin-bottom:15px;gap:12px;align-items:center}
+ .app-shell.eo-local .page-intro h1{font-size:clamp(28px,2.7vw,42px);margin-bottom:5px}
+ .app-shell.eo-local .page-intro p{font-size:12px}
+ .app-shell.eo-local .eyebrow{margin-bottom:6px}
+ .app-shell.eo-local .stat-grid{gap:10px;margin-bottom:12px}
+ .app-shell.eo-local .stat-card{min-height:114px;padding:15px}
+ .app-shell.eo-local .stat-card b{font-size:25px;margin:7px 0 3px}
+ .app-shell.eo-local .panel{padding:16px}
+ .app-shell.eo-local .panel-heading{margin-bottom:12px}
+ .app-shell.eo-local .overview-grid,.app-shell.eo-local .sheet-grid{gap:12px}
+ .app-shell.eo-local .btn{padding:8px 12px}
+ .app-shell.eo-local input,.app-shell.eo-local select,.app-shell.eo-local textarea{padding:8px 10px}
+ .app-shell.eo-local th{padding:10px 12px}
+ .app-shell.eo-local td{padding:11px 12px}
+}
