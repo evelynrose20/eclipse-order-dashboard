@@ -125,6 +125,10 @@ async function main(){
   await pool.query(industrySites);
   const mapTemplates=await readFile(new URL('../sql/056_industry_map_location_templates.sql',import.meta.url),'utf8');
   await pool.query(mapTemplates);
+  const education=await readFile(new URL('../sql/057_settlement_education.sql',import.meta.url),'utf8');
+  await pool.query(education);
+  const industryEdits=await readFile(new URL('../sql/058_industry_template_edit_history.sql',import.meta.url),'utf8');
+  await pool.query(industryEdits);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
