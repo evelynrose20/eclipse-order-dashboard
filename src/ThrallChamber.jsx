@@ -73,7 +73,7 @@ export default function ThrallChamber({request}){
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
        <div className="chamber-buttons">{['ready','active','maintenance','offline'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
-      {!canManage&&<p className="chamber-helper">Your rank permits viewing this workspace. Only staff can modify chamber controls and records.</p>}
+      {!canManage&&<p className="chamber-helper">Your rank permits viewing this workspace. Staff and Household ranks can modify chamber controls and records.</p>}
       <div className="chamber-note"><i className="fa-solid fa-shield-heart"/> OOC consent and scene boundaries remain independent of in-character machine settings.</div>
      </section>
     </div>
