@@ -85,15 +85,15 @@ async function worldAdministrationRouteCore(pool,req,path){
   const b=await read(req);
   if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||b.points.length<2||!validWaypoints(b.points))return fail(400,'invalid_mountain_range');
   return transact(pool,async db=>{
-   const [region]=await db.execute('SELECT id FROM world_regions WHERE id=?',[b.region_id]);
-   if(!region.length)return fail(404,'region_not_found');
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);
+   if(!zoneId)return fail(400,'zone_not_in_region');
    if(mid){
-    const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,name=?,points=? WHERE id=?',[b.region_id,b.name.trim(),JSON.stringify(b.points),mid]);
+    const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,zone_id=?,name=?,points=? WHERE id=?',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),mid]);
     if(!r.affectedRows)return fail(404,'mountain_not_found');
     await audit(db,actor.id,'mountain_edit','mountain',mid,b.name.trim());
     return ok({saved:true});
    }
-   const [r]=await db.execute('INSERT INTO world_map_mountain_ranges(region_id,name,points,created_by) VALUES(?,?,?,?)',[b.region_id,b.name.trim(),JSON.stringify(b.points),actor.id]);
+   const [r]=await db.execute('INSERT INTO world_map_mountain_ranges(region_id,zone_id,name,points,created_by) VALUES(?,?,?,?,?)',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),actor.id]);
    await audit(db,actor.id,'mountain_create','mountain',r.insertId,b.name.trim());
    return ok({id:r.insertId});
   });
@@ -114,9 +114,11 @@ async function worldAdministrationRouteCore(pool,req,path){
   const b=await read(req);
   if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.from_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.to_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||b.from_settlement_id===b.to_settlement_id||!validRouteType(b.route_type)||!text(b.route_name,120)||!validWaypoints(b.waypoints))return fail(400,'invalid_route');
   return transact(pool,async db=>{
-   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND id IN (?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id]);
-   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_region');
-   const [r]=await db.execute('INSERT INTO world_map_routes(region_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),actor.id]);
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);
+   if(!zoneId)return fail(400,'zone_not_in_region');
+   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND zone_id=? AND id IN (?,?)',[b.region_id,zoneId,b.from_settlement_id,b.to_settlement_id]);
+   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_zone');
+   const [r]=await db.execute('INSERT INTO world_map_routes(region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[b.region_id,zoneId,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),actor.id]);
    await audit(db,actor.id,'route_create','route',r.insertId,b.route_name||b.route_type);return ok({id:r.insertId});
   });
  }
@@ -124,9 +126,11 @@ async function worldAdministrationRouteCore(pool,req,path){
   const b=await read(req);
   if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.from_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||!num(b?.to_settlement_id,1,Number.MAX_SAFE_INTEGER,true)||b.from_settlement_id===b.to_settlement_id||!validRouteType(b.route_type)||!text(b.route_name,120)||!validWaypoints(b.waypoints))return fail(400,'invalid_route');
   return transact(pool,async db=>{
-   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND id IN (?,?)',[b.region_id,b.from_settlement_id,b.to_settlement_id]);
-   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_region');
-   const [r]=await db.execute('UPDATE world_map_routes SET region_id=?,from_settlement_id=?,to_settlement_id=?,route_type=?,route_name=?,waypoints=? WHERE id=?',[b.region_id,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),Number(match[1])]);
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);
+   if(!zoneId)return fail(400,'zone_not_in_region');
+   const [links]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND zone_id=? AND id IN (?,?)',[b.region_id,zoneId,b.from_settlement_id,b.to_settlement_id]);
+   if(links.length!==2)return fail(400,'route_requires_two_settlements_in_zone');
+   const [r]=await db.execute('UPDATE world_map_routes SET region_id=?,zone_id=?,from_settlement_id=?,to_settlement_id=?,route_type=?,route_name=?,waypoints=? WHERE id=?',[b.region_id,zoneId,b.from_settlement_id,b.to_settlement_id,b.route_type,b.route_name.trim(),JSON.stringify(b.waypoints),Number(match[1])]);
    if(!r.affectedRows)return fail(404,'route_not_found');
    await audit(db,actor.id,'route_update','route',Number(match[1]),b.route_name||b.route_type);return ok({saved:true});
   });
