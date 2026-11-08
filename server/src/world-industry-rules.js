@@ -90,7 +90,8 @@ export function industryProductionPreview(facility,config,rules,stock={},context
  const outdoor=['agriculture','mine','extraction'].includes(context.industry_category);
  const baseWeather=outdoor?(context.weather==='blizzard'?.25:context.weather==='snow'?.7:context.weather==='rain'?.85:1):1;
  const temperature=Number(context.temperature_f??32);
- const coldPenalty=outdoor?(temperature<=-20?.4:temperature<=0?.7:1):1;
+ // Even enclosed factories lose efficiency during extreme cold until winterized.
+ const coldPenalty=outdoor?(temperature<=-20?.4:temperature<=0?.7:1):(temperature<=-20?.75:temperature<=0?.9:1);
  const basePenalty=Math.min(baseWeather,coldPenalty);
  const protection=Math.min(3,Math.max(0,Math.floor(Number(context.weather_protection_level)||0)));
  const protectionRecovered=[0,.5,.85,1][protection];
