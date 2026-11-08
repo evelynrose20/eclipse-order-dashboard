@@ -77,12 +77,12 @@ test('cross-zone links can traverse several regions through operational stations
  assert.deepEqual(planRailFreightNetwork({originId:10,destinationId:21,stations,platforms,segments:[],nodes:[],switches:[],crossings:[],links}).link_ids,[1,2]);
 });
 
-test('platform endpoint rejects missing code with an actionable validation code',async()=>{
- const input={station_id:10,code:'',kind:'freight',track_length:1,capacity:10,status:'planned'};
+test('platform endpoint explains missing station instead of a generic rail platform error',async()=>{
+ const input={code:'F1',kind:'freight',track_length:1,capacity:10,status:'planned'};
  const req={method:'POST',[Symbol.asyncIterator]:async function*(){yield Buffer.from(JSON.stringify(input))}};
  const res=await handleRailInfrastructure(null,req,'/world-admin/rail/platforms',null);
  assert.equal(res.status,400);
- assert.equal(res.body.error,'invalid_rail_platform');
+ assert.equal(res.body.error,'rail_platform_station_required');
 });
 test('facility editor suggests platform codes, station-owned platform creation and cross-map network links',async()=>{
  const src=await readFile(new URL('../../src/RailInfrastructurePanel.jsx',import.meta.url),'utf8');
