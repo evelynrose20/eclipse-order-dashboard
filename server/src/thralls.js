@@ -30,7 +30,7 @@ async function readBody(req){
  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}
 }
 const isAmount=n=>Number.isInteger(n)&&n>=0&&n<=1000;
-export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status==='offline'&&!seat?.character_id&&Boolean(character?.allow_seating)&&(Boolean(character?.allow_upper)||Boolean(character?.allow_lower));
+export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status==='offline'&&!seat?.character_id&&Boolean(character?.allow_seating);
 export const withinContributionLimit=(prefs,seat,channel,amount)=>['upper','lower'].includes(channel)&&isAmount(amount)&&amount>0&&Boolean(prefs?.allow_seating)&&Boolean(prefs?.['allow_'+channel])&&Number(seat?.[channel+'_recorded']||0)+amount<=Number(prefs?.[channel+'_limit']||0);
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -80,7 +80,7 @@ export async function thrallsRoute(pool,req,path){
    await cn.execute('SELECT machine_status FROM order_thrall_chamber WHERE id=1 FOR UPDATE');
    const [[seat]]=await cn.execute('SELECT character_id FROM order_thrall_seat WHERE id=1 FOR UPDATE');
    const [[previous]]=await cn.execute('SELECT lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[id]);
-   if(seat.character_id===id&&(!next.allow_seating||(!next.allow_upper&&!next.allow_lower)||(previous&&previous.lower_anatomy!==next.lower_anatomy))){
+   if(seat.character_id===id&&(!next.allow_seating||(previous&&previous.lower_anatomy!==next.lower_anatomy))){
     await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready',revision=revision+1 WHERE id=1");
     await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
     await cn.execute('INSERT INTO order_thrall_chamber_log(actor_id,action,detail) VALUES(?,?,?)',[actor.id,'release','Player withdrew chair permission; character released']);
