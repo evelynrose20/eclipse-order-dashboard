@@ -386,7 +386,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
 
-   {(mode==='view'||mode==='link'||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
+   {(mode==='view'||drawing||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
@@ -442,6 +442,11 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
     <div className="wtm-route-field"><label>Route name<input maxLength={120} placeholder="Optional route name" value={routeName} onChange={e=>{setRouteName(e.target.value);setRouteDirty(true)}}/></label></div>
     <div className="wtm-route-field"><label>Endpoints<span className="wtm-endpoints">{drawing?labelForRef(routeStart)+' → '+labelForRef(routeEnd):(currentRoute?(graphSelected?'Shared network route':(byId.get(Number(currentRoute.from_settlement_id))?.name||'?')+' → '+(byId.get(Number(currentRoute.to_settlement_id))?.name||'?')):'Choose existing route')}</span></label></div>
    </div>
+   {drawing&&<div className="wtm-track-steps" aria-label="Track construction progress">
+    <span className={routeStart!=null?'done':'current'}><i className="fa-solid fa-location-dot"/> 1. Start</span>
+    <span className={routeEnd!=null?'done':routeStart!=null?'current':''}><i className="fa-solid fa-link"/> 2. Destination</span>
+    <span className={routeStart!=null&&routeEnd!=null?'current':''}><i className="fa-solid fa-bezier-curve"/> 3. Shape & save</span>
+   </div>}
    {drawing&&<div className="wtm-route-endpoint-pickers">
     <label>From — place or junction<select aria-label="Route starting endpoint" value={routeEndpoint(routeStart)} onChange={e=>chooseRouteEndpoint('from',e.target.value)}>
      <option value="">Choose starting location</option>{endpointOptions.map(option=><option key={option.kind+'-from-'+option.value} value={option.value}>{option.kind==='junction'?'Junction · ':'Place · '}{option.label}</option>)}
@@ -462,7 +467,9 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    <div className="wtm-route-actions">
     {drawing?<>
       <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>{mode==='track'?'Save railway':'Save new route'}</button>
-      <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}>Undo bend</button>
+      <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}><i className="fa-solid fa-rotate-left"/> Undo bend</button>
+       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints([])}>Straighten</button>
+       <button disabled={busy||routeStart==null||routeEnd==null} onClick={()=>{setRouteStart(routeEnd);setRouteEnd(routeStart);setNewRoutePoints(p=>[...p].reverse())}}>Reverse</button>
       <button disabled={busy} onClick={()=>{setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setNotice('Route draft discarded.')}}>Cancel draft</button>
     </>:<>
       <button disabled={busy||!currentRoute||!routeDirty} onClick={()=>saveRoute(editableRoute,currentRoute.id,graphSelected)}>Save route changes</button>
