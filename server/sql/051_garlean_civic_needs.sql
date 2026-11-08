@@ -92,4 +92,18 @@ CREATE TABLE IF NOT EXISTS world_region_climate_profiles (
  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  FOREIGN KEY(region_id) REFERENCES world_regions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS world_weather_events (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ region_id BIGINT UNSIGNED NOT NULL,
+ title VARCHAR(140) NOT NULL,
+ weather VARCHAR(80) NOT NULL,
+ temperature_f DECIMAL(6,2) NOT NULL,
+ starts_on DATE NOT NULL,
+ ends_on DATE NOT NULL,
+ created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(region_id) REFERENCES world_regions(id) ON DELETE CASCADE,
+ FOREIGN KEY(created_by) REFERENCES accounts(id),
+ INDEX ix_weather_event_region_dates(region_id,starts_on,ends_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT INTO schema_migrations(version) VALUES('051_garlean_civic_needs') ON DUPLICATE KEY UPDATE version=VALUES(version);
