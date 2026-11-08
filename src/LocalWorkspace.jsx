@@ -14,6 +14,7 @@ import TradeWorkspace from './TradeWorkspace.jsx';
 import InternalRail from './InternalRail.jsx';
 import Treasury from './Treasury.jsx';
 import Fronts from './Fronts.jsx';
+import ThrallChamber from './ThrallChamber.jsx';
 import ConstructionProjects from './ConstructionProjects.jsx';
 import DiscordAccountConnection from './DiscordAccountConnection.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
@@ -51,6 +52,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const [draft,setDraft]=useState(null);
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
+ const [chamberAccess,setChamberAccess]=useState(false);
  const [filter,setFilter]=useState('');
  const [classCatalog,setClassCatalog]=useState({});
  const reloadClasses=async()=>{const result=await request('/classes');setClassCatalog(result.classes||{})};
@@ -67,6 +69,13 @@ export default function LocalWorkspace({profile,request,onLogout}){
   }
  };
  useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message))},[profile.id]);
+ useEffect(()=>{
+  let active=true;
+  setChamberAccess(false);
+  request('/thralls/chamber').then(()=>{if(active)setChamberAccess(true)}).catch(()=>{if(active)setChamberAccess(false)});
+  return()=>{active=false};
+ },[profile.id,request]);
+ useEffect(()=>{if(tab==='chamber'&&!chamberAccess)setTab('overview')},[tab,chamberAccess]);
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
  const visibleCharacters=playerPreview?characters.filter(c=>c.player_user_id===profile.id):characters;
@@ -89,6 +98,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['trade','Trade Routes','♜'],
   ...(!playerPreview&&canManage(profile.role)?[['internal-rail','Internal Rail Logistics','🚆']]:[]),
   ['fronts','Order Fronts','♛'],
+  ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
@@ -156,6 +166,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='lore'&&<LoreArchive request={request} admin={!playerPreview}/>}
     {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
+    {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='internal-rail'&&admin&&<InternalRail request={request}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
