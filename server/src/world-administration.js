@@ -48,7 +48,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [networkNodes]=await pool.execute('SELECT id,region_id,zone_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
   // Rail station notes and freight/switch readiness are command-only operational data.
-  const railway=command?await railRecords(pool):{rail_stations:[],rail_platforms:[],rail_switches:[],rail_crossings:[]};
+  const railway=command?await railRecords(pool):{rail_stations:[],rail_platforms:[],rail_switches:[],rail_crossings:[],rail_links:[]};
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_mountain_ranges ORDER BY id');
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   const allowed=new Set(factions.map(f=>f.id));
