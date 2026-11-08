@@ -213,7 +213,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[wallCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_settlement_upgrades WHERE settlement_id=? AND category='defense'",[emptyId]);
   assert.equal(Number(wallCount.n),1); 
   // The same template-backed buildings are real projects, not editable free bonuses.
-  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ingot',1000) ON DUPLICATE KEY UPDATE quantity=GREATEST(quantity,1000)");
+  const [[ironBeforeCivicTest]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ingot'");
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ingot',1000) ON DUPLICATE KEY UPDATE quantity=1000");
   const selectedTemplate=await worldAdministrationRoute(admin,request('GET'),structurePath);
   assert.equal(selectedTemplate.status,200);
   assert.ok(selectedTemplate.body.templates.some(t=>t.id==='granary'));
@@ -235,6 +236,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(fullyUpgraded.body.storage_capacity.food,1000,'level 2 granary holds 500 additional food');
   const invalidFreeLevel=await worldAdministrationRoute(admin,request('PUT',{...building,id:granaryId,category:'food_storage',level:10,housing_bonus:0}),structurePath+'/'+granaryId);
   assert.equal(invalidFreeLevel.status,409,'a template building cannot gain free levels through editable fields');
+  await admin.execute("UPDATE fc_material_stock SET quantity=? WHERE material_id='iron-ingot'",[Number(ironBeforeCivicTest?.quantity||0)]); // Restore crafting fixture stock after the isolated civic test.
 
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
   const generatedCohorts=await worldAdministrationRoute(admin,request('GET'),'/world-admin/civic/'+mineId);
