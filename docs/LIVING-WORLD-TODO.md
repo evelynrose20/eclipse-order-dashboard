@@ -44,9 +44,10 @@ updated: 2026-11-07
 - [x] Add Secure, Abandoned, and Destroyed settlement conditions without changing owner/controller.
 - [x] Add explicit route drafting, a selectable existing-route registry, draggable/insertable bends, editing route types and railway cartographic tracks.
 - [x] Shared road junctions/rail switches independent of settlements, allowing saved route branching and splitting.
-- [ ] Railway station platforms and track switching logic, crossing control and simulation integration.
-- [ ] Draw, resize and version **ownership polygons / borders**.
-- [ ] Public/secret map layers and role-based intelligence visibility.
+- [x] Railway stations and freight/passenger platforms, track switch pairings, railway-road crossings and read-only freight route readiness (migration 047).
+- [ ] Live train dispatch, rolling stock, cargo manifests, crossing timing, fuel and simulation integration (P4).
+- [ ] **Deferred by request:** ownership polygons/borders are unnecessary for the current compact maps.
+- [ ] **Deferred by request:** separate public/secret map layers are unnecessary for the current maps.
 - [ ] Multiple supporting factions, separate beneficiaries/protectorates and territorial history.
 - [ ] Route graph distances, traversal constraints, bridge access and passability.
 - [ ] Upload-map-image workflow and image storage policy.
@@ -127,13 +128,13 @@ updated: 2026-11-07
 - [x] Preview and save road, trail, railway, air-route and waterway edges with editable bend points.
 - [x] Explicit transaction-safe conversion of older settlement-to-settlement routes without losing waypoints or track types.
 - [x] MySQL 8 integration tests covering junction splits, branches, moves and import.
-- [ ] Production Windows API migration 046 and browser acceptance test: switch zones, place settlements and routes, edit controls, and confirm the overview map remains intact.
+- [ ] Production Windows API migrations 046–047 and browser acceptance test: switch zones, place settlements and routes, edit controls, and confirm the overview map remains intact.
 
 ## Current release checklist
 
 - [ ] Back up production MySQL.
 - [ ] Pull latest matching frontend and Windows API code.
-- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–046, including 046_world_zones.
+- [ ] Run `npm run setup:local` inside `server/`; verify migrations 041–047, including 047_rail_infrastructure.
 - [ ] Restart Windows API service (not just GitHub Pages redeploy).
 - [ ] Browser test all edit operations, including Plan a route / Edit routes: split a rail line, attach a branch, move the shared switch, save and reload.
 - [ ] Test map status labels (peaceful/contested/occupied/liberated/rebuilding), draw/edit/delete mountain ranges, and save Order authority in all three settlement relationships.
