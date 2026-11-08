@@ -141,6 +141,8 @@ async function main(){
   await pool.query(seating);
   const civicTemplates=await readFile(new URL('../sql/063_civic_building_templates.sql',import.meta.url),'utf8');
   await pool.query(civicTemplates);
+  const chamberCharacterProfiles=await readFile(new URL('../sql/063_chamber_character_profiles.sql',import.meta.url),'utf8');
+  await pool.query(chamberCharacterProfiles);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
