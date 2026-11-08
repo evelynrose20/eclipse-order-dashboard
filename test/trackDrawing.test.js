@@ -20,14 +20,13 @@ test('new track bends insert at nearest local segment instead of always appendin
  assert.equal(insertRouteBend(points,a,b,{x:30.1,y:18.1}),points,'near duplicate is ignored');
  assert.equal(insertRouteBend(Array.from({length:16},(_,i)=>({x:i,y:0})),a,b,{x:45,y:12}).length,16);
 });
-test('track mode preserves original map while exposing click and drag to draw options',async()=>{
+test('rail construction is archived outside the current map editor',async()=>{
  const {readFile}=await import('node:fs/promises');
  const s=await readFile(new URL('../src/WorldTerritoryMap.jsx',import.meta.url),'utf8');
- for(const token of ['Lay track','traceTrack','trackTraceDown','trackTraceMove','trackTraceUp','draftWaypointMove','simplifyTrackStroke','insertRouteBend','Straighten','Reverse','Save railway'])assert.ok(s.includes(token),token);
- assert.ok(s.includes("route_type:mode==='track'?'rail':routeType"));
- assert.ok(!s.includes("junctionAction!=='split'&&((mode==='bend'"));
+ assert.doesNotMatch(s,/\['track','Lay track'\]/);
+ assert.doesNotMatch(s,/Save railway/); 
+ assert.match(s,/Save new route/);
 });
-
 test('snapping to a visibly curved rail uses cubic geometry, not a straight line',()=>{
  const points=[{x:0,y:50},{x:50,y:0},{x:100,y:50}];
  // This point is on the first visible cubic curve, but far from the raw chord.
