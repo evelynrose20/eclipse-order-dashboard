@@ -233,6 +233,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(removedCohort.status,200,JSON.stringify(removedCohort.body));
   // Prevent unrelated map tests from depending on the simulation configuration.
   await admin.execute("UPDATE world_regions SET simulation_mode='off' WHERE id=?",[wrid]);
+  await admin.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=?,simulation_enabled=0 WHERE id=?',[24,60,80,5,mineId]);
   const moved=await worldAdministrationRoute(admin,request('POST',{map_x:44,map_y:52,map_icon:'refinery'}),'/world-admin/settlements/'+mineId+'/map');
   assert.equal(moved.status,200,JSON.stringify(moved.body));
   const [[afterMap]]=await admin.execute('SELECT map_x,map_icon,population,food_days FROM world_settlements WHERE id=?',[mineId]);
