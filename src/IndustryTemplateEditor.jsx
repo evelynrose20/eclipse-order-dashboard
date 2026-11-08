@@ -1,11 +1,11 @@
 import React,{useState} from 'react';
 const defaults=()=>({name:'',slug:'',category:'mine',configuration:{inputs:[],outputs:[],byproducts:[],labor:1,heat:0,power:0,capacity:1,upgrade_level:1},rules:[]});
-const fields=[['status','Facility state'],['level','Facility level'],['workforce','Simulated workers available'],['heat_available','Fuel-backed heat available'],['power_available','Fuel-backed power available'],['capacity_pct','Operating capacity %'],['population','Settlement residents'],['stability','Civic stability'],['security','Security']];
+const fields=[['status','Facility state'],['level','Facility level'],['workforce','Simulated workers available'],['heat_available','Fuel-backed heat available'],['power_available','Fuel-backed power available'],['capacity_pct','Operating capacity %'],['population','Settlement residents'],['stability','Civic stability'],['security','Security'],['temperature_f','Outdoor temperature (°F)'],['weather','Weather conditions']];
 const heading=s=>s.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function IndustryTemplateEditor({template=null,items=[],request,onSaved,onCancel}){
  const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:defaults());
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
- const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30});
+ const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30,weather:'clear',temperature_f:32});
  const [scenarioStock,setScenarioStock]=useState({});
  const [saveMode,setSaveMode]=useState('edit');
  const setConfig=(field,value)=>setDraft(d=>({...d,configuration:{...d.configuration,[field]:value}}));
@@ -36,9 +36,9 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
     {draft.rules.map((rule,i)=><div className="wa-industry-rule-card" key={i}>
       <div className="wa-industry-section-heading"><strong>Rule {i+1}</strong><button type="button" onClick={()=>setDraft(d=>({...d,rules:d.rules.filter((_,j)=>i!==j)}))}>Remove</button></div>
       {rule.when.map((p,j)=><div className="wa-industry-condition" key={j}>
-       <select aria-label="Condition field" value={p.field} onChange={e=>changeCondition(i,j,{field:e.target.value,op:e.target.value==='status'?'eq':p.op,value:e.target.value==='status'?'operational':1})}>{fields.map(([k,label])=><option key={k} value={k}>{label}</option>)}</select>
-       <select aria-label="Comparison" value={p.op} onChange={e=>changeCondition(i,j,{op:e.target.value})}>{(p.field==='status'?['eq','neq']:['eq','neq','gte','lte']).map(v=><option key={v} value={v}>{v}</option>)}</select>
-       {p.field==='status'?<select value={p.value} onChange={e=>changeCondition(i,j,{value:e.target.value})}>{['captured','liberated','ruined','rebuilding','operational','damaged','paused'].map(v=><option key={v} value={v}>{heading(v)}</option>)}</select>:<input aria-label="Comparison value" type="number" value={p.value} onChange={e=>changeCondition(i,j,{value:Number(e.target.value)})}/>}
+       <select aria-label="Condition field" value={p.field} onChange={e=>changeCondition(i,j,{field:e.target.value,op:['status','weather'].includes(e.target.value)?'eq':p.op,value:e.target.value==='status'?'operational':e.target.value==='weather'?'clear':1})}>{fields.map(([k,label])=><option key={k} value={k}>{label}</option>)}</select>
+       <select aria-label="Comparison" value={p.op} onChange={e=>changeCondition(i,j,{op:e.target.value})}>{(['status','weather'].includes(p.field)?['eq','neq']:['eq','neq','gte','lte']).map(v=><option key={v} value={v}>{v}</option>)}</select>
+       {['status','weather'].includes(p.field)?<select value={p.value} onChange={e=>changeCondition(i,j,{value:e.target.value})}>{(p.field==='weather'?['clear','cloudy','overcast','rain','snow','blizzard']:['captured','liberated','ruined','rebuilding','operational','damaged','paused']).map(v=><option key={v} value={v}>{heading(v)}</option>)}</select>:<input aria-label="Comparison value" type="number" value={p.value} onChange={e=>changeCondition(i,j,{value:Number(e.target.value)})}/>}
        <button type="button" disabled={rule.when.length===1} aria-label="Remove condition" onClick={()=>changeRule(i,{when:rule.when.filter((_,k)=>j!==k)})}>×</button>
       </div>)}
       <button type="button" className="wa-industry-link" disabled={rule.when.length>=8} onClick={()=>changeRule(i,{when:[...rule.when,{field:'level',op:'gte',value:1}]})}>+ And condition</button>
@@ -50,7 +50,7 @@ export default function IndustryTemplateEditor({template=null,items=[],request,o
   </div>
   <details className="wa-civic-form"><summary>Dry-run scenario · simulate available workers, utilities and goods</summary><div className="wa-industry-form">
    {[['level','Facility level'],['capacity_pct','Capacity %'],['workforce','Workers'],['heat_available','Heat available'],['power_available','Power available']].map(([key,label])=><label key={key}>{label}<input type="number" min="0" step="1" value={scenario[key]} onChange={e=>setScenario({...scenario,[key]:Number(e.target.value)})}/></label>)}
-   <label>Facility state<select value={scenario.status} onChange={e=>setScenario({...scenario,status:e.target.value})}>{['operational','captured','liberated','rebuilding','damaged','paused'].map(status=><option value={status} key={status}>{heading(status)}</option>)}</select></label>
+   <label>Weather<select value={scenario.weather} onChange={e=>setScenario({...scenario,weather:e.target.value})}>{['clear','cloudy','overcast','rain','snow','blizzard'].map(x=><option value={x} key={x}>{heading(x)}</option>)}</select></label><label>Temperature (°F)<input type="number" value={scenario.temperature_f} onChange={e=>setScenario({...scenario,temperature_f:Number(e.target.value)})}/></label><label>Facility state<select value={scenario.status} onChange={e=>setScenario({...scenario,status:e.target.value})}>{['operational','captured','liberated','rebuilding','damaged','paused'].map(status=><option value={status} key={status}>{heading(status)}</option>)}</select></label>
    {draft.configuration.inputs.map(input=><label key={input.item_id}>{items.find(x=>x.id===input.item_id)?.name||input.item_id} available<input type="number" min="0" step=".001" value={scenarioStock[input.item_id]??100} onChange={e=>setScenarioStock({...scenarioStock,[input.item_id]:Number(e.target.value)})}/></label>)}
    <p className="wide wa-npc-subtle">A dry run uses hypothetical numbers only; it cannot assign workers, conjure fuel, change a site, move stock, or commit production. Live production takes workers from simulated local employment and heat/power from actual facility ceruleum fuel.</p>
   </div></details>
