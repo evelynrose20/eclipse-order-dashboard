@@ -491,7 +491,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    </div>
    <div className="wtm-route-actions">
     {drawing?<>
-      <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>{mode==='track'?'Save railway':'Save new route'}</button>
+      <button disabled={busy||routeStart==null||routeEnd==null} onClick={savePlannedRoute}>Save new route</button>
       <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints(p=>p.slice(0,-1))}><i className="fa-solid fa-rotate-left"/> Undo bend</button>
        <button disabled={busy||!newRoutePoints.length} onClick={()=>setNewRoutePoints([])}>Straighten</button>
        <button disabled={busy||routeStart==null||routeEnd==null} onClick={()=>{setRouteStart(routeEnd);setRouteEnd(routeStart);setNewRoutePoints(p=>[...p].reverse())}}>Reverse</button>
