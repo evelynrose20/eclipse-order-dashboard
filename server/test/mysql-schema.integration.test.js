@@ -1035,7 +1035,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(npcHistory.length,new Set(npcHistory.map(x=>x.cycle_key)).size);
   const [[unowned]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_autosim WHERE settlement_id=?',[mineId]);
   assert.equal(Number(unowned.n),0,'Order settlements are never automatically enabled');
-  const npcView=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation',{id:'00000000-0000-0000-0000-000000000000',account_role:'domina'});
+  const npcView=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation',{id,account_role:'domina'});
   assert.equal(npcView.status,200);
   assert.ok(npcView.body.settlements.some(x=>Number(x.id)===npcId&&x.ownership==='npc'));
   assert.ok(npcView.body.settlements.some(x=>Number(x.id)===mineId&&x.ownership==='order'));
