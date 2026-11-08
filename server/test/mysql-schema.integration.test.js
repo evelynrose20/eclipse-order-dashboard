@@ -236,6 +236,15 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(fullyUpgraded.body.storage_capacity.food,1000,'level 2 granary holds 500 additional food');
   const invalidFreeLevel=await worldAdministrationRoute(admin,request('PUT',{...building,id:granaryId,category:'food_storage',level:10,housing_bonus:0}),structurePath+'/'+granaryId);
   assert.equal(invalidFreeLevel.status,409,'a template building cannot gain free levels through editable fields');
+  await admin.execute("UPDATE world_settlement_upgrades SET status='damaged',condition_pct=40 WHERE id=?",[granaryId]);
+  const stormAffected=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(stormAffected.body.storage_capacity.food,600,'damaged granary loses storage capacity until repaired');
+  const repairGranary=await worldAdministrationRoute(admin,request('POST',{}),structurePath+'/'+granaryId+'/repair');
+  assert.equal(repairGranary.status,200,JSON.stringify(repairGranary.body));
+  for(let tick=1;tick<=5;tick++)await advanceCivicTemplateProjects(admin,{id:emptyId,population:25},'ci-granary-repair-'+tick,'order',120);
+  const repaired=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(repaired.body.storage_capacity.food,1000,'repair restores storage without creating an unearned new level');
+
   await admin.execute("UPDATE fc_material_stock SET quantity=? WHERE material_id='iron-ingot'",[Number(ironBeforeCivicTest?.quantity||0)]); // Restore crafting fixture stock after the isolated civic test.
 
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
