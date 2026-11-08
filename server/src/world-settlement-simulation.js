@@ -170,7 +170,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NULL)',[site.id,cycleDate,profile.enabled_mode,preview.food_used,preview.fuel_used,preview.water_used,preview.medicine_used,preview.before_stability,preview.after_stability,preview.before_unrest,preview.after_unrest,JSON.stringify({...preview,population:migration,system_generated:true})]);
  await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[cycleDate,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=? WHERE settlement_id=?',[key,site.id]);
- const construction=await advanceOrderStructures(db,site,key);
+ const construction=await advanceOrderStructures(db,{...site,workforce:simulatedWorkforce},key);
  const shortage=preview.warnings.filter(w=>w.includes('shortfall')||w.includes('low'));
  const event=shortage.length?'shortage':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
  const headline=shortage.length?'Civilian shortages require attention':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
