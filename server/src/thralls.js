@@ -66,8 +66,8 @@ export async function thrallsRoute(pool,req,path){
   const cn=await pool.getConnection();
   try{
    await cn.beginTransaction();
+   await cn.execute('SELECT machine_status FROM order_thrall_chamber WHERE id=1 FOR UPDATE');
    const [[seat]]=await cn.execute('SELECT character_id FROM order_thrall_seat WHERE id=1 FOR UPDATE');
-   const [[machine]]=await cn.execute('SELECT machine_status FROM order_thrall_chamber WHERE id=1 FOR UPDATE');
    if(seat.character_id===id&&(!next.allow_seating||(!next.allow_upper&&!next.allow_lower))){
     await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready',revision=revision+1 WHERE id=1");
     await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0 WHERE id=1');
