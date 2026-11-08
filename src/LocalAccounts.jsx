@@ -8,6 +8,15 @@ import DiscordAccessPage from './DiscordAccessPage.jsx';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
+ chair_must_be_offline:'The apparatus must be Offline before a character can be seated.',
+ chair_occupied:'The chamber chair is already occupied. Release the current character first.',
+ chair_empty:'The chamber chair is empty.',
+ character_has_not_opted_in:'This character has not enabled seating and collection permissions in their dossier.',
+ character_contribution_limit:'This record exceeds the character\'s permitted category or per-seating limit.',
+ assembly_not_active:'An occupied chair and active assembly are required to record a collection.',
+ character_owner_required:'Only the character\'s player may change these permissions.',
+ chamber_not_initialized:'Run the Windows API database setup to initialize the chamber.',
+
  discord_login_not_configured:'Discord sign-in has not been configured yet. Contact Order command.',
  discord_not_in_server:'Your Discord account was not found in the Order’s configured server. If you are already a member, contact Order command to check the server connection.',
  discord_membership_screening:'Finish the Discord server’s membership screening, then sign in again.',
