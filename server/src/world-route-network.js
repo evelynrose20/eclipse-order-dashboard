@@ -65,7 +65,26 @@ async function branchLegacyRoute(pool,req,legacyId,actor){
   return ok({id:node.insertId,converted_route_id:legacyId,point:splitAt});
  });
 }
+// Converts only the explicitly selected old line. Keeps geometry and name intact.
+async function promoteLegacyRoute(pool,legacyId,actor){
+ return tx(pool,async db=>{
+  const [[legacy]]=await db.execute('SELECT * FROM world_map_routes WHERE id=? FOR UPDATE',[legacyId]);
+  if(!legacy)return fail(404,'legacy_route_not_found');
+  const [endpoints]=await db.execute('SELECT id FROM world_settlements WHERE region_id=? AND zone_id=? AND id IN (?,?)',[legacy.region_id,legacy.zone_id,legacy.from_settlement_id,legacy.to_settlement_id]);
+  if(endpoints.length!==2)return fail(409,'legacy_route_endpoint_missing');
+  const from=await settlementNode(db,legacy.region_id,legacy.from_settlement_id,actor);
+  const to=await settlementNode(db,legacy.region_id,legacy.to_settlement_id,actor);
+  if(!from||!to)return fail(409,'legacy_route_endpoint_missing');
+  const bends=typeof legacy.waypoints==='string'?legacy.waypoints:JSON.stringify(legacy.waypoints);
+  const [created]=await db.execute('INSERT INTO world_route_segments(region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints,created_by) VALUES(?,?,?,?,?,?,?,?)',[legacy.region_id,legacy.zone_id,from,to,legacy.route_type,legacy.route_name,bends,actor.id]);
+  await db.execute('DELETE FROM world_map_routes WHERE id=?',[legacyId]);
+  await audit(db,actor,'network_promote_legacy',legacyId);
+  return ok({id:created.insertId,converted_route_id:legacyId});
+ });
+}
 export async function handleTransportGraph(pool,req,path,actor){
+ const legacyPromote=/^\/world-admin\/network\/legacy\/(\d+)\/promote$/.exec(path);
+ if(legacyPromote&&req.method==='POST')return promoteLegacyRoute(pool,Number(legacyPromote[1]),actor);
  const legacyBranch=/^\/world-admin\/network\/legacy\/(\d+)\/branch$/.exec(path);
  if(legacyBranch&&req.method==='POST')return branchLegacyRoute(pool,req,Number(legacyBranch[1]),actor);
  const m=path.match(/^\/world-admin\/network\/(nodes|segments)(?:\/(\d+))?(?:\/(split|remove))?$/);
