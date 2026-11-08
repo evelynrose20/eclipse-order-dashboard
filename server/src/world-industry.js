@@ -125,7 +125,7 @@ export async function industryRoute(pool,req,path,actor){
    return ok({id:created.insertId});
   });
  }
- if((match=/^\\/world-admin\\/industry\\/facilities\\/(\\d+)$/.exec(path))&&req.method==='PUT'){
+ if((match=/^\/world-admin\/industry\/facilities\/(\d+)$/.exec(path))&&req.method==='PUT'){
   const id=Number(match[1]),b=await body(req);
   if(!b||!txt(b.name,140)||!['off','manual','automatic'].includes(b.cycle_mode)||!['slow','normal','fast'].includes(b.cycle_cadence)||typeof b.notes!=='string'||b.notes.length>500)return fail(400,'invalid_facility_settings');
   if(['workforce','heat_available','power_available','level','capacity_pct','status','settlement_id','site_id','owner_faction_id'].some(k=>Object.hasOwn(b,k)))return fail(400,'simulated_resources_read_only');
