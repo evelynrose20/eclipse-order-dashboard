@@ -34,7 +34,7 @@ test('junctions are selectable, draggable and removable from the original map',a
  const [map,css,api]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css'),load('server/src/world-route-network.js')]);
  for(const fn of ['selectJunction','junctionPointerDown','junctionPointerMove','junctionPointerUp','saveJunction','deleteJunction'])assert.ok(map.includes(fn),fn);
  for(const item of ['Save junction','Delete junction','CONNECTED SEGMENTS','Map X','Map Y','Rail switch'])assert.ok(map.includes(item),item);
- assert.match(map,/mode==='view'\|\|mode==='link'/);
+ assert.match(map,/mode==='view'\|\|drawing/);
  assert.match(map,/window\.confirm\(warning\)/);
  assert.match(map,/delete_connected_segments:true/);
  assert.match(api,/explicit_segment_removal_required/);
@@ -73,4 +73,24 @@ test('railway map icons are compact Font Awesome badges that do not cover editab
  assert.match(css,/font-size:10px!important/);
  assert.match(css,/--rail-signal/);
  assert.doesNotMatch(css,/width:27px;height:27px/);
+});
+
+test('rail laying uses the existing map and permits shaping, snapping and undo before save',async()=>{
+ const [map,css]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/world-territory-map.css')]);
+ assert.match(map,/\['track','Lay track'\]/);
+ assert.match(map,/const drawing=mode==='link'\|\|mode==='track'/);
+ assert.match(map,/draftWaypointDown/);
+ assert.match(map,/draftWaypointMove/);
+ assert.match(map,/draftWaypointUp/);
+ assert.match(map,/mode==='track'\?'rail':routeType/);
+ assert.match(map,/setNewRoutePoints\(old=>\{/);
+ assert.match(map,/next\.splice\(closest\?\.i/);
+ assert.match(map,/Branch from route/);
+ assert.match(map,/Straighten/);
+ assert.match(map,/Reverse/);
+ assert.match(map,/Save railway/);
+ assert.doesNotMatch(map,/junctionAction!=='split'.*wtm-route-draw/);
+ assert.match(css,/wtm-track-preview/);
+ assert.match(css,/wtm-draft-handle/);
+ assert.match(css,/wtm-track-steps/);
 });
