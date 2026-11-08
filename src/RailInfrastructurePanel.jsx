@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './rail-infrastructure-panel.css';
+import {nearestSmoothRoutePoint} from './track-drawing.js';
 const stateOptions=['planned','operational','closed','damaged'];
 const stateLabel=s=>s.replaceAll('_',' ').replace(/^./,x=>x.toUpperCase());
 const routeReason={station_not_found:'Choose two saved railway stations.',stations_in_different_zones:'The two stations must belong to the same zone.',freight_platform_not_ready:'Both stations need operational freight platforms and handling capacity.',choose_distinct_stations:'Choose two different stations.',no_operational_rail_path:'No available rail route. Check junction switches, closed tracks and crossing states.',no_interzone_rail_path:'No operational cross-zone rail connection joins these networks.'};
@@ -23,9 +24,18 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  const usedStationNodes=new Set(stations.map(s=>Number(s.node_id)));
  const nodeLabel=n=>n.name||settlements.find(s=>Number(s.id)===Number(n.settlement_id))?.name||'Junction #'+n.id;
  const selectedStation=stations.find(s=>Number(s.id)===Number(record?.station_id??record?.id));
+ const switchCandidates=zoneNodes.map(n=>({node:n,tracks:rails.filter(e=>Number(e.from_node_id)===Number(n.id)||Number(e.to_node_id)===Number(n.id))})).filter(entry=>entry.tracks.length>=2);
+ const stationNameFor=n=>nodeLabel(n)+' Station';
+ const nodePosition=id=>{const n=zoneNodes.find(x=>Number(x.id)===Number(id));const site=settlements.find(s=>Number(s.id)===Number(n?.settlement_id));return n?{x:Number(site?.map_x??n.map_x),y:Number(site?.map_y??n.map_y)}:null};
+ const trackPoints=e=>{const from=nodePosition(e.from_node_id),to=nodePosition(e.to_node_id);const bends=Array.isArray(e.waypoints)?e.waypoints:[];return from&&to?[from,...bends,to]:[]};
+ const closest=(candidates,p)=>candidates.map(e=>({edge:e,snap:nearestSmoothRoutePoint(trackPoints(e),p)})).filter(v=>v.snap).sort((a,b)=>a.snap.d-b.snap.d)[0];
+ const pairNear=p=>{
+  const rail=closest(rails,p),road=closest(roads,p);
+  return {rail_segment_id:rail?.snap?.d<3?rail.edge.id:'',road_segment_id:road?.snap?.d<3?road.edge.id:''};
+ };
  const pairs=useMemo(()=>{const id=Number(editing?.node_id);return rails.filter(e=>Number(e.from_node_id)===id||Number(e.to_node_id)===id)},[rails,editing?.node_id]);
  useEffect(()=>{setRecord(null);setEditing(null);setTab('stations');setError('');setMessage('');setFreightFrom('');setFreightTo('');setFreightPreview(null);setLinkDraft(null)},[regionId,zoneId]);
- useEffect(()=>{if(point&&tab==='crossings'&&editing)setEditing(old=>old?{...old,map_x:point.x,map_y:point.y}:old)},[point?.x,point?.y,tab]);
+ useEffect(()=>{if(point&&tab==='crossings'&&editing){const snapped=pairNear(point);setEditing(old=>old?{...old,map_x:point.x,map_y:point.y,...snapped}:old)}},[point?.x,point?.y,tab]);
  useEffect(()=>{
   if(!focus?.kind||focus.id==null)return;
   const items=focus.kind==='stations'?stations:focus.kind==='switches'?switches:focus.kind==='crossings'?crossings:platforms;
@@ -39,7 +49,9 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
  function start(kind,existing=null){
   setTab(kind);setError('');setMessage('');setRecord(existing);
   if(existing){setEditing({...existing});return}
-  setEditing(kind==='stations'?blankStation(regionId,zoneId):kind==='platforms'?blankPlatform(selectedStation?.id||stations[0]?.id||0,platforms):kind==='switches'?blankSwitch():blankCross(regionId,zoneId,point));
+  const stationNode=stationNodes.find(n=>!usedStationNodes.has(Number(n.id)));
+  const turnout=switchCandidates[0];
+  setEditing(kind==='stations'?{...blankStation(regionId,zoneId),node_id:stationNode?.id||'',name:stationNode?stationNameFor(stationNode):''}:kind==='platforms'?blankPlatform(selectedStation?.id||stations[0]?.id||0,platforms):kind==='switches'?{...blankSwitch(),node_id:turnout?.node.id||'',entry_segment_id:turnout?.tracks[0]?.id||'',exit_segment_id:turnout?.tracks[1]?.id||''}:{...blankCross(regionId,zoneId,point),...(point?pairNear(point):{})});
  }
  function choose(kind,item){setTab(kind);setRecord(item);setEditing({...item});setError('');setMessage('')}
  const currentList=tab==='stations'?stations:tab==='platforms'?platforms:tab==='switches'?switches:tab==='crossings'?crossings:localLinks;
@@ -150,6 +162,11 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
      <label className="wtm-rail-check"><input type="checkbox" checked={!!editing.freight_enabled} onChange={e=>update('freight_enabled',e.target.checked)}/> Accept freight</label>
      <label className="wtm-rail-check"><input type="checkbox" checked={!!editing.passenger_enabled} onChange={e=>update('passenger_enabled',e.target.checked)}/> Passenger service</label>
      <label className="wide">Operational notes<textarea rows={2} maxLength={1200} value={editing.notes||''} onChange={e=>update('notes',e.target.value)}/></label>
+     {!!editing.id&&<div className="wide wtm-rail-station-platforms">
+       <strong>Platforms at this station ({platforms.filter(p=>Number(p.station_id)===Number(editing.id)).length})</strong>
+       <div className="wtm-rail-catalog">{platforms.filter(p=>Number(p.station_id)===Number(editing.id)).map(p=><button type="button" key={p.id} onClick={()=>{setTab('platforms');setEditing({...p});setRecord(p)}}>{p.code} · {stateLabel(p.kind)} · {stateLabel(p.status)}</button>)}
+       <button type="button" onClick={()=>{setTab('platforms');setEditing(blankPlatform(editing.id,platforms));setRecord(null);setError('')}}><i className="fa-solid fa-plus"/> Add platform here</button></div>
+     </div>}
     </>}
     {tab==='platforms'&&<>
      <label>Station<select disabled={!!editing.id} value={editing.station_id||''} onChange={e=>{const b=blankPlatform(Number(e.target.value),platforms);setEditing(old=>({...old,station_id:b.station_id,code:b.code}))}}>{stations.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
@@ -160,7 +177,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
      <label>Status<select value={editing.status} onChange={e=>update('status',e.target.value)}>{stateOptions.map(v=><option key={v}>{stateLabel(v)}</option>)}</select></label>
     </>}
     {tab==='switches'&&<>
-     <label>Shared railway node<select disabled={!!editing.id} value={editing.node_id||''} onChange={e=>setEditing(v=>({...v,node_id:e.target.value,entry_segment_id:'',exit_segment_id:''}))}><option value="">Choose junction</option>{zoneNodes.filter(n=>rails.filter(e=>Number(e.from_node_id)===Number(n.id)||Number(e.to_node_id)===Number(n.id)).length>=2).map(n=><option key={n.id} value={n.id}>{nodeLabel(n)}</option>)}</select></label>
+     <label>Shared railway node<select disabled={!!editing.id} value={editing.node_id||''} onChange={e=>setEditing(v=>{const tracks=switchCandidates.find(c=>Number(c.node.id)===Number(e.target.value))?.tracks||[];return {...v,node_id:e.target.value,entry_segment_id:tracks[0]?.id||'',exit_segment_id:tracks[1]?.id||''}})}><option value="">Choose junction</option>{zoneNodes.filter(n=>rails.filter(e=>Number(e.from_node_id)===Number(n.id)||Number(e.to_node_id)===Number(n.id)).length>=2).map(n=><option key={n.id} value={n.id}>{nodeLabel(n)}</option>)}</select></label>
      <label>Incoming track<select value={editing.entry_segment_id||''} onChange={e=>update('entry_segment_id',e.target.value)}><option value="">Choose track</option>{pairs.map(e=><option key={e.id} value={e.id}>{labelEdge(e)}</option>)}</select></label>
      <label>Outgoing track<select value={editing.exit_segment_id||''} onChange={e=>update('exit_segment_id',e.target.value)}><option value="">Choose track</option>{pairs.filter(e=>Number(e.id)!==Number(editing.entry_segment_id)).map(e=><option key={e.id} value={e.id}>{labelEdge(e)}</option>)}</select></label>
      <label>Switch state<select value={editing.status} onChange={e=>update('status',e.target.value)}>{['open','closed','damaged'].map(v=><option key={v}>{stateLabel(v)}</option>)}</select></label>
@@ -170,6 +187,7 @@ export default function RailInfrastructurePanel({regionId,zoneId,nodes=[],segmen
      <label>Railway<select value={editing.rail_segment_id||''} onChange={e=>update('rail_segment_id',e.target.value)}><option value="">Select rail</option>{rails.map(e=><option key={e.id} value={e.id}>{labelEdge(e)}</option>)}</select></label>
      <label>Road<select value={editing.road_segment_id||''} onChange={e=>update('road_segment_id',e.target.value)}><option value="">Select road</option>{roads.map(e=><option key={e.id} value={e.id}>{labelEdge(e)}</option>)}</select></label>
      <label>Crossing name<input maxLength={140} value={editing.name||''} onChange={e=>update('name',e.target.value)}/></label>
+     <p className="wide wtm-rail-help">Click the railway-road intersection on the map to fill the crossing coordinates and nearby track selections automatically.</p>
      <label>X<input type="number" min="0" max="100" step=".01" value={editing.map_x} onChange={e=>update('map_x',e.target.value)}/></label>
      <label>Y<input type="number" min="0" max="100" step=".01" value={editing.map_y} onChange={e=>update('map_y',e.target.value)}/></label>
      <label>Crossing control<select value={editing.control_type} onChange={e=>update('control_type',e.target.value)}>{['gated','ungated','signal','grade_separated'].map(v=><option key={v} value={v}>{stateLabel(v)}</option>)}</select></label>
