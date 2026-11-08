@@ -9,6 +9,7 @@ import {accountRoute} from '../src/accounts.js';
 import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {worldAdministrationRoute} from '../src/world-administration.js';
+import {runSettlementSimulation,settlementSimulationRoute} from '../src/world-settlement-simulation.js';
 import {internalRailRoute} from '../src/internal-rail.js';
 import {craftingRoute} from '../src/crafting.js';
 import {commerceRoute} from '../src/commerce.js';
@@ -22,7 +23,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   database:'eclipse_order',multipleStatements:true,connectionLimit:1
  });
  try{
-  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','052_settlement_upgrades.sql','035_garden_growth_clock.sql']){
+  for(const filename of ['001_core.sql','002_sessions.sql','005_features.sql','007_syndicate_ranks.sql','008_event_xp.sql','009_free_map_and_statblocks.sql','010_homebrew_classes.sql','011_event_story.sql','012_encounter_archives.sql','013_npc_allies.sql','014_discord_oauth.sql','015_discord_membership.sql','016_order_hierarchy.sql','017_factions.sql','018_faction_reputation.sql','019_faction_settlements.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','026_trade_and_equipment.sql','027_order_treasury_payroll.sql','028_order_fronts.sql','029_front_auto_expenses.sql','030_front_material_supplies.sql','031_character_reserved_goods.sql','032_construction_projects.sql','033_optional_senate.sql','034_live_governance.sql','035_garden_growth_clock.sql','036_senate_governing_chamber.sql','037_order_lore_archive.sql','038_garlean_origin_and_faq.sql','039_garlean_history_revision.sql','040_senate_politics.sql','041_world_administration_foundation.sql','042_world_routes_garlean_weather.sql','043_world_mountain_ranges_order_faction.sql','044_world_site_conditions.sql','045_world_transport_graph.sql','046_world_zones.sql','047_rail_infrastructure.sql','048_rail_interzone_links.sql','049_internal_rail_logistics.sql','050_internal_rail_damaged.sql','051_garlean_civic_needs.sql','052_settlement_upgrades.sql','053_autonomous_settlement_simulation.sql','035_garden_growth_clock.sql']){
    // Reproduce a MariaDB installation where an older table already owns the generic
    // fk_wallet_character name. The treasury migration must still succeed.
    if(filename==='027_order_treasury_payroll.sql'){
@@ -1013,5 +1014,67 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   await admin.query(await readFile(new URL('../sql/050_internal_rail_damaged.sql',import.meta.url),'utf8'));
   const [[retainedRail]]=await admin.execute('SELECT COUNT(*) AS total FROM order_internal_rail_journeys WHERE route_id=?',[railId]);
   assert.equal(Number(retainedRail.total),1);
+  // Autonomous living world: only NPC-owned settlements are started automatically.
+  const npcFixture=await worldAdministrationRoute(admin,request('POST',{...worldPlace,name:'CI Autonomous Hamlet',controlling_faction_id:'house-kurogane',population:0,workforce:0,housing_capacity:0,simulation_enabled:false}),'/world-admin/settlements');
+  assert.equal(npcFixture.status,200,JSON.stringify(npcFixture.body));
+  const npcId=Number(npcFixture.body.id);
+  const runNpc=await runSettlementSimulation(admin,new Date('2026-11-08T06:00:00Z'));
+  assert.ok(runNpc.processed>=1,'NPC settlement should self-run without regional simulation opt-in');
+  const [[npcSettings]]=await admin.execute('SELECT mode,last_cycle_key FROM world_settlement_autosim WHERE settlement_id=?',[npcId]);
+  assert.equal(npcSettings.mode,'automatic');
+  const [[npcFirst]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
+  assert.equal(Number(npcFirst.n),1);
+  const repeatedNpc=await runSettlementSimulation(admin,new Date('2026-11-08T10:00:00Z'));
+  assert.equal(repeatedNpc.processed,0,'same-day NPC settlement cycle cannot repeat');
+  const [npcOrderGoods]=await admin.execute('SELECT item_code FROM world_civic_movements WHERE settlement_id=?',[npcId]);
+  assert.equal(npcOrderGoods.length,0,'NPC fictional supplies never touch the Order stock ledger');
+  for(let day=9;day<=23;day++)await runSettlementSimulation(admin,new Date('2026-11-'+String(day).padStart(2,'0')+'T06:00:00Z'));
+  const [[npcConstruction]]=await admin.execute('SELECT COUNT(*) AS n FROM world_npc_construction WHERE settlement_id=?',[npcId]);
+  assert.ok(Number(npcConstruction.n)>0,'automated NPC settlement starts construction to provide homes');
+  const [npcHistory]=await admin.execute('SELECT cycle_key FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
+  assert.equal(npcHistory.length,new Set(npcHistory.map(x=>x.cycle_key)).size);
+  const [[unowned]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_autosim WHERE settlement_id=?',[mineId]);
+  assert.equal(Number(unowned.n),0,'Order settlements are never automatically enabled');
+  const npcView=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation',{id,account_role:'domina'});
+  assert.equal(npcView.status,200);
+  assert.ok(npcView.body.settlements.some(x=>Number(x.id)===npcId&&x.ownership==='npc'));
+  assert.ok(npcView.body.settlements.some(x=>Number(x.id)===mineId&&x.ownership==='order'));
+  const npcModeOff=await settlementSimulationRoute(admin,request('PUT',{mode:'off',cadence:'normal',paused:false}),'/world-admin/simulation/'+npcId+'/settings',{id,account_role:'domina'});
+  assert.equal(npcModeOff.status,200);
+  // Order autonomy remains explicitly opt-in and consumes real shared stock only once.
+  await admin.execute("UPDATE world_regions SET simulation_mode='managed' WHERE id=?",[wrid]);
+  await admin.execute('UPDATE world_settlements SET simulation_enabled=1,workforce=30 WHERE id=?',[mineId]);
+  await admin.execute('UPDATE world_civic_profiles SET enabled_mode=?,paused=0 WHERE settlement_id=?',['managed',mineId]);
+  await admin.execute("INSERT INTO fc_material_stock(material_id,quantity) VALUES('iron-ore',100) ON DUPLICATE KEY UPDATE quantity=100");
+  const fundedDefense={name:'CI Automated Wall',category:'defense',status:'building',condition_pct:100,level:1,housing_bonus:0,service_bonus:0,defense_bonus:12,notes:'Construction test',material_id:'iron-ore',material_cost:5};
+  const startedDefense=await worldAdministrationRoute(admin,request('POST',fundedDefense),'/world-admin/settlements/'+mineId+'/upgrades');
+  assert.equal(startedDefense.status,200,JSON.stringify(startedDefense.body));
+  const startOrderAuto=await settlementSimulationRoute(admin,request('PUT',{mode:'automatic',cadence:'normal',paused:false}),'/world-admin/simulation/'+mineId+'/settings',{id,account_role:'domina'});
+  assert.equal(startOrderAuto.status,200,JSON.stringify(startOrderAuto.body));
+  const orderAutoRun=await runSettlementSimulation(admin,new Date('2026-11-24T06:00:00Z'));
+  assert.ok(orderAutoRun.events.some(e=>e.origin==='order'&&Number(e.settlement_id)===mineId));
+  const [[systemCycle]]=await admin.execute("SELECT actor_id FROM world_civic_cycles WHERE settlement_id=? AND cycle_date='2026-11-24'",[mineId]);
+  assert.equal(systemCycle.actor_id,null,'automatic Order civic accounting must not impersonate an administrator');
+  const [[constructionDebit]]=await admin.execute("SELECT quantity FROM world_settlement_upgrade_material_receipts WHERE upgrade_id=?",[startedDefense.body.id]);
+  assert.equal(Number(constructionDebit.quantity),5);
+  const [[projectProgress]]=await admin.execute("SELECT construction_progress FROM world_settlement_upgrades WHERE id=?",[startedDefense.body.id]);
+  assert.ok(Number(projectProgress.construction_progress)>0,'workers advance an Order project');
+  const againOrder=await runSettlementSimulation(admin,new Date('2026-11-24T18:00:00Z'));
+  assert.equal(againOrder.processed,0,'same-day automatic Order run must not repeat');
+  const [[afterIron]]=await admin.execute("SELECT quantity FROM fc_material_stock WHERE material_id='iron-ore'");
+  assert.equal(Number(afterIron.quantity),95,'shared construction material debit occurs exactly once');
+  const npcReenabled=await settlementSimulationRoute(admin,request('PUT',{mode:'automatic',cadence:'normal',paused:false}),'/world-admin/simulation/'+npcId+'/settings',{id,account_role:'domina'});
+  assert.equal(npcReenabled.status,200);
+  await admin.execute("UPDATE world_settlements SET controlling_faction_id='eclipse-order',simulation_enabled=1 WHERE id=?",[npcId]);
+  await admin.execute("INSERT INTO world_civic_profiles(settlement_id,enabled_mode) VALUES(?,'managed') ON DUPLICATE KEY UPDATE enabled_mode='managed'",[npcId]);
+  await runSettlementSimulation(admin,new Date('2026-11-25T06:00:00Z'));
+  const [[transferred]]=await admin.execute('SELECT mode,ownership,paused FROM world_settlement_autosim WHERE settlement_id=?',[npcId]);
+  assert.equal(transferred.mode,'off','an NPC auto policy must never silently turn into an Order auto policy');
+  assert.equal(transferred.ownership,'order');
+  assert.equal(Number(transferred.paused),1);
+  await admin.query(await readFile(new URL('../sql/053_autonomous_settlement_simulation.sql',import.meta.url),'utf8'));
+  const [[retainedCycles]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
+  assert.ok(Number(retainedCycles.n)>0,'repeated setup retains simulation history');
+
  }finally{await admin.end();}
 });

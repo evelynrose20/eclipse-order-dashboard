@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import SettlementUpgradesPanel from './SettlementUpgradesPanel.jsx';
+import SettlementClockPanel from './SettlementClockPanel.jsx';
 const today=()=>new Date().toISOString().slice(0,10);
 const num=v=>Number(v||0);
 const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
@@ -51,7 +52,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    <button type="submit" disabled={busy||!transfer.material_id}>Transfer shared materials</button>
   </form></details>}
   </div>}
-  {tab==='upgrades'&&<div className="wa-civic-workspace"><SettlementUpgradesPanel settlement={settlement} request={request} onChanged={onChanged}/>
+  {tab==='upgrades'&&<div className="wa-civic-workspace"><SettlementUpgradesPanel settlement={settlement} request={request} onChanged={onChanged} materials={data.shared_materials||[]}/>
   <h3>Heating infrastructure</h3><p className="wa-hint">Operational facilities determine effective heating coverage; damaged and offline systems reduce the capacity of a settlement to keep homes warm. Fuel is only taken from civilian fuel stores during an authorized cycle.</p>
   <div className="wa-civic-values"><div><span>Effective heating coverage</span><strong>{p.heating_coverage_effective}%</strong></div>{(data.heating_assets||[]).map(h=><div key={h.id}><span>{h.name} · {h.status} · {h.condition_pct}% condition</span><strong>{h.coverage_pct}% capacity</strong>{canEdit&&<span><button type="button" disabled={busy} onClick={()=>{setHeater({...h});setHeaterEditing(h.id)}}>Edit</button> <button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete this heating facility?'))mutate('/heating/'+h.id,'DELETE',null,'Heating facility removed.')}}>Remove</button></span>}</div>)}</div>
   {canEdit&&<details className="wa-civic-form"><summary><i className="fa-solid fa-plus" aria-hidden="true"/> Add heating facility</summary><form className="wa-fields" onSubmit={e=>{e.preventDefault();const path=heaterEditing?'/heating/'+heaterEditing:'/heating';const method=heaterEditing?'PUT':'POST';mutate(path,method,{...heater,coverage_pct:Number(heater.coverage_pct),condition_pct:Number(heater.condition_pct)},heaterEditing?'Heating facility updated.':'Heating facility added.');setHeaterEditing(null);}}>
@@ -104,8 +105,9 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    <button type="button" onClick={()=>setTab('upgrades')}>View housing & structures</button>
   </div>}
   {tab==='policy'&&<div className="wa-civic-workspace">
+  <SettlementClockPanel request={request} settlement={settlement} regionMode={regionMode} profile={profile}/>
   <h3>Simulation policy and thresholds</h3>
-  <p className="wa-hint">Off is the default. Narrative generates warnings only. Managed/detailed require an explicit dated run. Pause immediately prevents new cycles. Unrest events remain proposals until approved.</p>
+  <p className="wa-hint">Off is the default for Order settlements. Narrative generates warnings only. Managed/Detailed may run manually or via the separately enabled Windows simulation clock. Pause prevents new cycles, and major RP events remain proposals until approved.</p>
   {canEdit&&profile&&<form className="wa-fields" onSubmit={e=>{e.preventDefault();mutate('/profile','PUT',{...profile,food_daily_per_resident:num(profile.food_daily_per_resident),heat_daily_per_resident:num(profile.heat_daily_per_resident),water_daily_per_resident:num(profile.water_daily_per_resident),medicine_daily_per_resident:num(profile.medicine_daily_per_resident),food_min_days:num(profile.food_min_days),minimum_variety:num(profile.minimum_variety),grace_cycles:num(profile.grace_cycles),paused:!!profile.paused},'Civic policy saved.')}}>
    <label>Mode<select value={profile.enabled_mode} onChange={e=>setProfile({...profile,enabled_mode:e.target.value})}>{['off','narrative','managed','detailed'].map(k=><option key={k} value={k}>{k}</option>)}</select></label>
    <label>Pause cycles<select value={profile.paused?'yes':'no'} onChange={e=>setProfile({...profile,paused:e.target.value==='yes'})}><option value="no">No</option><option value="yes">Yes</option></select></label>

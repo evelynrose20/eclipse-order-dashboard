@@ -163,3 +163,13 @@ updated: 2026-11-07
 - [x] Editable physical settlement upgrades: housing, defenses, clinics, waterworks, granaries, insulation and public works, with planned/building/operational/damaged/destroyed states and scaled effective benefits.
 - [x] Civic Welfare reorganized as a compact tabbed staff workspace. Weather editing is collapsed; player-facing civilian information remains readable.
 - [x] New MySQL migration 052 and integration/unit coverage. Windows API must run setup and restart to load the schema.
+
+### Living settlement autonomy & NPC observatory (2026-11-08)
+- [x] Staff-only **NPC Settlements** screen separated from Order/unclaimed settlement management, with faction, region, population, employment, supply indices, construction queue, journal and trend view.
+- [x] Windows API automatic clock (once-per-minute poll; one idempotent cycle per eligible cadence window) with restart-safe history and no catch-up flood. NPC-controlled settlements automatically begin simulation; unclaimed sites remain untouched.
+- [x] Faction ownership boundary guards: changing between Order and NPC control disables prior automatic permissions until staff explicitly re-enables them. Changing NPC factions keeps the independent NPC cycle.
+- [x] NPC-local abstract production/consumption, housing-limited migration, gradual employment, material/service shortages, stability, and nonviolent construction/milestones. **NPC resource indices never consume Order shared stock.**
+- [x] Order settlement autonomy is opt-in and off by default; region/settlement/civic policy must all enable it. Order cycles use real civilian stock and existing civic-cycle duplicate guards. Construction uses actual workforce and optionally configured unreserved shared materials, with one-time recorded debits.
+- [x] Slow, normal and fast NPC cadence; slow or normal Order cadence. Staff pause and stop options.
+- [x] Dated history records for every committed autonomous cycle; no automatic territory swaps, raids, riots, casualties, or political outcomes.
+- [ ] Live Windows service acceptance after running migration 053 and restarting API; CI test database is not the live server.

@@ -18,6 +18,7 @@ import {POINT_BUDGET,SCORE_COST} from './progression.js';
 import {classRoute} from './class-catalog.js';
 import {factionRoute} from './factions.js';
 import {worldAdministrationRoute} from './world-administration.js';
+import {runSettlementSimulation} from './world-settlement-simulation.js';
 import {internalRailRoute} from './internal-rail.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
@@ -175,6 +176,16 @@ server.listen(port,host,()=>{
 // Daily fictional payroll is processed by the Windows API, with a persisted cycle key.
  // A restart cannot create duplicate salary, and a brief downtime catches up at most one reset.
 let payrollTickRunning=false;
+let settlementTickRunning=false;
+const settlementTick=async()=>{
+ if(!pool||settlementTickRunning)return;
+ settlementTickRunning=true;
+ try{
+  const result=await runSettlementSimulation(pool,new Date());
+  if(result.processed)console.log('[World simulation] Processed',result.processed,'autonomous settlement cycles');
+ }catch(error){console.warn('[World simulation] Check unavailable:',error?.code||error?.name||'database_unavailable')}
+ finally{settlementTickRunning=false}
+};
 const payrollTick=async()=>{
  if(!pool||payrollTickRunning)return;
  payrollTickRunning=true;
@@ -189,10 +200,13 @@ const payrollTick=async()=>{
  finally{payrollTickRunning=false}
 };
 const payrollTimer=setInterval(()=>void payrollTick(),60000);
+const settlementTimer=setInterval(()=>void settlementTick(),60000);
+settlementTimer.unref();
 payrollTimer.unref();
-if(pool)void payrollTick();
+if(pool){void payrollTick();void settlementTick()}
 const close=async()=>{
   clearInterval(payrollTimer);
+  clearInterval(settlementTimer);
   server.close();
   if(pool) await pool.end().catch(()=>{});
 };
