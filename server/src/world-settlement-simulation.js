@@ -151,6 +151,9 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  const [[count]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[site.id]);
  const preview=civicSimulationPreview(site,profile,stock,history,temperature,Number(count.n),heater,upgrades);
  const migration=previewPopulationChange(site,upgrades,preview.risk,true);
+ // Employment is an outcome of populated civic capacity, not a staff-edited
+ // workforce field that can be inflated to produce unlimited industry.
+ const simulatedWorkforce=Math.min(migration.population_after,Math.floor(migration.population_after*0.55));
  for(const [kind,used] of [['food',preview.food_used],['fuel',preview.fuel_used],['water',preview.water_used],['medicine',preview.medicine_used]]){
   let remaining=round(used);
   for(const item of stock.filter(x=>x.resource_kind===kind)){
@@ -163,7 +166,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  }
  const remains=preview.food_need>0?Math.max(0,(preview.food_stock-preview.food_used)/preview.food_need):0;
  const variety=Math.min(100,Math.round(preview.food_groups_30d.length/Math.max(1,Number(profile.minimum_variety))*100));
- await db.execute('UPDATE world_settlements SET population=?,food_days=?,food_variety=?,civil_stability=?,unrest=? WHERE id=?',[migration.population_after,Math.min(99999,remains),variety,preview.after_stability,preview.after_unrest,site.id]);
+ await db.execute('UPDATE world_settlements SET population=?,workforce=?,food_days=?,food_variety=?,civil_stability=?,unrest=? WHERE id=?',[migration.population_after,simulatedWorkforce,Math.min(99999,remains),variety,preview.after_stability,preview.after_unrest,site.id]);
  await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NULL)',[site.id,cycleDate,profile.enabled_mode,preview.food_used,preview.fuel_used,preview.water_used,preview.medicine_used,preview.before_stability,preview.after_stability,preview.before_unrest,preview.after_unrest,JSON.stringify({...preview,population:migration,system_generated:true})]);
  await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[cycleDate,site.id]);
  await db.execute('UPDATE world_settlement_autosim SET last_cycle_key=? WHERE settlement_id=?',[key,site.id]);
@@ -171,7 +174,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature){
  const shortage=preview.warnings.filter(w=>w.includes('shortfall')||w.includes('low'));
  const event=shortage.length?'shortage':construction.completed.length?'construction':migration.arrivals?'arrivals':'routine';
  const headline=shortage.length?'Civilian shortages require attention':construction.completed.length?construction.completed[0].name+' completed':migration.arrivals?migration.arrivals+' residents arrived':construction.blocked.length?construction.blocked[0]:'Daily civilian operations completed';
- await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,site.workforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,system_generated:true})]);
+ await db.execute('INSERT INTO world_settlement_sim_history(settlement_id,cycle_key,cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline,report) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[site.id,key,cycleDate,'order',site.population,migration.population_after,simulatedWorkforce,preview.before_stability,preview.after_stability,Math.max(0,preview.food_stock-preview.food_used),Math.max(0,preview.water_stock-preview.water_used),Math.max(0,preview.fuel_stock-preview.fuel_used),Math.max(0,preview.medicine_stock-preview.medicine_used),0,event,headline,JSON.stringify({...preview,population:migration,construction,system_generated:true})]);
  return {settlement_id:site.id,origin:'order',event,headline};
 }
 export async function runSettlementSimulation(pool,now=new Date()){
