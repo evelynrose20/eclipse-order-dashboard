@@ -172,8 +172,13 @@ async function worldAdministrationRouteCore(pool,req,path){
    if(Number(old.region_id)!==b.region_id)return fail(409,'settlement_cannot_change_region');
    if(Number(old.zone_id)!==Number(zoneId)){
     const [road]=await db.execute('SELECT id FROM world_map_routes WHERE from_settlement_id=? OR to_settlement_id=? LIMIT 1',[Number(match[1]),Number(match[1])]);
-    const [node]=await db.execute('SELECT id FROM world_route_nodes WHERE settlement_id=? LIMIT 1',[Number(match[1])]);
-    if(road.length||node.length)return fail(409,'settlement_has_routes_move_requires_detaching');
+    const [nodes]=await db.execute('SELECT id FROM world_route_nodes WHERE settlement_id=?',[Number(match[1])]);
+    if(road.length)return fail(409,'settlement_has_routes_move_requires_detaching');
+    if(nodes.length){
+     const [joined]=await db.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=? LIMIT 1',[nodes[0].id,nodes[0].id]);
+     if(joined.length)return fail(409,'settlement_has_routes_move_requires_detaching');
+     await db.execute('UPDATE world_route_nodes SET zone_id=? WHERE settlement_id=?',[zoneId,Number(match[1])]);
+    }
    }
    const [r]=await db.execute('UPDATE world_settlements SET '+fields.map(k=>k+'=?').join(',')+' WHERE id=?',[...values({...b,zone_id:zoneId},fields),Number(match[1])]);if(!r.affectedRows)return fail(404,'settlement_not_found');await audit(db,actor.id,'update','settlement',Number(match[1]),b.name);return ok({saved:true});
   });
