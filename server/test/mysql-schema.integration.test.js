@@ -188,6 +188,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const blockedResidents=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,name:'Empty test outpost',population:1,workforce:0,housing_capacity:0}),'/world-admin/settlements/'+emptyId);
   assert.equal(blockedResidents.status,409,'population cannot increase without available homes');
   const structurePath='/world-admin/settlements/'+emptyId+'/upgrades';
+  const upgradesInitialGet=await worldAdministrationRoute(admin,request('GET'),structurePath);
+  assert.equal(upgradesInitialGet.status,200,JSON.stringify(upgradesInitialGet.body));
+  assert.equal(upgradesInitialGet.body.housing_capacity,0,'upgrade GET should read only actual settlement columns');
+
   const building={name:'New residential quarter',category:'housing',status:'building',condition_pct:100,level:1,housing_bonus:30,service_bonus:0,defense_bonus:0,notes:'Initial accommodation'};
   const newBuilding=await worldAdministrationRoute(admin,request('POST',building),structurePath);
   assert.equal(newBuilding.status,200,JSON.stringify(newBuilding.body));
@@ -205,13 +209,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[wallCount]]=await admin.execute("SELECT COUNT(*) AS n FROM world_settlement_upgrades WHERE settlement_id=? AND category='defense'",[emptyId]);
   assert.equal(Number(wallCount.n),1);
   // Civilian P2: real MySQL authorization, stock accounting, cohorts and once-only cycles.
-  const cohortPayload={label:'Civilian families',residents:90,employed:20,housing_quality:70,medical_access:65,water_access:80};
-  const cohort=await worldAdministrationRoute(admin,request('POST',cohortPayload),'/world-admin/civic/'+mineId+'/cohorts');
-  assert.equal(cohort.status,200,JSON.stringify(cohort.body));
-  const revisedCohort=await worldAdministrationRoute(admin,request('PUT',{...cohortPayload,residents:100}),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
-  assert.equal(revisedCohort.status,200,JSON.stringify(revisedCohort.body));
-  const invalidCohort=await worldAdministrationRoute(admin,request('PUT',{...cohortPayload,residents:151}),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
-  assert.equal(invalidCohort.status,409,'cohorts cannot exceed recorded population');
+  const generatedCohorts=await worldAdministrationRoute(admin,request('GET'),'/world-admin/civic/'+mineId);
+  assert.equal(generatedCohorts.status,200,JSON.stringify(generatedCohorts.body));
+  assert.equal(generatedCohorts.body.cohorts.reduce((sum,c)=>sum+Number(c.residents),0),150,'generated groups reconcile to settlement population');
+  const manualCohort=await worldAdministrationRoute(admin,request('POST',{label:'Manual residents',residents:20}),'/world-admin/civic/'+mineId+'/cohorts');
+  assert.equal(manualCohort.status,409,'population cohorts must not be manually edited');
   const initialProfile={food_daily_per_resident:1,heat_daily_per_resident:1,water_daily_per_resident:1,medicine_daily_per_resident:0.01,food_min_days:14,minimum_variety:2,grace_cycles:0,enabled_mode:'managed',paused:false};
   const civicProfile=await worldAdministrationRoute(admin,request('PUT',initialProfile),'/world-admin/civic/'+mineId+'/profile');
   assert.equal(civicProfile.status,200,JSON.stringify(civicProfile.body));
@@ -252,8 +254,6 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(duplicatedCycle.status,409,'one cycle per settlement per day');
   const [[afterCivicWater]]=await admin.execute('SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code=?',[mineId,'ci-water']);
   assert.equal(Number(afterCivicWater.quantity),200,'water stock consumed once from civilian inventory');
-  const removedCohort=await worldAdministrationRoute(admin,request('DELETE'),'/world-admin/civic/'+mineId+'/cohorts/'+cohort.body.id);
-  assert.equal(removedCohort.status,200,JSON.stringify(removedCohort.body));
   // Prevent unrelated map tests from depending on the simulation configuration.
   await admin.execute("UPDATE world_regions SET simulation_mode='off' WHERE id=?",[wrid]);
   await admin.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=?,simulation_enabled=0 WHERE id=?',[24,60,80,5,mineId]);

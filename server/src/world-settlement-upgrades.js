@@ -30,7 +30,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
  const id=Number(m[1]),upgradeId=m[2]?Number(m[2]):null;
  if(!Number.isSafeInteger(id)||id<1)return fail(400,'invalid_settlement');
  if(req.method==='GET'&&!upgradeId){
-  const [[settlement]]=await pool.execute('SELECT id,population,housing_capacity,security_score,medical_access,water_access,housing FROM world_settlements WHERE id=?',[id]);
+  const [[settlement]]=await pool.execute('SELECT id,population,housing_capacity,security_score,medical_access,housing FROM world_settlements WHERE id=?',[id]);
   if(!settlement)return fail(404,'settlement_not_found');
   const upgrades=await getSettlementUpgradeRecords(pool,id);
   return ok({housing_capacity:housingCapacity(settlement,upgrades),base_capacity:Number(settlement.housing_capacity),residents:Number(settlement.population),effects:upgradeEffects(upgrades),upgrades});

@@ -1,6 +1,7 @@
 import {climateForRegions} from './world-region-climate.js';
 import {handleCivicExtras} from './world-civic-extras.js';
 import {upgradeEffects} from './world-settlement-upgrades.js';
+import {simulatedPopulationGroups,previewPopulationChange} from './world-population-simulation.js';
 // Staff-controlled civilian ledger. Never touches player/front inventory.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const integer=(v,min,max)=>Number.isInteger(v)&&v>=min&&v<=max;
@@ -84,12 +85,12 @@ export async function handleCivicNeeds(pool,req,path,actor){
  if(req.method==='GET'&&section==='overview'){
   const data=await context(pool,id);if(!data)return fail(404,'settlement_not_found');
   const [shared_materials]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
-  const [cohorts]=await pool.execute('SELECT * FROM world_civic_cohorts WHERE settlement_id=? ORDER BY id',[id]);
+  const cohorts=simulatedPopulationGroups(data.settlement);
   const [incidents]=await pool.execute('SELECT * FROM world_civic_incidents WHERE settlement_id=? ORDER BY id DESC LIMIT 50',[id]);
   const [aid_contracts]=await pool.execute('SELECT * FROM world_civic_aid_contracts WHERE settlement_id=? ORDER BY id',[id]);
   const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades)});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,incidents,aid_contracts,aid_dispatches,cycles,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades),population_simulation:previewPopulationChange(data.settlement,data.upgrades,civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades).risk,!!data.settlement.simulation_enabled&&data.region_mode==='managed'&&!data.profile.paused&&['managed','detailed'].includes(data.profile.enabled_mode))});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
@@ -134,17 +135,8 @@ export async function handleCivicNeeds(pool,req,path,actor){
    return ok({saved:true,quantity:b.quantity});
   });
  }
- if(req.method==='POST'&&section==='cohorts'){
-  const b=await body(req);
-  if(!b||!safeText(b.label,120)||!integer(b.residents,0,10000000)||!integer(b.employed,0,b.residents)||!['housing_quality','medical_access','water_access'].every(k=>integer(b[k],0,100)))return fail(400,'invalid_civic_cohort');
-  return tx(pool,async db=>{
-   const [[s]]=await db.execute('SELECT population FROM world_settlements WHERE id=? FOR UPDATE',[id]);if(!s)return fail(404,'settlement_not_found');
-   const [[total]]=await db.execute('SELECT COALESCE(SUM(residents),0) AS n FROM world_civic_cohorts WHERE settlement_id=?',[id]);
-   if(Number(total.n)+b.residents>Number(s.population))return fail(409,'cohort_population_exceeds_settlement');
-   const [r]=await db.execute('INSERT INTO world_civic_cohorts(settlement_id,label,residents,employed,housing_quality,medical_access,water_access) VALUES(?,?,?,?,?,?,?)',[id,b.label.trim(),b.residents,b.employed,b.housing_quality,b.medical_access,b.water_access]);
-   await log(db,actor.id,'civic_cohort',id,b.label);return ok({id:r.insertId});
-  });
- }
+ // Population groups are simulation-derived. Manual cohort writes are no longer accepted.
+ if(section==='cohorts')return fail(409,'population_groups_are_simulated');
  if(req.method==='POST'&&section==='incidents'){
   const b=await body(req);
   if(!b||!incidentKinds.includes(b.kind)||!safeText(b.title,140)||!safeText(b.detail,4000))return fail(400,'invalid_civic_incident');
@@ -167,7 +159,9 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const b=await body(req);if(!b||!/^\d{4}-\d{2}-\d{2}$/.test(b.cycle_date)||Number.isNaN(Date.parse(b.cycle_date+'T00:00:00Z')))return fail(400,'invalid_cycle_date');
   const preview=async(db,commit)=>{
    const data=await context(db,id,commit,b.cycle_date);if(!data)return fail(404,'settlement_not_found');
-   const report=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles);
+   const report=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades);
+   const population=previewPopulationChange(data.settlement,data.upgrades,report.risk,report.simulation_eligible&&!data.profile.paused&&!!data.settlement.simulation_enabled&&data.region_mode==='managed');
+   report.population=population;
    if(!commit)return ok({preview:report,committed:false});
    if(!report.simulation_eligible||data.profile.paused||!data.settlement.simulation_enabled||data.region_mode!=='managed')return fail(409,'civic_simulation_not_enabled');
    if(data.profile.last_cycle_date&&b.cycle_date<=String(data.profile.last_cycle_date).slice(0,10))return fail(409,'civic_cycle_out_of_order');
@@ -184,7 +178,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
    }
    const remainingFoodDays=report.food_need>0?Math.max(0,(report.food_stock-report.food_used)/report.food_need):0;
    const varietyScore=Math.min(100,Math.round(report.food_groups_30d.length/Math.max(1,Number(data.profile.minimum_variety))*100));
-   await db.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=? WHERE id=?',[Math.min(99999,remainingFoodDays),varietyScore,report.after_stability,report.after_unrest,id]);
+   await db.execute('UPDATE world_settlements SET food_days=?,food_variety=?,civil_stability=?,unrest=?,population=? WHERE id=?',[Math.min(99999,remainingFoodDays),varietyScore,report.after_stability,report.after_unrest,population.population_after,id]);
    await db.execute('INSERT INTO world_civic_cycles(settlement_id,cycle_date,mode,food_used,fuel_used,water_used,medicine_used,before_stability,after_stability,before_unrest,after_unrest,report,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,b.cycle_date,data.profile.enabled_mode,report.food_used,report.fuel_used,report.water_used,report.medicine_used,report.before_stability,report.after_stability,report.before_unrest,report.after_unrest,JSON.stringify(report),actor.id]);
    await db.execute('UPDATE world_civic_profiles SET last_cycle_date=? WHERE settlement_id=?',[b.cycle_date,id]);
    await log(db,actor.id,'civic_cycle',id,b.cycle_date);
