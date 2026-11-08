@@ -191,7 +191,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   const candidate=networkNodes.find(n=>{const at=graphPoint(graphNodes.get(Number(n.id)));return at&&Math.hypot(at.x-p.x,at.y-p.y)<2});
   if(candidate){setNotice('Junction selected as the start of your new route.');setJunctionAction('');if(mode!=='track')setMode('link');chooseRouteEndpoint('from',String(-Number(candidate.id)));return}
   if(displayed.some(site=>Math.hypot(Number(site.map_x)-p.x,Number(site.map_y)-p.y)<2)){setNotice('Choose the settlement directly when planning a route.');setJunctionAction('');return}
-  const nearest=networkSegments.map(edge=>{
+  const nearest=networkSegments.filter(edge=>mode!=='track'||edge.route_type==='rail').map(edge=>{
    const line=graphPoints(edge);
    const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
    return {edge,distance:projected??Infinity};
@@ -201,7 +201,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
    if(snapped?.id){setJunctionAction('');if(mode!=='track')setMode('link');chooseRouteEndpoint('from',String(-Number(snapped.id)))}
    return;
   }
-  const nearLegacy=routes.map(edge=>{
+  const nearLegacy=routes.filter(edge=>mode!=='track'||edge.route_type==='rail').map(edge=>{
    const line=polyline(edge,byId);
    const projected=line.slice(1).map((end,i)=>{const start=line[i],dx=end.x-start.x,dy=end.y-start.y,t=Math.max(0,Math.min(1,((p.x-start.x)*dx+(p.y-start.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p.x-start.x-t*dx,p.y-start.y-t*dy)}).sort((a,b)=>a-b)[0];
    return {edge,distance:projected??Infinity};
@@ -216,6 +216,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
  }
  async function splitRoute(route,e){
   if(!canEdit||busy)return;
+  if(mode==='track'&&route.route_type!=='rail'){setNotice('Track branches must connect to existing railway tracks. Road crossings are configured under Railway.');return}
   const p=coords(e);if(!p)return;
   const endpoint=route.from_node_id?'/world-admin/network/segments/'+route.id+'/split':'/world-admin/network/legacy/'+route.id+'/branch';
   const result=await mutation(endpoint,'POST',p,'Shared junction inserted into the selected route. Plan a route from it to branch.');
@@ -278,7 +279,15 @@ export default function WorldTerritoryMap({region,zoneId,settlements,routes=[],n
   const p=coords(e);if(!p)return;
   if(mode==='rail'){setRailPoint(p);return}
   if(junctionAction==='place'&&(drawing||mode==='bend')){void createJunction(p);return}
-  if(drawing&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>old.length<16?[...old,p]:old);
+  if(drawing&&routeStart!=null&&routeEnd!=null)setNewRoutePoints(old=>{
+   if(old.length>=16||old.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<.45))return old;
+   const start=pointForRef(routeStart),end=pointForRef(routeEnd);
+   if(!start||!end)return old;
+   const line=[start,...old,end];
+   const distance=(a,b,q)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((q.x-a.x)*dx+(q.y-a.y)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(q.x-a.x-t*dx,q.y-a.y-t*dy)};
+   const closest=line.slice(1).map((q,i)=>({i,d:distance(line[i],q,p)})).sort((a,b)=>a.d-b.d)[0];
+   const next=[...old];next.splice(closest?.i??old.length,0,p);return next;
+  });
   if(mode==='bend'&&currentRoute)setDraftWaypoints(old=>{
    if(old.length>=16)return old;
    const line=pointsForRoute(currentRoute,old);
