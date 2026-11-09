@@ -1,4 +1,5 @@
 import {equipmentRoute,equipmentSummary} from './world-magitek-equipment.js';
+import {npcTooCloseToMapEdge,mountainPlacementConflict} from './world-terrain-placement.js';
 import {validateIndustryConfiguration,validateIndustryRules,industryDependenciesHaveCycle,validItemId,industryProductionPreview} from './world-industry-rules.js';
 import {atomicIndustry,adjustFacilityStock,getIndustryPreview,produceIndustryCycle,advanceIndustryProject} from './world-industry-engine.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -167,6 +168,8 @@ export async function industryRoute(pool,req,path,actor){
   return atomicIndustry(pool,async db=>{
    const [[zone]]=await db.execute('SELECT id,controlling_faction_id FROM world_zones WHERE id=? AND region_id=?',[b.zone_id,b.region_id]);
    if(!zone)return fail(404,'zone_not_found');
+   if(zone.controlling_faction_id&&zone.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_site_requires_10_percent_map_edge_padding');
+   if(await mountainPlacementConflict(db,b.region_id,b.zone_id,{x:b.map_x,y:b.map_y}))return fail(409,'industry_site_cannot_be_placed_on_mountains');
    const [result]=await db.execute('INSERT INTO world_industry_sites(region_id,zone_id,name,kind,description,controlling_faction_id,map_x,map_y,created_by) VALUES(?,?,?,?,?,?,?,?,?)',[b.region_id,b.zone_id,b.name.trim(),b.kind,b.description,zone.controlling_faction_id||null,b.map_x,b.map_y,actor.id]);
    await audit(db,actor.id,'industry',result.insertId,'site_create',b.name);
    return ok({id:result.insertId});
