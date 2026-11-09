@@ -12,6 +12,7 @@ import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {continentSummary,continentRoute} from './world-continent.js';
 import {strategicProvinceSummary,strategicProvinceRoute} from './world-strategic-provinces.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
+import {mountainPlacementConflict,rangesCoverSettlements} from './world-terrain-placement.js';
 
 const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
 const text=(v,max,required=false)=>typeof v==='string'&&v.trim().length<=max&&(!required||v.trim().length>0);
@@ -71,6 +72,8 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [networkNodes]=await pool.execute('SELECT id,region_id,zone_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_mountain_ranges ORDER BY id');
+  let rivers=[];
+  try{[rivers]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_rivers ORDER BY id')}catch(e){if(e?.code!=='ER_NO_SUCH_TABLE')throw e;}
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   // Staff-only civic summary. Return actual civic mode and ledger-based needs
   // instead of the legacy settlement's simulation_enabled flag alone.
@@ -106,7 +109,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   }
   const allowed=new Set(factions.map(f=>f.id));
   const safe=command?settlements:settlements.filter(s=>!s.directory_faction_id||allowed.has(s.directory_faction_id)).map(s=>({...s,directory_faction_id:s.directory_faction_id&&allowed.has(s.directory_faction_id)?s.directory_faction_id:null,governing_faction_id:allowed.has(s.governing_faction_id)?s.governing_faction_id:null,controlling_faction_id:allowed.has(s.controlling_faction_id)?s.controlling_faction_id:null,supporting_faction_id:allowed.has(s.supporting_faction_id)?s.supporting_faction_id:null}));
-  return ok({can_edit:command,continent,provinces:command?provinces:provinces.map(p=>({...p,controlling_faction_id:allowed.has(p.controlling_faction_id)?p.controlling_faction_id:null,governing_faction_id:allowed.has(p.governing_faction_id)?p.governing_faction_id:null})),industry_sites:industrySites,simulated_settlement_ids:simulationHistory.map(x=>Number(x.settlement_id)),regions:effective.map(r=>command?r:{...r,climate_profile:null,weather_events:[],effective_weather:r.effective_weather?.source==='dm_weather_event'?{...r.effective_weather,event_title:undefined}:r.effective_weather}),zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),upgrades:upgrades.filter(u=>safe.some(s=>Number(s.id)===Number(u.settlement_id))).map(u=>({id:u.id,settlement_id:u.settlement_id,name:u.name,category:u.category,status:u.status,condition_pct:u.condition_pct,level:u.level})),settlements:safe.map(s=>command?({...s,simulation_enabled:!!s.simulation_enabled,civic_summary:civicSummaries.get(s.id)||null,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})}):({id:s.id,region_id:s.region_id,zone_id:s.zone_id,name:s.name,description:s.description,map_x:s.map_x,map_y:s.map_y,map_icon:s.map_icon,strategic_state:s.strategic_state,directory_faction_id:s.directory_faction_id,governing_faction_id:s.governing_faction_id,controlling_faction_id:s.controlling_faction_id,supporting_faction_id:s.supporting_faction_id,population:s.population,civic_summary:(()=>{const c=civicSummaries.get(s.id);return c?{food_days:c.food_days,heat_days:c.heat_days,heating_coverage:c.heating_coverage,water_stock:c.water_stock,medicine_stock:c.medicine_stock,unrest_risk:c.unrest_risk,warnings:c.warnings,has_stock:c.has_stock,housing_capacity:c.housing_capacity,upgrade_count:c.upgrade_count,upgrade_effects:c.upgrade_effects,effective_security:c.effective_security,effective_medical_access:c.effective_medical_access}:null})()})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),factions});
+  return ok({can_edit:command,continent,provinces:command?provinces:provinces.map(p=>({...p,controlling_faction_id:allowed.has(p.controlling_faction_id)?p.controlling_faction_id:null,governing_faction_id:allowed.has(p.governing_faction_id)?p.governing_faction_id:null})),industry_sites:industrySites,simulated_settlement_ids:simulationHistory.map(x=>Number(x.settlement_id)),regions:effective.map(r=>command?r:{...r,climate_profile:null,weather_events:[],effective_weather:r.effective_weather?.source==='dm_weather_event'?{...r.effective_weather,event_title:undefined}:r.effective_weather}),zones:zones.map(z=>command?z:{...z,governing_faction_id:allowed.has(z.governing_faction_id)?z.governing_faction_id:null,controlling_faction_id:allowed.has(z.controlling_faction_id)?z.controlling_faction_id:null,supporting_faction_id:allowed.has(z.supporting_faction_id)?z.supporting_faction_id:null}),upgrades:upgrades.filter(u=>safe.some(s=>Number(s.id)===Number(u.settlement_id))).map(u=>({id:u.id,settlement_id:u.settlement_id,name:u.name,category:u.category,status:u.status,condition_pct:u.condition_pct,level:u.level})),settlements:safe.map(s=>command?({...s,simulation_enabled:!!s.simulation_enabled,civic_summary:civicSummaries.get(s.id)||null,outlook:civicOutlook(s,{temperature_c:effective.find(r=>r.id===s.region_id)?.effective_weather.temperature_c})}):({id:s.id,region_id:s.region_id,zone_id:s.zone_id,name:s.name,description:s.description,map_x:s.map_x,map_y:s.map_y,map_icon:s.map_icon,strategic_state:s.strategic_state,directory_faction_id:s.directory_faction_id,governing_faction_id:s.governing_faction_id,controlling_faction_id:s.controlling_faction_id,supporting_faction_id:s.supporting_faction_id,population:s.population,civic_summary:(()=>{const c=civicSummaries.get(s.id);return c?{food_days:c.food_days,heat_days:c.heat_days,heating_coverage:c.heating_coverage,water_stock:c.water_stock,medicine_stock:c.medicine_stock,unrest_risk:c.unrest_risk,warnings:c.warnings,has_stock:c.has_stock,housing_capacity:c.housing_capacity,upgrade_count:c.upgrade_count,upgrade_effects:c.upgrade_effects,effective_security:c.effective_security,effective_medical_access:c.effective_medical_access}:null})()})),routes:routes.filter(r=>safe.some(s=>s.id===r.from_settlement_id)&&safe.some(s=>s.id===r.to_settlement_id)).map(r=>({...r,waypoints:typeof r.waypoints==='string'?JSON.parse(r.waypoints):r.waypoints})),network_nodes:networkNodes.filter(n=>!n.settlement_id||safe.some(s=>s.id===n.settlement_id)),network_segments:networkSegments.filter(e=>networkNodes.some(n=>n.id===e.from_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))&&networkNodes.some(n=>n.id===e.to_node_id&&(!n.settlement_id||safe.some(s=>s.id===n.settlement_id)))).map(e=>({...e,waypoints:typeof e.waypoints==='string'?JSON.parse(e.waypoints):e.waypoints})),mountains:mountains.map(m=>({...m,points:typeof m.points==='string'?JSON.parse(m.points):m.points})),rivers:rivers.map(r=>({...r,points:typeof r.points==='string'?JSON.parse(r.points):r.points})),factions});
  }
  if(!command)return fail(403,'command_required');
  if(path==='/world-admin/industry'||path.startsWith('/world-admin/industry/'))return industryRoute(pool,req,path,actor);
@@ -154,6 +157,8 @@ async function worldAdministrationRouteCore(pool,req,path){
   return transact(pool,async db=>{
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
+   const [existingSites]=await db.execute('SELECT map_x,map_y FROM world_settlements WHERE region_id=? AND zone_id=?',[b.region_id,zoneId]);
+   if(rangesCoverSettlements(b.points,existingSites))return fail(409,'mountains_cannot_cover_settlements');
    if(mid){
     const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,zone_id=?,name=?,points=? WHERE id=?',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),mid]);
     if(!r.affectedRows)return fail(404,'mountain_not_found');
@@ -165,12 +170,42 @@ async function worldAdministrationRouteCore(pool,req,path){
    return ok({id:r.insertId});
   });
  }
+ // Rivers are physical geography, not network edges or shipping connections.
+ const river=/^\/world-admin\/rivers(?:\/(\d+))?$/.exec(path);
+ if(river&&['POST','PUT','DELETE'].includes(req.method)){
+  const rid=river[1]?Number(river[1]):null;
+  if(req.method==='DELETE'){
+   if(!rid)return fail(400,'river_id_required');
+   return transact(pool,async db=>{
+    const [result]=await db.execute('DELETE FROM world_map_rivers WHERE id=?',[rid]);
+    if(!result.affectedRows)return fail(404,'river_not_found');
+    await audit(db,actor.id,'river_delete','river',rid);return ok({saved:true});
+   });
+  }
+  if((req.method==='PUT')!==Boolean(rid))return fail(400,'invalid_river_request');
+  const b=await read(req);
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||b.points.length<2||!validWaypoints(b.points))return fail(400,'invalid_river');
+  return transact(pool,async db=>{
+   const zoneId=await zoneFor(db,b.region_id,b.zone_id);
+   if(!zoneId)return fail(400,'zone_not_in_region');
+   if(rid){
+    const [result]=await db.execute('UPDATE world_map_rivers SET name=?,points=? WHERE id=? AND region_id=? AND zone_id=?',[b.name.trim(),JSON.stringify(b.points),rid,b.region_id,zoneId]);
+    if(!result.affectedRows)return fail(404,'river_not_found');
+    await audit(db,actor.id,'river_edit','river',rid,b.name.trim());return ok({saved:true});
+   }
+   const [result]=await db.execute('INSERT INTO world_map_rivers(region_id,zone_id,name,points,created_by) VALUES(?,?,?,?,?)',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),actor.id]);
+   await audit(db,actor.id,'river_create','river',result.insertId,b.name.trim());return ok({id:result.insertId});
+  });
+ }
  // Small transactional map edits should never overwrite the settlement's
  // concurrently updated civilian/medical/industry fields.
  if((match=/^\/world-admin\/settlements\/(\d+)\/map$/.exec(path))&&['PATCH','POST'].includes(req.method)){
   const b=await read(req);
   if(!num(b?.map_x,0,100)||!num(b?.map_y,0,100)||!validMapIcon(b?.map_icon))return fail(400,'invalid_map_marker');
   return transact(pool,async db=>{
+   const [[existing]]=await db.execute('SELECT region_id,zone_id,map_x,map_y FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
+   if(!existing)return fail(404,'settlement_not_found');
+   if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&await mountainPlacementConflict(db,existing.region_id,existing.zone_id,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    const [changed]=await db.execute('UPDATE world_settlements SET map_x=?,map_y=?,map_icon=? WHERE id=?',[b.map_x,b.map_y,b.map_icon,Number(match[1])]);
    if(!changed.affectedRows)return fail(404,'settlement_not_found');
    await audit(db,actor.id,'map_position','settlement',Number(match[1]),'Position/icon edited');
@@ -224,6 +259,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    if(!await referencesExist(db,b))return fail(400,'invalid_faction_reference');
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
+   if(await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    if(b.housing_capacity!==undefined&&(!Number.isInteger(b.housing_capacity)||b.housing_capacity<0||b.housing_capacity>10000000))return fail(400,'invalid_housing_capacity');
    if(b.housing_capacity!==undefined&&b.population>b.housing_capacity)return fail(409,'insufficient_housing_capacity');
    const [r]=await db.execute('INSERT INTO world_settlements('+fields.join(',')+',housing_capacity) VALUES('+fields.map(()=>'?').join(',')+',?)',[...values({...b,zone_id:zoneId},fields),b.housing_capacity??b.population]);await audit(db,actor.id,'create','settlement',r.insertId,b.name);return ok({id:r.insertId});
@@ -239,6 +275,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    const [[old]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!old)return fail(404,'settlement_not_found');
    if(Number(old.region_id)!==b.region_id)return fail(409,'settlement_cannot_change_region');
+   if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y)&&await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    // An autonomous population or civic outcome is not a form field.
    // Staff may set starting conditions when creating a settlement, but
    // cannot overwrite simulated workforce, population, stability or stores.
