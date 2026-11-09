@@ -101,13 +101,20 @@ export async function industryRoute(pool,req,path,actor){
   return atomicIndustry(pool,async db=>{
    await db.execute('SELECT id FROM world_industry_catalog_lock WHERE id=1 FOR UPDATE');
    if(!await ensureItems(db,b.configuration))return fail(400,'unknown_industry_item');
-   const manufactureError=await validateEquipmentManufacture(db,b);
+   let effectiveCategory=b.category;
+   if(versionTarget){
+    const [[templateCategory]]=await db.execute('SELECT category FROM world_industry_templates WHERE id=?',[versionTarget]);
+    if(!templateCategory)return fail(404,'template_not_found');
+    if(b.category!==undefined&&b.category!==templateCategory.category)return fail(409,'template_category_locked');
+    effectiveCategory=templateCategory.category;
+   }
+   const manufactureError=await validateEquipmentManufacture(db,{...b,category:effectiveCategory});
    if(manufactureError)return fail(409,manufactureError);
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
     const [[old]]=await db.execute('SELECT id,current_version,category FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
     if(!old)return fail(404,'template_not_found');
-    if(b.category!==old.category)return fail(409,'template_category_locked');
+    if(effectiveCategory!==old.category)return fail(409,'template_category_locked');
     if(editExisting){
      const [[existing]]=await db.execute('SELECT configuration,rules FROM world_industry_template_versions WHERE template_id=? AND version=? FOR UPDATE',[versionTarget,Number(old.current_version)]);
      if(!existing)return fail(404,'template_version_not_found');
