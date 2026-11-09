@@ -86,3 +86,17 @@ test('migration adds no world settlements, economy rewrites or automatic war tri
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_plot_protection/);
  assert.doesNotMatch(sql,/DROP TABLE|CREATE TRIGGER|UPDATE world_settlements|INSERT INTO world_settlements/i);
 });
+
+
+test('war outcome cannot be approved through initial war review endpoint',async()=>{
+ const db={
+  beginTransaction:async()=>{},commit:async()=>{throw Error('should not commit')},rollback:async()=>{},release:()=>{},
+  execute:async sql=>{
+   if(sql.startsWith('SELECT * FROM world_conflict_proposals'))return [[{id:22,status:'pending',source_kind:'war_outcome',conflict_kind:'territory_transfer'}]];
+   throw Error('unexpected mutation: '+sql);
+  }
+ };
+ const res=await worldDiplomacyRoute({getConnection:async()=>db},request('POST',{decision:'approve',note:''}),'/world-admin/diplomacy/proposals/22/review',actor);
+ assert.equal(res.status,409);
+ assert.equal(res.body.error,'outcome_requires_second_stage_review');
+});
