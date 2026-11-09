@@ -12,7 +12,7 @@ import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {continentSummary,continentRoute} from './world-continent.js';
 import {strategicProvinceSummary,strategicProvinceRoute} from './world-strategic-provinces.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
-import {mountainPlacementConflict,rangesCoverSettlements} from './world-terrain-placement.js';
+import {mountainPlacementConflict,rangesCoverSettlements,validTerrainPoints} from './world-terrain-placement.js';
 
 const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
 const text=(v,max,required=false)=>typeof v==='string'&&v.trim().length<=max&&(!required||v.trim().length>0);
@@ -153,7 +153,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   }
   if((req.method==='PUT')!==Boolean(mid))return fail(400,'invalid_mountain_request');
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||b.points.length<2||!validWaypoints(b.points))return fail(400,'invalid_mountain_range');
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||!validTerrainPoints(b.points))return fail(400,'invalid_mountain_range');
   return transact(pool,async db=>{
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
@@ -184,7 +184,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   }
   if((req.method==='PUT')!==Boolean(rid))return fail(400,'invalid_river_request');
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||b.points.length<2||!validWaypoints(b.points))return fail(400,'invalid_river');
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||!validTerrainPoints(b.points))return fail(400,'invalid_river');
   return transact(pool,async db=>{
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
