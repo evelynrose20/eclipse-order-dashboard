@@ -1,10 +1,13 @@
 import React,{useEffect,useMemo,useState} from 'react';
+import './world-industry.css';
 
 const fmt=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:1});
 const nameCase=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function NpcSettlementsPanel({request,factions=[],onChanged}){
  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[search,setSearch]=useState(''),[onlyActive,setOnlyActive]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [farmInfo,setFarmInfo]=useState(null),[farmModal,setFarmModal]=useState(false);
+ const [farmDraft,setFarmDraft]=useState({source_type:'industry_site',source_id:0,travel_hours:24,cargo_capacity:30});
  async function load(){const response=await request('/world-admin/simulation');setData(response);setSelected(prev=>response.settlements.some(s=>String(s.id)===prev&&s.ownership==='npc')?prev:String(response.settlements.find(s=>s.ownership==='npc')?.id||''));}
  useEffect(()=>{load().catch(e=>setError(e.message||'Unable to load NPC settlements'))},[]);
  const npcs=(data?.settlements||[]).filter(s=>s.ownership==='npc');
@@ -15,6 +18,27 @@ export default function NpcSettlementsPanel({request,factions=[],onChanged}){
   try{await request('/world-admin/simulation/'+current.id+'/settings',{method:'PUT',body:settings});await load();await onChanged?.();setNotice('Simulation settings saved. Changes take effect at the next scheduled check.')}
   catch(e){setError(e.message||'Could not save simulation settings')}finally{setBusy(false)}
  }
+ useEffect(()=>{
+  if(!selected)return;
+  let active=true;
+  request('/world-admin/simulation/'+selected+'/farm/options').then(result=>{if(active)setFarmInfo(result)}).catch(e=>{if(active)setError(e.message||'Unable to load mapped farms')});
+  return()=>{active=false};
+ },[selected]);
+ const openFarmSelector=()=>{
+  const route=farmInfo?.route;
+  setFarmDraft({source_type:route?.site_id?'industry_site':route?.map_settlement_id?'settlement_marker':'industry_site',source_id:Number(route?.site_id||route?.map_settlement_id||0),travel_hours:Number(route?.travel_hours||24),cargo_capacity:Number(route?.cargo_capacity||30)});
+  setFarmModal(true);
+ };
+ const saveFarm=async()=>{
+  if(!current||!farmDraft.source_id)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/world-admin/simulation/'+current.id+'/farm',{method:'PUT',body:farmDraft});
+   const response=await request('/world-admin/simulation/'+current.id+'/farm/options');
+   setFarmInfo(response);setFarmModal(false);await load();await onChanged?.();
+   setNotice('Mapped NPC farm assigned. Harvest stays at the farm until cargo travels to the settlement.');
+  }catch(e){setError(e.message||'Unable to assign mapped farm')}finally{setBusy(false)}
+ };
  const history=(current?.history||[]).slice().reverse();
  const bounds=history.reduce((m,h)=>Math.max(m,Number(h.population_after)),Math.max(1,Number(current?.population||0)));
  if(!data)return <section className="wa-panel"><h3>NPC settlements</h3><p>{error||'Loading NPC simulation records…'}</p></section>;
@@ -40,7 +64,13 @@ export default function NpcSettlementsPanel({request,factions=[],onChanged}){
       <p className="wa-npc-subtle">Last cycle: {current.last_cycle_key||'Not yet simulated'}. No catch-up bursts after downtime.</p>
      </div>
      <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Economy & services</h4><span>NPC-owned reserves and operational infrastructure</span></div><div className="wa-npc-supplies">{[['Food stored',current.food_units],['Food capacity',current.storage_capacity?.food],['Water stored',current.water_units],['Water capacity',current.storage_capacity?.water],['Waterworks output / cycle',current.infrastructure_effects?.water_daily],['Fuel',current.fuel_units],['Medicine',current.medicine_units]].map(([label,value])=><div key={label}><span>{label}</span><strong>{fmt(value)}</strong></div>)}</div><p className="wa-npc-subtle">NPC factions build and improve the same templated granaries, waterworks, clinics and other infrastructure as Order settlements. New development points come only from production completed by operational, NPC-owned industrial sites on the previous day. No productive industry means no new development points.</p></div>
-     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Founding & self-sufficiency</h4><span>{current.founding?'Founding established':'Awaiting initial simulation'}</span></div><p className="wa-npc-subtle">{current.founding?'One-time founding: '+fmt(current.founding.founding_population)+' founding residents, '+(current.founding.starter_housing_id?'starter housing':'existing housing')+', and '+(current.founding.starter_facility_id?'an NPC-owned farm':'existing industry')+'. Future growth requires operational industry, real production and funded construction.':'Turning on automatic NPC simulation establishes a founding settlement once, including basic housing and an initial productive farm. The starter package cannot be claimed again by restarting simulation.'}</p></div>
+     <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Founding & farm logistics</h4><span>{current.cargo_route?'Mapped farm assigned':current.founding?'Founding established · farm required':'Awaiting founding'}</span></div>
+      <p className="wa-npc-subtle">{current.founding?'Basic housing and residents were established once.':'Automatic simulation establishes starter housing and residents once.'} Select an existing farm marker on the map to supply this community. The simulation never creates a hidden farm. Farms produce into their own stock, and transport must physically deliver supplies before they become settlement provisions.</p>
+      <div className="wa-npc-settings-row"><button type="button" disabled={busy} onClick={openFarmSelector}><i className="fa-solid fa-wheat-awn" aria-hidden="true"/> {current.cargo_route?'Change mapped farm and cargo':'Assign mapped NPC farm'}</button></div>
+      {current.cargo_route&&<div className="wa-npc-supplies"><div><small>Supplying farm</small><strong>{current.cargo_route.farm_name}</strong></div><div><small>Transport time</small><strong>{fmt(current.cargo_route.travel_hours)} hours</strong></div><div><small>Daily cargo capacity</small><strong>{fmt(current.cargo_route.cargo_capacity)} units</strong></div><div><small>Route</small><strong>{current.cargo_route.enabled?'Active':'Paused'}</strong></div></div>}
+      {farmInfo?.shipments?.length>0&&<div className="wa-civic-project-supplies"><strong>Recent cargo shipments</strong>{farmInfo.shipments.slice(0,8).map(c=><div className="wa-upgrade-details" key={c.id}><span>{nameCase(c.item_id)}</span><span>{fmt(c.quantity)} units</span><span>{nameCase(c.status)}</span><span>Arrival: {String(c.arrival_at).slice(0,16)}</span></div>)}</div>}
+      {!!farmInfo?.warehouse?.length&&<div className="wa-npc-supplies">{farmInfo.warehouse.map(c=><div key={c.item_id}><small>Stored {nameCase(c.item_id)}</small><strong>{fmt(c.quantity)}</strong></div>)}</div>}
+      </div>
       <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Construction & development</h4><span>{fmt(current.development_points)} development points · +{fmt(current.last_industry_development_points||0)} earned from industry last cycle</span></div>{(current.infrastructure_projects||[]).map(p=><div className="wa-npc-project" key={'template-'+p.id}><div><strong>{p.name}</strong><small>Template {p.template_id} · level {p.target_level} · {nameCase(p.status)}</small></div><div className="wa-npc-project-progress"><div style={{width:Math.min(100,Math.round(Number(p.progress)/Math.max(1,Number(p.labor_required))*100))+'%'}}/></div><strong>{Math.round(Number(p.progress)/Math.max(1,Number(p.labor_required))*100)}%</strong></div>)}{current.projects.length?current.projects.slice(0,8).map(p=><div className="wa-npc-project" key={p.id}><div><strong>{p.name}</strong><small>{nameCase(p.kind)} · {nameCase(p.status)}</small></div><div className="wa-npc-project-progress"><div style={{width:p.progress+'%'}}/></div><strong>{p.progress}%</strong></div> ):!(current.infrastructure_projects||[]).length&&<p className="wa-npc-subtle">No construction activity recorded yet.</p>}</div>
      <div className="wa-npc-section"><div className="wa-npc-section-title"><h4>Settlement journal</h4><span>{current.history.length} recent entries</span></div>{current.history.length?current.history.slice(0,12).map(h=><div className="wa-npc-journal" key={h.id}><small>{h.cycle_date} · {nameCase(h.event_type)}</small><strong>{h.headline}</strong><span>Population {fmt(h.population_before)} → {fmt(h.population_after)} · Stability {h.condition_before} → {h.condition_after}</span></div>):<p className="wa-npc-subtle">The first autonomous tick will create the first journal entry.</p>}</div>
      <div className="wa-npc-section wa-npc-settings"><div className="wa-npc-section-title"><h4>Simulation settings</h4><span>Staff only</span></div><p className="wa-npc-subtle">NPC-controlled settlements simulate automatically by default. No riots, deaths, territory transfers or Order supply withdrawals are triggered.</p>
@@ -48,6 +78,20 @@ export default function NpcSettlementsPanel({request,factions=[],onChanged}){
      </div>
     </>}
    </section>
+  {farmModal&&<div className="wa-industry-overlay" role="presentation"><section className="wa-industry-attach wa-civic-attach" role="dialog" aria-modal="true" aria-label="Select mapped NPC farm">
+   <header className="wa-industry-attach-head"><div><span className="wa-kicker">NPC SETTLEMENT / PHYSICAL CARGO</span><h3>Assign mapped farm</h3><p>{current?.name} · Choose an existing farm and configure its supply route.</p></div><button type="button" className="wa-industry-close" onClick={()=>setFarmModal(false)} aria-label="Close farm selector">×</button></header>
+   <div className="wa-industry-steps"><button type="button" className="active"><span>01</span> Mapped farm</button><button type="button" className={farmDraft.source_id?'active':''} disabled={!farmDraft.source_id}><span>02</span> Cargo settings</button></div>
+   <div className="wa-industry-choice-heading"><strong>Available map locations</strong><span>{farmInfo?.options?.length||0} farms belonging to this faction in the region</span></div>
+   <div className="wa-industry-location-grid wa-civic-type-grid">{(farmInfo?.options||[]).map(option=><button type="button" key={option.source_type+':'+option.id} className={'wa-industry-location-card '+(farmDraft.source_type===option.source_type&&Number(farmDraft.source_id)===Number(option.id)?'selected':'')} onClick={()=>setFarmDraft(d=>({...d,source_type:option.source_type,source_id:Number(option.id)}))}>
+    <div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className="fa-solid fa-wheat-awn" aria-hidden="true"/></span></div><strong>{option.name}</strong><span className="wa-industry-location-meta">{nameCase(option.kind)} · {option.source_type==='industry_site'?'Industry map location':'Settlement map marker'}</span><small>Region #{option.region_id} · Zone #{option.zone_id}</small>
+   </button>)}</div>
+   {!farmInfo?.options?.length&&<p className="wa-npc-subtle">No suitable mapped farm belongs to this faction in the region. Add or capture a farm using the existing map editor, then return here.</p>}
+   <div className="wa-civic-build-fields" style={{padding:'16px 22px'}}>
+    <label>Travel time (hours)<input type="number" min="1" max="168" step="1" value={farmDraft.travel_hours} onChange={e=>setFarmDraft(d=>({...d,travel_hours:Number(e.target.value)}))}/></label>
+    <label>Daily cargo capacity (units)<input type="number" min="1" max="100000" step="1" value={farmDraft.cargo_capacity} onChange={e=>setFarmDraft(d=>({...d,cargo_capacity:Number(e.target.value)}))}/></label>
+   </div>
+   <footer className="wa-industry-attach-foot"><span>Goods depart from the real farm's stock, arrive after travel time, and cannot be delivered twice.</span><button type="button" onClick={()=>setFarmModal(false)}>Cancel</button><button type="button" className="wa-industry-primary" disabled={busy||!farmDraft.source_id||farmDraft.travel_hours<1||farmDraft.travel_hours>168||farmDraft.cargo_capacity<1} onClick={saveFarm}>Save farm and cargo route</button></footer>
+  </section></div>}
   </div>
  </div>;
 }
