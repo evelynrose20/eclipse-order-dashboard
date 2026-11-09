@@ -1,4 +1,5 @@
 import React,{useMemo} from 'react';
+import {safelyOffshore} from './terrain-geography.js';
 
 // A native, non-interactive terrain atlas, derived from the broad geography
 // in the supplied Three Great Continents reference. No source-map image,
@@ -11,12 +12,14 @@ const LAND={
  snowfield:[[469,116],[505,93],[548,107],[574,129],[600,155],[622,149],[645,172],[665,172],[675,144],[698,155],[704,185],[720,178],[748,202],[759,224],[735,237],[721,263],[701,279],[672,267],[651,273],[639,290],[613,278],[594,266],[567,279],[549,260],[524,242],[500,254],[486,231],[469,204],[483,181]],
  eastice:[[640,225],[676,207],[692,185],[715,200],[749,192],[781,220],[811,221],[836,247],[819,271],[787,286],[753,305],[729,289],[705,310],[677,284]]
 };
+// Candidate islands are validated against every mainland outline before rendering.
+// Islands touching a continent are discarded rather than being painted inland.
 const ISLANDS=[
- [80,233,16,27,9],[69,267,11,19,17],[148,507,14,22,22],[157,544,12,18,24],
- [210,640,12,16,17],[446,94,17,12,36],[453,132,13,10,28],
- [485,65,14,10,42],[551,72,18,13,32],[566,113,12,8,16],
- [780,164,12,8,23],[840,410,16,13,25],[872,393,13,10,34],[923,352,18,22,37],
- [947,329,13,15,28],[979,349,17,16,24],[881,194,7,8,11],[805,144,9,6,5],
+ [80,233,12,20,9],[60,271,8,14,17],[123,560,10,12,22],[135,604,7,10,24],
+ [174,658,7,10,17],[449,46,12,7,36],[439,37,8,6,28],
+ [483,40,10,7,42],[557,49,12,7,32],[604,76,8,5,16],
+ [796,150,10,7,23],[966,398,10,8,25],[968,366,7,7,34],[947,293,9,9,37],
+ [957,249,10,8,28],[981,317,12,10,24],[877,182,7,6,11],[825,143,7,5,5],
  [412,654,11,8,25],[530,645,8,6,13],[679,653,11,10,11],[750,671,11,9,15]
 ];
 const RIDGES=[
@@ -83,8 +86,9 @@ function pine(x,y,size,key){
 const mainContours=['ilsabard','aldenard','othard'];
 export default function IlsabardTerrain({showRelief=true}){
  const paths=useMemo(()=>Object.fromEntries(Object.entries(LAND).map(([k,v],i)=>[k,coast(v,i*23+7,k.includes('ice')?2:3)])),[]);
- const mountains=useMemo(()=>RIDGES.flatMap(({path,amount,seed})=>routePoints(path,amount,seed).map((p,i)=>mountain(p.x,p.y,p.s,p.x>510&&p.y<290,seed*100+i))),[]);
+ const mountains=useMemo(()=>RIDGES.flatMap(({path,amount,seed})=>routePoints(path,amount,seed).filter((p,i)=>i%7!==3).map((p,i)=>mountain(p.x,p.y,p.s*(.8+HASH(seed+42,i)*.35),p.x>510&&p.y<290,seed*100+i))),[]);
  const forests=useMemo(()=>WOODS.flatMap(([cx,cy,rx,ry,n],i)=>Array.from({length:n},(_,j)=>{const a=HASH(i+4,j)*Math.PI*2,r=Math.sqrt(HASH(i+15,j));return pine(cx+Math.cos(a)*rx*r,cy+Math.sin(a)*ry*r,3+HASH(i+27,j)*5,'tree'+i+'-'+j)})),[]);
+ const offshoreIslands=useMemo(()=>ISLANDS.filter(island=>safelyOffshore(island,[LAND.ilsabard,LAND.aldenard,LAND.othard],5)),[]);
  return <g className="ilsabard-native-terrain" pointerEvents="none" aria-hidden="true">
   <defs>
    <radialGradient id="ils-ocean"><stop offset="0" stopColor="#385960"/><stop offset=".7" stopColor="#24444e"/><stop offset="1" stopColor="#152e3a"/></radialGradient>
@@ -100,13 +104,14 @@ export default function IlsabardTerrain({showRelief=true}){
   <path d="M0 530Q160 476 350 594T730 542T1000 612" fill="none" stroke="#97b2b1" strokeWidth="1" strokeDasharray="2 8" opacity=".15"/>
   {mainContours.map((k,i)=><g key={k}>
    <path d={paths[k]} transform="translate(1 4)" stroke="#0d2730" strokeWidth="8" fill="#0c252d" opacity=".7"/>
-   <path d={paths[k]} fill={i===2?'url(#ils-east)':'url(#ils-ground)'} stroke="#c5c19b" strokeWidth="1.6" strokeLinejoin="round"/>
+   <path d={paths[k]} fill={i===2?'url(#ils-east)':'url(#ils-ground)'} stroke="#c5c19b" strokeWidth="1.4" strokeLinejoin="round"/>
+   <path d={paths[k]} fill="none" stroke="#3b5248" strokeWidth="5" strokeOpacity=".18" strokeLinejoin="round"/>
    <g clipPath={`url(#ils-clip-${k})`} opacity=".5">
     <rect x="0" y="0" width="1000" height="700" filter="url(#ils-noise)"/>
     {Array.from({length:34},(_,n)=>{const cx=HASH(i+3,n)*1000,cy=HASH(i+37,n)*700,rx=25+HASH(i+90,n)*100,ry=15+HASH(i+133,n)*55;return <ellipse key={n} cx={cx} cy={cy} rx={rx} ry={ry} fill={n%3?'#41563a':'#c2aa74'} opacity={.10+HASH(i+75,n)*.23}/>;})}
    </g>
   </g>)}
-  {ISLANDS.map(([x,y,rx,ry,s],i)=><path key={'island'+i} d={coast(Array.from({length:10},(_,j)=>{const angle=Math.PI*2*j/10,noise=.72+HASH(s,j)*.56;return [x+Math.cos(angle)*rx*noise,y+Math.sin(angle)*ry*noise]}),s,1.7)} fill={i%4===0?'#668269':'#776f4c'} stroke="#b1a987" strokeWidth="1.1"/>)}
+  {offshoreIslands.map(([x,y,rx,ry,s],i)=><path key={'island'+i} d={coast(Array.from({length:10},(_,j)=>{const angle=Math.PI*2*j/10,noise=.72+HASH(s,j)*.56;return [x+Math.cos(angle)*rx*noise,y+Math.sin(angle)*ry*noise]}),s,1.7)} fill={i%4===0?'#668269':'#776f4c'} stroke="#b1a987" strokeWidth="1.1"/>)}
   <path d={paths.snowfield} fill="url(#ils-frost)" stroke="#93b0ae" strokeWidth="1.2" opacity=".96"/>
   <path d={paths.eastice} fill="url(#ils-frost)" stroke="#acb8b7" strokeWidth="1" opacity=".98"/>
   <path d="M 315 146 Q 380 190 414 254 T 493 317 Q 529 339 554 388" fill="none" stroke="#d4bb83" strokeWidth="19" opacity=".16"/>
