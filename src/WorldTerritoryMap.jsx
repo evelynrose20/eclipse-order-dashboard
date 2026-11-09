@@ -4,7 +4,8 @@ import MapIconPicker from './MapIconPicker.jsx';
 import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
-export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway (map only)'],['skyway','Air route'],['waterway','Water route']];
+export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway (map only)']];
+const visibleTransport=route=>['road','trail','rail'].includes(route.route_type);
 const iconFor=name=>'fa-solid fa-'+(ICON_OPTIONS.find(x=>x[0]===name)?.[2]||(/^(fa-[a-z0-9-]{1,29})$/.test(name||'')?name.slice(3):'house'));
 const pct=n=>Math.min(100,Math.max(0,Math.round(Number(n)*100)/100));
 const routeClass=type=>'wa-route-'+(type||'road');
@@ -31,7 +32,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[],routes=[],networkNodes=[],networkSegments=[],mountains=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[],routes=[],networkNodes=[],networkSegments=[],mountains=[],rivers=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -41,10 +42,11 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
+ const [riverId,setRiverId]=useState(''),[riverName,setRiverName]=useState(''),[riverPoints,setRiverPoints]=useState([]);
 
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setRiverId('');setRiverName('');setRiverPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
@@ -76,6 +78,10 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const editableRoute=currentRoute?(graphSelected?{region_id:Number(region.id),zone_id:Number(zoneId),from_node_id:Number(currentRoute.from_node_id),to_node_id:Number(currentRoute.to_node_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}:{region_id:Number(region.id),zone_id:Number(zoneId),from_settlement_id:Number(currentRoute.from_settlement_id),to_settlement_id:Number(currentRoute.to_settlement_id),route_type:routeType,route_name:routeName,waypoints:draftWaypoints}):null;
  const previewPoints=routeStart!=null&&routeEnd!=null&&pointForRef(routeStart)&&pointForRef(routeEnd)?[pointForRef(routeStart),...newRoutePoints,pointForRef(routeEnd)]:[];
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
+ const distanceRidge=(point,pts)=>{if(!Array.isArray(pts)||pts.length<2)return Infinity;return Math.min(...pts.slice(1).map((b,i)=>{const a=pts[i],dx=b.x-a.x,dy=b.y-a.y,d=dx*dx+dy*dy,t=d?Math.max(0,Math.min(1,((point.x-a.x)*dx+(point.y-a.y)*dy)/d)):0;return Math.hypot(point.x-a.x-dx*t,point.y-a.y-dy*t)}))};
+ const mountainNearby=point=>mountains.some(m=>distanceRidge(point,m.points)<3.2);
+ const mountainDraftBlocked=mountainPoints.length>=2&&displayed.some(s=>distanceRidge({x:Number(s.map_x),y:Number(s.map_y)},mountainPoints)<3.2);
+ const blockedOnMap=displayed.filter(s=>mountainNearby({x:Number(s.map_x),y:Number(s.map_y)}));
  const segmentPts=r=>polyline(r,byId);
  const activePoints=currentRoute?pointsForRoute(currentRoute,draftWaypoints):[];
  const coords=e=>{const rect=mapRef.current?.getBoundingClientRect();if(!rect||!rect.width||!rect.height)return null;return {x:pct((e.clientX-rect.left)*100/rect.width),y:pct((e.clientY-rect.top)*100/rect.height)}};
@@ -104,7 +110,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   const drag=dragRef.current;if(!drag)return;
   dragRef.current=null;suppressRef.current=drag.moved;
   const p=coords(e);
-  if(p&&drag.moved){const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
+  if(p&&drag.moved){if(mountainNearby(p)){setPositions({});setError('Settlement cannot be placed on mountains. Choose clear terrain.');return}const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
  }
  async function changeIcon(value){
   const s=displayed.find(s=>String(s.id)===String(selected));if(!s||!canEdit||busy)return;
@@ -127,6 +133,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  }
  async function saveMountain(){
   if(!canEdit||busy||!mountainName.trim()||mountainPoints.length<2)return;
+  if(mountainDraftBlocked){setError('Mountains cannot cover an existing settlement. Edit the ridge path.');return}
   setBusy(true);setError('');setNotice('');
   try{
    await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),name:mountainName.trim(),points:mountainPoints}});
@@ -138,6 +145,26 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   setBusy(true);setError('');setNotice('');
   try{await request('/world-admin/mountains/'+mountainId,{method:'DELETE'});await reload();selectMountain('');setNotice('Mountain range removed.')}
   catch(e){setError(e.message||'Mountain range could not be deleted.')}finally{setBusy(false)}
+ }
+ function selectRiver(id){
+  setRiverId(id);
+  const existing=rivers.find(r=>String(r.id)===id);
+  setRiverName(existing?.name||'');
+  setRiverPoints(existing?.points?.map(p=>({...p}))||[]);
+ }
+ async function saveRiver(){
+  if(!canEdit||busy||!riverName.trim()||riverPoints.length<2)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/world-admin/rivers'+(riverId?'/'+riverId:''),{method:riverId?'PUT':'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),name:riverName.trim(),points:riverPoints}});
+   await reload();selectRiver('');setNotice('River saved as geography, not a transport route.');
+  }catch(e){setError(e.message||'River could not be saved.')}finally{setBusy(false)}
+ }
+ async function deleteRiver(){
+  if(!canEdit||!riverId||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{await request('/world-admin/rivers/'+riverId,{method:'DELETE'});await reload();selectRiver('');setNotice('River removed; transport systems are unchanged.')}
+  catch(e){setError(e.message||'River could not be deleted.')}finally{setBusy(false)}
  }
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
@@ -360,7 +387,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  }
  function waypointUp(){if(dragRef.current?.waypoint!==undefined)dragRef.current=null}
  const active=displayed.find(s=>String(s.id)===String(selected));
- const segments=routes.filter(r=>segmentPts(r).length>=2);
+ const segments=routes.filter(r=>visibleTransport(r)&&segmentPts(r).length>=2);
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
