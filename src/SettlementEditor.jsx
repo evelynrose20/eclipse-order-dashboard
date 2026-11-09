@@ -38,6 +38,13 @@ const validCoord=value=>value!==''&&Number.isFinite(Number(value))&&Number(value
 export default function SettlementEditor({editing,setEditing,onSave,onClose,busy=false,error='',regions=[],zones=[],factions=[],states=[],simulatedIds,previewOutlook,activeZoneId}){
  const [tab,setTab]=useState('overview');
  useEffect(()=>setTab('overview'),[editing.id]);
+ useEffect(()=>{
+  const prior=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+  const escape=event=>{if(event.key==='Escape'&&!busy)onClose()};
+  document.addEventListener('keydown',escape);
+  return ()=>{document.removeEventListener('keydown',escape);document.body.style.overflow=prior};
+ },[busy,onClose]);
  const set=(key,value)=>setEditing(old=>({...old,[key]:value}));
  const simulated=Boolean(editing.id)&&(simulatedIds?.has(Number(editing.id))||Boolean(editing.controlling_faction_id&&editing.controlling_faction_id!=='eclipse-order'));
  const isNpc=Boolean(editing.controlling_faction_id&&editing.controlling_faction_id!=='eclipse-order');
