@@ -28,7 +28,11 @@ export function evaluateEquipmentManufacture(config,category,equipmentOutputs,eq
  const workforce={transport:6,locomotive:10,railcar:7,armored_vehicle:10,airship:14,field_equipment:5,siege_equipment:12,other:5};
  const power={transport:2,locomotive:4,railcar:2,armored_vehicle:3,airship:5,field_equipment:1,siege_equipment:3,other:1};
  const totalMaterials=(config.inputs||[]).reduce((n,row)=>n+Number(row.qty||0),0);
- const requiredMaterials=outputs.reduce((n,x)=>n+Number(costs[x.equipment_kind]||8)*x.qty,0);
+ const requiredMaterials=outputs.reduce((n,x)=>{
+  const perUnit=(costs[x.equipment_kind]||8)+Math.ceil(Number(x.cargo_capacity||0)/50)+
+   Math.ceil(Number(x.transport_capacity||0)/10);
+  return n+perUnit*x.qty;
+ },0);
  const minLabor=Math.max(...outputs.map(x=>workforce[x.equipment_kind]||5));
  const minPower=Math.max(...outputs.map(x=>power[x.equipment_kind]||1));
  if(totalMaterials<requiredMaterials||config.labor<minLabor||config.power<minPower)return 'equipment_assembly_requirements_too_low';
@@ -37,7 +41,7 @@ export function evaluateEquipmentManufacture(config,category,equipmentOutputs,eq
 async function validateEquipmentManufacture(db,b){
  const outputs=[...(b.configuration?.outputs||[]),...(b.configuration?.byproducts||[])];
  if(!outputs.length)return null;
- const [rows]=await db.query("SELECT i.id,i.category,t.enabled,t.equipment_kind FROM world_industry_items i LEFT JOIN world_magitek_equipment_templates t ON t.item_id=i.id WHERE i.id IN ("+outputs.map(()=>'?').join(',')+")",outputs.map(x=>x.item_id));
+ const [rows]=await db.query("SELECT i.id,i.category,t.enabled,t.equipment_kind,t.cargo_capacity,t.transport_capacity FROM world_industry_items i LEFT JOIN world_magitek_equipment_templates t ON t.item_id=i.id WHERE i.id IN ("+outputs.map(()=>'?').join(',')+")",outputs.map(x=>x.item_id));
  const equipment=rows.filter(x=>x.category==='equipment');
  return evaluateEquipmentManufacture(b.configuration,b.category,
  equipment.filter(x=>(b.configuration.outputs||[]).some(o=>o.item_id===x.id)),
