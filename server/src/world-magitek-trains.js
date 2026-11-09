@@ -85,6 +85,8 @@ export async function trainRoute(pool,req,path,actor){
    const [[train]]=await db.execute('SELECT * FROM world_magitek_train_consists WHERE id=? FOR UPDATE',[id]);
    if(!train)return fail(404,'train_not_found');
    if(train.status!=='assembled')return fail(409,'train_already_disbanded');
+   const [journeys]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE train_consist_id=? AND status='running' AND expected_arrival_at>UTC_TIMESTAMP(3) LIMIT 1",[id]);
+   if(journeys.length)return fail(409,'train_running_cannot_disband');
    const [cars]=await db.execute('SELECT car_lot_id FROM world_magitek_train_cars WHERE consist_id=?',[id]);
    const ids=[Number(train.locomotive_lot_id),...cars.map(x=>Number(x.car_lot_id))].sort((a,b)=>a-b);
    const [units]=await db.query('SELECT id,status FROM world_magitek_equipment_inventory WHERE id IN ('+ids.map(()=>'?').join(',')+') ORDER BY id FOR UPDATE',ids);
