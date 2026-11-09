@@ -1,3 +1,4 @@
+import {equipmentRoute,equipmentSummary} from './world-magitek-equipment.js';
 import {validateIndustryConfiguration,validateIndustryRules,industryDependenciesHaveCycle,validItemId,industryProductionPreview} from './world-industry-rules.js';
 import {atomicIndustry,adjustFacilityStock,getIndustryPreview,produceIndustryCycle,advanceIndustryProject} from './world-industry-engine.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -13,6 +14,19 @@ async function ensureItems(db,c){
  if(!ids.length)return false;
  const [rows]=await db.query('SELECT id FROM world_industry_items WHERE id IN ('+ids.map(()=>'?').join(',')+')',ids);
  return rows.length===ids.length;
+}
+async function validateEquipmentManufacture(db,b){
+ const outputs=(b.configuration?.outputs||[]);
+ if(!outputs.length)return null;
+ const [equipment]=await db.query("SELECT i.id,i.category,t.enabled FROM world_industry_items i LEFT JOIN world_magitek_equipment_templates t ON t.item_id=i.id WHERE i.id IN ("+outputs.map(()=>'?').join(',')+")",outputs.map(x=>x.item_id));
+ const finished=equipment.filter(x=>x.category==='equipment');
+ if(!finished.length)return null;
+ if(finished.some(x=>!x.enabled))return 'equipment_template_disabled';
+ if(b.category!=='manufacturing')return 'equipment_requires_manufacturing_facility';
+ // Finished vehicles must have several different materials, real workers and power.
+ if((b.configuration.inputs||[]).length<2||b.configuration.labor<5||b.configuration.power<1)return 'equipment_requires_materials_labor_and_power';
+ if(outputs.some(x=>finished.some(e=>e.id===x.item_id)&&!Number.isInteger(x.qty)))return 'equipment_requires_whole_units';
+ return null;
 }
 async function noCycle(db,c,excluding=null){
  const [rows]=await db.execute('SELECT v.configuration FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.archived=0'+(excluding?' AND t.id<>?':''),excluding?[excluding]:[]);
@@ -47,10 +61,12 @@ async function summary(pool){
  const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
  const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');
  const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
- return ok({items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),weather_incidents:weatherIncidents.filter(x=>x.facility_id===f.id).slice(0,12),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
+ const equipment=await equipmentSummary(pool);
+ return ok({equipment,items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),weather_incidents:weatherIncidents.filter(x=>x.facility_id===f.id).slice(0,12),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/industry/equipment'))return equipmentRoute(pool,req,path,actor);
  if(req.method==='GET'&&path==='/world-admin/industry')return summary(pool);
  let match;
  if(path==='/world-admin/industry/items'&&req.method==='POST'){
@@ -71,6 +87,8 @@ export async function industryRoute(pool,req,path,actor){
   return atomicIndustry(pool,async db=>{
    await db.execute('SELECT id FROM world_industry_catalog_lock WHERE id=1 FOR UPDATE');
    if(!await ensureItems(db,b.configuration))return fail(400,'unknown_industry_item');
+   const manufactureError=await validateEquipmentManufacture(db,b);
+   if(manufactureError)return fail(409,manufactureError);
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
     const [[old]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
