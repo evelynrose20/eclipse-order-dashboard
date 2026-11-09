@@ -8,7 +8,7 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const [commission,setCommission]=useState({facility_id:0,equipment_template_id:0,quantity:1});
  const [assign,setAssign]=useState(null);
- const [assignment,setAssignment]=useState({status:'reserve',stationed_settlement_id:'',notes:''});
+ const [assignment,setAssignment]=useState({status:'reserve',stationed_settlement_id:'',notes:'',quantity:1});
  const items=data?.items||[],facilities=data?.facilities||[],settlements=data?.settlements||[];
  const namedItem=id=>items.find(x=>x.id===id)?.name||id;
  const make=()=>{setDraft(blank());setEditing('new');setError('');};
@@ -22,9 +22,9 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
  const allManufacturing=facilities.filter(f=>f.owner_faction_id==='eclipse-order'&&f.controlling_faction_id==='eclipse-order'&&f.status==='operational');
  const selectedFactory=facilities.find(f=>f.id===Number(commission.facility_id));
  const available=Number(selectedFactory?.stocks?.find(s=>s.item_id===templates.find(t=>t.id===Number(commission.equipment_template_id))?.item_id)?.quantity||0);
- const openAssignment=lot=>{setAssign(lot);setAssignment({status:lot.status,stationed_settlement_id:lot.stationed_settlement_id||'',notes:lot.notes||''});};
+ const openAssignment=lot=>{setAssign(lot);setAssignment({status:lot.status,stationed_settlement_id:lot.stationed_settlement_id||'',notes:lot.notes||'',quantity:Number(lot.quantity)});};
  return <div className="wa-industry-workspace">
-  <div className="wa-industry-blockhead"><div><h3>Magitek manufacturing & fleet stores</h3><p>Production designs, finished transports, rolling stock and military reserves. Every commissioned unit must first be manufactured.</p></div><button type="button" onClick={make}>+ Equipment template</button></div>
+  <div className="wa-industry-blockhead"><div><h3>Magitek manufacturing & war readiness</h3><p>Production designs, finished transports, rolling stock and military reserves. Every commissioned unit must first be manufactured.</p></div><button type="button" onClick={make}>+ Equipment template</button></div>
   {error&&<p role="alert" className="wa-error">{error}</p>}{message&&<p className="wa-notice">{message}</p>}
   <div className="wa-industry-summary"><div><small>Equipment designs</small><strong>{templates.length}</strong></div><div><small>Commissioned units</small><strong>{number(inventory.filter(x=>x.status!=='retired').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div><div><small>Reserves</small><strong>{number(inventory.filter(x=>x.status==='reserve').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div><div><small>Assigned units</small><strong>{number(inventory.filter(x=>x.status==='assigned').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div></div>
   <section className="wa-industry-block"><div className="wa-industry-blockhead"><div><h4>Equipment design templates</h4><p>Designs are reusable output items for your existing magitek factory recipes.</p></div></div>
@@ -58,12 +58,13 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
    <footer className="wa-industry-attach-foot"><button type="button" onClick={()=>setEditing(null)}>Cancel</button><button className="wa-industry-primary" type="button" disabled={busy||!draft.item_id||!draft.name.trim()} onClick={()=>submit('/world-admin/industry/equipment/templates'+(editing==='new'?'':'/'+editing),editing==='new'?'POST':'PUT',draft,'Equipment design saved. It can now be used as a manufacturing recipe output.')}>{busy?'Saving…':'Save equipment design'}</button></footer>
   </section></div>}
   {assign&&<div className="wa-industry-overlay"><section className="wa-industry-attach wa-civic-attach" role="dialog" aria-modal="true" aria-label="Equipment reserve and stationing">
-   <header className="wa-industry-attach-head"><div><span className="wa-kicker">FLEET INVENTORY</span><h3>{assign.template_name} × {number(assign.quantity)}</h3><p>Commissioned from {assign.origin_name}; changes are recorded in equipment history.</p></div><button className="wa-industry-close" type="button" onClick={()=>setAssign(null)}>×</button></header>
+   <header className="wa-industry-attach-head"><div><span className="wa-kicker">FLEET INVENTORY</span><h3>{assign.template_name} × {number(assign.quantity)}</h3><p>Commissioned from {assign.origin_name}; you can allocate part of a reserve lot without duplicating equipment. Stationing here is a readiness assignment, not a physical cargo delivery.</p></div><button className="wa-industry-close" type="button" onClick={()=>setAssign(null)}>×</button></header>
    <div className="wa-civic-build-fields" style={{padding:20}}>
     <label>Fleet condition<select value={assignment.status} onChange={e=>setAssignment({...assignment,status:e.target.value})}>{['reserve','assigned','damaged','retired'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
     {assignment.status==='assigned'&&<label>Stationed at<select value={assignment.stationed_settlement_id} onChange={e=>setAssignment({...assignment,stationed_settlement_id:e.target.value})}><option value="">Choose settlement</option>{settlements.filter(x=>x.controlling_faction_id===assign.owner_faction_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
+    <label>Units to assign<input type="number" min="1" max={assign.quantity} step="1" value={assignment.quantity} onChange={e=>setAssignment({...assignment,quantity:Number(e.target.value)})}/></label>
     <label className="wide">Operational notes<input maxLength="300" value={assignment.notes} onChange={e=>setAssignment({...assignment,notes:e.target.value})}/></label>
-   </div><footer className="wa-industry-attach-foot"><button type="button" onClick={()=>setAssign(null)}>Cancel</button><button type="button" className="wa-industry-primary" disabled={busy||assignment.status==='assigned'&&!assignment.stationed_settlement_id} onClick={()=>submit('/world-admin/industry/equipment/inventory/'+assign.id+'/state','POST',{...assignment,stationed_settlement_id:assignment.status==='assigned'?Number(assignment.stationed_settlement_id):null},'Equipment status updated.')}>Save fleet status</button></footer>
+   </div><footer className="wa-industry-attach-foot"><button type="button" onClick={()=>setAssign(null)}>Cancel</button><button type="button" className="wa-industry-primary" disabled={busy||!Number.isInteger(assignment.quantity)||assignment.quantity<1||assignment.quantity>Number(assign.quantity)||assignment.status==='assigned'&&!assignment.stationed_settlement_id} onClick={()=>submit('/world-admin/industry/equipment/inventory/'+assign.id+'/state','POST',{...assignment,stationed_settlement_id:assignment.status==='assigned'?Number(assignment.stationed_settlement_id):null},'Equipment status updated.')}>Save fleet status</button></footer>
   </section></div>}
  </div>;
 }
