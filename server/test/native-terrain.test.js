@@ -34,3 +34,18 @@ test('terrain validates island candidates against every mainland',()=>{
  assert.match(terrain,/offshoreIslands\.map/);
  assert.doesNotMatch(terrain,/\{ISLANDS\.map/);
 });
+
+
+test('terrain includes independently illustrated biomes consistent with the second visual reference',()=>{
+ const atlas=readFileSync(new URL('../../src/AtlasBiomeRelief.jsx',import.meta.url),'utf8');
+ const terrain=readFileSync(new URL('../../src/IlsabardTerrain.jsx',import.meta.url),'utf8');
+ assert.match(terrain,/import AtlasBiomeRelief/);
+ assert.match(terrain,/<AtlasBiomeRelief paths=\{paths\}\/>/);
+ assert.match(atlas,/ils-west-lava/);
+ assert.match(atlas,/ils-north-snow/);
+ assert.match(atlas,/ils-dry-east/);
+ assert.match(atlas,/ils-volcano/);
+ assert.match(atlas,/forestDetails/);
+ assert.match(atlas,/peakDetails/);
+ assert.match(atlas,/clipPath="url\(#ils-clip-all\)"/);
+});
