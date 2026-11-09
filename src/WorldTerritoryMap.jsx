@@ -457,6 +457,14 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
    </svg>
    {mode==='move'&&displayed.some(x=>String(x.id)===String(selected)&&x.controlling_faction_id&&x.controlling_faction_id!=='eclipse-order')&&<><div className="wtm-npc-edge-guide"/><div className="wtm-npc-edge-label">NPC SAFE PLACEMENT · 10% EDGE CLEARANCE</div></>}
    <svg className="wtm-mountains" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Named mountain ranges">
+    <defs>
+     <linearGradient id="wtm-highland-ground" x1="0" y1="0" x2=".8" y2="1">
+      <stop offset="0" stopColor="#777c70"/><stop offset=".52" stopColor="#686e68"/><stop offset="1" stopColor="#4b5658"/>
+     </linearGradient>
+     <pattern id="wtm-highland-contours" width="15" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(-9)">
+      <path d="M-2 3 Q4 -1 10 4 T18 3 M-3 9 Q5 5 10 10 T19 9" fill="none" stroke="#d8c9ab" strokeOpacity=".28" strokeWidth=".29"/>
+     </pattern>
+    </defs>
     {mountains.map(m=><MountainTerrain key={m.id} mountain={m}/>)}
     {mode==='mountains'&&mountainPoints.length>0&&<g className="wtm-range-draft">
      {mountainClosed&&mountainPoints.length>=3&&<path d={'M '+mountainPoints.map(p=>p.x+' '+p.y).join(' L ')+' Z'} className="wtm-range-draft-fill"/>}
