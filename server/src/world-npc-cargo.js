@@ -92,11 +92,11 @@ export async function runNpcCargoAutomation(pool,now=new Date()){
   try{
    const result=await transaction(pool,async db=>{
     const [[s]]=await db.execute('SELECT * FROM world_npc_cargo_shipments WHERE id=? FOR UPDATE',[shipment.id]);
-    if(!s||s.status!=='in_transit'||new Date(s.arrival_at).getTime()>new Date(now).getTime())return fail(409,'shipment_not_due');
+    if(!s||s.status!=='in_transit')return fail(409,'shipment_not_due');
     const [[route]]=await db.execute('SELECT * FROM world_npc_cargo_routes WHERE id=?',[s.route_id]);
     const [[site]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[s.settlement_id]);
     const [[facility]]=await db.execute('SELECT owner_faction_id,status FROM world_industry_facilities WHERE id=?',[s.facility_id]);
-    if(!route||!site||!facility||site.controlling_faction_id!==facility.owner_faction_id||!route.enabled)return fail(409,'shipment_route_ownership_changed');
+    if(!route||!site||!facility||site.controlling_faction_id!==facility.owner_faction_id )return fail(409,'shipment_route_ownership_changed');
     if(foodItems.has(s.item_id)){
      const [buildings]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]);
      const capacity=civilianStorageCapacity(site,buildings);
