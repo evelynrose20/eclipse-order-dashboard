@@ -116,7 +116,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
  const distanceRidge=(point,pts)=>{if(!Array.isArray(pts)||pts.length<2)return Infinity;return Math.min(...pts.slice(1).map((b,i)=>{const a=pts[i],dx=b.x-a.x,dy=b.y-a.y,d=dx*dx+dy*dy,t=d?Math.max(0,Math.min(1,((point.x-a.x)*dx+(point.y-a.y)*dy)/d)):0;return Math.hypot(point.x-a.x-dx*t,point.y-a.y-dy*t)}))};
  const mountainNearby=point=>mountains.some(m=>isMountainBlocked(point,m));
- const mountainDraftBlocked=mountainPoints.length>=2&&displayed.some(s=>isMountainBlocked({x:Number(s.map_x),y:Number(s.map_y)},{points:mountainPoints,is_closed:mountainClosed}));
+ const mountainOverlapSites=mountainPoints.length>=2?displayed.filter(s=>isMountainBlocked({x:Number(s.map_x),y:Number(s.map_y)},{points:mountainPoints,is_closed:mountainClosed})):[];
+ const mountainDraftBlocked=!mountainClosed&&mountainOverlapSites.length>0;
  const mountainShapeValid=validMountainShape(mountainPoints,mountainClosed);
  const blockedOnMap=displayed.filter(s=>mountainNearby({x:Number(s.map_x),y:Number(s.map_y)}));
  const segmentPts=r=>polyline(r,byId);
@@ -170,7 +171,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   setMountainClosed(Boolean(Number(existing?.is_closed)));
  }
  async function saveMountain(){
-  if(!canEdit||busy||!mountainName.trim()||!mountainShapeValid)return;
+  if(!canEdit||busy||!mountainName.trim())return;
+  if(!mountainShapeValid){setError(mountainPoints.length<3&&mountainClosed?'A mountain area needs at least three different corners.':'This boundary crosses itself, repeats a corner, or has too little area. Use Undo point to correct it.');return;}
   if(mountainDraftBlocked){setError('Mountains cannot cover an existing settlement. Edit the ridge path.');return}
   setBusy(true);setError('');setNotice('');
   try{
@@ -575,7 +577,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
     </>}
    </div>
   </section>}
-  {mode==='mountains'&&<div className="wtm-mountain-rule" role="note"><strong>NO SETTLEMENTS ON MOUNTAINS</strong><span>Closed mountain loops create filled no-settlement zones. Draw up to 256 corners; connect outlines by clicking near an existing mountain vertex. New zones cannot cover existing settlements.</span>{mountainDraftBlocked&&<strong className="wtm-mountain-conflict">This range overlaps a settlement. Change the ridge before saving.</strong>}{blockedOnMap.length>0&&<span>Existing sites already overlapping ranges: {blockedOnMap.map(s=>s.name).join(', ')}. They were not automatically moved.</span>}</div>}
+  {mode==='mountains'&&<div className="wtm-mountain-rule" role="note"><strong>NO SETTLEMENTS ON MOUNTAINS</strong><span>Closed mountain loops create filled no-build zones. Draw up to 256 corners and connect to existing vertices. Existing settlements are kept; future placement inside the zone is blocked.</span>{mountainDraftBlocked&&<strong className="wtm-mountain-conflict">Open ridge overlaps an existing settlement. Adjust the path.</strong>}{mountainClosed&&mountainOverlapSites.length>0&&<span>Existing settlement(s) within this mountain area will be preserved: {mountainOverlapSites.map(s=>s.name).join(', ')}. New placement within the area will be forbidden.</span>}{mountainClosed&&!mountainShapeValid&&mountainPoints.length>=3&&<strong className="wtm-mountain-conflict">Outline needs correction: self-crossing, repeated corners or insufficient area. Save range will explain the problem.</strong>}{blockedOnMap.length>0&&<span>Existing sites already overlapping ranges: {blockedOnMap.map(s=>s.name).join(', ')}. They were not automatically moved.</span>}</div>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-editor">
    <label>Mountain terrain<select value={mountainId} onChange={e=>selectMountain(e.target.value)}><option value="">+ New mountain area / ridge</option>{mountains.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
    <label>Range name<input maxLength={120} value={mountainName} placeholder="e.g. Northern Peaks" onChange={e=>setMountainName(e.target.value)}/></label>
@@ -584,7 +586,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
    <button type="button" disabled={busy||mountainPoints.length<3} onClick={()=>setMountainClosed(v=>!v)}>{mountainClosed?'Open loop':'Close loop & fill'}</button>
    <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints(p=>p.slice(0,-1))}>Undo point</button>
    <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints([])}>Redraw</button>
-   <button type="button" disabled={busy||mountainDraftBlocked||!mountainShapeValid||!mountainName.trim()} onClick={saveMountain}>Save range</button>
+   <button type="button" disabled={busy||!mountainName.trim()||mountainPoints.length<2} onClick={saveMountain}>Save range</button>
    {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
   </div>}
   {canEdit&&mode==='rivers'&&<div className="wtm-mountain-editor wtm-river-editor"><label>River<select value={riverId} onChange={e=>selectRiver(e.target.value)}><option value="">+ New river</option>{rivers.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>River name<input maxLength={120} value={riverName} placeholder="e.g. Cassian River" onChange={e=>setRiverName(e.target.value)}/></label><span>{riverPoints.length} river points · not transport</span><button type="button" disabled={!riverPoints.length||busy} onClick={()=>setRiverPoints(p=>p.slice(0,-1))}>Undo point</button><button type="button" disabled={!riverPoints.length||busy} onClick={()=>setRiverPoints([])}>Redraw</button><button type="button" disabled={busy||riverPoints.length<2||!riverName.trim()} onClick={saveRiver}>Save river</button>{riverId&&<button type="button" disabled={busy} onClick={deleteRiver}>Delete river</button>}</div>}
