@@ -12,6 +12,7 @@ import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {continentSummary,continentRoute} from './world-continent.js';
 import {strategicProvinceSummary,strategicProvinceRoute} from './world-strategic-provinces.js';
 import {worldDiplomacyRoute} from './world-diplomacy.js';
+import {recoveryClaimsRoute} from './world-recovery-claims.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
 import {mountainPlacementConflict,rangesCoverSettlements,validTerrainPoints,validMountainShape,npcTooCloseToMapEdge} from './world-terrain-placement.js';
 
@@ -114,6 +115,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  }
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/diplomacy'))return worldDiplomacyRoute(pool,req,path,actor);
+ if(path.startsWith('/world-admin/recovery'))return recoveryClaimsRoute(pool,req,path,actor);
  if(path==='/world-admin/industry'||path.startsWith('/world-admin/industry/'))return industryRoute(pool,req,path,actor);
  if(path==='/world-admin/simulation'||path.startsWith('/world-admin/simulation/'))return settlementSimulationRoute(pool,req,path,actor);
  const upgradeResponse=await handleSettlementUpgrades(pool,req,path,actor);
