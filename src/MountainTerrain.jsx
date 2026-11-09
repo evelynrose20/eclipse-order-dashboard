@@ -13,7 +13,7 @@ export function ridgeRelief(points,closed=false){
  const total=points.length-(closed?0:1),markers=[];
  for(let i=0;i<total;i++){
   const a=points[i],b=points[(i+1)%points.length],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
-  if(d<1)return markers;
+  if(d<1)continue;
   const steps=Math.max(1,Math.floor(d/7.8));
   for(let j=0;j<steps;j++){
    const t=(j+.5)/steps;
@@ -45,7 +45,8 @@ export function areaRelief(points){
   }
  }
  // Larger regions have a richer central landscape but stay readable on desktop.
- return candidates.slice(0,56).map(p=>({...p,x:round(p.x),y:round(p.y),size:round(p.size)}));
+ const chosen=candidates.length<=56?candidates:Array.from({length:56},(_,i)=>candidates[Math.floor((i+.5)*candidates.length/56)]);
+ return chosen.map(p=>({...p,x:round(p.x),y:round(p.y),size:round(p.size)}));
 }
 
 export function terrainLabelPosition(points,closed){
@@ -81,6 +82,7 @@ export default function MountainTerrain({mountain,seed=0}){
  const label=terrainLabelPosition(points,closed);
  if(points.length<2)return null;
  return <g className={'wtm-range '+(closed?'wtm-mountain-area':'wtm-mountain-ridge')} aria-label={mountain.name}>
+  {closed&&<defs><clipPath id={'wtm-mountain-clip-'+id}><path d={path}/></clipPath></defs>}
   {closed?<g>
    <path d={path} className="wtm-zone-base"/>
    <path d={path} className="wtm-zone-hatch"/>
@@ -90,7 +92,7 @@ export default function MountainTerrain({mountain,seed=0}){
    <path d={path} className="wtm-ridge-shadow"/>
    <path d={path} className="wtm-ridge-ground"/>
   </g>}
-  {peaks.map((p,i)=><Summit key={i} p={p}/>)}
+  <g clipPath={closed?'url(#wtm-mountain-clip-'+id+')':undefined}>{peaks.map((p,i)=><Summit key={i} p={p}/>)}</g>
   <text x={label.x} y={Math.max(3.7,label.y-2.4)} textAnchor="middle" className="wtm-range-label">{mountain.name}</text>
  </g>;
 }
