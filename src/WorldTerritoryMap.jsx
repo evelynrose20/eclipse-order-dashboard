@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 import MapIconPicker from './MapIconPicker.jsx';
 import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
-import {isMountainBlocked,npcTooCloseToMapEdge,validMountainShape} from '../server/src/world-terrain-placement.js';
+import {isMountainBlocked,inPolygon,npcTooCloseToMapEdge,validMountainShape} from '../server/src/world-terrain-placement.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway (map only)']];
@@ -41,6 +41,21 @@ export function ridgeSymbols(points,spacing=3.6){
   length+=d;
  }
  return markers.slice(0,150);
+}
+// Fill closed mountain zones with terrain relief rather than only a thin
+// border ridge. Stable cell placement prevents jumping symbols on rerenders.
+export function mountainAreaPeaks(points){
+ if(!Array.isArray(points)||points.length<3)return [];
+ const minX=Math.min(...points.map(p=>p.x)),maxX=Math.max(...points.map(p=>p.x));
+ const minY=Math.min(...points.map(p=>p.y)),maxY=Math.max(...points.map(p=>p.y));
+ const out=[];
+ for(let y=Math.ceil(minY/6)*6;y<maxY&&out.length<200;y+=6){
+  for(let x=Math.ceil(minX/6)*6;x<maxX&&out.length<200;x+=6){
+   const off=(Math.sin(x*19.1+y*8.3)+1)*1.1,at={x:x+off,y:y+(Math.cos(x*7.4+y*3.7)+1)*.75};
+   if(inPolygon(at,points))out.push({...at,size:1.55+((x+y)%7)*.08});
+  }
+ }
+ return out;
 }
 const normalizeWaypoints=route=>Array.isArray(route.waypoints)?route.waypoints:[];
 const normalize=(s,map)=>({...s,...(map[s.id]||{})});
@@ -445,6 +460,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
      const closed=Boolean(Number(m.is_closed)),path=closed?'M '+pts.map(p=>p.x+' '+p.y).join(' L ')+' Z':smoothRoadPath(pts),mid=pts[Math.floor(pts.length/2)];
      return <g key={m.id} className={'wtm-range '+(closed?'wtm-mountain-area':'wtm-mountain-ridge')} aria-label={m.name}>
       {closed&&<path d={path} className="wtm-range-fill"/>}
+      {closed&&mountainAreaPeaks(pts).map((p,i)=><g key={'area-'+i} className="wtm-relief-peak wtm-interior-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.75)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.75)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.75)+' L 0 '+(p.size*.25)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.45)+' '+(-p.size*.55)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.45)+' '+(-p.size*.55)+' Z'} className="wtm-peak-snow"/></g>)}
       <path d={path} className="wtm-range-exclusion"/>
       <path d={path} className="wtm-range-shadow"/>
       <path d={path} className="wtm-range-ridge"/>
