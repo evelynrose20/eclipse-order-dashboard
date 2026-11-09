@@ -33,7 +33,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[facility]]=await db.execute(`SELECT f.*,COALESCE(s.population,0) AS population,
  COALESCE(s.civil_stability,70) AS stability,COALESCE(s.security_score,50) AS security,
  COALESCE(s.name,site.name) AS location_name,t.category AS industry_category,COALESCE(s.region_id,site.region_id) AS region_id,
- COALESCE(s.zone_id,site.zone_id) AS zone_id,COALESCE(home.region_id,s.region_id,site.region_id) AS labor_region_id,COALESCE(home.zone_id,s.zone_id,site.zone_id) AS labor_zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
+ COALESCE(s.zone_id,site.zone_id) AS zone_id,COALESCE(home.region_id,s.region_id,site.region_id) AS labor_region_id,COALESCE(home.zone_id,s.zone_id,site.zone_id) AS labor_zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,site.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
  FROM world_industry_facilities f
  JOIN world_industry_templates t ON t.id=f.template_id
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
@@ -59,7 +59,7 @@ export async function getIndustryPreview(db,id,lock=false){
  LEFT JOIN world_settlements home ON home.id=route.settlement_id
  LEFT JOIN world_zones z ON z.id=site.zone_id
  WHERE COALESCE(home.region_id,s.region_id,site.region_id)=? AND COALESCE(home.zone_id,s.zone_id,site.zone_id)=?
- AND COALESCE(s.controlling_faction_id,z.controlling_faction_id) <=> ?
+ AND COALESCE(s.controlling_faction_id,site.controlling_faction_id,z.controlling_faction_id) <=> ?
  AND f.status IN ('operational','rebuilding','liberated')`,
  [facility.labor_region_id,facility.labor_zone_id,facility.controlling_faction_id]);
  const availableWorkers=Math.floor(labor.reduce((sum,settlement)=>Math.max(0,sum+Math.max(0,settlementDemographics(settlement).employed-Number(settlement.sick_workers)-Number(settlement.injured_workers))),0)/Math.max(1,Number(sites.n)));
@@ -145,7 +145,7 @@ export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry
  return {status:200,body:{committed:true,cycle_key:key,preview}};
 }
 export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
- const [[project]]=await db.execute(`SELECT p.*,f.owner_faction_id,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id,
+ const [[project]]=await db.execute(`SELECT p.*,f.owner_faction_id,COALESCE(s.controlling_faction_id,site.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id,
  f.status AS facility_status,f.id AS industry_id FROM world_industry_projects p
  JOIN world_industry_facilities f ON f.id=p.facility_id
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
@@ -186,8 +186,8 @@ export async function advanceIndustryProject(db,id,now=new Date(),actorId=null){
 }
 export async function runIndustryAutomation(pool,now=new Date()){
  if(!pool)return {production:0,construction:0};
- const [facilities]=await pool.execute("SELECT f.id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.cycle_mode='automatic' AND f.status='operational' AND f.owner_faction_id <=> COALESCE(s.controlling_faction_id,z.controlling_faction_id) ORDER BY f.id LIMIT 150");
- const [projects]=await pool.execute("SELECT p.id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE p.status='active' AND f.cycle_mode='automatic' AND f.owner_faction_id <=> COALESCE(s.controlling_faction_id,z.controlling_faction_id) ORDER BY p.id LIMIT 150");
+ const [facilities]=await pool.execute("SELECT f.id FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.cycle_mode='automatic' AND f.status='operational' AND f.owner_faction_id <=> COALESCE(s.controlling_faction_id,site.controlling_faction_id,z.controlling_faction_id) ORDER BY f.id LIMIT 150");
+ const [projects]=await pool.execute("SELECT p.id FROM world_industry_projects p JOIN world_industry_facilities f ON f.id=p.facility_id LEFT JOIN world_settlements s ON s.id=f.settlement_id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id WHERE p.status='active' AND f.cycle_mode='automatic' AND f.owner_faction_id <=> COALESCE(s.controlling_faction_id,site.controlling_faction_id,z.controlling_faction_id) ORDER BY p.id LIMIT 150");
  let production=0,construction=0;
  for(const f of facilities)try{
   const res=await atomicIndustry(pool,db=>produceIndustryCycle(db,f.id,now));
