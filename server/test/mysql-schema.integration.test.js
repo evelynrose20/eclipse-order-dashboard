@@ -1039,6 +1039,44 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const afterUnlink=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
   assert.equal(afterUnlink.body.project.linked_events.length,1,'unlinking an event does not remove the construction project');
   assert.equal(afterUnlink.body.project.history.length,3,'event link changes do not affect material contributions');
+  // Archived projects can be restored without discarding any recorded work.
+  const archivedCompleted=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/archive');
+  assert.equal(archivedCompleted.body.state,'archived');
+  const [[savedArchive]]=await admin.execute('SELECT state,pre_archive_state FROM order_construction_projects WHERE id=?',[projectId]);
+  assert.equal(savedArchive.pre_archive_state,'completed','archive remembers the previous lifecycle state');
+  const hiddenFromMember=await constructionRoute(admin,recruitRequest('GET'),'/construction/'+projectId);
+  assert.equal(hiddenFromMember.status,404,'archived project remains hidden from non-directors');
+  const restoredCompleted=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/restore');
+  assert.equal(restoredCompleted.body.state,'completed','completed construction remains finished after restoration');
+  const completedAgain=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
+  assert.equal(completedAgain.body.project.history.length,3,'all contributions remain after restoration');
+  assert.equal(completedAgain.body.project.stages.every(stage=>stage.status==='complete'),true,'finished stages are preserved');
+  const doubleRestore=await constructionRoute(admin,request('POST'),'/construction/'+projectId+'/restore');
+  assert.equal(doubleRestore.status,409,'only archived projects can be restored');
+  const [[savedRestored]]=await admin.execute('SELECT state,pre_archive_state FROM order_construction_projects WHERE id=?',[projectId]);
+  assert.equal(savedRestored.state,'completed');
+  assert.equal(savedRestored.pre_archive_state,null,'temporary archive marker cleared after successful restoration');
+
+  const activeArchive=await constructionRoute(admin,request('POST',{
+   name:'Restore the Old Watchtower',description:'Another multi-session restoration.',location:'New Cassia',
+   event_id:null,stages:[{name:'Gather stone',description:'Initial supplies',requirements:[{material_id:'iron-ingot',quantity:4}]}]
+  }),'/construction');
+  assert.equal(activeArchive.status,200);
+  const activeId=activeArchive.body.id;
+  const activeStart=await constructionRoute(admin,request('POST'),'/construction/'+activeId+'/activate');
+  assert.equal(activeStart.body.state,'open');
+  const pausedArchive=await constructionRoute(admin,request('POST'),'/construction/'+activeId+'/archive');
+  assert.equal(pausedArchive.body.state,'archived');
+  const restoredActive=await constructionRoute(admin,request('POST'),'/construction/'+activeId+'/restore');
+  assert.equal(restoredActive.body.state,'paused','restore does not automatically reopen material deliveries');
+  const reopened=await constructionRoute(admin,request('POST'),'/construction/'+activeId+'/resume');
+  assert.equal(reopened.body.state,'open','staff can deliberately resume the restored drive');
+
+  // Pre-migration archives have no previous state. Infer safely from stages.
+  await admin.execute('UPDATE order_construction_projects SET state="archived",pre_archive_state=NULL WHERE id=?',[activeId]);
+  const legacyRestore=await constructionRoute(admin,request('POST'),'/construction/'+activeId+'/restore');
+  assert.equal(legacyRestore.body.state,'paused','old archived projects with an active chapter restore paused');
+
   await admin.query(await readFile(new URL('../sql/032_construction_projects.sql',import.meta.url),'utf8'));
   const [[persisted]]=await admin.execute('SELECT COUNT(*) AS n FROM order_construction_contributions WHERE project_id=?',[projectId]);
   assert.equal(Number(persisted.n),3,'repeat setup preserves long-running construction history');
