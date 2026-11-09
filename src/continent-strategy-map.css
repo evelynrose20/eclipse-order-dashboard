@@ -1,0 +1,41 @@
+.csm-root{display:grid;gap:10px;min-width:0;color:#e9e8dd;background:#101e28;border:1px solid #4e5d65;border-radius:9px;overflow:hidden}
+.csm-head{padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:18px;background:linear-gradient(112deg,#273942,#142530)}
+.csm-kicker{display:block;font-size:10px;font-weight:800;letter-spacing:.16em;color:#d7b583}
+.csm-head h3{font:600 clamp(22px,3vw,35px) Georgia,serif;color:#f2e6d1;margin:4px 0}
+.csm-head p{font-size:11px;color:#9db2be;margin:0}
+.csm-controls{display:flex;flex-wrap:wrap;gap:6px;justify-content:end}
+.csm-root button{border:1px solid #526674;border-radius:5px;padding:9px 12px;background:#293d49;color:#e2e7e5;font-size:11px;cursor:pointer}
+.csm-root button:hover{background:#38505b;border-color:#ae9674}.csm-root button:disabled{opacity:.5;cursor:not-allowed}
+.csm-root button:focus-visible,.csm-root input:focus-visible{outline:2px solid #e3bd86;outline-offset:2px}
+.csm-error,.csm-note{margin:5px 15px;padding:10px 12px;border-left:3px solid #c67973;background:#3b2931;color:#ffd5cb;font-size:12px}
+.csm-note{border-color:#8dac98;background:#263d36;color:#d8f1e5}
+.csm-body{display:grid;grid-template-columns:minmax(0,1fr) 290px;min-height:580px}
+.csm-map-shell{display:flex;flex-direction:column;min-width:0;background:#10212b;border-right:1px solid #3b4f5c;position:relative}
+.csm-layerbar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #405461}
+.csm-layerbar>span:first-child{letter-spacing:.12em;color:#adbbc0;font-size:9px;font-weight:800;margin-right:5px}
+.csm-layerbar button{padding:7px 10px}
+.csm-layerbar button.active{background:#574f45;color:#f4ddb2;border-color:#ab926a}
+.csm-zoom{margin-left:auto;font-variant-numeric:tabular-nums;color:#dbc9ac;font-size:11px}
+.csm-map{display:block;width:100%;flex:1;min-height:490px;max-height:calc(100vh - 240px);background:#142833;cursor:grab;touch-action:none;user-select:none}
+.csm-map:active{cursor:grabbing}.csm-map.csm-drawing{cursor:crosshair}
+.csm-territory polygon{cursor:pointer;transition:fill-opacity .12s}.csm-territory:hover polygon{fill-opacity:.7}
+.csm-territory.selected polygon{filter:drop-shadow(0 0 4px #f4cb86)}
+.csm-handle{pointer-events:all;cursor:move}
+.csm-basemap-hint{position:absolute;top:65px;left:12px;padding:6px 9px;border-radius:4px;background:#132530dd;color:#a8bbc5;font-size:10px;pointer-events:none;max-width:70%}
+.csm-map-footer{display:flex;justify-content:space-between;gap:9px;padding:10px 12px;color:#97aab5;font-size:10px;flex-wrap:wrap}
+.csm-inspector{min-width:0;display:flex;flex-direction:column;background:#1a2c38}
+.csm-aside-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:16px 14px 10px}.csm-aside-heading strong{font-size:12px;color:#e9d9c3}
+.csm-zone-list{display:grid;gap:4px;padding:0 9px 12px;max-height:230px;overflow:auto;border-bottom:1px solid #3e5260}
+.csm-root .csm-zone-list button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px;background:#203541;border-color:transparent}
+.csm-root .csm-zone-list button.active{background:#3c4c50;border-color:#c6a675}
+.csm-zone-list button span:last-child{min-width:0;display:grid;gap:3px}.csm-zone-list button strong{font-size:11px;overflow-wrap:anywhere}.csm-zone-list button small{font-size:10px;color:#9eb5bd;overflow-wrap:anywhere}
+.csm-zone-indicator{flex-shrink:0;width:10px;height:10px;border:2px solid #647786;border-radius:2px}.csm-zone-indicator.mapped{background:#c9ac7f;border-color:#ebcf9c}
+.csm-details{padding:17px 15px;display:grid;gap:10px;align-content:start}
+.csm-details h4{color:#f3e4cd;font-size:21px;font-weight:600;margin:0}.csm-details p{font-size:11px;line-height:1.5;color:#a6bac6;margin:0}
+.csm-details dl{display:grid;gap:7px;margin:0}.csm-details dl>div{display:flex;justify-content:space-between;gap:12px;padding-bottom:7px;border-bottom:1px solid #394f5c}.csm-details dt{font-size:10px;color:#8faab8}.csm-details dd{font-size:11px;text-align:right;color:#e3e5dc;margin:0}
+.csm-root button.csm-primary{background:#8a6f50;color:#fff0d4;border-color:#c5a57a;font-weight:750}
+.csm-editor{display:grid;gap:8px;margin-top:8px;border-top:1px solid #445969;padding-top:14px}.csm-editor>strong{font-size:12px;color:#e8ddc9}.csm-editor>button{text-align:left}.csm-edit-actions{display:flex;gap:6px;flex-wrap:wrap}
+.csm-settings{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;padding:14px;background:#203440;align-items:end}
+.csm-settings label{font-size:11px;color:#bacbd2;display:grid;gap:5px;min-width:0}.csm-settings input{min-width:0;width:100%;padding:10px;background:#0f202b;border:1px solid #586d79;border-radius:5px;color:#ebede9}
+@media(max-width:1000px){.csm-body{grid-template-columns:minmax(0,1fr) 240px}}
+@media(max-width:740px){.csm-head{flex-direction:column;align-items:stretch}.csm-controls{justify-content:start}.csm-body{grid-template-columns:1fr}.csm-map-shell{border-right:0}.csm-map{min-height:340px;max-height:500px}.csm-zone-list{max-height:160px}.csm-settings{grid-template-columns:1fr}}
