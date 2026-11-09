@@ -53,3 +53,9 @@
 - Native **Terrain relief** is on by default. Existing reference images are only shown while the `Reference layers` editor is open, so they cannot obscure the ground during ordinary gameplay. Previously saved external map backgrounds remain available when relief is turned off.
 - Polygon province/state geometry and faction ownership remain independent database records rendered above this terrain. The existing local maps and city-builder remain unchanged.
 - Terrain imagery is an **art layer**; it does not silently assign resource deposits, climate, roads, buildings, province borders, or ownership. These remain authored and simulated by their existing systems.
+
+
+## Exact illustrated map as playable terrain (migration 078)
+The native terrain is an interpretation, not an exact rendering of supplied fantasy artwork. To use the original illustrated map *itself* for the strategic ground: World Administration → Territorial Map → Reference layers → upload the artwork → select **Use artwork as playable map ground** → Save reference. This persists the compressed WebP on the Windows server and uses it as the primary map at full opacity, including after refresh. State borders, province polygons, and political layers still render on top. The existing native atlas remains the fallback; uncheck the setting and save to return to it. This does not automatically relocate existing province coordinates to features shown on the artwork, and it does not change production, ownership or settlement data.
+
+The uploaded conversation image has not been silently published as an asset in the repository. Staff must choose the saved map image through the upload field. Source artwork may contain decorative labels/ships/dragons baked into the image; those remain part of the background unless replaced by artwork without them.
