@@ -1,3 +1,4 @@
+import {evaluateEquipmentManufacture} from '../src/world-industry.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateEquipmentTemplate,equipmentSnapshot} from '../src/world-magitek-equipment.js';
@@ -25,4 +26,15 @@ test('magitek production uses real multi-material stock and can only output whol
  assert.equal(powered.operations,2);
  assert.equal(powered.outputs[vehicle.item_id],2);
  assert.equal(powered.inputs['iron-ingot'],10);
+});
+
+test('tanks and railcars reject fake output byproducts and insufficient inputs',()=>{
+ const tank={id:'magitek-tank',enabled:1,equipment_kind:'armored_vehicle'};
+ const carriage={id:'magitek-carriage',enabled:1,equipment_kind:'railcar'};
+ const factory={inputs:[{item_id:'iron-ingot',qty:12},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:'magitek-tank',qty:1}],labor:10,power:5};
+ assert.equal(evaluateEquipmentManufacture(factory,'manufacturing',[tank]),null);
+ assert.equal(evaluateEquipmentManufacture({...factory,inputs:[{item_id:'iron-ingot',qty:1},{item_id:'ceruleum-fuel',qty:1}]},'manufacturing',[tank]),'equipment_assembly_requirements_too_low');
+ assert.equal(evaluateEquipmentManufacture(factory,'agriculture',[tank]),'equipment_requires_manufacturing_facility');
+ assert.equal(evaluateEquipmentManufacture({...factory,outputs:[{item_id:'magitek-carriage',qty:.5}]},'manufacturing',[carriage]),'equipment_requires_whole_units');
+ assert.equal(evaluateEquipmentManufacture({...factory,outputs:[]},'manufacturing',[],[tank]),'equipment_cannot_be_byproduct');
 });
