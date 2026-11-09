@@ -37,3 +37,26 @@ test('continent summary includes reference image and active polygon zones',async
  assert.equal(result.reference.visible,true);
  assert.equal(result.territories[0].zone_id,9);
 });
+
+
+test('staff can designate uploaded artwork as actual campaign ground',async()=>{
+ const writes=[];
+ const pool={execute:async(sql,args)=>{writes.push({sql,args});return [{affectedRows:1}]}};
+ const saved=await continentRoute(pool,request({...settings,use_as_ground:true}),'/world-admin/continent/reference',actor);
+ assert.equal(saved.status,200);
+ assert.match(writes[0].sql,/use_as_ground=\?/);
+ assert.equal(writes[0].args.at(-1),1);
+ const rejected=await continentRoute(pool,request({...settings,use_as_ground:'yes'}),'/world-admin/continent/reference',actor);
+ assert.equal(rejected.status,400);
+});
+test('map artwork mode has an additive database migration and separate political overlays',()=>{
+ const sql=readFileSync(new URL('../sql/078_continent_artwork_ground.sql',import.meta.url),'utf8');
+ const map=readFileSync(new URL('../../src/ContinentStrategyMap.jsx',import.meta.url),'utf8');
+ assert.match(sql,/information_schema\.COLUMNS/);
+ assert.match(sql,/use_as_ground TINYINT\(1\)/);
+ assert.match(map,/artworkGround/);
+ assert.match(map,/Use artwork as playable map ground/);
+ assert.match(map,/artworkGround\?1:Number\(reference\.opacity_pct\)\/100/);
+ assert.match(map,/geometry\.map/);
+ assert.match(map,/provinces\.filter/);
+});
