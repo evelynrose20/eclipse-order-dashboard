@@ -35,6 +35,12 @@ export function canGenerateNpcProposal({tension,trust,attacker,defender,target,p
  if(Number(tension)<70||Number(trust)>35)return false;
  return protection!=='all_conflict';
 }
+export function canClaimLocation(site,defenderFaction){
+ // Preset ruins and neutral sites can be claimed through an authorized conflict;
+ // a third-party-held location requires a conflict with that actual controller.
+ return Boolean(site)&&(site.controlling_faction_id==null||site.controlling_faction_id===defenderFaction);
+}
+export function stateAfterCapture(state){return ['destroyed','abandoned','rebuilding'].includes(state)?'rebuilding':'occupied'}
 export function protectedOutcomeAllowed(protection,explicitOverride){
  return !protection||explicitOverride===true;
 }
@@ -85,7 +91,7 @@ async function proposalCreate(pool,req){
  return inTx(pool,async db=>{
   if(!await factionPair(db,b.attacker_id,b.defender_id))return fail(404,'faction_not_found');
   if(b.target_settlement_id){
-   const [[site]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=?',[b.target_settlement_id]);
+   const [[site]]=await db.execute('SELECT id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=?',[b.target_settlement_id]);
    if(!site)return fail(404,'target_not_found');
   }
   const [result]=await db.execute(`INSERT INTO world_conflict_proposals(attacker_id,defender_id,target_settlement_id,conflict_kind,rationale,proposed_effect,source_kind)
@@ -170,11 +176,11 @@ async function outcomeCreate(pool,req){
   if(b.kind==='territory_transfer'){
    const [[site]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=?',[b.target_settlement_id]);
    if(!site)return fail(404,'target_not_found');
-   if(site.controlling_faction_id!==conflict.defender_id)return fail(409,'target_control_changed');
+   if(!canClaimLocation(site,conflict.defender_id))return fail(409,'target_control_changed');
   }
   const [result]=await db.execute(`INSERT INTO world_conflict_proposals
     (attacker_id,defender_id,target_settlement_id,conflict_kind,rationale,proposed_effect,source_kind,related_conflict_id)
-    VALUES(?,?,?,?,?,?,'war_outcome',?)`,[conflict.attacker_id,conflict.defender_id,b.kind==='territory_transfer'?b.target_settlement_id:null,b.kind,b.rationale.trim(),b.kind==='territory_transfer'?'Transfer control to attacker after explicit review':'Conclude authorized conflict after explicit review',conflict.id]);
+    VALUES(?,?,?,?,?,?,'war_outcome',?)`,[conflict.attacker_id,conflict.defender_id,b.kind==='territory_transfer'?b.target_settlement_id:null,b.kind,b.rationale.trim(),b.kind==='territory_transfer'?'Claim preset location after explicit review; destroyed/abandoned sites enter rebuilding':'Conclude authorized conflict after explicit review',conflict.id]);
   return ok({id:result.insertId,status:'pending',ownership_changed:false});
  });
 }
@@ -190,13 +196,15 @@ async function outcomeReview(pool,req,actor,proposalId){
   const [[conflict]]=await db.execute('SELECT * FROM world_authorized_conflicts WHERE id=? FOR UPDATE',[p.related_conflict_id]);
   if(!conflict||!['authorized','active'].includes(conflict.status))return fail(409,'conflict_not_active');
   if(b.decision==='approve'&&p.conflict_kind==='territory_transfer'){
-   const [[site]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[p.target_settlement_id]);
+   const [[site]]=await db.execute('SELECT id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[p.target_settlement_id]);
    if(!site)return fail(404,'target_not_found');
-   if(site.controlling_faction_id!==conflict.defender_id)return fail(409,'target_control_changed');
+   if(!canClaimLocation(site,conflict.defender_id))return fail(409,'target_control_changed');
    const [[prot]]=await db.execute('SELECT protection FROM world_plot_protection WHERE settlement_id=?',[site.id]);
    if(!protectedOutcomeAllowed(prot?.protection,b.override_plot_protection))return fail(409,'plot_protection_requires_explicit_override');
-   await db.execute(`UPDATE world_settlements SET controlling_faction_id=?,strategic_state='occupied' WHERE id=? AND controlling_faction_id=?`,
-    [conflict.attacker_id,site.id,conflict.defender_id]);
+   const nextState=stateAfterCapture(site.strategic_state);
+   const [changed]=await db.execute(`UPDATE world_settlements SET controlling_faction_id=?,strategic_state=? WHERE id=? AND controlling_faction_id <=> ?`,
+    [conflict.attacker_id,nextState,site.id,site.controlling_faction_id]);
+   if(changed.affectedRows!==1)return fail(409,'target_control_changed');
   }
   if(b.decision==='approve'&&p.conflict_kind==='peace')
    await db.execute("UPDATE world_authorized_conflicts SET status='concluded',ended_at=CURRENT_TIMESTAMP WHERE id=?",[conflict.id]);
