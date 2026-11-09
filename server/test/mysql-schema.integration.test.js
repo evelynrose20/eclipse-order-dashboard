@@ -1308,6 +1308,44 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const pinnedOverview=allIndustry.body.facilities.find(f=>f.id===mineFacilityId);
   assert.equal(Number(pinnedOverview.template_version),1);
   assert.equal(pinnedOverview.template_configuration.outputs[0].qty,3,'the UI summary must retain old published recipe versions');
+  // Magitek manufacturing: designs + actual factory recipe, reserve transfers and anti-spawn checks.
+  const magitekDesign={
+   item_id:'ci-magitek-armored-carrier',name:'CI Magitek Armored Carrier',description:'Mass-produced armored ground transport',
+   equipment_kind:'armored_vehicle',transport_capacity:8,cargo_capacity:12,crew_required:2,
+   fuel_item_id:'ceruleum-fuel',fuel_per_operation:1,enabled:true
+  };
+  const savedDesign=await industryRoute(admin,request('POST',magitekDesign),'/world-admin/industry/equipment/templates',staff);
+  assert.equal(savedDesign.status,200,JSON.stringify(savedDesign.body));
+  const designId=savedDesign.body.id;
+  const tooCheap=await makeTemplate('ci-free-tank','CI Free Tank','manufacturing',{inputs:[{item_id:'iron-ingot',qty:1}],outputs:[{item_id:magitekDesign.item_id,qty:1}],byproducts:[],labor:1,heat:0,power:0,capacity:100,upgrade_level:1});
+  assert.equal(tooCheap.status,409,'vehicles cannot be produced without real input materials, labor and power');
+  const magitekRecipe={inputs:[{item_id:'iron-ingot',qty:12},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:magitekDesign.item_id,qty:1}],byproducts:[],labor:10,heat:1,power:5,capacity:1,upgrade_level:1};
+  const magitekFactoryTemplate=await makeTemplate('ci-magitek-armored-plant','CI Magitek Armored Works','manufacturing',magitekRecipe);
+  assert.equal(magitekFactoryTemplate.status,200,JSON.stringify(magitekFactoryTemplate.body));
+  const magitekFactory=await industryRoute(admin,request('POST',{...factorySettings,template_id:magitekFactoryTemplate.body.template_id,name:'CI Armored Magitek Assembly Plant',status:'operational',cycle_mode:'manual'}),'/world-admin/industry/facilities',staff);
+  assert.equal(magitekFactory.status,200,JSON.stringify(magitekFactory.body));
+  const magitekFactoryId=magitekFactory.body.id;
+  const emptyCommission=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:1}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
+  assert.equal(emptyCommission.status,409,'a design cannot conjure a free vehicle');
+  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,?,2)",[magitekFactoryId,magitekDesign.item_id]);
+  const commissioned=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:1}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
+  assert.equal(commissioned.status,200,JSON.stringify(commissioned.body));
+  const inventoryId=commissioned.body.id;
+  const [[remainingMagitek]]=await admin.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=?',[magitekFactoryId,magitekDesign.item_id]);
+  assert.equal(Number(remainingMagitek.quantity),1,'commissioning consumes one finished unit from facility inventory');
+  const commissionedList=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
+  assert.equal(commissionedList.status,200,JSON.stringify(commissionedList.body));
+  const lot=commissionedList.body.inventory.find(x=>Number(x.id)===Number(inventoryId));
+  assert.equal(lot.specifications.transport_capacity,8);
+  const newDesign={...magitekDesign,transport_capacity:16};
+  const updatedDesign=await industryRoute(admin,request('PUT',newDesign),'/world-admin/industry/equipment/templates/'+designId,staff);
+  assert.equal(updatedDesign.status,200);
+  const revisedList=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
+  assert.equal(revisedList.body.inventory.find(x=>Number(x.id)===Number(inventoryId)).specifications.transport_capacity,8,'old fleet lots keep pinned stats');
+  const assignLot=await industryRoute(admin,request('POST',{status:'assigned',stationed_settlement_id:mineId,notes:'Order mobilization reserve'}),'/world-admin/industry/equipment/inventory/'+inventoryId+'/state',staff);
+  assert.equal(assignLot.status,200,JSON.stringify(assignLot.body));
+  const [[movementCount]]=await admin.execute('SELECT COUNT(*) AS n FROM world_magitek_equipment_movements WHERE inventory_id=?',[inventoryId]);
+  assert.equal(Number(movementCount.n),2,'commission and stationing remain auditable');
   const [[beforeTakeoverStock]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
   await admin.execute("UPDATE world_settlements SET controlling_faction_id='house-kurogane' WHERE id=?",[mineId]);
   const productionAfterCapture=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
