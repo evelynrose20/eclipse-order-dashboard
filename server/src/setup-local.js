@@ -181,6 +181,8 @@ async function main(){
   await pool.query(diplomacy);
   const recovery=await readFile(new URL('../sql/082_npc_recovery_claims.sql',import.meta.url),'utf8');
   await pool.query(recovery);
+  const autosimDefaults=await readFile(new URL('../sql/083_simulation_off_by_default.sql',import.meta.url),'utf8');
+  await pool.query(autosimDefaults);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
