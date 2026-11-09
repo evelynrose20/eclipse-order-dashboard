@@ -6,6 +6,7 @@ import RegionClimatePanel from './RegionClimatePanel.jsx';
 import NpcSettlementsPanel from './NpcSettlementsPanel.jsx';
 import IndustrySitesPanel from './IndustrySitesPanel.jsx';
 import './world-administration.css';
+import WorldDiplomacyPanel from './WorldDiplomacyPanel.jsx';
 
 const regionBlank={name:'',description:'',climate:'Garlean highlands',weather:'clear',temperature_c:-5,temperature_f:23,weather_mode:'garlean_seasonal',simulation_mode:'off',map_background_url:''};
 const cToF=c=>Math.round((Number(c)*9/5+32)*10)/10;
@@ -82,9 +83,9 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   {!data?<p className="wa-empty">Opening world records…</p>:<>
    <nav className="wa-tabs" aria-label="World administration sections">
-    {(canEdit?[['map','Territorial Map'],['settlements','Order Settlements'],['npc','NPC Settlements'],['unclaimed','Unclaimed'],['industry','Industry & Projects'],['civil','Civilian Welfare'],['reference','Simulation Rules']]:[['map','Territorial Map'],['settlements','Settlements'],['civil','Civilian Welfare']]).map(([id,name])=><button key={id} aria-current={section===id?'page':undefined} className={section===id?'active':''} onClick={()=>setSection(id)}>{name}</button>)}
+    {(canEdit?[['map','Territorial Map'],['settlements','Order Settlements'],['npc','NPC Settlements'],['unclaimed','Unclaimed'],['industry','Industry & Projects'],['diplomacy','Diplomacy & Wars'],['civil','Civilian Welfare'],['reference','Simulation Rules']]:[['map','Territorial Map'],['settlements','Settlements'],['civil','Civilian Welfare']]).map(([id,name])=><button key={id} aria-current={section===id?'page':undefined} className={section===id?'active':''} onClick={()=>setSection(id)}>{name}</button>)}
    </nav>
-   {section!=='npc'&&section!=='industry'&&<div className="wa-geography-picker" aria-label="Territorial geography">
+   {section!=='npc'&&section!=='industry'&&section!=='diplomacy'&&<div className="wa-geography-picker" aria-label="Territorial geography">
     <div className="wa-geography-line">
      <span className="wa-geography-label">Region</span>
      <div className="wa-geography-tabs" role="group" aria-label="Select region">
@@ -104,7 +105,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
      {canEdit&&activeRegion&&<button type="button" className="wa-accent wa-geography-create" onClick={newSettlement}><i className="fa-solid fa-plus" aria-hidden="true"/> Add settlement</button>}
     </div>}
    </div>}
-   {section!=='npc'&&section!=='industry'&&activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
+   {section!=='npc'&&section!=='industry'&&section!=='diplomacy'&&activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
     <strong><i className="fa-solid fa-map-location-dot" aria-hidden="true"/> {activeZone.name}</strong>
     <span>{pretty(activeZone.strategic_state)}</span>
     <span>Government: {factionName(activeZone.governing_faction_id)}</span>
@@ -113,6 +114,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
    </div>}
    {!regions.length&&<div className="wa-empty"><h3>No regions yet</h3><p>Begin by creating New Cassia's first region, then place settlements on its territory map. Nothing has been automatically populated.</p>{canEdit&&<button className="wa-accent" onClick={()=>editRegion(null)}>Create first region</button>}</div>}
 
+   {canEdit&&section==='diplomacy'&&<WorldDiplomacyPanel request={request} factions={factions} settlements={settlements} onChanged={load}/>}
    {canEdit&&section==='npc'&&<NpcSettlementsPanel request={request} factions={factions} onChanged={load}/>}
    {canEdit&&section==='industry'&&<WorldPanelBoundary><IndustrySitesPanel request={request} onChanged={load} userId={userId} characters={characters} initialLocationKey={industryFocus} onFocusCleared={()=>setIndustryFocus('')}/></WorldPanelBoundary>}
    {activeRegion&&section==='map'&&<div className="wa-map-workspace"><section className="wa-panel wa-map-main-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} sitePins={industrySites.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId)} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} rivers={rivers.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
