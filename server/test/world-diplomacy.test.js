@@ -69,7 +69,7 @@ test('separate conquest approval requires settlement still held by defending fac
    queries.push(sql);
    if(sql.startsWith('SELECT * FROM world_conflict_proposals'))return [[{id:15,status:'pending',source_kind:'war_outcome',related_conflict_id:8,conflict_kind:'territory_transfer',target_settlement_id:17}]];
    if(sql.startsWith('SELECT * FROM world_authorized_conflicts'))return [[{id:8,status:'authorized',attacker_id:'a-faction',defender_id:'b-faction'}]];
-   if(sql.startsWith('SELECT id,controlling_faction_id FROM world_settlements'))return [[{id:17,controlling_faction_id:'b-faction'}]];
+   if(sql.startsWith('SELECT id,controlling_faction_id,strategic_state FROM world_settlements'))return [[{id:17,controlling_faction_id:'b-faction'}]];
    if(sql.startsWith('SELECT protection FROM world_plot_protection'))return [[{protection:'major_changes'}]];
    return [{affectedRows:1}];
   }
