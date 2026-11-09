@@ -59,3 +59,14 @@
 The native terrain is an interpretation, not an exact rendering of supplied fantasy artwork. To use the original illustrated map *itself* for the strategic ground: World Administration → Territorial Map → Reference layers → upload the artwork → select **Use artwork as playable map ground** → Save reference. This persists the compressed WebP on the Windows server and uses it as the primary map at full opacity, including after refresh. State borders, province polygons, and political layers still render on top. The existing native atlas remains the fallback; uncheck the setting and save to return to it. This does not automatically relocate existing province coordinates to features shown on the artwork, and it does not change production, ownership or settlement data.
 
 The uploaded conversation image has not been silently published as an asset in the repository. Staff must choose the saved map image through the upload field. Source artwork may contain decorative labels/ships/dragons baked into the image; those remain part of the background unless replaced by artwork without them.
+
+
+## Local map mountain areas and NPC boundary clearance (migration 080)
+
+The *local* World Administration territory map has two mountain modes represented by the same existing records. Legacy **open** ridges retain their 3.2%-wide exclusion corridor. A new **closed** mountain outline is an actual filled no-settlement area; the entire enclosed polygon and its perimeter corridor are impassable to settlement placement. Drawing or closing an area across an existing settlement is rejected server-side, without relocating or deleting that settlement. Both styles remain map geography, independent of roads and faction state.
+
+In **Territorial Map → Mountains**, create or select mountain terrain. Click to add points (up to 256). Click near another range's existing vertex to snap/connect the outlines, and click close to your first point or use **Close loop & fill** to close the polygon. Use **Open loop** to return to a ridge. The server validates polygon area, prevents crossings and rejects mapped settlements inside the new restricted area. Existing mountains stay as open ridges until edited and explicitly closed.
+
+New or relocated NPC-faction settlements must be at least **10% away from all four map edges**: both X and Y must be between 10 and 90 inclusive. The same rule applies to newly placed independent industrial map sites in NPC-controlled zones. This is enforced in the Windows API in addition to the visible placement guide and form instructions. Existing NPC sites near edges remain untouched unless their location or ownership is changed; Order-owned sites are not restricted by this NPC-only margin.
+
+**Deployment:** rerun the Windows API setup to apply `080_mountain_areas.sql`, restart the backend, and refresh the frontend. This migration is additive and defaults `is_closed=0` for all old mountain data.
