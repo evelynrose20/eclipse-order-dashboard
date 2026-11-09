@@ -19,6 +19,14 @@ async function tx(pool,callback){
  catch(e){await conn.rollback().catch(()=>{});throw e}finally{conn.release()}
 }
 const owns=u=>command(u)||u.account_role==='handler';
+export function restoredConstructionState(previous,stages){
+ if(!Array.isArray(stages)||!stages.length)return null;
+ const inferred=stages.every(s=>s.status==='complete')?'completed':stages.every(s=>s.status==='locked')?'draft':'paused';
+ const state=previous||inferred;
+ // Restore an active drive paused so no surprise material deliveries occur.
+ return state==='open'?'paused':['draft','paused','completed'].includes(state)?state:null;
+}
+
 async function projectDetail(pool,projectId,user){
  const [[rows],[stages],[requirements],[linkedEvents]] = await Promise.all([
   pool.execute('SELECT p.*,e.name AS event_name FROM order_construction_projects p LEFT JOIN order_encounters e ON e.id=p.event_id WHERE p.id=?',[projectId]),
@@ -212,10 +220,7 @@ export async function constructionRoute(pool,req,path){
    // from untouched stages; never erase deliveries or reopen automatically.
    const [stages]=await conn.execute('SELECT status FROM order_construction_stages WHERE project_id=? ORDER BY position,id FOR UPDATE',[projectId]);
    if(!stages.length)return fail(409,'project_needs_stages');
-   const inferred=stages.every(s=>s.status==='complete')?'completed':
-    stages.every(s=>s.status==='locked')?'draft':'paused';
-   const previous=p.pre_archive_state||inferred;
-   const restoredState=previous==='open'?'paused':previous;
+   const restoredState=restoredConstructionState(p.pre_archive_state,stages);
    if(!['draft','paused','completed'].includes(restoredState))return fail(409,'invalid_archived_project_state');
    await conn.execute('UPDATE order_construction_projects SET state=?,pre_archive_state=NULL WHERE id=? AND state="archived"',[restoredState,projectId]);
    return ok({state:restoredState,restored:true});
