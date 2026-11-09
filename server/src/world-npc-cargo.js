@@ -35,12 +35,16 @@ export async function assignNpcMappedFarm(db,settlement,options){
  if(alreadyUsed)return fail(409,'mapped_farm_already_assigned');
  const [[existing]]=await db.execute('SELECT * FROM world_npc_cargo_routes WHERE settlement_id=? FOR UPDATE',[settlement.id]);
  // Never silently strand cargo already in transit. Disable and complete it before switching suppliers.
- if(existing&&Number(existing.site_id||existing.map_settlement_id)!==Number(chosen.id)){
+ if(existing&&((sourceType==='industry_site'&&!existing.site_id)||(sourceType==='settlement_marker'&&!existing.map_settlement_id)||Number(existing.site_id||existing.map_settlement_id)!==Number(chosen.id))){
   const [[pending]]=await db.execute("SELECT id FROM world_npc_cargo_shipments WHERE route_id=? AND status='in_transit' LIMIT 1",[existing.id]);
   if(pending)return fail(409,'farm_change_wait_for_cargo_arrival');
  }
  const field=sourceType==='industry_site'?'site_id':'settlement_id';
- const [[facility]]=await db.execute('SELECT * FROM world_industry_facilities WHERE '+field+'=? AND owner_faction_id=? ORDER BY id LIMIT 1 FOR UPDATE',[chosen.id,settlement.controlling_faction_id]);
+ const [attached]=await db.execute(`SELECT f.*,t.category AS template_category FROM world_industry_facilities f
+ JOIN world_industry_templates t ON t.id=f.template_id WHERE f.${field}=? ORDER BY f.id FOR UPDATE`,[chosen.id]);
+ if(attached.some(f=>f.owner_faction_id!==settlement.controlling_faction_id))return fail(409,'mapped_farm_facility_ownership_conflict');
+ const facility=attached.find(f=>f.template_category==='agriculture')||null;
+ if(!facility&&attached.length)return fail(409,'mapped_location_has_nonagricultural_facility');
  let facilityId=facility?.id||null;
  if(facility){
   if(!['operational','paused'].includes(facility.status))return fail(409,'farm_facility_requires_repair');
@@ -112,7 +116,9 @@ export async function runNpcCargoAutomation(pool,now=new Date()){
    if(result.status===200)delivered++;
   }catch(e){console.warn('[NPC cargo] delivery',shipment.id,e?.code||e?.name)}
  }
- const [routes]=await pool.execute("SELECT id FROM world_npc_cargo_routes WHERE enabled=1 ORDER BY id LIMIT 150");
+ const [routes]=await pool.execute(`SELECT r.id FROM world_npc_cargo_routes r
+ JOIN world_settlement_autosim a ON a.settlement_id=r.settlement_id
+ WHERE r.enabled=1 AND a.mode='automatic' AND a.paused=0 ORDER BY r.id LIMIT 150`);
  for(const route of routes){
   try{
    const result=await transaction(pool,async db=>{
@@ -120,6 +126,12 @@ export async function runNpcCargoAutomation(pool,now=new Date()){
     const [[home]]=await db.execute('SELECT * FROM world_settlements WHERE id=?',[r.settlement_id]);
     const [[facility]]=await db.execute('SELECT * FROM world_industry_facilities WHERE id=? FOR UPDATE',[r.facility_id]);
     if(!home||!facility||home.controlling_faction_id!==facility.owner_faction_id||facility.status!=='operational'||facility.cycle_mode==='off')return fail(409,'cargo_supplier_not_operational');
+    const [[origin]]=await db.execute(`SELECT COALESCE(si.controlling_faction_id,z.controlling_faction_id,marker.controlling_faction_id) AS owner_faction_id,
+     marker.strategic_state AS map_state FROM world_npc_cargo_routes route
+     LEFT JOIN world_industry_sites si ON si.id=route.site_id
+     LEFT JOIN world_zones z ON z.id=si.zone_id
+     LEFT JOIN world_settlements marker ON marker.id=route.map_settlement_id WHERE route.id=?`,[r.id]);
+    if(!origin||origin.owner_faction_id!==home.controlling_faction_id||['destroyed','abandoned'].includes(origin.map_state))return fail(409,'mapped_farm_no_longer_operational');
     // Depart at most once daily on a route, after a real production cycle has stocked the source.
     const [[departed]]=await db.execute('SELECT id FROM world_npc_cargo_shipments WHERE route_id=? AND dispatched_on=? LIMIT 1',[r.id,day]);
     if(departed)return fail(409,'route_already_dispatched_today');
