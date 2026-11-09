@@ -11,8 +11,9 @@ export async function npcMappedFarmOptions(db,settlement){
  const [sites]=await db.execute(`SELECT i.id,i.name,i.kind,i.region_id,i.zone_id,
  COALESCE(i.controlling_faction_id,z.controlling_faction_id) AS owner_faction_id
  FROM world_industry_sites i JOIN world_zones z ON z.id=i.zone_id
- WHERE i.kind IN ('farm','ranch') AND i.region_id=? AND COALESCE(i.controlling_faction_id,z.controlling_faction_id)=?
- ORDER BY i.name`,[settlement.region_id,settlement.controlling_faction_id]);
+ WHERE i.kind IN ('farm','ranch') AND i.region_id=?
+ AND z.controlling_faction_id=? AND (i.controlling_faction_id IS NULL OR i.controlling_faction_id=?)
+ ORDER BY i.name`,[settlement.region_id,settlement.controlling_faction_id,settlement.controlling_faction_id]);
  const [markers]=await db.execute(`SELECT id,name,map_icon AS kind,region_id,zone_id,controlling_faction_id AS owner_faction_id
  FROM world_settlements WHERE region_id=? AND controlling_faction_id=?
  AND map_icon IN ('farm','ranch','orchard') AND strategic_state NOT IN ('destroyed','abandoned')
@@ -126,12 +127,13 @@ export async function runNpcCargoAutomation(pool,now=new Date()){
     const [[home]]=await db.execute('SELECT * FROM world_settlements WHERE id=?',[r.settlement_id]);
     const [[facility]]=await db.execute('SELECT * FROM world_industry_facilities WHERE id=? FOR UPDATE',[r.facility_id]);
     if(!home||!facility||home.controlling_faction_id!==facility.owner_faction_id||facility.status!=='operational'||facility.cycle_mode==='off')return fail(409,'cargo_supplier_not_operational');
-    const [[origin]]=await db.execute(`SELECT COALESCE(si.controlling_faction_id,z.controlling_faction_id,marker.controlling_faction_id) AS owner_faction_id,
+    const [[origin]]=await db.execute(`SELECT COALESCE(z.controlling_faction_id,marker.controlling_faction_id) AS owner_faction_id,
+     si.controlling_faction_id AS site_faction,
      marker.strategic_state AS map_state FROM world_npc_cargo_routes route
      LEFT JOIN world_industry_sites si ON si.id=route.site_id
      LEFT JOIN world_zones z ON z.id=si.zone_id
      LEFT JOIN world_settlements marker ON marker.id=route.map_settlement_id WHERE route.id=?`,[r.id]);
-    if(!origin||origin.owner_faction_id!==home.controlling_faction_id||['destroyed','abandoned'].includes(origin.map_state))return fail(409,'mapped_farm_no_longer_operational');
+    if(!origin||origin.owner_faction_id!==home.controlling_faction_id||(origin.site_faction&&origin.site_faction!==home.controlling_faction_id)||['destroyed','abandoned'].includes(origin.map_state))return fail(409,'mapped_farm_no_longer_operational');
     // Depart at most once daily on a route, after a real production cycle has stocked the source.
     const [[departed]]=await db.execute('SELECT id FROM world_npc_cargo_shipments WHERE route_id=? AND dispatched_on=? LIMIT 1',[r.id,day]);
     if(departed)return fail(409,'route_already_dispatched_today');
