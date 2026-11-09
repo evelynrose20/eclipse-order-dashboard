@@ -24,6 +24,23 @@ export function smoothRoadPath(points){
  }
  return path;
 }
+// Evenly spaced relief peaks follow authored mountain paths; they are visual
+// geometry only. Collision with settlements is checked by the Windows API.
+export function ridgeSymbols(points,spacing=3.6){
+ if(!Array.isArray(points)||points.length<2)return [];
+ const markers=[];let length=0;
+ for(let i=0;i<points.length-1;i++){
+  const a=points[i],b=points[i+1],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+  if(!d)continue;
+  const count=Math.max(1,Math.round(d/spacing));
+  for(let j=0;j<count;j++){
+   const t=(j+.5)/count;
+   markers.push({x:a.x+dx*t,y:a.y+dy*t,size:1.55+(markers.length%4)*.22});
+  }
+  length+=d;
+ }
+ return markers.slice(0,150);
+}
 const normalizeWaypoints=route=>Array.isArray(route.waypoints)?route.waypoints:[];
 const normalize=(s,map)=>({...s,...(map[s.id]||{})});
 function polyline(route,byId){
@@ -423,7 +440,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
       <path d={path} className="wtm-range-exclusion"/>
       <path d={path} className="wtm-range-shadow"/>
       <path d={path} className="wtm-range-ridge"/>
-      {pts.map((p,i)=><path key={i} d={'M '+(p.x-1.3)+' '+(p.y+1.2)+' L '+p.x+' '+(p.y-1.6)+' L '+(p.x+1.3)+' '+(p.y+1.2)} className="wtm-range-peak"/>)}
+      {ridgeSymbols(pts).map((p,i)=><g key={i} className="wtm-relief-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.7)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.7)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+(p.size*.5)+' '+(p.size*.7)+' L 0 '+(p.size*.23)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.43)+' '+(-p.size*.54)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.42)+' '+(-p.size*.54)+' L '+(p.size*.09)+' '+(-p.size*.62)+' Z'} className="wtm-peak-snow"/></g>)}
       <text x={mid.x} y={Math.max(4,mid.y-3)} textAnchor="middle" className="wtm-range-label">{m.name}</text>
      </g>;
     })}
