@@ -36,6 +36,8 @@ test('map has separate rivers and excludes air and waterway from road/rail inter
  assert.match(ui,/world-admin\/rivers/);
  assert.match(ui,/NO SETTLEMENTS ON MOUNTAINS/);
  assert.match(ui,/wtm-rivers/);
+ assert.match(ui,/ridgeSymbols\(pts\)\.map/);
+ assert.match(ui,/wtm-peak-rock/);
  assert.doesNotMatch(ui,/\['skyway','Air route'\]/);
  assert.doesNotMatch(ui,/\['waterway','Water route'\]/);
 });
