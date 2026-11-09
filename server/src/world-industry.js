@@ -24,9 +24,9 @@ export function evaluateEquipmentManufacture(config,category,equipmentOutputs,eq
  if((config.inputs||[]).length<2||config.labor<5||config.power<1)return 'equipment_requires_materials_labor_and_power';
  const outputs=equipmentOutputs.map(x=>({...x,qty:Number(config.outputs.find(o=>o.item_id===x.id)?.qty||0)}));
  if(outputs.some(x=>!Number.isInteger(x.qty)||x.qty<1))return 'equipment_requires_whole_units';
- const costs={transport:10,locomotive:18,railcar:12,armored_vehicle:14,airship:25,field_equipment:5,siege_equipment:18,other:8};
- const workforce={transport:6,locomotive:10,railcar:7,armored_vehicle:10,airship:14,field_equipment:5,siege_equipment:12,other:5};
- const power={transport:2,locomotive:4,railcar:2,armored_vehicle:3,airship:5,field_equipment:1,siege_equipment:3,other:1};
+ const costs={transport:10,locomotive:18,railcar:12,armored_vehicle:14,airship:25,capital_airship:120,field_equipment:5,siege_equipment:18,other:8};
+ const workforce={transport:6,locomotive:10,railcar:7,armored_vehicle:10,airship:14,capital_airship:100,field_equipment:5,siege_equipment:12,other:5};
+ const power={transport:2,locomotive:4,railcar:2,armored_vehicle:3,airship:5,capital_airship:80,field_equipment:1,siege_equipment:3,other:1};
  const totalMaterials=(config.inputs||[]).reduce((n,row)=>n+Number(row.qty||0),0);
  const requiredMaterials=outputs.reduce((n,x)=>{
   const perUnit=(costs[x.equipment_kind]||8)+Math.ceil(Number(x.cargo_capacity||0)/50)+
@@ -85,7 +85,7 @@ async function summary(pool){
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
- if(path.startsWith('/world-admin/industry/equipment'))return equipmentRoute(pool,req,path,actor);
+ if(path.startsWith('/world-admin/industry/equipment')||path.startsWith('/world-admin/industry/trains'))return equipmentRoute(pool,req,path,actor);
  if(req.method==='GET'&&path==='/world-admin/industry')return summary(pool);
  let match;
  if(path==='/world-admin/industry/items'&&req.method==='POST'){
