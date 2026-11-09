@@ -15,9 +15,10 @@ async function ensureItems(db,c){
  const [rows]=await db.query('SELECT id FROM world_industry_items WHERE id IN ('+ids.map(()=>'?').join(',')+')',ids);
  return rows.length===ids.length;
 }
-export function evaluateEquipmentManufacture(config,category,equipmentOutputs,equipmentByproducts=[]){
+export function evaluateEquipmentManufacture(config,category,equipmentOutputs,equipmentByproducts=[],rules=[]){
  if(equipmentByproducts.length)return 'equipment_cannot_be_byproduct';
  if(!equipmentOutputs.length)return null;
+ if(rules.some(r=>r.action?.type==='multiplier'))return 'equipment_output_multipliers_forbidden';
  if(equipmentOutputs.some(x=>!x.enabled))return 'equipment_template_disabled';
  if(category!=='manufacturing')return 'equipment_requires_manufacturing_facility';
  if((config.inputs||[]).length<2||config.labor<5||config.power<1)return 'equipment_requires_materials_labor_and_power';
@@ -40,7 +41,7 @@ async function validateEquipmentManufacture(db,b){
  const equipment=rows.filter(x=>x.category==='equipment');
  return evaluateEquipmentManufacture(b.configuration,b.category,
  equipment.filter(x=>(b.configuration.outputs||[]).some(o=>o.item_id===x.id)),
- equipment.filter(x=>(b.configuration.byproducts||[]).some(o=>o.item_id===x.id)));
+ equipment.filter(x=>(b.configuration.byproducts||[]).some(o=>o.item_id===x.id)),b.rules||[]);
 }
 async function noCycle(db,c,excluding=null){
  const [rows]=await db.execute('SELECT v.configuration FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.archived=0'+(excluding?' AND t.id<>?':''),excluding?[excluding]:[]);
