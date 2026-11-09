@@ -351,3 +351,27 @@
 .wtm-cartographic-summit .wtm-summit-cap-snow{fill:#e5dfca;opacity:.93}
 .wtm-cartographic-summit .wtm-summit-strata{fill:none;stroke:#a6a69a;stroke-width:.15;opacity:.68}
 .wtm-mountain-area .wtm-range-label,.wtm-mountain-ridge .wtm-range-label{fill:#e3ddc9;font-size:1.6px;font-weight:800;letter-spacing:.045em;stroke:#12212a;stroke-width:.37;paint-order:stroke;stroke-linejoin:round}
+
+
+/* Faction ownership is a separate layer from civic/military condition. */
+.wtm-ownership-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 13px;background:#142531;border-bottom:1px solid #465966}
+.wtm-ownership-toolbar>span{font-size:10px;font-weight:900;letter-spacing:.11em;color:#d9bd8e;text-transform:uppercase;margin-right:4px}
+.wtm-ownership-toolbar button{padding:7px 12px;font-size:11px;font-weight:750;background:#213542;color:#c7d5d8;border:1px solid #57707c;border-radius:4px;cursor:pointer}
+.wtm-ownership-toolbar button.active{color:#fff1d5;background:#49523f;border-color:#d0b37f}
+.wtm-ownership-toolbar small{margin-left:auto;color:#c5d0ce;font-size:11px}
+.wtm-stage .wtm-pin-owner{display:flex;align-items:center;justify-content:center;gap:5px;background:#13242ceF;color:#e7e6da;font-size:9px!important;font-weight:850;line-height:1.3;max-width:160px;white-space:normal;padding:3px 5px;border:1px solid var(--wtm-owner-color,#889ca5);border-radius:3px;pointer-events:none;text-wrap:balance}
+.wtm-stage .wtm-pin-owner i,.wtm-ownership-legend i{display:inline-block;flex:0 0 auto;width:9px;height:9px;background:var(--wtm-owner-color,#889ca5);border-radius:2px;border:1px solid #ede2c399}
+.wtm-stage .wtm-pin-owner small{display:block;font-size:7px;color:#c5cab9;letter-spacing:.075em}
+.wtm-stage .wtm-pin.wtm-ownership-mode .wtm-pin-icon{border:3px solid var(--wtm-owner-color,#8998a6)!important;box-shadow:0 0 0 3px #101923!important}
+.wtm-stage .wtm-pin.wtm-ownership-mode .wtm-pin-name{border-top:2px solid var(--wtm-owner-color,#8998a6)!important}
+.wtm-stage .wtm-pin.wtm-condition-mode .wtm-pin-owner{opacity:.78}
+.wtm-stage .wtm-pin[data-owner-kind="foreign"].wtm-ownership-mode .wtm-pin-owner{border-style:dashed;box-shadow:0 0 0 1px #9b66777a}
+.wtm-stage .wtm-pin[data-owner-kind="unclaimed"].wtm-ownership-mode .wtm-pin-owner{color:#d1d5db}
+.wtm-ownership-legend{padding:12px 14px;background:#172a34;border-top:1px solid #485c65;display:grid;gap:8px}
+.wtm-ownership-legend>strong{font-size:10px;color:#d3b885;letter-spacing:.12em}
+.wtm-ownership-legend>div{display:flex;flex-wrap:wrap;gap:8px}
+.wtm-ownership-legend>div>span{display:flex;align-items:center;gap:6px;border:1px solid #4c6069;background:#233542;padding:5px 8px;border-radius:4px;font-size:11px;color:#e3e6e2}
+.wtm-ownership-legend>div>span i{width:12px;height:12px}
+.wtm-ownership-legend small{color:#afc0c8}
+.wtm-ownership-legend p{font-size:11px;line-height:1.5;color:#a8b9c0;margin:0}
+@media(max-width:690px){.wtm-ownership-toolbar small{margin-left:0;width:100%}}
