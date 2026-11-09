@@ -79,6 +79,54 @@ export async function assignNpcMappedFarm(db,settlement,options){
  return ok({saved:true,facility_id:facilityId,source_type:sourceType,source_id:chosen.id});
 }
 
+
+/** NPC settlement AI selects real faction territory on its own. Never creates map markers,
+ * credits materials or bypasses a damaged/captured location. Choice is deterministic so
+ * repeated cycles do not reroll staff choices or produce duplicate routes.
+ */
+export function rankNpcFarmCandidates(settlement,candidates,occupied=[]){
+ const used=new Set(occupied.map(x=>x.source_type+':'+x.source_id));
+ return candidates.filter(x=>!used.has(x.source_type+':'+x.id)&&Number(x.id)!==Number(settlement.id))
+  .sort((a,b)=>{
+   const score=x=>(Number(x.zone_id)===Number(settlement.zone_id)?100:0)+
+    (x.source_type==='industry_site'?10:0)+(x.has_operational_farm?50:0);
+   return score(b)-score(a)||String(a.source_type).localeCompare(String(b.source_type))||Number(a.id)-Number(b.id);
+  });
+}
+export function npcCargoParameters(settlement,farm){
+ // Existing population/workforce and geographic zones, not staff-invented free cargo.
+ const sameZone=Number(settlement.zone_id)===Number(farm.zone_id);
+ const labor=Math.max(0,Math.floor(Number(settlement.workforce)||0));
+ return {travel_hours:sameZone?12:36,cargo_capacity:Math.max(4,Math.min(80,labor*4))};
+}
+export async function autonomouslyAssignNpcFarm(db,settlement){
+ if(!settlement?.controlling_faction_id||settlement.controlling_faction_id==='eclipse-order')return {status:'not_npc'};
+ const [[route]]=await db.execute('SELECT * FROM world_npc_cargo_routes WHERE settlement_id=? FOR UPDATE',[settlement.id]);
+ if(route){
+  const [[facility]]=await db.execute('SELECT status,owner_faction_id FROM world_industry_facilities WHERE id=?',[route.facility_id]);
+  if(facility&&facility.owner_faction_id===settlement.controlling_faction_id){
+   // Existing assigned route remains a stable NPC supply contract. If its source is
+   // captured, standard industry/cargo checks stop production until ownership returns.
+   return {status:route.enabled?'active':'paused',route_id:route.id};
+  }
+  // Do not mutate a captured or missing route while goods are in flight.
+  return {status:'supplier_unavailable',route_id:route.id};
+ }
+ const candidates=await npcMappedFarmOptions(db,settlement);
+ if(!candidates.length)return {status:'no_mapped_farm'};
+ const [usedRoutes]=await db.execute('SELECT site_id,map_settlement_id FROM world_npc_cargo_routes');
+ const used=usedRoutes.map(x=>x.site_id?{source_type:'industry_site',source_id:x.site_id}:{source_type:'settlement_marker',source_id:x.map_settlement_id});
+ const choices=rankNpcFarmCandidates(settlement,candidates,used);
+ for(const choice of choices){
+  const settings=npcCargoParameters(settlement,choice);
+  const assigned=await assignNpcMappedFarm(db,settlement,{source_type:choice.source_type,source_id:Number(choice.id),...settings});
+  if(assigned.status===200)return {status:'established',farm_name:choice.name,route:assigned.body};
+  if(!['mapped_farm_already_assigned','mapped_location_has_nonagricultural_facility','mapped_farm_facility_ownership_conflict','farm_facility_requires_repair','farm_facility_paused'].includes(assigned.body?.error))
+   return {status:'blocked',reason:assigned.body?.error};
+ }
+ return {status:'no_available_producer'};
+}
+
 async function transaction(pool,work){
  const db=await pool.getConnection();
  try{await db.beginTransaction();const result=await work(db);if(result?.status&&result.status!==200)await db.rollback();else await db.commit();return result}
