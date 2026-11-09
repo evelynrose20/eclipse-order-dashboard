@@ -153,7 +153,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   }
   if((req.method==='PUT')!==Boolean(mid))return fail(400,'invalid_mountain_request');
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||typeof b.is_closed!=='boolean'||!validMountainShape(b.points,b.is_closed))return fail(400,'invalid_mountain_range');
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||(b.is_closed!==undefined&&typeof b.is_closed!=='boolean')||!validMountainShape(b.points,b.is_closed))return fail(400,'invalid_mountain_range');
   return transact(pool,async db=>{
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
