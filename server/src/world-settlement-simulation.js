@@ -1,3 +1,4 @@
+import {npcMappedFarmOptions,assignNpcMappedFarm} from './world-npc-cargo.js';
 import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
@@ -31,7 +32,7 @@ export function npcSupplyCycle(input){
  const cold=Math.max(0,(55-temperature)/65);
  const effectiveHousing=Math.min(100,Number(input.insulation)||0);
  const consumption={food:round(population*.75),water:round(population),fuel:round(population*.8*cold*(1-effectiveHousing*.005)),medicine:round(population*.01)};
- const production={food:round(population*.46+employed*.8),water:round(population*.72+employed*.75+Math.min(infra.water_daily,employed*2)),fuel:round((population*.25+employed*.5)*(cold>.1?1:.45)),medicine:round(population*.008+employed*.007)};
+ const production={food:0,water:round(population*.72+employed*.75+Math.min(infra.water_daily,employed*2)),fuel:round((population*.25+employed*.5)*(cold>.1?1:.45)),medicine:round(population*.008+employed*.007)};
  const next={},shortages=[];
  for(const kind of ['food','water','fuel','medicine']){
   const available=current[kind]+production[kind];
@@ -293,13 +294,40 @@ export async function settlementSimulationRoute(pool,req,path,actor){
  if(path==='/world-admin/simulation'&&req.method==='GET'){
   const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points,a.last_industry_development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
   const [foundings]=await pool.execute('SELECT settlement_id,founding_population,starter_housing_id,starter_facility_id FROM world_npc_settlement_foundings');
+  const [cargoRoutes]=await pool.execute(`SELECT r.*,COALESCE(site.name,marker.name) AS farm_name FROM world_npc_cargo_routes r
+   LEFT JOIN world_industry_sites site ON site.id=r.site_id LEFT JOIN world_settlements marker ON marker.id=r.map_settlement_id`);
   const [healthStates]=await pool.execute('SELECT settlement_id,sick_workers,injured_workers FROM world_settlement_worker_health');
   const [educationStates]=await pool.execute('SELECT settlement_id,attainment FROM world_settlement_education');
   const [infrastructure]=await pool.execute('SELECT * FROM world_settlement_upgrades');
   const [templateProjects]=await pool.execute("SELECT p.id,p.settlement_id,p.upgrade_id,p.template_id,p.target_level,p.status,p.progress,p.labor_required,u.name FROM world_civic_building_projects p JOIN world_settlement_upgrades u ON u.id=p.upgrade_id WHERE p.owner_kind='npc' ORDER BY p.id DESC");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");
-  return {status:200,body:{settlements:sites.map(s=>({...s,founding:foundings.find(f=>Number(f.settlement_id)===Number(s.id))||null,demographics:settlementDemographics(s),worker_health:healthStates.find(x=>Number(x.settlement_id)===Number(s.id))||{sick_workers:0,injured_workers:0},education:educationPreview(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),storage_capacity:civilianStorageCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),housing_capacity_total:housingCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_effects:civicInfrastructureEffects(infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_projects:templateProjects.filter(p=>Number(p.settlement_id)===Number(s.id)),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+  return {status:200,body:{settlements:sites.map(s=>({...s,founding:foundings.find(f=>Number(f.settlement_id)===Number(s.id))||null,cargo_route:cargoRoutes.find(r=>Number(r.settlement_id)===Number(s.id))||null,demographics:settlementDemographics(s),worker_health:healthStates.find(x=>Number(x.settlement_id)===Number(s.id))||{sick_workers:0,injured_workers:0},education:educationPreview(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),storage_capacity:civilianStorageCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),housing_capacity_total:housingCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_effects:civicInfrastructureEffects(infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_projects:templateProjects.filter(p=>Number(p.settlement_id)===Number(s.id)),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+ }
+ const farmMatch=/^\\/world-admin\\/simulation\\/(\\d+)\\/farm(?:\\/options)?$/.exec(path);
+ if(farmMatch){
+  const id=Number(farmMatch[1]),db=await pool.getConnection();
+  try{
+   if(req.method==='PUT')await db.beginTransaction();
+   const [[site]]=await db.execute('SELECT * FROM world_settlements WHERE id=?'+(req.method==='PUT'?' FOR UPDATE':''),[id]);
+   if(!site){if(req.method==='PUT')await db.rollback();return {status:404,body:{error:'settlement_not_found'}}}
+   if(settlementOwnership(site)!=='npc'){if(req.method==='PUT')await db.rollback();return {status:409,body:{error:'not_npc_settlement'}}}
+   if(req.method==='GET'){
+    const options=await npcMappedFarmOptions(db,site);
+    const [routes]=await db.execute('SELECT * FROM world_npc_cargo_routes WHERE settlement_id=?',[id]);
+    const [shipments]=await db.execute('SELECT id,route_id,item_id,quantity,status,dispatched_on,arrival_at,delivered_at FROM world_npc_cargo_shipments WHERE settlement_id=? ORDER BY id DESC LIMIT 30',[id]);
+    const [warehouse]=await db.execute('SELECT item_id,quantity FROM world_npc_cargo_warehouse WHERE settlement_id=? ORDER BY item_id',[id]);
+    return {status:200,body:{options,route:routes[0]||null,shipments,warehouse}};
+   }
+   if(req.method==='PUT'){
+    const body=await read(req);
+    const result=await assignNpcMappedFarm(db,site,body);
+    if(result.status===200)await db.commit();else await db.rollback();
+    return result;
+   }
+   return {status:405,body:{error:'method_not_allowed'}};
+  }catch(error){if(req.method==='PUT')await db.rollback().catch(()=>{});throw error}
+  finally{db.release()}
  }
  const match=/^\/world-admin\/simulation\/(\d+)\/settings$/.exec(path);
  if(match&&req.method==='PUT'){
