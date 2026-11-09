@@ -3,11 +3,20 @@
 USE eclipse_order;
 ALTER TABLE world_magitek_equipment_templates MODIFY COLUMN equipment_kind
  ENUM('transport','locomotive','railcar','armored_vehicle','airship','capital_airship','field_equipment','siege_equipment','other') NOT NULL;
-ALTER TABLE world_magitek_equipment_templates ADD COLUMN IF NOT EXISTS lore_status
- ENUM('canon_class','canon_vehicle','lore_adapted','original') NOT NULL DEFAULT 'original';
-ALTER TABLE world_magitek_equipment_templates ADD COLUMN IF NOT EXISTS lore_reference VARCHAR(500) NOT NULL DEFAULT '';
-ALTER TABLE world_magitek_equipment_templates ADD COLUMN IF NOT EXISTS max_wagons SMALLINT UNSIGNED NOT NULL DEFAULT 0;
-ALTER TABLE world_magitek_equipment_templates DROP CHECK chk_magitek_capacity;
+SET @status_sql := (SELECT IF(COUNT(*)=0,
+ "ALTER TABLE world_magitek_equipment_templates ADD COLUMN lore_status ENUM('canon_class','canon_vehicle','lore_adapted','original') NOT NULL DEFAULT 'original'",
+ 'DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND column_name='lore_status');
+PREPARE garlean_status_stmt FROM @status_sql; EXECUTE garlean_status_stmt; DEALLOCATE PREPARE garlean_status_stmt;
+SET @reference_sql := (SELECT IF(COUNT(*)=0,
+ "ALTER TABLE world_magitek_equipment_templates ADD COLUMN lore_reference VARCHAR(500) NOT NULL DEFAULT ''",
+ 'DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND column_name='lore_reference');
+PREPARE garlean_reference_stmt FROM @reference_sql; EXECUTE garlean_reference_stmt; DEALLOCATE PREPARE garlean_reference_stmt;
+SET @wagons_sql := (SELECT IF(COUNT(*)=0,
+ "ALTER TABLE world_magitek_equipment_templates ADD COLUMN max_wagons SMALLINT UNSIGNED NOT NULL DEFAULT 0",
+ 'DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND column_name='max_wagons');
+PREPARE garlean_wagons_stmt FROM @wagons_sql; EXECUTE garlean_wagons_stmt; DEALLOCATE PREPARE garlean_wagons_stmt;
+SET @check_sql := (SELECT IF(COUNT(*)>0, 'ALTER TABLE world_magitek_equipment_templates DROP CHECK chk_magitek_capacity', 'DO 0') FROM information_schema.table_constraints WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND constraint_name='chk_magitek_capacity');
+PREPARE garlean_check_stmt FROM @check_sql; EXECUTE garlean_check_stmt; DEALLOCATE PREPARE garlean_check_stmt;
 ALTER TABLE world_magitek_equipment_templates ADD CONSTRAINT chk_magitek_capacity CHECK(
  transport_capacity<=10000 AND cargo_capacity<=100000 AND crew_required<=1000
  AND fuel_per_operation>=0 AND fuel_per_operation<=10000 AND max_wagons<=100);
