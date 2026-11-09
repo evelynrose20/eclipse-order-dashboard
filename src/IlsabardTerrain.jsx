@@ -98,6 +98,7 @@ export default function IlsabardTerrain({showRelief=true}){
    <pattern id="ils-sea-lines" width="34" height="21" patternUnits="userSpaceOnUse"><path d="M4 11q7-3 14 0t14 0" fill="none" stroke="#8aa9ad" strokeWidth=".5" opacity=".25"/></pattern>
    <filter id="ils-noise" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".042" numOctaves="3" seed="11" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".12"/></feComponentTransfer></filter>
    {mainContours.map(k=><clipPath key={'clip'+k} id={'ils-clip-'+k}><path d={paths[k]}/></clipPath>)}
+   <clipPath id="ils-clip-all">{mainContours.map(k=><path key={'land-'+k} d={paths[k]}/>)}</clipPath>
   </defs>
   <rect x="0" y="0" width="1000" height="700" fill="url(#ils-ocean)"/>
   <rect width="1000" height="700" fill="url(#ils-sea-lines)" opacity=".5"/>
@@ -116,7 +117,7 @@ export default function IlsabardTerrain({showRelief=true}){
   <path d={paths.eastice} fill="url(#ils-frost)" stroke="#acb8b7" strokeWidth="1" opacity=".98"/>
   <path d="M 315 146 Q 380 190 414 254 T 493 317 Q 529 339 554 388" fill="none" stroke="#d4bb83" strokeWidth="19" opacity=".16"/>
   <path d="M 630 325 Q 677 370 699 414 T 750 506" fill="none" stroke="#a69d71" strokeWidth="22" opacity=".2"/>
-  {showRelief&&<g>{forests}{mountains}
+  {showRelief&&<g clipPath="url(#ils-clip-all)">{forests}{mountains}
    <path d="M 484 214 Q 474 266 486 299 Q 464 344 442 373 T 406 434" fill="none" stroke="#72979b" strokeWidth="3.5" strokeLinecap="round" opacity=".9"/>
    <path d="M 484 214 Q 474 266 486 299 Q 464 344 442 373 T 406 434" fill="none" stroke="#bbd1c6" strokeWidth=".8" opacity=".7"/>
    <path d="M 753 333 Q 773 378 775 425 Q 794 467 809 510" fill="none" stroke="#82a1a0" strokeWidth="3.4"/>
