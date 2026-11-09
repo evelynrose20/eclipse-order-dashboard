@@ -6,8 +6,9 @@ const pretty=s=>String(s||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCa
 const palette={peaceful:'#668778',secure:'#548f7f',contested:'#be9b60',occupied:'#a56a65',liberated:'#6b9aa8',rebuilding:'#a8a077',abandoned:'#65707a',destroyed:'#7e4e56'};
 const vector=points=>points.map(p=>p.x+','+p.y).join(' ');
 const pointCenter=points=>({x:points.reduce((s,p)=>s+p.x,0)/points.length,y:points.reduce((s,p)=>s+p.y,0)/points.length});
-export default function ContinentStrategyMap({continent={},zones=[],regions=[],settlements=[],factions=[],canEdit=false,request,onSaved,onOpenZone}){
+export default function ContinentStrategyMap({continent={},zones=[],regions=[],settlements=[],factions=[],canEdit=false,request,onSaved,onOpenZone,onOpenIndustry,provinces=[]}){
  const [selected,setSelected]=useState(''),[tool,setTool]=useState('inspect'),[draft,setDraft]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [provinceId,setProvinceId]=useState(''),[provinceName,setProvinceName]=useState(''),[terrain,setTerrain]=useState('plains');
  const [camera,setCamera]=useState({x:W*.1,y:H*.1,w:W*.8,h:H*.8});
  const [layer,setLayer]=useState('control'),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
  const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false);
@@ -16,6 +17,8 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const polygons=new Map((continent.territories||[]).map(x=>[Number(x.zone_id),x.polygon]));
  const active=zones.find(z=>String(z.id)===selected)||null;
  const activePoly=active?polygons.get(Number(active.id)):null;
+ const province=provinces.find(p=>String(p.id)===provinceId);
+ const childProvinces=provinces.filter(p=>String(p.zone_id)===selected);
  const activeRegion=regions.find(r=>Number(r.id)===Number(active?.region_id));
  const zoneCount=zones.filter(z=>polygons.has(Number(z.id))).length;
  const activeSites=settlements.filter(s=>Number(s.zone_id)===Number(active?.id));
@@ -48,13 +51,19 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   node.addEventListener('wheel',handleWheel,{passive:false});
   return ()=>node.removeEventListener('wheel',handleWheel);
  },[]);
- const selectZone=id=>{setSelected(String(id));setDraft(null);setTool('inspect');setNotice('');setError('')};
+ const selectZone=id=>{setSelected(String(id));setProvinceId('');setProvinceName('');setDraft(null);setTool('inspect');setNotice('');setError('')};
+ const selectProvince=p=>{setSelected(String(p.zone_id));setProvinceId(String(p.id));setProvinceName(p.name);setTerrain(p.terrain);setDraft(null);setTool('inspect');setError('')};
+ const provincePayload=polygon=>({zone_id:Number(province.zone_id),name:provinceName.trim(),terrain,polygon});
+ const createProvince=async()=>{if(!active||!provinceName.trim())return;setBusy(true);setError('');try{const result=await request('/world-admin/provinces',{method:'POST',body:{zone_id:Number(active.id),name:provinceName.trim(),terrain,polygon:null}});await onSaved?.();setProvinceId(String(result.id));setTool('province-draw');setDraft([]);setNotice('Province created. Draw its outline on the continent.')}catch(e){setError(e.message||'Province creation failed')}finally{setBusy(false)}};
+ const updateProvince=async(polygon=province?.polygon||null)=>{if(!province||!provinceName.trim())return;setBusy(true);setError('');try{await request('/world-admin/provinces/'+province.id,{method:'PUT',body:provincePayload(polygon)});await onSaved?.();setDraft(null);setTool('inspect');setNotice('Province saved. Existing industry and city projects remain unchanged.')}catch(e){setError(e.message||'Province save failed')}finally{setBusy(false)}};
  const startDraw=()=>{if(!active)return;setDraft([]);setTool('draw');setError('');setNotice('Click the map to mark the territory boundary. Finish with at least three corners.')};
  const startReshape=()=>{if(!activePoly)return;setDraft(activePoly.map(p=>({...p})));setTool('reshape');setError('')};
+ const drawProvince=()=>{if(!province)return;setDraft([]);setTool('province-draw');setError('')};
+ const reshapeProvince=()=>{if(!Array.isArray(province?.polygon))return;setDraft(province.polygon.map(p=>({...p})));setTool('province-reshape');setError('')};
  const save=async()=>{
   if(!active||!draft||draft.length<3)return;
   setBusy(true);setError('');
-  try{await request('/world-admin/continent/territories/'+active.id,{method:'PUT',body:{polygon:draft}});await onSaved?.();setTool('inspect');setDraft(null);setNotice('Territory boundary saved. Existing simulation records were not changed.')}
+  try{if(tool.startsWith('province-'))await request('/world-admin/provinces/'+province.id,{method:'PUT',body:provincePayload(draft)});else await request('/world-admin/continent/territories/'+active.id,{method:'PUT',body:{polygon:draft}});await onSaved?.();setTool('inspect');setDraft(null);setNotice('Boundary saved. City-building records unchanged.')}
   catch(e){setError(e.message||'Unable to save polygon')}finally{setBusy(false)}
  };
  const clear=async()=>{if(!active||!activePoly)return;setBusy(true);setError('');
@@ -83,16 +92,16 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   if(panRef.current?.id===e.pointerId)panRef.current=null;
   vertexRef.current=null;
  };
- const mapClick=e=>{if(ignoreClick.current){ignoreClick.current=false;return}if(tool!=='draw'||!active)return;const p=toPoint(e);if(p)setDraft(old=>old.length>=100?old:[...old,p])};
+ const mapClick=e=>{if(ignoreClick.current){ignoreClick.current=false;return}if(!['draw','province-draw'].includes(tool)||!active)return;const p=toPoint(e);if(p)setDraft(old=>old.length>=100?old:[...old,p])};
  const geometry=zones.map(z=>({zone:z,points:polygons.get(Number(z.id))})).filter(x=>Array.isArray(x.points)&&x.points.length>=3);
  return <section className="csm-root">
-  <header className="csm-head"><div><span className="csm-kicker">STRATEGIC COMMAND / CONTINENTAL THEATER</span><h3>{continent.name||'The Continent'}</h3><p>Continuous campaign map · {zoneCount} of {zones.length} territories outlined · {settlements.length} recorded settlements</p></div><div className="csm-controls"><button type="button" onClick={()=>zoom(.8)} aria-label="Zoom in">+</button><button type="button" onClick={()=>zoom(1.25)} aria-label="Zoom out">−</button><button type="button" onClick={()=>setCamera({x:0,y:0,w:W,h:H})}>Fit continent</button>{canEdit&&<button type="button" onClick={()=>{setSettings({name:continent.name||'The Continent',background_url:continent.background_url||''});setEditSettings(x=>!x)}}>Map settings</button>}</div></header>
+  <header className="csm-head"><div><span className="csm-kicker">STRATEGIC COMMAND / CONTINENTAL THEATER</span><h3>{continent.name||'The Continent'}</h3><p>Continuous campaign map · {zoneCount} of {zones.length} territories outlined · {provinces.length} provinces · {settlements.length} recorded settlements</p></div><div className="csm-controls"><button type="button" onClick={()=>zoom(.8)} aria-label="Zoom in">+</button><button type="button" onClick={()=>zoom(1.25)} aria-label="Zoom out">−</button><button type="button" onClick={()=>setCamera({x:0,y:0,w:W,h:H})}>Fit continent</button>{canEdit&&<button type="button" onClick={()=>{setSettings({name:continent.name||'The Continent',background_url:continent.background_url||''});setEditSettings(x=>!x)}}>Map settings</button>}</div></header>
   {error&&<p className="csm-error" role="alert">{error}</p>}{notice&&<p className="csm-note" role="status">{notice}</p>}
   {editSettings&&canEdit&&<div className="csm-settings"><label>Continent name<input maxLength="140" value={settings?.name||''} onChange={e=>setSettings(v=>({...v,name:e.target.value}))}/></label><label>Background map image (HTTPS URL)<input value={settings?.background_url||''} onChange={e=>setSettings(v=>({...v,background_url:e.target.value}))} placeholder="https://…/continent-map.jpg"/></label><button disabled={busy||!settings?.name?.trim()} onClick={saveSettings}>Save map</button></div>}
   <div className="csm-body">
    <div className="csm-map-shell">
     <div className="csm-layerbar"><span>MAP MODE</span>{[['control','Political'],['status','Territory status']].map(([id,name])=><button key={id} type="button" aria-pressed={layer===id} className={layer===id?'active':''} onClick={()=>setLayer(id)}>{name}</button>)}<span className="csm-zoom">{Math.round(W/camera.w*100)}%</span></div>
-    <svg ref={svgRef} className={'csm-map '+(tool==='draw'?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
+    <svg ref={svgRef} className={'csm-map '+(['draw','province-draw'].includes(tool)?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
      <defs><pattern id="csm-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#7994a0" strokeWidth=".55" opacity=".18"/></pattern></defs>
      <rect width={W} height={H} fill="#172b37"/>
      {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83"/>}
@@ -100,13 +109,14 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
      {geometry.map(({zone,points})=>{
       const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
       const center=pointCenter(points);
-      return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(tool==='draw'){return}e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
+      return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(['draw','province-draw'].includes(tool)){return}e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
        <polygon points={vector(points)} fill={fill} fillOpacity={isSelected ? 0.65 : 0.4} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
        <text x={center.x} y={center.y} textAnchor="middle" fill="#fff4da" stroke="#0c1721" strokeWidth="3" paintOrder="stroke" fontWeight="700" fontSize="12" pointerEvents="none">{zone.is_default?(regions.find(r=>Number(r.id)===Number(zone.region_id))?.name||zone.name):zone.name}</text>
       </g>;
      })}
+     {provinces.filter(p=>Array.isArray(p.polygon)&&p.polygon.length>=3).map(p=>{const chosen=String(p.id)===provinceId,c=pointCenter(p.polygon);return <g className={'csm-province '+(chosen?'selected':'')} key={'province'+p.id} onClick={e=>{if(['draw','province-draw'].includes(tool))return;e.stopPropagation();if(!ignoreClick.current)selectProvince(p);else ignoreClick.current=false}}><polygon points={vector(p.polygon)} fill={chosen?'#bb9658':'#23394d'} fillOpacity={chosen?.6:.22} stroke={chosen?'#ffda92':'#a5bac8'} strokeWidth={chosen?3:1.4} vectorEffect="non-scaling-stroke"/><text x={c.x} y={c.y} fontSize="9" fill="#eee4d1" stroke="#15232f" strokeWidth="2.5" paintOrder="stroke" textAnchor="middle" pointerEvents="none">{p.name}</text></g>})}
      {draft&&draft.length>0&&<g className="csm-draft" pointerEvents="none"><polyline points={vector(draft)} fill="none" stroke="#f1c77f" strokeWidth="2.8" vectorEffect="non-scaling-stroke"/>{draft.length>=3&&<polygon points={vector(draft)} fill="#dcb67b" fillOpacity=".16" stroke="#f0c789" strokeDasharray="6 5" vectorEffect="non-scaling-stroke"/>}</g>}
-     {draft&&tool==='reshape'&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp}/>)}
+     {draft&&['reshape','province-reshape'].includes(tool)&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp}/>)}
     </svg>
     {!continent.background_url&&<div className="csm-basemap-hint">Add a continent background image in Map settings. Existing regional images stay untouched.</div>}
     <div className="csm-map-footer"><span>Wheel to zoom · Drag to pan when zoomed in · Click a territory to inspect</span><span>Cartography coordinates: 1000 × 700</span></div>
@@ -114,8 +124,11 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
    <aside className="csm-inspector"><div className="csm-aside-heading"><span className="csm-kicker">TERRITORY INDEX</span><strong>{zones.length} territories</strong></div>
     <div className="csm-zone-list">{zones.map(z=><button type="button" key={z.id} className={selected===String(z.id)?'active':''} onClick={()=>selectZone(z.id)}><span className={'csm-zone-indicator '+(polygons.has(Number(z.id))?'mapped':'')}/><span><strong>{z.is_default?(regions.find(r=>Number(r.id)===Number(z.region_id))?.name||z.name):z.name}</strong><small>{factionName(z.controlling_faction_id)} · {pretty(z.strategic_state)}</small></span></button>)}</div>
     {active?<div className="csm-details"><span className="csm-kicker">SELECTED TERRITORY</span><h4>{active.name}</h4><p>{activeRegion?.name||'Unknown region'} · {activeSites.length} settlements · {activePoly?'Border mapped':'Border not drawn'}</p><dl><div><dt>Controller</dt><dd>{factionName(active.controlling_faction_id)}</dd></div><div><dt>Government</dt><dd>{factionName(active.governing_faction_id)}</dd></div><div><dt>Status</dt><dd>{pretty(active.strategic_state)}</dd></div></dl>
-      <button type="button" className="csm-primary" onClick={()=>onOpenZone?.(active)}>Open local map & settlements</button>
-      {canEdit&&<div className="csm-editor"><strong>Territory borders</strong>{tool==='inspect'?<><button onClick={startDraw}>Draw new border</button>{activePoly&&<button onClick={startReshape}>Edit border vertices</button>}{activePoly&&<button disabled={busy} onClick={clear}>Clear outline</button>}</>:<><p>{tool==='draw'?'Click corners in order to trace this province.':'Drag the corner handles to reshape the boundary.'} {draft?.length||0} points</p><div className="csm-edit-actions">{tool==='draw'&&<button disabled={!draft?.length} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo point</button>}<button disabled={busy||!draft||draft.length<3} className="csm-primary" onClick={save}>Save border</button><button onClick={()=>{setTool('inspect');setDraft(null)}}>Cancel</button></div></>}</div>}
+      <button type="button" className="csm-primary" onClick={()=>onOpenZone?.(active)}>Open city builder / local map</button>
+      <button type="button" onClick={()=>onOpenIndustry?.()}>Industrial Sites & Blueprints</button>
+      <div className="csm-province-list"><strong>Provinces · {childProvinces.length}</strong>{childProvinces.map(p=><button className={provinceId===String(p.id)?'active':''} key={p.id} onClick={()=>selectProvince(p)}>{p.name} · {pretty(p.terrain)}</button>)}</div>
+      {canEdit&&<div className="csm-editor"><strong>{province?'Province development':'New province'}</strong><label>Province name<input maxLength="140" value={provinceName} onChange={e=>setProvinceName(e.target.value)}/></label><label>Terrain<select value={terrain} onChange={e=>setTerrain(e.target.value)}>{['plains','forest','hills','mountains','urban','coast','marsh','desert','tundra'].map(v=><option value={v} key={v}>{pretty(v)}</option>)}</select></label>{province?<><button disabled={busy||!provinceName.trim()} onClick={()=>updateProvince()}>Save province</button><button onClick={drawProvince}>Draw province polygon</button>{Array.isArray(province.polygon)&&<button onClick={reshapeProvince}>Move province corners</button>}<button onClick={()=>{setProvinceId('');setProvinceName('');setDraft(null);setTool('inspect')}}>New province</button></>:<button disabled={busy||!provinceName.trim()} onClick={createProvince}>Create province</button>}{province&&<div className="csm-infra-list">{[['roads','Roads'],['rail','Rail readiness'],['fortifications','Fortifications'],['power','Power grid']].map(([k,v])=><div key={k}><span>{v}</span><strong>{province[k]||0} / 5</strong></div>)}<small>NPC investment requires development points earned by existing industry. Industrial Sites blueprints and detailed city building stay available.</small></div>}</div>}
+      {canEdit&&(!province||tool.startsWith('province-'))&&<div className="csm-editor"><strong>{province?'Province border':'State territory border'}</strong>{tool==='inspect'?<><button onClick={startDraw}>Draw state border</button>{activePoly&&<button onClick={startReshape}>Edit border vertices</button>}{activePoly&&<button disabled={busy} onClick={clear}>Clear outline</button>}</>:<><p>{['draw','province-draw'].includes(tool)?'Click corners in order to trace the boundary.':'Drag the corner handles to reshape the boundary.'} {draft?.length||0} points</p><div className="csm-edit-actions">{['draw','province-draw'].includes(tool)&&<button disabled={!draft?.length} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo point</button>}<button disabled={busy||!draft||draft.length<3} className="csm-primary" onClick={save}>Save border</button><button onClick={()=>{setTool('inspect');setDraft(null)}}>Cancel</button></div></>}</div>}
     </div>:<div className="csm-details"><h4>Choose a territory</h4><p>Select a zone from the index to draw its border or open its existing local map. Existing simulation records are preserved.</p></div>}
    </aside>
   </div>
