@@ -9,6 +9,7 @@ const percent=(part,total)=>total?Math.min(100,Math.round(100*Number(part)/Numbe
 const phaseName=s=>s.status==='active'?'Current chapter':s.status==='complete'?'Finished':'Waiting';
 export default function ConstructionProjects({request,characters=[],canManage=false,readOnly=false,userId='',initialEventId='',onSelectEvent}){
  const [projects,setProjects]=useState([]),[projectId,setProjectId]=useState('');
+ const [showArchived,setShowArchived]=useState(false);
  const [project,setProject]=useState(null),[materials,setMaterials]=useState([]);
  const [reserved,setReserved]=useState([]),[events,setEvents]=useState([]);
  const [draft,setDraft]=useState(null),[editingId,setEditingId]=useState(null),[activeStage,setActiveStage]=useState('');
@@ -79,12 +80,17 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
   if(result)setLinkedEventId('');
  };
  const unlinkEvent=eventId=>execute('/construction/'+project.id+'/events/'+eventId,null,'Event disconnected from the construction storyline.','DELETE');
- const stageAction=(action)=>execute('/construction/'+project.id+'/'+action,null,{
+ const stageAction=async(action)=>{const result=await execute('/construction/'+project.id+'/'+action,null,{
   activate:'Construction drive published; the first stage now accepts contributions.',
   pause:'Contributions paused.',
   resume:'Contributions reopened.',
-  archive:'Construction storyline archived.'
+  archive:'Construction storyline archived. All contributions and stages are preserved.',
+  restore:'Archived construction storyline restored. Active drives return paused until you resume deliveries.'
  }[action]||'Project updated.');
+ if(result&&action==='archive')setShowArchived(true);
+ if(result&&action==='restore')setShowArchived(false);
+ return result;
+ };
  const finishStage=s=>execute('/construction/'+project.id+'/stages/'+s.id+'/complete',null,'Stage signed off. The next chapter is now ready, or the project has been completed.');
  const give=()=>execute('/construction/'+project.id+'/contribute',{
   requirement_id:Number(selectedReq.id),character_id:characterId,quantity:Number(delivery.quantity),source:delivery.source
@@ -96,9 +102,9 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
   <header className="eo-construction-hero"><div><span>THE ECLIPSE ORDER · LONG-FORM OPERATIONS</span><h2>Construction & Restoration</h2><p>Turn crafting into a living storyline. Plan a restoration, a new structure, or a major Order undertaking and let materials arrive over many events.</p></div><span className="eo-construction-emblem" aria-hidden="true"><i className="fa-solid fa-hammer"/></span></header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
   {notice&&<p className="eo-construction-notice" role="status">{notice}</p>}
-  <div className="eo-construction-toolbar"><div><span>ONGOING STORYLINES</span><strong>{projects.filter(p=>p.state==='open').length} active · {projects.length} recorded</strong></div>{mayCreate&&<button type="button" onClick={beginDraft}>+ Plan a construction storyline</button>}</div>
+  <div className="eo-construction-toolbar"><div><span>ONGOING STORYLINES</span><strong>{projects.filter(p=>p.state==='open').length} active · {projects.filter(p=>p.state==='archived').length} archived · {projects.length} recorded</strong></div>{mayCreate&&<button type="button" onClick={beginDraft}>+ Plan a construction storyline</button>}</div>
   <div className="eo-construction-layout">
-   <aside className="eo-construction-directory"><h3>Project ledger</h3>{projects.map(projectRow)}{!projects.length&&<div className="eo-construction-empty"><strong>Nothing has been commissioned.</strong><p>Order command can prepare the complete construction storyline here before a public event is announced.</p></div>}</aside>
+   <aside className="eo-construction-directory"><h3>Project ledger</h3>{projects.some(p=>p.state==='archived')&&<div className="eo-construction-archive-filter"><button type="button" className={showArchived?'active':''} aria-pressed={showArchived} onClick={()=>setShowArchived(v=>!v)}>{showArchived?'Show current projects':'View archived projects'} <span>{projects.filter(p=>p.state==='archived').length}</span></button><small>Archiving keeps all phases and materials.</small></div>}{projects.filter(p=>showArchived?p.state==='archived':p.state!=='archived').map(projectRow)}{!projects.length&&<div className="eo-construction-empty"><strong>Nothing has been commissioned.</strong><p>Order command can prepare the complete construction storyline here before a public event is announced.</p></div>}</aside>
    <main className="eo-construction-detail">
     {project?<>
      <header className="eo-construction-main-head"><span>OFFICIAL ORDER COMMISSION · {project.state.toUpperCase()}</span><h3>{project.name}</h3><p>{project.description||'An ongoing material and construction undertaking of the Eclipse Order.'}</p><div className="eo-construction-meta"><span>{project.location||'Location to be announced'}</span>{project.event_name&&<span>Linked event: {project.event_name}</span>}</div></header>
@@ -108,7 +114,8 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
       {project.state==='draft'&&<button type="button" disabled={busy} onClick={editDraft}>Edit private plan</button>}{project.state==='draft'&&<button type="button" disabled={busy} onClick={()=>stageAction('activate')}>Open the drive to members</button>}
       {project.state==='open'&&<button type="button" disabled={busy} onClick={()=>stageAction('pause')}>Pause deliveries</button>}
       {project.state==='paused'&&<button type="button" disabled={busy} onClick={()=>stageAction('resume')}>Resume the drive</button>}
-      {!['archived'].includes(project.state)&&<button type="button" className="subtle" disabled={busy} onClick={()=>{if(window.confirm('Archive this construction project? It will leave the public project board but keep the records.'))stageAction('archive')}}>Archive</button>}
+      {project.state==='archived'&&<button type="button" className="eo-construction-restore" disabled={busy} onClick={()=>{if(window.confirm('Restore this archived construction project? Existing chapters and contributions will be retained. Any previously active material drive will return paused until you resume it.'))void stageAction('restore')}}><i className="fa-solid fa-box-open" aria-hidden="true"/> Restore archived project</button>}
+      {project.state!=='archived'&&<button type="button" className="subtle" disabled={busy} onClick={()=>{if(window.confirm('Archive this construction project? It will leave the public project board but keep the records.'))void stageAction('archive')}}>Archive</button>}
      </div>}
      <section className="eo-construction-stages"><div className="eo-construction-section-heading"><span>THE BUILDING CHRONICLE</span><h4>Construction phases</h4></div>
       <nav aria-label="Construction stages">{project.stages.map((stage,i)=><button type="button" key={stage.id} className={'eo-construction-stage '+(String(stage.id)===String(selectedStage?.id)?'selected':'')+' '+stage.status} onClick={()=>{setActiveStage(String(stage.id));setDelivery({requirement_id:'',quantity:1,source:'reserved'})}}><span>{String(i+1).padStart(2,'0')}</span><div><strong>{stage.name}</strong><small>{phaseName(stage)}</small></div><em>{stage.status==='complete'?'✓':stage.status==='locked'?'⌑':'◆'}</em></button>)}</nav>
