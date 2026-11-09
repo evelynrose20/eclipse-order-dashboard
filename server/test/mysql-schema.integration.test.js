@@ -1377,6 +1377,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(bigShip.lore_status,'canon_class');
   const illegalCanon=await industryRoute(admin,request('POST',{...magitekDesign,item_id:'ci-fake-ffxiv-class',lore_status:'canon_class'}),'/world-admin/industry/equipment/templates',staff);
   assert.equal(illegalCanon.status,409,'custom designs cannot claim official lore classification');
+  const fakeRename=await industryRoute(admin,request('PUT',{
+   ...bigShip,name:'Invented Gration Class',fuel_per_operation:Number(bigShip.fuel_per_operation),
+   transport_capacity:Number(bigShip.transport_capacity),cargo_capacity:Number(bigShip.cargo_capacity),
+   crew_required:Number(bigShip.crew_required),enabled:!!bigShip.enabled,max_wagons:Number(bigShip.max_wagons||0)
+  }),'/world-admin/industry/equipment/templates/'+bigShip.id,staff);
+  assert.equal(fakeRename.status,409,'official Agrius name cannot be silently relabeled as an invented canon class');
   const mk=garleanCatalog.body.templates.find(t=>t.item_id==='garlean-mark-xlix');
   assert.equal(mk.equipment_kind,'locomotive');
   const trainBlueprint=garleanCatalog.body.templates.find(t=>t.item_id==='order-freight-locomotive');
@@ -1423,6 +1429,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(equippedList.body.trains.find(t=>Number(t.id)===Number(madeTrain.body.id)).wagon_count,4);
   const cancelPhysical=await internalRailRoute(admin,request('POST',{}),'/internal-rail/journeys/'+equippedRun.body.id+'/cancel');
   assert.equal(cancelPhysical.status,200,'cancelled trip releases the physical train for another route');
+  const oppositeService=await internalRailRoute(admin,request('POST',{...service,name:'CI Wrong-Origin Magitek Train Service',from_station_id:service.to_station_id,to_station_id:service.from_station_id}),'/internal-rail/routes');
+  assert.equal(oppositeService.status,200);
+  const teleportedTrain=await internalRailRoute(admin,request('POST',{train_consist_id:madeTrain.body.id}),'/internal-rail/routes/'+oppositeService.body.id+'/dispatch');
+  assert.equal(teleportedTrain.status,409,'cancelled train remains at original station rather than teleporting to another route');
+  assert.equal(teleportedTrain.body.error,'train_not_at_origin_station');
   const disbandTrain=await industryRoute(admin,request('POST',{}),'/world-admin/industry/trains/'+madeTrain.body.id+'/disband',staff);
   assert.equal(disbandTrain.status,200);
   const afterDisband=await admin.execute('SELECT id,quantity,status FROM world_magitek_equipment_inventory WHERE id IN (?,?,?)',[locoLot,freightLot,troopLot]);
