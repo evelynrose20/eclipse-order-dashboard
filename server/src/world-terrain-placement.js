@@ -2,6 +2,7 @@
 // Coordinates are percentages of the local map (0–100 in both axes).
 // Settlement positions are rejected in this corridor on the server, not just UI.
 export const MOUNTAIN_EXCLUSION_RADIUS=3.2;
+export const validTerrainPoints=points=>Array.isArray(points)&&points.length>=2&&points.length<=32&&points.every(riverPointValid);
 export const riverPointValid=p=>p&&typeof p.x==='number'&&typeof p.y==='number'&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=100&&p.y>=0&&p.y<=100;
 export function distanceToRidge(point,points){
  if(!riverPointValid(point)||!Array.isArray(points)||points.length<2)return Infinity;
