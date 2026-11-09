@@ -54,5 +54,11 @@ CREATE TABLE IF NOT EXISTS world_npc_cargo_warehouse (
  FOREIGN KEY(item_id) REFERENCES world_industry_items(id),
  CONSTRAINT ck_npc_cargo_stock_positive CHECK(quantity>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- The previous one-time founding feature created hidden settlement-attached farms.
+-- Retire their automatic production exactly once without deleting stock or historical cycles.
+SET @new_070 := (SELECT IF(COUNT(*)=0,1,0) FROM schema_migrations WHERE version='070_npc_mapped_farm_cargo');
+UPDATE world_industry_facilities SET cycle_mode='off'
+ WHERE @new_070=1 AND created_by IS NULL AND site_id IS NULL
+ AND notes LIKE 'One-time NPC founding farm%';
 INSERT INTO schema_migrations(version) VALUES('070_npc_mapped_farm_cargo')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
