@@ -27,22 +27,23 @@ async function body(req,limit=15000){let total=0,parts=[];for await(const c of r
 export async function continentSummary(db){
  const [[settings]]=await db.execute('SELECT name,background_url FROM world_continent_settings WHERE id=1');
  const [polygons]=await db.execute('SELECT zone_id,polygon FROM world_continent_territories ORDER BY zone_id');
- let reference={image_data:null,original_name:'',opacity_pct:75,offset_x:0,offset_y:0,width_pct:100,visible:1};
- try{const [[saved]]=await db.execute('SELECT image_data,original_name,opacity_pct,offset_x,offset_y,width_pct,visible FROM world_continent_reference WHERE id=1');if(saved)reference=saved}catch(error){if(error?.code!=='ER_NO_SUCH_TABLE')throw error;}
- return {name:settings?.name||'The Continent',background_url:settings?.background_url||'',reference:{...reference,visible:!!reference.visible,opacity_pct:Number(reference.opacity_pct),offset_x:Number(reference.offset_x),offset_y:Number(reference.offset_y),width_pct:Number(reference.width_pct)},territories:polygons.map(p=>({zone_id:Number(p.zone_id),polygon:typeof p.polygon==='string'?JSON.parse(p.polygon):p.polygon}))};
+ let reference={image_data:null,original_name:'',opacity_pct:75,offset_x:0,offset_y:0,width_pct:100,visible:1,use_as_ground:0};
+ try{const [[saved]]=await db.execute('SELECT image_data,original_name,opacity_pct,offset_x,offset_y,width_pct,visible,use_as_ground FROM world_continent_reference WHERE id=1');if(saved)reference=saved}catch(error){if(error?.code!=='ER_NO_SUCH_TABLE')throw error;}
+ return {name:settings?.name||'The Continent',background_url:settings?.background_url||'',reference:{...reference,visible:!!reference.visible,use_as_ground:!!reference.use_as_ground,opacity_pct:Number(reference.opacity_pct),offset_x:Number(reference.offset_x),offset_y:Number(reference.offset_y),width_pct:Number(reference.width_pct)},territories:polygons.map(p=>({zone_id:Number(p.zone_id),polygon:typeof p.polygon==='string'?JSON.parse(p.polygon):p.polygon}))};
 }
 export async function continentRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
  if(path==='/world-admin/continent/reference'&&req.method==='PUT'){
   const b=await body(req,420000);
-  if(!b||typeof b.original_name!=='string'||b.original_name.length>180||!Number.isInteger(b.opacity_pct)||b.opacity_pct<0||b.opacity_pct>100||!Number.isFinite(b.offset_x)||Math.abs(b.offset_x)>1000||!Number.isFinite(b.offset_y)||Math.abs(b.offset_y)>700||!Number.isInteger(b.width_pct)||b.width_pct<20||b.width_pct>350||typeof b.visible!=='boolean')return fail(400,'invalid_reference_settings');
+  if(!b||typeof b.original_name!=='string'||b.original_name.length>180||!Number.isInteger(b.opacity_pct)||b.opacity_pct<0||b.opacity_pct>100||!Number.isFinite(b.offset_x)||Math.abs(b.offset_x)>1000||!Number.isFinite(b.offset_y)||Math.abs(b.offset_y)>700||!Number.isInteger(b.width_pct)||b.width_pct<20||b.width_pct>350||typeof b.visible!=='boolean'||(b.use_as_ground!==undefined&&typeof b.use_as_ground!=='boolean'))return fail(400,'invalid_reference_settings');
   if(b.image_data!==undefined&&b.image_data!==null){
    if(typeof b.image_data!=='string'||!/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(b.image_data)||b.image_data.length>350000)return fail(400,'invalid_reference_image');
    const image=Buffer.from(b.image_data.slice('data:image/webp;base64,'.length),'base64');
    if(image.length>260000||image.length<30||image.toString('ascii',0,4)!=='RIFF'||image.toString('ascii',8,12)!=='WEBP')return fail(400,'invalid_reference_image');
   }
-  const update=b.image_data===undefined?'original_name=?,opacity_pct=?,offset_x=?,offset_y=?,width_pct=?,visible=?':'image_data=?,original_name=?,opacity_pct=?,offset_x=?,offset_y=?,width_pct=?,visible=?';
-  const args=b.image_data===undefined?[b.original_name,b.opacity_pct,b.offset_x,b.offset_y,b.width_pct,b.visible?1:0]:[b.image_data,b.original_name,b.opacity_pct,b.offset_x,b.offset_y,b.width_pct,b.visible?1:0];
+  const update=b.image_data===undefined?'original_name=?,opacity_pct=?,offset_x=?,offset_y=?,width_pct=?,visible=?,use_as_ground=?':'image_data=?,original_name=?,opacity_pct=?,offset_x=?,offset_y=?,width_pct=?,visible=?,use_as_ground=?';
+  const ground=b.use_as_ground===true?1:0;
+  const args=b.image_data===undefined?[b.original_name,b.opacity_pct,b.offset_x,b.offset_y,b.width_pct,b.visible?1:0,ground]:[b.image_data,b.original_name,b.opacity_pct,b.offset_x,b.offset_y,b.width_pct,b.visible?1:0,ground];
   await pool.execute('UPDATE world_continent_reference SET '+update+' WHERE id=1',args);
   return ok({saved:true});
  }
