@@ -1325,6 +1325,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const magitekFactory=await industryRoute(admin,request('POST',{...factorySettings,template_id:magitekFactoryTemplate.body.template_id,name:'CI Armored Magitek Assembly Plant',status:'operational',cycle_mode:'manual'}),'/world-admin/industry/facilities',staff);
   assert.equal(magitekFactory.status,200,JSON.stringify(magitekFactory.body));
   const magitekFactoryId=magitekFactory.body.id;
+  const activateMagitek=await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+magitekFactoryId+'/transition',staff);
+  assert.equal(activateMagitek.status,200,JSON.stringify(activateMagitek.body));
+  const rebuildMagitek=await industryRoute(admin,request('POST',{...projectSetup,facility_id:magitekFactoryId,name:'CI Commission Magitek Plant',needs:[]}),'/world-admin/industry/projects',staff);
+  assert.equal(rebuildMagitek.status,200,JSON.stringify(rebuildMagitek.body));
+  const finishMagitek=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+rebuildMagitek.body.id+'/advance',staff);
+  assert.equal(finishMagitek.status,200,JSON.stringify(finishMagitek.body));
+  assert.equal(finishMagitek.body.completed,true,'magitek plant must be rebuilt with labor, not spawned operational');
   const emptyCommission=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:1}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
   assert.equal(emptyCommission.status,409,'a design cannot conjure a free vehicle');
   await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,?,2)",[magitekFactoryId,magitekDesign.item_id]);
