@@ -131,7 +131,7 @@ async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='cle
   }else{
    const preferred=npcConstructionPreference(site,upgrades,{...state,food_units:outcome.next.food,water_units:outcome.next.water});
   if(preferred){
-   const [eligibleTemplates]=await db.execute('SELECT * FROM world_civic_building_templates WHERE category=? AND enabled=1 ORDER BY npc_development_cost/effect_per_level ASC,id',[preferred]);
+   const [eligibleTemplates]=await db.execute('SELECT * FROM world_civic_building_templates WHERE category=? AND enabled=1 AND access_scope='shared' ORDER BY npc_development_cost/effect_per_level ASC,id',[preferred]);
    const template=eligibleTemplates[0];
    if(template){
     const matches=upgrades.filter(u=>u.template_id===template.id&&u.status==='operational');
