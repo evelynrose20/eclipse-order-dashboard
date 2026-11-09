@@ -30,7 +30,7 @@ async function projectDetail(pool,projectId,user){
  const canEdit=command(user)||(user.account_role==='handler'&&p.created_by===user.id);
  if(['draft','archived'].includes(p.state)&&!canEdit)return null;
  const [history]=await pool.execute('SELECT h.id,h.stage_id,h.character_id,ch.character_name,h.quantity,h.source,h.created_at,r.material_id,m.name AS material_name FROM order_construction_contributions h JOIN characters ch ON ch.id=h.character_id JOIN order_construction_requirements r ON r.id=h.requirement_id JOIN fc_materials m ON m.id=r.material_id WHERE h.project_id=? ORDER BY h.id DESC LIMIT 60',[projectId]);
- return {id:p.id,name:p.name,description:p.description,location:p.location,event_id:p.event_id,event_name:p.event_name,state:p.state,created_by:canEdit?p.created_by:null,can_edit:canEdit,linked_events:linkedEvents,stages:stages.map(s=>({...s,requirements:requirements.filter(r=>Number(r.stage_id)===Number(s.id))})),history};
+ return {id:p.id,name:p.name,description:p.description,location:p.location,event_id:p.event_id,event_name:p.event_name,state:p.state,pre_archive_state:canEdit?p.pre_archive_state:null,created_by:canEdit?p.created_by:null,can_edit:canEdit,linked_events:linkedEvents,stages:stages.map(s=>({...s,requirements:requirements.filter(r=>Number(r.stage_id)===Number(s.id))})),history};
 }
 export async function constructionRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
@@ -77,7 +77,7 @@ export async function constructionRoute(pool,req,path){
    return ok({id:made.insertId,status:'draft'});
   });
  }
- const match=/^\/construction\/(\d+)(?:\/(activate|pause|resume|archive|stages\/(\d+)\/complete|contribute|events(?:\/[a-f0-9-]{36})?))?$/.exec(path);
+ const match=/^\/construction\/(\d+)(?:\/(activate|pause|resume|archive|restore|stages\/(\d+)\/complete|contribute|events(?:\/[a-f0-9-]{36})?))?$/.exec(path);
  if(!match||!id(match[1]))return fail(404,'not_found');
  const projectId=Number(match[1]),action=match[2]||'';
  if(req.method==='GET'&&!action){
@@ -185,7 +185,7 @@ export async function constructionRoute(pool,req,path){
  }
  if(!canCreate)return fail(403,'event_staff_required');
  return tx(pool,async conn=>{
-  const [projects]=await conn.execute('SELECT id,state,created_by FROM order_construction_projects WHERE id=? FOR UPDATE',[projectId]);
+  const [projects]=await conn.execute('SELECT id,state,pre_archive_state,created_by FROM order_construction_projects WHERE id=? FOR UPDATE',[projectId]);
   const p=projects[0];if(!p)return fail(404,'project_not_found');
   if(!command(user)&&p.created_by!==user.id)return fail(403,'project_director_required');
   if(action==='activate'){
@@ -203,8 +203,22 @@ export async function constructionRoute(pool,req,path){
   }
   if(action==='archive'){
    if(p.state==='archived')return fail(409,'already_archived');
-   await conn.execute('UPDATE order_construction_projects SET state="archived" WHERE id=?',[projectId]);
+   await conn.execute('UPDATE order_construction_projects SET state="archived",pre_archive_state=? WHERE id=?',[p.state,projectId]);
    return ok({state:'archived'});
+  }
+  if(action==='restore'){
+   if(p.state!=='archived')return fail(409,'project_not_archived');
+   // Pre-migration archives have no saved state. Determine a safe lifecycle
+   // from untouched stages; never erase deliveries or reopen automatically.
+   const [stages]=await conn.execute('SELECT status FROM order_construction_stages WHERE project_id=? ORDER BY position,id FOR UPDATE',[projectId]);
+   if(!stages.length)return fail(409,'project_needs_stages');
+   const inferred=stages.every(s=>s.status==='complete')?'completed':
+    stages.every(s=>s.status==='locked')?'draft':'paused';
+   const previous=p.pre_archive_state||inferred;
+   const restoredState=previous==='open'?'paused':previous;
+   if(!['draft','paused','completed'].includes(restoredState))return fail(409,'invalid_archived_project_state');
+   await conn.execute('UPDATE order_construction_projects SET state=?,pre_archive_state=NULL WHERE id=? AND state="archived"',[restoredState,projectId]);
+   return ok({state:restoredState,restored:true});
   }
   const stageId=Number(match[3]);
   if(action.startsWith('stages/')&&id(stageId)){
