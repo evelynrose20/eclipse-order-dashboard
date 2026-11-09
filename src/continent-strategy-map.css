@@ -54,3 +54,22 @@
 .csm-infra-list small{line-height:1.5;color:#a7b7bf}
 .csm-province polygon{cursor:pointer}
 .csm-province:hover polygon{fill-opacity:.55}
+
+
+/* Locked cartographic reference layer and freehand editing workspace */
+.csm-reference-editor{display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(180px,1.5fr) repeat(2,minmax(95px,1fr));gap:11px 15px;align-items:end;background:#213540;border-block:1px solid #576d78;padding:15px 18px}
+.csm-reference-intro{grid-column:1/-1;display:grid;gap:4px}
+.csm-reference-intro strong{font-size:13px;color:#e7d6b7}
+.csm-reference-intro p{font-size:11px;line-height:1.4;color:#b5c5cb;margin:0}
+.csm-reference-editor label{display:grid;align-content:end;gap:6px;font-size:11px;color:#d1d9d8;min-width:0}
+.csm-reference-editor input[type=range]{width:100%;accent-color:#d3ad77}
+.csm-reference-editor input[type=number],.csm-reference-editor input[type=file]{width:100%;min-width:0;background:#152733;border:1px solid #546d79;color:#e8ece9;padding:7px;border-radius:4px}
+.csm-reference-editor .csm-upload{overflow-wrap:anywhere}
+.csm-reference-editor .csm-reference-visible{display:flex;align-items:center;gap:7px;min-height:36px}
+.csm-reference-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;grid-column:1/-1}
+.csm-trace-sensitivity{font-size:10px;display:grid;gap:4px;color:#c8d5d8}
+.csm-trace-sensitivity select{padding:5px;background:#182a35;color:#f2e2c3;border:1px solid #60717b}
+.csm-map.csm-drawing{cursor:crosshair}
+.csm-map .csm-handle{cursor:move;touch-action:none}
+@media(max-width:960px){.csm-reference-editor{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.csm-reference-editor{grid-template-columns:1fr}.csm-reference-actions{grid-column:1}}
