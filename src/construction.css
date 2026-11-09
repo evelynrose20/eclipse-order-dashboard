@@ -12,3 +12,14 @@
 .eo-construction-event-add select{flex:1;min-width:170px}
 .eo-construction-event-add button{padding:11px 15px;border:1px solid #c6cfd0;background:#596872;color:#e0e5e5;border-radius:2px;font-size:11px;font-weight:700}
 .eo-construction-event-add button:disabled{opacity:.5}
+
+
+/* Archived construction arcs remain available to directors and can be
+   restored without rewriting delivered materials or completed chapters. */
+.eo-construction-archive-filter{display:grid;gap:7px;padding:10px 12px;background:#1a2b35;border:1px solid #596471;margin:8px 0}
+.eo-construction-archive-filter>button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:#2e414b;border:1px solid #7f8a8c;color:#e8dec8;border-radius:4px;padding:9px 11px;font-size:12px;font-weight:750;cursor:pointer}
+.eo-construction-archive-filter>button:hover,.eo-construction-archive-filter>button.active{background:#465044;border-color:#c3a579;color:#ffebc6}
+.eo-construction-archive-filter>button span{padding:2px 7px;background:#152833;border-radius:12px}
+.eo-construction-archive-filter>small{font-size:10px;line-height:1.4;color:#a4b8bd}
+.eo-construction-command .eo-construction-restore{display:inline-flex;align-items:center;gap:8px;background:#355346;border:1px solid #84a88b;color:#ebffec;font-weight:800;padding:10px 13px}
+.eo-construction-command .eo-construction-restore:hover:not(:disabled){background:#496c58}
