@@ -1113,10 +1113,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[npcPlace]]=await admin.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[npcId]);
   const [npcFarmCreated]=await admin.execute("INSERT INTO world_industry_sites(region_id,zone_id,name,kind,controlling_faction_id,map_x,map_y,created_by) VALUES(?,?,?,'farm','house-kurogane',40,40,?)",[npcPlace.region_id,npcPlace.zone_id,'CI Mapped Agricultural Farm',id]);
   const npcCargoMapSiteId=Number(npcFarmCreated.insertId);
-  const farmOptions=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation/'+npcId+'/farm/options',staff);
+  const farmOptions=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation/'+npcId+'/farm/options',{id,account_role:'domina'});
   assert.equal(farmOptions.status,200,JSON.stringify(farmOptions.body));
   assert.ok(farmOptions.body.options.some(x=>x.source_type==='industry_site'&&Number(x.id)===npcCargoMapSiteId));
-  const assignFarm=await settlementSimulationRoute(admin,request('PUT',{source_type:'industry_site',source_id:npcCargoMapSiteId,travel_hours:24,cargo_capacity:20}),'/world-admin/simulation/'+npcId+'/farm',staff);
+  const assignFarm=await settlementSimulationRoute(admin,request('PUT',{source_type:'industry_site',source_id:npcCargoMapSiteId,travel_hours:24,cargo_capacity:20}),'/world-admin/simulation/'+npcId+'/farm',{id,account_role:'domina'});
   assert.equal(assignFarm.status,200,JSON.stringify(assignFarm.body));
   const [[npcInitialFarm]]=await admin.execute('SELECT site_id,owner_faction_id,status,cycle_mode FROM world_industry_facilities WHERE id=?',[assignFarm.body.facility_id]);
   assert.equal(Number(npcInitialFarm.site_id),npcCargoMapSiteId,'farm production attaches to the selected mapped location');
