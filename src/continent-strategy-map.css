@@ -39,3 +39,18 @@
 .csm-settings label{font-size:11px;color:#bacbd2;display:grid;gap:5px;min-width:0}.csm-settings input{min-width:0;width:100%;padding:10px;background:#0f202b;border:1px solid #586d79;border-radius:5px;color:#ebede9}
 @media(max-width:1000px){.csm-body{grid-template-columns:minmax(0,1fr) 240px}}
 @media(max-width:740px){.csm-head{flex-direction:column;align-items:stretch}.csm-controls{justify-content:start}.csm-body{grid-template-columns:1fr}.csm-map-shell{border-right:0}.csm-map{min-height:340px;max-height:500px}.csm-zone-list{max-height:160px}.csm-settings{grid-template-columns:1fr}}
+
+
+/* Province command: economic state remains a drill-down to existing city-builder. */
+.csm-province-list{display:grid;gap:5px;border-top:1px solid #435764;padding-top:13px}
+.csm-province-list>strong{font-size:11px;color:#e3ceac}
+.csm-root .csm-province-list button{text-align:left;background:#203642;padding:8px 10px}
+.csm-root .csm-province-list button.active{border-color:#d5b882;background:#485044}
+.csm-editor label{display:grid;gap:5px;font-size:11px;color:#b7c7ce}
+.csm-editor input,.csm-editor select{width:100%;min-width:0;background:#101f2a;border:1px solid #60717a;border-radius:4px;padding:9px;color:#eaf0ed}
+.csm-infra-list{display:grid;gap:6px;border-top:1px solid #475b63;padding-top:8px}
+.csm-infra-list>div{display:flex;justify-content:space-between;font-size:11px;color:#b4c6cd;gap:10px}
+.csm-infra-list strong{color:#e7d5b8}
+.csm-infra-list small{line-height:1.5;color:#a7b7bf}
+.csm-province polygon{cursor:pointer}
+.csm-province:hover polygon{fill-opacity:.55}
