@@ -69,9 +69,12 @@ export async function equipmentRoute(pool,req,path,actor){
   const facilityId=Number(match[1]),b=await read(req);
   if(!whole(b?.equipment_template_id,1,Number.MAX_SAFE_INTEGER)||!whole(b?.quantity,1,100000))return fail(400,'invalid_commission_quantity');
   return atomicIndustry(pool,async db=>{
-   const [[facility]]=await db.execute(`SELECT f.id,f.status,f.owner_faction_id,
+   const [[facility]]=await db.execute(`SELECT f.id,f.status,f.owner_faction_id,t.category AS factory_category,v.configuration,
     COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
-    FROM world_industry_facilities f LEFT JOIN world_settlements s ON s.id=f.settlement_id
+    FROM world_industry_facilities f
+    JOIN world_industry_templates t ON t.id=f.template_id
+    JOIN world_industry_template_versions v ON v.template_id=f.template_id AND v.version=f.template_version
+    LEFT JOIN world_settlements s ON s.id=f.settlement_id
     LEFT JOIN world_industry_sites site ON site.id=f.site_id
     LEFT JOIN world_zones z ON z.id=site.zone_id WHERE f.id=? FOR UPDATE`,[facilityId]);
    if(!facility)return fail(404,'facility_not_found');
@@ -80,6 +83,9 @@ export async function equipmentRoute(pool,req,path,actor){
    if(facility.owner_faction_id!=='eclipse-order')return fail(409,'order_equipment_commission_only');
    const [[template]]=await db.execute('SELECT * FROM world_magitek_equipment_templates WHERE id=?',[b.equipment_template_id]);
    if(!template)return fail(404,'equipment_template_not_found');
+   const recipe=typeof facility.configuration==='string'?JSON.parse(facility.configuration):facility.configuration;
+   if(facility.factory_category!=='manufacturing'||!(recipe?.outputs||[]).some(x=>x.item_id===template.item_id))
+    return fail(409,'equipment_must_come_from_its_assembly_line');
    const [[item]]=await db.execute('SELECT category FROM world_industry_items WHERE id=?',[template.item_id]);
    if(item?.category!=='equipment')return fail(409,'not_equipment_output');
    const [[stock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[facilityId,template.item_id]);
