@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const sql=readFileSync(new URL('../sql/072_garlean_equipment_and_train_consists.sql',import.meta.url),'utf8');
+const sql=readFileSync(new URL('../sql/072_garlean_equipment_and_train_consists.sql',import.meta.url),'utf8').replace(/^--.*$/gm,'');
 
 test('Garlean migration uses MariaDB-compatible additive capacity constraints',()=>{
  assert.doesNotMatch(sql,/\bDROP\s+CHECK\b/i,'MariaDB rejects ALTER TABLE ... DROP CHECK');
