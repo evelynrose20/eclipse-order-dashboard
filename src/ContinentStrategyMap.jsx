@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './continent-strategy-map.css';
 import {simplifyFreehand,insertVertex} from './continent-trace.js';
+import IlsabardTerrain from './IlsabardTerrain.jsx';
 const W=1000,H=700;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const pretty=s=>String(s||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -11,7 +12,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const [selected,setSelected]=useState(''),[tool,setTool]=useState('inspect'),[draft,setDraft]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [provinceId,setProvinceId]=useState(''),[provinceName,setProvinceName]=useState(''),[terrain,setTerrain]=useState('plains');
  const [camera,setCamera]=useState({x:W*.1,y:H*.1,w:W*.8,h:H*.8});
- const [layer,setLayer]=useState('control'),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
+ const [layer,setLayer]=useState('control'),[showTerrain,setShowTerrain]=useState(true),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
  const [referenceDraft,setReferenceDraft]=useState(null),[referenceOpen,setReferenceOpen]=useState(false),[traceSensitivity,setTraceSensitivity]=useState(2);
  const [referencePending,setReferencePending]=useState(undefined),[uploading,setUploading]=useState(false);
  const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false),traceRef=useRef(null);
@@ -163,7 +164,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const refineDraft=()=>{if(!draft||draft.length<3)return;setTool(province?'province-reshape':'reshape');setNotice('Drag gold corner handles, click near an edge to add a point, or Alt-click a handle to remove it.')};
  const geometry=zones.map(z=>({zone:z,points:polygons.get(Number(z.id))})).filter(x=>Array.isArray(x.points)&&x.points.length>=3);
  return <section className="csm-root">
-  <header className="csm-head"><div><span className="csm-kicker">STRATEGIC COMMAND / CONTINENTAL THEATER</span><h3>{continent.name||'The Continent'}</h3><p>Continuous campaign map · {zoneCount} of {zones.length} territories outlined · {provinces.length} provinces · {settlements.length} recorded settlements</p></div><div className="csm-controls"><button type="button" onClick={()=>zoom(.8)} aria-label="Zoom in">+</button><button type="button" onClick={()=>zoom(1.25)} aria-label="Zoom out">−</button><button type="button" onClick={()=>setCamera({x:0,y:0,w:W,h:H})}>Fit continent</button>{canEdit&&<button type="button" aria-pressed={referenceOpen} onClick={()=>setReferenceOpen(v=>!v)}>Reference layers</button>}{canEdit&&<button type="button" onClick={()=>{setSettings({name:continent.name||'The Continent',background_url:continent.background_url||''});setEditSettings(x=>!x)}}>Map settings</button>}</div></header>
+  <header className="csm-head"><div><span className="csm-kicker">STRATEGIC COMMAND / CONTINENTAL THEATER</span><h3>{continent.name||'The Continent'}</h3><p>Continental terrain · {zoneCount} of {zones.length} state outlines · {provinces.length} provinces · {settlements.length} recorded settlements</p></div><div className="csm-controls"><button type="button" onClick={()=>zoom(.8)} aria-label="Zoom in">+</button><button type="button" onClick={()=>zoom(1.25)} aria-label="Zoom out">−</button><button type="button" onClick={()=>setCamera({x:0,y:0,w:W,h:H})}>Fit continent</button>{canEdit&&<button type="button" aria-pressed={referenceOpen} onClick={()=>setReferenceOpen(v=>!v)}>Reference layers</button>}{canEdit&&<button type="button" onClick={()=>{setSettings({name:continent.name||'The Continent',background_url:continent.background_url||''});setEditSettings(x=>!x)}}>Map settings</button>}</div></header>
   {error&&<p className="csm-error" role="alert">{error}</p>}{notice&&<p className="csm-note" role="status">{notice}</p>}
   {referenceOpen&&canEdit&&<section className="csm-reference-editor" aria-label="Reference artwork alignment">
    <div className="csm-reference-intro"><strong>Reference map artwork</strong><p>Upload a continent map to trace over. The artwork stays locked below editable borders and does not change geography data.</p></div>
@@ -178,13 +179,13 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   {editSettings&&canEdit&&<div className="csm-settings"><label>Continent name<input maxLength="140" value={settings?.name||''} onChange={e=>setSettings(v=>({...v,name:e.target.value}))}/></label><label>Background map image (HTTPS URL)<input value={settings?.background_url||''} onChange={e=>setSettings(v=>({...v,background_url:e.target.value}))} placeholder="https://…/continent-map.jpg"/></label><button disabled={busy||!settings?.name?.trim()} onClick={saveSettings}>Save map</button></div>}
   <div className="csm-body">
    <div className="csm-map-shell">
-    <div className="csm-layerbar"><span>MAP MODE</span>{[['control','Political'],['status','Territory status']].map(([id,name])=><button key={id} type="button" aria-pressed={layer===id} className={layer===id?'active':''} onClick={()=>setLayer(id)}>{name}</button>)}<span className="csm-zoom">{Math.round(W/camera.w*100)}%</span></div>
+    <div className="csm-layerbar"><span>MAP MODE</span>{[['control','Political'],['status','Territory status']].map(([id,name])=><button key={id} type="button" aria-pressed={layer===id} className={layer===id?'active':''} onClick={()=>setLayer(id)}>{name}</button>)}<label className="csm-terrain-toggle"><input type="checkbox" checked={showTerrain} onChange={e=>setShowTerrain(e.target.checked)}/> Terrain relief</label><span className="csm-zoom">{Math.round(W/camera.w*100)}%</span></div>
     <svg ref={svgRef} className={'csm-map '+(['draw','province-draw','trace','province-trace'].includes(tool)?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
      <defs><pattern id="csm-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#7994a0" strokeWidth=".55" opacity=".18"/></pattern></defs>
-     <rect width={W} height={H} fill="#172b37"/>
+     {showTerrain?<IlsabardTerrain/>:<rect width={W} height={H} fill="#172b37"/>}
      {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83" pointerEvents="none"/>}
      {reference.visible&&overlayImage&&<image href={overlayImage} x={Number(reference.offset_x)} y={Number(reference.offset_y)} width={W*Number(reference.width_pct)/100} height={H*Number(reference.width_pct)/100} preserveAspectRatio="xMidYMid meet" opacity={Number(reference.opacity_pct)/100} pointerEvents="none"/>}
-     <rect width={W} height={H} fill="url(#csm-grid)" pointerEvents="none"/>
+     {!showTerrain&&<rect width={W} height={H} fill="url(#csm-grid)" pointerEvents="none"/>}
      {geometry.map(({zone,points})=>{
       const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
       const center=pointCenter(points);
@@ -197,7 +198,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
      {draft&&draft.length>0&&<g className="csm-draft" pointerEvents="none"><polyline points={vector(draft)} fill="none" stroke="#f1c77f" strokeWidth="2.8" vectorEffect="non-scaling-stroke"/>{draft.length>=3&&<polygon points={vector(draft)} fill="#dcb67b" fillOpacity=".16" stroke="#f0c789" strokeDasharray="6 5" vectorEffect="non-scaling-stroke"/>}</g>}
      {draft&&isReshaping&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();if(e.altKey&&draft.length>3){setDraft(old=>old.filter((_,j)=>j!==i));return}vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp} onClick={e=>e.stopPropagation()}/>)}
     </svg>
-    {!continent.background_url&&!overlayImage&&<div className="csm-basemap-hint">Upload the supplied Ilsabard map under Reference layers, then trace territory borders over the artwork.</div>}
+    {!showTerrain&&!continent.background_url&&!overlayImage&&<div className="csm-basemap-hint">Upload the supplied Ilsabard map under Reference layers, then trace territory borders over the artwork.</div>}
     <div className="csm-map-footer"><span>Wheel to zoom · Drag to pan in inspect mode · Hold mouse to trace</span><span>Cartography coordinates: 1000 × 700</span></div>
    </div>
    <aside className="csm-inspector"><div className="csm-aside-heading"><span className="csm-kicker">TERRITORY INDEX</span><strong>{zones.length} territories</strong></div>
