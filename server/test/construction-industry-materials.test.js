@@ -25,3 +25,12 @@ test('migration retains old contribution records and is re-runnable',()=>{
  assert.match(migration,/campaign_commit/);
  assert.doesNotMatch(migration,/DROP TABLE|DELETE FROM order_construction/i);
 });
+
+test('construction selection is initialized before supply calculations',()=>{
+ const stage=ui.indexOf('const selectedStage=');
+ const requirement=ui.indexOf('const selectedReq=');
+ const available=ui.indexOf('const available=');
+ const facilities=ui.indexOf('const sourceFacilities=');
+ assert.ok(stage>=0&&requirement>stage&&available>requirement&&facilities>requirement,
+  'stage and requirement must initialize before inventory-dependent calculations');
+});
