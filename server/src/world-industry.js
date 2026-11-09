@@ -80,9 +80,8 @@ async function summary(pool){
  const [sites]=await pool.execute('SELECT site.*,z.controlling_faction_id AS controlling_faction_id FROM world_industry_sites site JOIN world_zones z ON z.id=site.zone_id ORDER BY site.name');
  const [zones]=await pool.execute('SELECT id,region_id,name FROM world_zones ORDER BY region_id,name');
  const [regions]=await pool.execute('SELECT id,name FROM world_regions ORDER BY name');
- const [campaigns]=await pool.execute("SELECT id,name,state FROM order_construction_projects WHERE state IN ('draft','open','paused') ORDER BY id DESC LIMIT 200");
  const equipment=await equipmentSummary(pool);
- return ok({equipment,items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),weather_incidents:weatherIncidents.filter(x=>x.facility_id===f.id).slice(0,12),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions,campaigns});
+ return ok({equipment,items,workshop,templates:templates.map(t=>({...t,configuration:array(t.configuration),rules:array(t.rules)})),facilities:facilities.map(f=>({...f,template_configuration:array(f.template_configuration),template_rules:array(f.template_rules),weather_incidents:weatherIncidents.filter(x=>x.facility_id===f.id).slice(0,12),stocks:stocks.filter(s=>s.facility_id===f.id),cycles:cycles.filter(c=>c.facility_id===f.id).slice(0,12),ledger:ledger.filter(x=>x.facility_id===f.id).slice(0,30)})),projects:projects.map(p=>({...p,needs:needs.filter(n=>n.project_id===p.id)})),settlements,sites,zones,regions});
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
