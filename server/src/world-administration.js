@@ -12,7 +12,7 @@ import {handleZones,zoneFor,ensureOverviewZone} from './world-zones.js';
 import {continentSummary,continentRoute} from './world-continent.js';
 import {strategicProvinceSummary,strategicProvinceRoute} from './world-strategic-provinces.js';
 import {effectiveWeather,validMapIcon,validRouteType,validWaypoints} from './garlean-climate.js';
-import {mountainPlacementConflict,rangesCoverSettlements,validTerrainPoints} from './world-terrain-placement.js';
+import {mountainPlacementConflict,rangesCoverSettlements,validTerrainPoints,validMountainShape,npcTooCloseToMapEdge} from './world-terrain-placement.js';
 
 const fail=(status,error)=>({status,body:{error}}),ok=body=>({status:200,body});
 const text=(v,max,required=false)=>typeof v==='string'&&v.trim().length<=max&&(!required||v.trim().length>0);
@@ -71,7 +71,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [routes]=await pool.execute('SELECT id,region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
   const [networkNodes]=await pool.execute('SELECT id,region_id,zone_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
-  const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_mountain_ranges ORDER BY id');
+  const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points,is_closed FROM world_map_mountain_ranges ORDER BY id');
   let rivers=[];
   try{[rivers]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_rivers ORDER BY id')}catch(e){if(e?.code!=='ER_NO_SUCH_TABLE')throw e;}
   const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
@@ -153,19 +153,19 @@ async function worldAdministrationRouteCore(pool,req,path){
   }
   if((req.method==='PUT')!==Boolean(mid))return fail(400,'invalid_mountain_request');
   const b=await read(req);
-  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||!validTerrainPoints(b.points))return fail(400,'invalid_mountain_range');
+  if(!num(b?.region_id,1,Number.MAX_SAFE_INTEGER,true)||!text(b?.name,120,true)||!Array.isArray(b?.points)||typeof b.is_closed!=='boolean'||!validMountainShape(b.points,b.is_closed))return fail(400,'invalid_mountain_range');
   return transact(pool,async db=>{
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
    const [existingSites]=await db.execute('SELECT map_x,map_y FROM world_settlements WHERE region_id=? AND zone_id=?',[b.region_id,zoneId]);
-   if(rangesCoverSettlements(b.points,existingSites))return fail(409,'mountains_cannot_cover_settlements');
+   if(rangesCoverSettlements(b.points,existingSites,b.is_closed))return fail(409,'mountains_cannot_cover_settlements');
    if(mid){
-    const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,zone_id=?,name=?,points=? WHERE id=?',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),mid]);
+    const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,zone_id=?,name=?,points=?,is_closed=? WHERE id=?',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),b.is_closed?1:0,mid]);
     if(!r.affectedRows)return fail(404,'mountain_not_found');
     await audit(db,actor.id,'mountain_edit','mountain',mid,b.name.trim());
     return ok({saved:true});
    }
-   const [r]=await db.execute('INSERT INTO world_map_mountain_ranges(region_id,zone_id,name,points,created_by) VALUES(?,?,?,?,?)',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),actor.id]);
+   const [r]=await db.execute('INSERT INTO world_map_mountain_ranges(region_id,zone_id,name,points,is_closed,created_by) VALUES(?,?,?,?,?,?)',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),b.is_closed?1:0,actor.id]);
    await audit(db,actor.id,'mountain_create','mountain',r.insertId,b.name.trim());
    return ok({id:r.insertId});
   });
@@ -203,8 +203,9 @@ async function worldAdministrationRouteCore(pool,req,path){
   const b=await read(req);
   if(!num(b?.map_x,0,100)||!num(b?.map_y,0,100)||!validMapIcon(b?.map_icon))return fail(400,'invalid_map_marker');
   return transact(pool,async db=>{
-   const [[existing]]=await db.execute('SELECT region_id,zone_id,map_x,map_y FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
+   const [[existing]]=await db.execute('SELECT region_id,zone_id,map_x,map_y,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!existing)return fail(404,'settlement_not_found');
+   if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&existing.controlling_faction_id&&existing.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
    if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&await mountainPlacementConflict(db,existing.region_id,existing.zone_id,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    const [changed]=await db.execute('UPDATE world_settlements SET map_x=?,map_y=?,map_icon=? WHERE id=?',[b.map_x,b.map_y,b.map_icon,Number(match[1])]);
    if(!changed.affectedRows)return fail(404,'settlement_not_found');
@@ -259,6 +260,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    if(!await referencesExist(db,b))return fail(400,'invalid_faction_reference');
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
+   if(b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
    if(await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    if(b.housing_capacity!==undefined&&(!Number.isInteger(b.housing_capacity)||b.housing_capacity<0||b.housing_capacity>10000000))return fail(400,'invalid_housing_capacity');
    if(b.housing_capacity!==undefined&&b.population>b.housing_capacity)return fail(409,'insufficient_housing_capacity');
@@ -275,6 +277,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    const [[old]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!old)return fail(404,'settlement_not_found');
    if(Number(old.region_id)!==b.region_id)return fail(409,'settlement_cannot_change_region');
+   if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y||old.controlling_faction_id!==b.controlling_faction_id)&&b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
    if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y)&&await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    // An autonomous population or civic outcome is not a form field.
    // Staff may set starting conditions when creating a settlement, but
