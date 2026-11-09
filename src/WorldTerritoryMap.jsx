@@ -3,6 +3,7 @@ import './world-territory-map.css';
 import MapIconPicker from './MapIconPicker.jsx';
 import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
 import {isMountainBlocked,inPolygon,npcTooCloseToMapEdge,validMountainShape} from '../server/src/world-terrain-placement.js';
+import MountainTerrain from './MountainTerrain.jsx';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway (map only)']];
@@ -456,20 +457,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
    </svg>
    {mode==='move'&&displayed.some(x=>String(x.id)===String(selected)&&x.controlling_faction_id&&x.controlling_faction_id!=='eclipse-order')&&<><div className="wtm-npc-edge-guide"/><div className="wtm-npc-edge-label">NPC SAFE PLACEMENT · 10% EDGE CLEARANCE</div></>}
    <svg className="wtm-mountains" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Named mountain ranges">
-    {mountains.map(m=>{
-     const pts=Array.isArray(m.points)?m.points:[];
-     if(pts.length<2)return null;
-     const closed=Boolean(Number(m.is_closed)),path=closed?'M '+pts.map(p=>p.x+' '+p.y).join(' L ')+' Z':smoothRoadPath(pts),mid=pts[Math.floor(pts.length/2)];
-     return <g key={m.id} className={'wtm-range '+(closed?'wtm-mountain-area':'wtm-mountain-ridge')} aria-label={m.name}>
-      {closed&&<path d={path} className="wtm-range-fill"/>}
-      {closed&&mountainAreaPeaks(pts).map((p,i)=><g key={'area-'+i} className="wtm-relief-peak wtm-interior-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.75)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.75)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.75)+' L 0 '+(p.size*.25)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.45)+' '+(-p.size*.55)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.45)+' '+(-p.size*.55)+' Z'} className="wtm-peak-snow"/></g>)}
-      <path d={path} className="wtm-range-exclusion"/>
-      <path d={path} className="wtm-range-shadow"/>
-      <path d={path} className="wtm-range-ridge"/>
-      {ridgeSymbols(closed?[...pts,pts[0]]:pts).map((p,i)=><g key={i} className="wtm-relief-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.7)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.7)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+(p.size*.5)+' '+(p.size*.7)+' L 0 '+(p.size*.23)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.43)+' '+(-p.size*.54)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.42)+' '+(-p.size*.54)+' L '+(p.size*.09)+' '+(-p.size*.62)+' Z'} className="wtm-peak-snow"/></g>)}
-      <text x={mid.x} y={Math.max(4,mid.y-3)} textAnchor="middle" className="wtm-range-label">{m.name}</text>
-     </g>;
-    })}
+    {mountains.map(m=><MountainTerrain key={m.id} mountain={m}/>)}
     {mode==='mountains'&&mountainPoints.length>0&&<g className="wtm-range-draft">
      {mountainClosed&&mountainPoints.length>=3&&<path d={'M '+mountainPoints.map(p=>p.x+' '+p.y).join(' L ')+' Z'} className="wtm-range-draft-fill"/>}
      <path d={mountainPoints.length>=2?(mountainClosed?'M '+mountainPoints.map(p=>p.x+' '+p.y).join(' L ')+' Z':smoothRoadPath(mountainPoints)):''} className="wtm-range-draft-path"/>
