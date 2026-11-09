@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {pointInPolygon,safelyOffshore} from '../../src/terrain-geography.js';
 
 test('the continent renders native relief terrain by default rather than a blank grid or a reference overlay',()=>{
  const map=readFileSync(new URL('../../src/ContinentStrategyMap.jsx',import.meta.url),'utf8');
@@ -17,4 +18,19 @@ test('the continent renders native relief terrain by default rather than a blank
  assert.match(terrain,/RIDGES/);
  assert.match(terrain,/pointerEvents="none"/);
  assert.doesNotMatch(terrain,/https?:\/\//);
+});
+
+test('islands never intersect or sit on mainland coastlines',()=>{
+ const mainland=[[0,0],[200,0],[200,200],[0,200]];
+ assert.equal(pointInPolygon([100,100],mainland),true);
+ assert.equal(pointInPolygon([300,300],mainland),false);
+ assert.equal(safelyOffshore([100,100,8,8], [mainland]),false,'island centered inland');
+ assert.equal(safelyOffshore([205,80,12,10], [mainland]),false,'island touching shore');
+ assert.equal(safelyOffshore([235,80,12,10], [mainland]),true,'island separated by sea');
+});
+test('terrain validates island candidates against every mainland',()=>{
+ const terrain=readFileSync(new URL('../../src/IlsabardTerrain.jsx',import.meta.url),'utf8');
+ assert.match(terrain,/ISLANDS\.filter\(island=>safelyOffshore/);
+ assert.match(terrain,/offshoreIslands\.map/);
+ assert.doesNotMatch(terrain,/\{ISLANDS\.map/);
 });
