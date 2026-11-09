@@ -1,9 +1,10 @@
+import {trainRoute,trainSummary} from './world-magitek-trains.js';
 import {atomicIndustry,adjustFacilityStock} from './world-industry-engine.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
-const kinds=new Set(['transport','locomotive','railcar','armored_vehicle','airship','field_equipment','siege_equipment','other']);
+const kinds=new Set(['transport','locomotive','railcar','armored_vehicle','airship','capital_airship','field_equipment','siege_equipment','other']);
 const classLimits={
  transport:[100,2000,40],locomotive:[100,4000,60],railcar:[400,5000,30],
- armored_vehicle:[40,300,20],airship:[2000,20000,500],
+ armored_vehicle:[40,300,20],airship:[2000,20000,500],capital_airship:[5000,100000,1000],
  field_equipment:[50,3000,100],siege_equipment:[50,1000,100],other:[100,2000,100]
 };
 const whole=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;
@@ -17,6 +18,11 @@ export function validateEquipmentTemplate(b){
   Math.round(b.fuel_per_operation*1000)!==b.fuel_per_operation*1000||!['boolean'].includes(typeof b.enabled)||
   (b.fuel_item_id!==null&&b.fuel_item_id!==''&&!ident(b.fuel_item_id)))return 'invalid_equipment_template';
  const [maxPassengers,maxCargo,maxCrew]=classLimits[b.equipment_kind];
+ const wagonLimit=b.max_wagons===undefined?(b.equipment_kind==='locomotive'?8:0):Number(b.max_wagons);
+ if(!whole(wagonLimit,0,24)||(b.equipment_kind==='locomotive'?wagonLimit<1:wagonLimit!==0))return 'invalid_train_haul_limit';
+ const lore=b.lore_status||'original';
+ if(!['canon_class','canon_vehicle','lore_adapted','original'].includes(lore))return 'invalid_lore_status';
+ if(b.lore_reference!==undefined&&(typeof b.lore_reference!=='string'||b.lore_reference.length>500))return 'invalid_lore_reference';
  if(b.transport_capacity>maxPassengers||b.cargo_capacity>maxCargo||b.crew_required>maxCrew)return 'equipment_class_capacity_exceeded';
  if(b.equipment_kind==='locomotive'||b.equipment_kind==='railcar'){
   if(b.transport_capacity===0&&b.cargo_capacity===0)return 'equipment_requires_capacity';
@@ -24,11 +30,12 @@ export function validateEquipmentTemplate(b){
  if(b.fuel_per_operation>0&&!b.fuel_item_id)return 'equipment_fuel_item_required';
  return null;
 }
-const fields=b=>[b.name.trim(),b.description,b.transport_capacity,b.cargo_capacity,b.crew_required,b.fuel_item_id||null,b.fuel_per_operation,b.enabled?1:0];
+const fields=b=>[b.name.trim(),b.description,b.transport_capacity,b.cargo_capacity,b.crew_required,b.fuel_item_id||null,b.fuel_per_operation,b.enabled?1:0,b.max_wagons===undefined?(b.equipment_kind==='locomotive'?8:0):b.max_wagons];
 export function equipmentSnapshot(t){
  return {item_id:t.item_id,name:t.name,equipment_kind:t.equipment_kind,revision:Number(t.revision),
   transport_capacity:Number(t.transport_capacity),cargo_capacity:Number(t.cargo_capacity),
-  crew_required:Number(t.crew_required),fuel_item_id:t.fuel_item_id||null,fuel_per_operation:Number(t.fuel_per_operation)};
+  crew_required:Number(t.crew_required),fuel_item_id:t.fuel_item_id||null,fuel_per_operation:Number(t.fuel_per_operation),
+  max_wagons:Number(t.max_wagons||0),lore_status:t.lore_status||'original',lore_reference:t.lore_reference||''};
 }
 export async function equipmentSummary(db){
  const [templates]=await db.execute('SELECT * FROM world_magitek_equipment_templates ORDER BY equipment_kind,name');
@@ -37,10 +44,11 @@ export async function equipmentSummary(db){
  JOIN world_industry_facilities f ON f.id=i.origin_facility_id
  LEFT JOIN world_settlements s ON s.id=i.stationed_settlement_id ORDER BY i.id DESC LIMIT 500`);
  const [history]=await db.execute('SELECT * FROM world_magitek_equipment_movements ORDER BY id DESC LIMIT 120');
- return {templates,inventory:inventory.map(x=>({...x,specifications:typeof x.specifications==='string'?JSON.parse(x.specifications):x.specifications})),history};
+ return {templates,inventory:inventory.map(x=>({...x,specifications:typeof x.specifications==='string'?JSON.parse(x.specifications):x.specifications})),history,trains:await trainSummary(db)};
 }
 export async function equipmentRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/industry/trains'))return trainRoute(pool,req,path,actor);
  if(path==='/world-admin/industry/equipment'&&req.method==='GET')return ok(await equipmentSummary(pool));
  let match;
  if((path==='/world-admin/industry/equipment/templates'&&req.method==='POST')||
@@ -58,18 +66,20 @@ export async function equipmentRoute(pool,req,path,actor){
     const [[old]]=await db.execute('SELECT * FROM world_magitek_equipment_templates WHERE id=? FOR UPDATE',[id]);
     if(!old)return fail(404,'equipment_template_not_found');
     if(old.item_id!==b.item_id||old.equipment_kind!==b.equipment_kind)return fail(409,'equipment_identity_locked');
+    if((b.lore_status||'original')!==old.lore_status)return fail(409,'lore_provenance_locked');
     await db.execute(`UPDATE world_magitek_equipment_templates SET name=?,description=?,transport_capacity=?,cargo_capacity=?,
-      crew_required=?,fuel_item_id=?,fuel_per_operation=?,enabled=?,revision=revision+1 WHERE id=?`,[...fields(b),id]);
+      crew_required=?,fuel_item_id=?,fuel_per_operation=?,enabled=?,max_wagons=?,revision=revision+1 WHERE id=?`,[...fields(b),id]);
     await db.execute("UPDATE world_industry_items SET name=?,description=? WHERE id=? AND category='equipment'",[b.name.trim(),b.description,b.item_id]);
     // Existing commissioned lots keep pinned specifications for their entire service life.
     return ok({id,saved:true});
    }
+   if(['canon_class','canon_vehicle'].includes(b.lore_status))return fail(409,'canon_blueprints_are_preseeded');
    const [[existing]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.item_id]);
    if(existing)return fail(409,'equipment_item_id_exists');
    await db.execute("INSERT INTO world_industry_items(id,name,category,workshop_material_id,description) VALUES(?,?,'equipment',NULL,?)",[b.item_id,b.name.trim(),b.description]);
    const [made]=await db.execute(`INSERT INTO world_magitek_equipment_templates
-    (item_id,name,description,equipment_kind,transport_capacity,cargo_capacity,crew_required,fuel_item_id,fuel_per_operation,enabled,created_by)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?)`,[b.item_id,b.name.trim(),b.description,b.equipment_kind,b.transport_capacity,b.cargo_capacity,b.crew_required,b.fuel_item_id||null,b.fuel_per_operation,b.enabled?1:0,actor.id]);
+    (item_id,name,description,equipment_kind,transport_capacity,cargo_capacity,crew_required,fuel_item_id,fuel_per_operation,enabled,lore_status,lore_reference,max_wagons,created_by)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[b.item_id,b.name.trim(),b.description,b.equipment_kind,b.transport_capacity,b.cargo_capacity,b.crew_required,b.fuel_item_id||null,b.fuel_per_operation,b.enabled?1:0,b.lore_status||'original',b.lore_reference||'',b.max_wagons===undefined?(b.equipment_kind==='locomotive'?8:0):b.max_wagons,actor.id]);
    return ok({id:made.insertId,item_id:b.item_id,saved:true});
   });
  }
@@ -115,6 +125,10 @@ export async function equipmentRoute(pool,req,path,actor){
    const [[unit]]=await db.execute('SELECT * FROM world_magitek_equipment_inventory WHERE id=? FOR UPDATE',[id]);
    if(!unit)return fail(404,'inventory_lot_not_found');
    if(unit.status==='retired')return fail(409,'retired_equipment_locked');
+   const [assembled]=await db.execute(`SELECT c.id FROM world_magitek_train_consists c
+    WHERE c.status='assembled' AND (c.locomotive_lot_id=? OR
+    EXISTS(SELECT 1 FROM world_magitek_train_cars j WHERE j.consist_id=c.id AND j.car_lot_id=?)) LIMIT 1`,[id,id]);
+   if(assembled.length)return fail(409,'equipment_assigned_to_train_consist');
    const destination=b.status==='assigned'?b.stationed_settlement_id:null;
    if(b.status==='assigned'&&!destination)return fail(400,'stationing_location_required');
    if(destination){
