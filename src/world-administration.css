@@ -309,3 +309,10 @@
 .wa-map-workspace{gap:9px}
 .wa-map-main-panel .wtm-map-title{padding:9px 8px 6px}
 .wa-map-main-panel .wtm-map-title strong{font-size:clamp(19px,2vw,26px)}
+
+
+/* Continent-first navigation keeps regional selectors in the detailed map only. */
+.wa-continent-navigation{display:flex;gap:6px;flex-wrap:wrap;padding:9px 11px;background:#162631;border:1px solid #3c505f;border-radius:6px}
+.wa-continent-navigation button{padding:10px 14px;border:1px solid #506474;background:#243744;color:#c6d3d7;border-radius:5px;font-size:12px;font-weight:700}
+.wa-continent-navigation button.active{background:#5b5045;color:#f7dfb8;border-color:#bc9869}
+.wa-continent-navigation button:focus-visible{outline:2px solid #e7c089;outline-offset:2px}
