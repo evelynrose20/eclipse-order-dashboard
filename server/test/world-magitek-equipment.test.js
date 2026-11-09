@@ -37,4 +37,5 @@ test('tanks and railcars reject fake output byproducts and insufficient inputs',
  assert.equal(evaluateEquipmentManufacture(factory,'agriculture',[tank]),'equipment_requires_manufacturing_facility');
  assert.equal(evaluateEquipmentManufacture({...factory,outputs:[{item_id:'magitek-carriage',qty:.5}]},'manufacturing',[carriage]),'equipment_requires_whole_units');
  assert.equal(evaluateEquipmentManufacture({...factory,outputs:[]},'manufacturing',[],[tank]),'equipment_cannot_be_byproduct');
+ assert.equal(evaluateEquipmentManufacture(factory,'manufacturing',[tank],[],[{when:[{field:'level',op:'gte',value:1}],action:{type:'multiplier',value:3}}]),'equipment_output_multipliers_forbidden');
 });
