@@ -10,13 +10,14 @@ export function npcIndustryDevelopment(facilities=[]){
 export async function npcIndustryDevelopmentForDay(db,site,now){
  const date=new Date(now).toISOString().slice(0,10);
  const [rows]=await db.execute(`
- SELECT f.id,MAX(c.operations) AS operations
- FROM world_industry_facilities f
- JOIN world_industry_cycles c ON c.facility_id=f.id
- WHERE f.settlement_id=? AND f.owner_faction_id=?
- AND f.status='operational' AND f.cycle_mode<>'off'
- AND c.cycle_date=DATE_SUB(?,INTERVAL 1 DAY)
- AND c.operations>0
+ SELECT f.id,SUM(sh.quantity) AS operations
+ FROM world_npc_cargo_shipments sh
+ JOIN world_npc_cargo_routes r ON r.id=sh.route_id AND r.settlement_id=sh.settlement_id
+ JOIN world_industry_facilities f ON f.id=sh.facility_id AND f.id=r.facility_id
+ WHERE sh.settlement_id=? AND f.owner_faction_id=?
+ AND f.status='operational' AND f.cycle_mode='automatic'
+ AND r.enabled=1 AND sh.status='delivered'
+ AND DATE(sh.delivered_at)=DATE_SUB(?,INTERVAL 1 DAY)
  GROUP BY f.id`,[site.id,site.controlling_faction_id,date]);
  return {date,facilities:rows,earned:npcIndustryDevelopment(rows)};
 }
