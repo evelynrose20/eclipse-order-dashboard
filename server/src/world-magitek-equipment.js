@@ -1,6 +1,11 @@
 import {atomicIndustry,adjustFacilityStock} from './world-industry-engine.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const kinds=new Set(['transport','locomotive','railcar','armored_vehicle','airship','field_equipment','siege_equipment','other']);
+const classLimits={
+ transport:[100,2000,40],locomotive:[100,4000,60],railcar:[400,5000,30],
+ armored_vehicle:[40,300,20],airship:[2000,20000,500],
+ field_equipment:[50,3000,100],siege_equipment:[50,1000,100],other:[100,2000,100]
+};
 const whole=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;
 const ident=x=>typeof x==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(x)&&x.length<=48;
 async function read(req){let size=0,parts=[];for await(const chunk of req){size+=chunk.length;if(size>16000)return null;parts.push(chunk)}try{return JSON.parse(Buffer.concat(parts).toString('utf8'))}catch{return null}}
@@ -11,6 +16,8 @@ export function validateEquipmentTemplate(b){
   typeof b.fuel_per_operation!=='number'||!Number.isFinite(b.fuel_per_operation)||b.fuel_per_operation<0||b.fuel_per_operation>10000||
   Math.round(b.fuel_per_operation*1000)!==b.fuel_per_operation*1000||!['boolean'].includes(typeof b.enabled)||
   (b.fuel_item_id!==null&&b.fuel_item_id!==''&&!ident(b.fuel_item_id)))return 'invalid_equipment_template';
+ const [maxPassengers,maxCargo,maxCrew]=classLimits[b.equipment_kind];
+ if(b.transport_capacity>maxPassengers||b.cargo_capacity>maxCargo||b.crew_required>maxCrew)return 'equipment_class_capacity_exceeded';
  if(b.equipment_kind==='locomotive'||b.equipment_kind==='railcar'){
   if(b.transport_capacity===0&&b.cargo_capacity===0)return 'equipment_requires_capacity';
  }
