@@ -8,7 +8,7 @@ const vector=points=>points.map(p=>p.x+','+p.y).join(' ');
 const pointCenter=points=>({x:points.reduce((s,p)=>s+p.x,0)/points.length,y:points.reduce((s,p)=>s+p.y,0)/points.length});
 export default function ContinentStrategyMap({continent={},zones=[],regions=[],settlements=[],factions=[],canEdit=false,request,onSaved,onOpenZone}){
  const [selected,setSelected]=useState(''),[tool,setTool]=useState('inspect'),[draft,setDraft]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const [camera,setCamera]=useState({x:0,y:0,w:W,h:H});
+ const [camera,setCamera]=useState({x:W*.1,y:H*.1,w:W*.8,h:H*.8});
  const [layer,setLayer]=useState('control'),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
  const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false);
  const cameraRef=useRef(camera);
