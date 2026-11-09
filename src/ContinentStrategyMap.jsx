@@ -108,13 +108,33 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  };
  const changeReference=(key,value)=>setReferenceDraft(v=>({...continent.reference,...v,[key]:value}));
  const mouseDown=e=>{
-  if(e.button!==0||vertexRef.current||tool!=='inspect')return;
+  if(e.button!==0||vertexRef.current)return;
+  if(isTracing){
+   e.preventDefault();e.stopPropagation();
+   const start=toPoint(e);if(!start)return;
+   traceRef.current={id:e.pointerId,points:[start]};
+   setDraft([start]);
+   e.currentTarget.setPointerCapture(e.pointerId);
+   return;
+  }
+  if(tool!=='inspect')return;
   e.preventDefault();
   const v=cameraRef.current;
   panRef.current={id:e.pointerId,x:e.clientX,y:e.clientY,ox:v.x,oy:v.y,w:v.w,h:v.h,moved:false};
   e.currentTarget.setPointerCapture(e.pointerId);
  };
  const mouseMove=e=>{
+  if(traceRef.current&&traceRef.current.id===e.pointerId){
+   const point=toPoint(e),trace=traceRef.current;
+   if(point&&trace.points.length<2500){
+    const last=trace.points[trace.points.length-1],min=Math.max(.35,camera.w/350);
+    if(Math.hypot(point.x-last.x,point.y-last.y)>=min){
+     trace.points.push(point);
+     if(trace.points.length%3===0)setDraft([...trace.points]);
+    }
+   }
+   return;
+  }
   if(vertexRef.current){const p=toPoint(e);if(p){const i=vertexRef.current.index;setDraft(old=>old?.map((q,j)=>j===i?p:q)||old)}return}
   if(!panRef.current)return;
   const r=svgRef.current?.getBoundingClientRect();if(!r)return;
@@ -125,10 +145,22 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   if(pan.moved){ignoreClick.current=true;setCamera({x:clamp(pan.ox-dx/r.width*pan.w,0,W-pan.w),y:clamp(pan.oy-dy/r.height*pan.h,0,H-pan.h),w:pan.w,h:pan.h})}
  };
  const mouseUp=e=>{
+  if(traceRef.current?.id===e.pointerId){
+   const traced=traceRef.current.points;traceRef.current=null;ignoreClick.current=true;
+   const simplified=simplifyFreehand(traced,traceSensitivity,100);
+   if(simplified.length<3){setDraft([]);setError('Trace a longer outline before releasing.');}
+   else{setDraft(simplified);setError('');setNotice('Freehand outline simplified to '+simplified.length+' corners. Save or refine its vertices.');}
+  }
   if(panRef.current?.id===e.pointerId)panRef.current=null;
   vertexRef.current=null;
  };
- const mapClick=e=>{if(ignoreClick.current){ignoreClick.current=false;return}if(!['draw','province-draw'].includes(tool)||!active)return;const p=toPoint(e);if(p)setDraft(old=>old.length>=100?old:[...old,p])};
+ const mapClick=e=>{
+  if(ignoreClick.current){ignoreClick.current=false;return}
+  if(isReshaping&&draft?.length<100){const p=toPoint(e);if(p)setDraft(old=>insertVertex(old,p));return}
+  if(!['draw','province-draw'].includes(tool)||!active)return;
+  const p=toPoint(e);if(p)setDraft(old=>old.length>=100?old:[...old,p]);
+ };
+ const refineDraft=()=>{if(!draft||draft.length<3)return;setTool(province?'province-reshape':'reshape');setNotice('Drag gold corner handles, click near an edge to add a point, or Alt-click a handle to remove it.')};
  const geometry=zones.map(z=>({zone:z,points:polygons.get(Number(z.id))})).filter(x=>Array.isArray(x.points)&&x.points.length>=3);
  return <section className="csm-root">
   <header className="csm-head"><div><span className="csm-kicker">STRATEGIC COMMAND / CONTINENTAL THEATER</span><h3>{continent.name||'The Continent'}</h3><p>Continuous campaign map · {zoneCount} of {zones.length} territories outlined · {provinces.length} provinces · {settlements.length} recorded settlements</p></div><div className="csm-controls"><button type="button" onClick={()=>zoom(.8)} aria-label="Zoom in">+</button><button type="button" onClick={()=>zoom(1.25)} aria-label="Zoom out">−</button><button type="button" onClick={()=>setCamera({x:0,y:0,w:W,h:H})}>Fit continent</button>{canEdit&&<button type="button" onClick={()=>{setSettings({name:continent.name||'The Continent',background_url:continent.background_url||''});setEditSettings(x=>!x)}}>Map settings</button>}</div></header>
@@ -137,24 +169,25 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   <div className="csm-body">
    <div className="csm-map-shell">
     <div className="csm-layerbar"><span>MAP MODE</span>{[['control','Political'],['status','Territory status']].map(([id,name])=><button key={id} type="button" aria-pressed={layer===id} className={layer===id?'active':''} onClick={()=>setLayer(id)}>{name}</button>)}<span className="csm-zoom">{Math.round(W/camera.w*100)}%</span></div>
-    <svg ref={svgRef} className={'csm-map '+(['draw','province-draw'].includes(tool)?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
+    <svg ref={svgRef} className={'csm-map '+(['draw','province-draw','trace','province-trace'].includes(tool)?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
      <defs><pattern id="csm-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#7994a0" strokeWidth=".55" opacity=".18"/></pattern></defs>
      <rect width={W} height={H} fill="#172b37"/>
-     {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83"/>}
+     {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83" pointerEvents="none"/>}
+     {reference.visible&&overlayImage&&<image href={overlayImage} x={Number(reference.offset_x)} y={Number(reference.offset_y)} width={W*Number(reference.width_pct)/100} height={H*Number(reference.width_pct)/100} preserveAspectRatio="xMidYMid meet" opacity={Number(reference.opacity_pct)/100} pointerEvents="none"/>}
      <rect width={W} height={H} fill="url(#csm-grid)" pointerEvents="none"/>
      {geometry.map(({zone,points})=>{
       const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
       const center=pointCenter(points);
-      return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(['draw','province-draw'].includes(tool)){return}e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
-       <polygon points={vector(points)} fill={fill} fillOpacity={isSelected ? 0.65 : 0.4} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
+      return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(['draw','province-draw','trace','province-trace'].includes(tool)){return}e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
+       <polygon points={vector(points)} fill={fill} fillOpacity={isSelected ? 0.36 : 0.15} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
        <text x={center.x} y={center.y} textAnchor="middle" fill="#fff4da" stroke="#0c1721" strokeWidth="3" paintOrder="stroke" fontWeight="700" fontSize="12" pointerEvents="none">{zone.is_default?(regions.find(r=>Number(r.id)===Number(zone.region_id))?.name||zone.name):zone.name}</text>
       </g>;
      })}
-     {provinces.filter(p=>Array.isArray(p.polygon)&&p.polygon.length>=3).map(p=>{const chosen=String(p.id)===provinceId,c=pointCenter(p.polygon);return <g className={'csm-province '+(chosen?'selected':'')} key={'province'+p.id} onClick={e=>{if(['draw','province-draw'].includes(tool))return;e.stopPropagation();if(!ignoreClick.current)selectProvince(p);else ignoreClick.current=false}}><polygon points={vector(p.polygon)} fill={chosen?'#bb9658':'#23394d'} fillOpacity={chosen?.6:.22} stroke={chosen?'#ffda92':'#a5bac8'} strokeWidth={chosen?3:1.4} vectorEffect="non-scaling-stroke"/><text x={c.x} y={c.y} fontSize="9" fill="#eee4d1" stroke="#15232f" strokeWidth="2.5" paintOrder="stroke" textAnchor="middle" pointerEvents="none">{p.name}</text></g>})}
+     {provinces.filter(p=>Array.isArray(p.polygon)&&p.polygon.length>=3).map(p=>{const chosen=String(p.id)===provinceId,c=pointCenter(p.polygon);return <g className={'csm-province '+(chosen?'selected':'')} key={'province'+p.id} onClick={e=>{if(['draw','province-draw','trace','province-trace'].includes(tool))return;e.stopPropagation();if(!ignoreClick.current)selectProvince(p);else ignoreClick.current=false}}><polygon points={vector(p.polygon)} fill={chosen?'#bb9658':'#23394d'} fillOpacity={chosen?.38:.09} stroke={chosen?'#ffda92':'#a5bac8'} strokeWidth={chosen?3:1.4} vectorEffect="non-scaling-stroke"/><text x={c.x} y={c.y} fontSize="9" fill="#eee4d1" stroke="#15232f" strokeWidth="2.5" paintOrder="stroke" textAnchor="middle" pointerEvents="none">{p.name}</text></g>})}
      {draft&&draft.length>0&&<g className="csm-draft" pointerEvents="none"><polyline points={vector(draft)} fill="none" stroke="#f1c77f" strokeWidth="2.8" vectorEffect="non-scaling-stroke"/>{draft.length>=3&&<polygon points={vector(draft)} fill="#dcb67b" fillOpacity=".16" stroke="#f0c789" strokeDasharray="6 5" vectorEffect="non-scaling-stroke"/>}</g>}
-     {draft&&['reshape','province-reshape'].includes(tool)&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp}/>)}
+     {draft&&isReshaping&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();if(e.altKey&&draft.length>3){setDraft(old=>old.filter((_,j)=>j!==i));return}vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp}/>)}
     </svg>
-    {!continent.background_url&&<div className="csm-basemap-hint">Add a continent background image in Map settings. Existing regional images stay untouched.</div>}
+    {!continent.background_url&&!overlayImage&&<div className="csm-basemap-hint">Upload the supplied Ilsabard map under Reference layers, then trace territory borders over the artwork.</div>}
     <div className="csm-map-footer"><span>Wheel to zoom · Drag to pan when zoomed in · Click a territory to inspect</span><span>Cartography coordinates: 1000 × 700</span></div>
    </div>
    <aside className="csm-inspector"><div className="csm-aside-heading"><span className="csm-kicker">TERRITORY INDEX</span><strong>{zones.length} territories</strong></div>
