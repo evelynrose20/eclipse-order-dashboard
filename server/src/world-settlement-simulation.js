@@ -1,6 +1,7 @@
 import {npcMappedFarmOptions,assignNpcMappedFarm,autonomouslyAssignNpcFarm} from './world-npc-cargo.js';
 import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
+import {npcProvinceDevelopment} from './world-strategic-provinces.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
 import {beginCivicTemplateProject,advanceCivicTemplateProjects} from './world-civic-template-projects.js';
 import {advanceWorkerHealth,workerHealthSnapshot} from './world-worker-care.js';
@@ -283,6 +284,7 @@ export async function runSettlementSimulation(pool,now=new Date()){
    const weatherCondition=weather.effective_weather.weather||'clear';
    const result=ownership==='npc'?await applyNpcCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition):await applyOrderCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition);
    if(!result){await db.rollback();continue}
+   if(ownership==='npc')result.province_development=await npcProvinceDevelopment(db,effectiveSite,key);
    await db.commit();
    results.push(result);
   }catch(error){await db.rollback().catch(()=>{});console.warn('[World simulation] Settlement cycle failed:',id,error?.code||error?.name||'error')}
