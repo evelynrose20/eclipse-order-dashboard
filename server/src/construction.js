@@ -31,7 +31,7 @@ async function projectDetail(pool,projectId,user){
  const [[rows],[stages],[requirements],[linkedEvents]] = await Promise.all([
   pool.execute('SELECT p.*,e.name AS event_name FROM order_construction_projects p LEFT JOIN order_encounters e ON e.id=p.event_id WHERE p.id=?',[projectId]),
   pool.execute('SELECT id,project_id,position,name,description,status,completed_at FROM order_construction_stages WHERE project_id=? ORDER BY position,id',[projectId]),
-  pool.execute('SELECT r.id,r.stage_id,COALESCE(r.industry_item_id,r.material_id) AS material_id,COALESCE(wi.name,fm.name) AS material_name,r.industry_item_id,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r LEFT JOIN fc_materials fm ON fm.id=r.material_id LEFT JOIN world_industry_items wi ON wi.id=r.industry_item_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,m.name',[projectId]),
+  pool.execute('SELECT r.id,r.stage_id,COALESCE(r.industry_item_id,r.material_id) AS material_id,COALESCE(wi.name,fm.name) AS material_name,r.industry_item_id,r.required_quantity,r.contributed_quantity FROM order_construction_requirements r LEFT JOIN fc_materials fm ON fm.id=r.material_id LEFT JOIN world_industry_items wi ON wi.id=r.industry_item_id JOIN order_construction_stages s ON s.id=r.stage_id WHERE s.project_id=? ORDER BY s.position,COALESCE(wi.name,fm.name)',[projectId]),
   pool.execute('SELECT l.event_id,e.name FROM order_construction_event_links l JOIN order_encounters e ON e.id=l.event_id WHERE l.project_id=? ORDER BY l.linked_at,l.event_id',[projectId])
  ]);
  const p=rows[0];if(!p)return null;
