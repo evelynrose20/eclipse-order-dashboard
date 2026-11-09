@@ -15,18 +15,32 @@ async function ensureItems(db,c){
  const [rows]=await db.query('SELECT id FROM world_industry_items WHERE id IN ('+ids.map(()=>'?').join(',')+')',ids);
  return rows.length===ids.length;
 }
-async function validateEquipmentManufacture(db,b){
- const outputs=(b.configuration?.outputs||[]);
- if(!outputs.length)return null;
- const [equipment]=await db.query("SELECT i.id,i.category,t.enabled FROM world_industry_items i LEFT JOIN world_magitek_equipment_templates t ON t.item_id=i.id WHERE i.id IN ("+outputs.map(()=>'?').join(',')+")",outputs.map(x=>x.item_id));
- const finished=equipment.filter(x=>x.category==='equipment');
- if(!finished.length)return null;
- if(finished.some(x=>!x.enabled))return 'equipment_template_disabled';
- if(b.category!=='manufacturing')return 'equipment_requires_manufacturing_facility';
- // Finished vehicles must have several different materials, real workers and power.
- if((b.configuration.inputs||[]).length<2||b.configuration.labor<5||b.configuration.power<1)return 'equipment_requires_materials_labor_and_power';
- if(outputs.some(x=>finished.some(e=>e.id===x.item_id)&&!Number.isInteger(x.qty)))return 'equipment_requires_whole_units';
+export function evaluateEquipmentManufacture(config,category,equipmentOutputs,equipmentByproducts=[]){
+ if(equipmentByproducts.length)return 'equipment_cannot_be_byproduct';
+ if(!equipmentOutputs.length)return null;
+ if(equipmentOutputs.some(x=>!x.enabled))return 'equipment_template_disabled';
+ if(category!=='manufacturing')return 'equipment_requires_manufacturing_facility';
+ if((config.inputs||[]).length<2||config.labor<5||config.power<1)return 'equipment_requires_materials_labor_and_power';
+ const outputs=equipmentOutputs.map(x=>({...x,qty:Number(config.outputs.find(o=>o.item_id===x.id)?.qty||0)}));
+ if(outputs.some(x=>!Number.isInteger(x.qty)||x.qty<1))return 'equipment_requires_whole_units';
+ const costs={transport:10,locomotive:18,railcar:12,armored_vehicle:14,airship:25,field_equipment:5,siege_equipment:18,other:8};
+ const workforce={transport:6,locomotive:10,railcar:7,armored_vehicle:10,airship:14,field_equipment:5,siege_equipment:12,other:5};
+ const power={transport:2,locomotive:4,railcar:2,armored_vehicle:3,airship:5,field_equipment:1,siege_equipment:3,other:1};
+ const totalMaterials=(config.inputs||[]).reduce((n,row)=>n+Number(row.qty||0),0);
+ const requiredMaterials=outputs.reduce((n,x)=>n+Number(costs[x.equipment_kind]||8)*x.qty,0);
+ const minLabor=Math.max(...outputs.map(x=>workforce[x.equipment_kind]||5));
+ const minPower=Math.max(...outputs.map(x=>power[x.equipment_kind]||1));
+ if(totalMaterials<requiredMaterials||config.labor<minLabor||config.power<minPower)return 'equipment_assembly_requirements_too_low';
  return null;
+}
+async function validateEquipmentManufacture(db,b){
+ const outputs=[...(b.configuration?.outputs||[]),...(b.configuration?.byproducts||[])];
+ if(!outputs.length)return null;
+ const [rows]=await db.query("SELECT i.id,i.category,t.enabled,t.equipment_kind FROM world_industry_items i LEFT JOIN world_magitek_equipment_templates t ON t.item_id=i.id WHERE i.id IN ("+outputs.map(()=>'?').join(',')+")",outputs.map(x=>x.item_id));
+ const equipment=rows.filter(x=>x.category==='equipment');
+ return evaluateEquipmentManufacture(b.configuration,b.category,
+ equipment.filter(x=>(b.configuration.outputs||[]).some(o=>o.item_id===x.id)),
+ equipment.filter(x=>(b.configuration.byproducts||[]).some(o=>o.item_id===x.id)));
 }
 async function noCycle(db,c,excluding=null){
  const [rows]=await db.execute('SELECT v.configuration FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.archived=0'+(excluding?' AND t.id<>?':''),excluding?[excluding]:[]);
@@ -91,8 +105,9 @@ export async function industryRoute(pool,req,path,actor){
    if(manufactureError)return fail(409,manufactureError);
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
-    const [[old]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
+    const [[old]]=await db.execute('SELECT id,current_version,category FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
     if(!old)return fail(404,'template_not_found');
+    if(b.category!==old.category)return fail(409,'template_category_locked');
     if(editExisting){
      const [[existing]]=await db.execute('SELECT configuration,rules FROM world_industry_template_versions WHERE template_id=? AND version=? FOR UPDATE',[versionTarget,Number(old.current_version)]);
      if(!existing)return fail(404,'template_version_not_found');
