@@ -158,7 +158,9 @@ async function worldAdministrationRouteCore(pool,req,path){
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
    const [existingSites]=await db.execute('SELECT map_x,map_y FROM world_settlements WHERE region_id=? AND zone_id=?',[b.region_id,zoneId]);
-   if(rangesCoverSettlements(b.points,existingSites,b.is_closed))return fail(409,'mountains_cannot_cover_settlements');
+   // Closed mountain terrain may encompass pre-existing RP settlements: preserve them
+   // without allowing any new placements in the restricted polygon.
+   if(!b.is_closed&&rangesCoverSettlements(b.points,existingSites,false))return fail(409,'mountains_cannot_cover_settlements');
    if(mid){
     const [r]=await db.execute('UPDATE world_map_mountain_ranges SET region_id=?,zone_id=?,name=?,points=?,is_closed=? WHERE id=?',[b.region_id,zoneId,b.name.trim(),JSON.stringify(b.points),b.is_closed?1:0,mid]);
     if(!r.affectedRows)return fail(404,'mountain_not_found');
