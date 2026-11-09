@@ -17,6 +17,7 @@ export async function civicTemplateCatalogRoute(pool,req,path,actor){
  if(req.method!=='POST'&&req.method!=='PUT')return fail(404,'not_found');
  const b=await read(req);
  if(validateCivicTemplate(b))return fail(400,'invalid_civic_template');
+ if(b.access_scope!==undefined&&!['shared','order_only'].includes(b.access_scope))return fail(400,'invalid_blueprint_access');
  if(req.method==='POST'&&(m[1]||typeof b.id!=='string'||!/^[a-z][a-z0-9-]{2,47}$/.test(b.id)))return fail(400,'invalid_template_id');
  if(req.method==='PUT'&&!m[1])return fail(400,'template_id_required');
  return atomic(pool,async db=>{
@@ -28,11 +29,11 @@ export async function civicTemplateCatalogRoute(pool,req,path,actor){
    const [[old]]=await db.execute('SELECT * FROM world_civic_building_templates WHERE id=? FOR UPDATE',[id]);
    if(!old)return fail(404,'template_not_found');
    if(old.category!==b.category||old.effect_key!==b.effect_key)return fail(409,'template_category_locked');
-   await db.execute('UPDATE world_civic_building_templates SET name=?,description=?,effect_per_level=?,material_id=?,material_per_level=?,npc_development_cost=?,construction_labor=?,max_level=?,enabled=?,revision=revision+1 WHERE id=?',[b.name.trim(),b.description,b.effect_per_level,b.material_id,b.material_per_level,b.npc_development_cost,b.construction_labor,b.max_level,b.enabled?1:0,id]);
+   await db.execute('UPDATE world_civic_building_templates SET name=?,description=?,effect_per_level=?,material_id=?,material_per_level=?,npc_development_cost=?,construction_labor=?,max_level=?,enabled=?,access_scope=?,revision=revision+1 WHERE id=?',[b.name.trim(),b.description,b.effect_per_level,b.material_id,b.material_per_level,b.npc_development_cost,b.construction_labor,b.max_level,b.enabled?1:0,b.access_scope||old.access_scope,id]);
   }else{
    const [[exists]]=await db.execute('SELECT id FROM world_civic_building_templates WHERE id=?',[id]);
    if(exists)return fail(409,'template_id_exists');
-   await db.execute('INSERT INTO world_civic_building_templates(id,name,description,category,effect_key,effect_per_level,material_id,material_per_level,npc_development_cost,construction_labor,max_level,enabled) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',[id,b.name.trim(),b.description,b.category,b.effect_key,b.effect_per_level,b.material_id,b.material_per_level,b.npc_development_cost,b.construction_labor,b.max_level,b.enabled?1:0]);
+   await db.execute('INSERT INTO world_civic_building_templates(id,name,description,category,effect_key,effect_per_level,material_id,material_per_level,npc_development_cost,construction_labor,max_level,enabled,access_scope) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,b.name.trim(),b.description,b.category,b.effect_key,b.effect_per_level,b.material_id,b.material_per_level,b.npc_development_cost,b.construction_labor,b.max_level,b.enabled?1:0,b.access_scope||'order_only']);
   }
   await db.execute('DELETE FROM world_civic_template_materials WHERE template_id=?',[id]);
   for(const line of recipe)await db.execute('INSERT INTO world_civic_template_materials(template_id,material_id,units_per_level) VALUES(?,?,?)',[id,line.material_id,line.units_per_level]);
@@ -43,6 +44,7 @@ export async function civicTemplateCatalogRoute(pool,req,path,actor){
 export function effectSnapshot(t){return JSON.stringify({key:t.effect_key,per_level:Number(t.effect_per_level)});}
 export async function beginCivicTemplateProject(db,{settlement,template,upgrade=null,owner_kind='order',actorId=null,npcDevelopment=0,repair=false}){
  if(!template||(!template.enabled&&!repair))return fail(409,'template_disabled');
+ if(owner_kind==='npc'&&template.access_scope==='order_only')return fail(409,'order_only_blueprint');
  if(repair&&(!upgrade||upgrade.status!=='damaged'))return fail(409,'repair_requires_damaged_building');
  const target=repair?Number(upgrade.level):upgrade?Number(upgrade.level)+1:1;
  if(!repair&&target>Number(template.max_level))return fail(409,'maximum_building_level');
