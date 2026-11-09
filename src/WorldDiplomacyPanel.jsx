@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useState} from 'react';
 import './world-diplomacy.css';
+import WorldRecoveryPanel from './WorldRecoveryPanel.jsx';
 const clean=s=>String(s||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const NONE='';
 export default function WorldDiplomacyPanel({request,factions=[],settlements=[],onChanged}){
@@ -29,6 +30,7 @@ export default function WorldDiplomacyPanel({request,factions=[],settlements=[],
   <header className="wdi-header"><div><span className="wdi-eyebrow">WORLD ADMINISTRATION / FACTION DIPLOMACY</span><h3>Diplomatic Council</h3><p>NPCs may propose a conflict, but they cannot declare war, annex settlements, or end major plots without command approval.</p></div><div className="wdi-stats"><div><strong>{open.length}</strong><span>Awaiting review</span></div><div><strong>{active.length}</strong><span>Authorized conflicts</span></div><div><strong>{data?.protected_sites?.length||0}</strong><span>Plot-protected sites</span></div></div></header>
   {error&&<p className="wdi-error" role="alert">{clean(error)}</p>}{notice&&<p className="wdi-notice" role="status">{notice}</p>}
   {!data?<p>Loading diplomatic records…</p>:<>
+   <WorldRecoveryPanel request={request} factions={factions} settlements={settlements} onChanged={onChanged}/>
    <section className="wdi-section"><div className="wdi-section-head"><div><span className="wdi-eyebrow">CONFLICT REVIEW</span><h4>Pending decisions</h4><p>Approving a war only authorizes it. No settlement ownership or industry changes are performed. Destroyed sites can be claimed through a separate approved outcome and then enter rebuilding.</p></div><button type="button" disabled={busy} onClick={()=>act('/assess',{},'POST','NPC tensions assessed. Newly eligible incidents added to the review queue.')}>Assess NPC tensions</button></div>
     {!open.length?<p className="wdi-empty">No active proposals. Adjust faction relations or record a story incident to populate this queue.</p>:<div className="wdi-proposal-list">{open.map(p=><article className="wdi-proposal" key={p.id}>
      <div className="wdi-proposal-title"><strong>{name(p.attacker_id)} <span>vs.</span> {name(p.defender_id)}</strong><small>{clean(p.conflict_kind)} · {clean(p.source_kind)} · {clean(p.status)} · #{p.id}</small></div>
