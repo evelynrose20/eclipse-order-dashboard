@@ -53,6 +53,7 @@ export async function equipmentRoute(pool,req,path,actor){
     if(old.item_id!==b.item_id||old.equipment_kind!==b.equipment_kind)return fail(409,'equipment_identity_locked');
     await db.execute(`UPDATE world_magitek_equipment_templates SET name=?,description=?,transport_capacity=?,cargo_capacity=?,
       crew_required=?,fuel_item_id=?,fuel_per_operation=?,enabled=?,revision=revision+1 WHERE id=?`,[...fields(b),id]);
+    await db.execute("UPDATE world_industry_items SET name=?,description=? WHERE id=? AND category='equipment'",[b.name.trim(),b.description,b.item_id]);
     // Existing commissioned lots keep pinned specifications for their entire service life.
     return ok({id,saved:true});
    }
