@@ -70,7 +70,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
       const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
       const center=pointCenter(points);
       return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(tool==='draw'){return}e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
-       <polygon points={vector(points)} fill={fill} fillOpacity={isSelected?.65:.4} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
+       <polygon points={vector(points)} fill={fill} fillOpacity={isSelected ? 0.65 : 0.4} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
        <text x={center.x} y={center.y} textAnchor="middle" fill="#fff4da" stroke="#0c1721" strokeWidth="3" paintOrder="stroke" fontWeight="700" fontSize="12" pointerEvents="none">{zone.is_default?(regions.find(r=>Number(r.id)===Number(zone.region_id))?.name||zone.name):zone.name}</text>
       </g>;
      })}
