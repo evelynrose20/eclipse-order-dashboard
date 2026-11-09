@@ -6,6 +6,10 @@ The supported member portal uses React/Vite plus the Windows Node/MySQL API. `Ap
 
 Server routes and authorization live in `server/src/`; additive SQL migrations live in `server/sql/`. `server/src/setup-local.js` applies features, syndicate ranks and event XP. Historical `supabase/` scripts are **PostgreSQL-only** and must not be run against MySQL.
 
+## Mandatory dashboard design standard
+
+**Before adding or changing any authenticated dashboard UI, read and follow [docs/DASHBOARD-DESIGN-RULES.md](docs/DASHBOARD-DESIGN-RULES.md).** It defines the required imperial steel/charcoal visual language, dense strategy-game layouts, native controls, accessible popups, meaningful empty states, and screenshot comparison checks. Never introduce an independent theme or repeat giant headers/KPI rows inside an existing tab. The original purple Military Installations panel is explicitly an anti-reference. Treat visual consistency and player-facing language as release requirements, not optional polish.
+
 ## Non-negotiable rules
 
 1. Verify private-record access on the server, not by hiding UI elements. Bound players cannot receive sealed sheet details through API responses.
