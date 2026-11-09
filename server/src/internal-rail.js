@@ -1,3 +1,4 @@
+import {trainSummary} from './world-magitek-trains.js';
 import {resolveSession} from './auth.js';
 
 const ok=body=>({status:200,body});
@@ -31,9 +32,9 @@ export async function internalRailRoute(pool,req,path){
   // Only journeys actually due are finalized; repeated reads never dispatch twice.
   await pool.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)");
   const [routes]=await pool.execute('SELECT * FROM order_internal_rail_routes ORDER BY status,id DESC');
-  const [journeys]=await pool.execute("SELECT id,route_id,DATE_FORMAT(departed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS departed_at,DATE_FORMAT(expected_arrival_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS expected_arrival_at,status,notes,dispatched_by,DATE_FORMAT(completed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS completed_at FROM order_internal_rail_journeys ORDER BY id DESC LIMIT 150");
+  const [journeys]=await pool.execute("SELECT j.id,j.route_id,j.train_consist_id,j.cargo_capacity_snapshot,j.passenger_capacity_snapshot,j.crew_required_snapshot,c.name AS train_name,DATE_FORMAT(j.departed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS departed_at,DATE_FORMAT(j.expected_arrival_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS expected_arrival_at,j.status,j.notes,j.dispatched_by,DATE_FORMAT(j.completed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS completed_at FROM order_internal_rail_journeys j LEFT JOIN world_magitek_train_consists c ON c.id=j.train_consist_id ORDER BY j.id DESC LIMIT 150");
   const [stations]=await pool.execute('SELECT * FROM order_internal_rail_stations ORDER BY id');
-  return ok({server_now:new Date().toISOString(),stops:await stops(pool),stations,routes,journeys:journeys.map(j=>journeyProgress(j))});
+  return ok({server_now:new Date().toISOString(),stops:await stops(pool),stations,routes,trains:(await trainSummary(pool)).filter(t=>t.status==='assembled'),journeys:journeys.map(j=>journeyProgress(j))});
  }
  const station=/^\/internal-rail\/stations(?:\/(\d+))?$/.exec(path);
  if(station&&['POST','PUT','DELETE'].includes(req.method)){
@@ -113,10 +114,27 @@ export async function internalRailRoute(pool,req,path){
    await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE route_id=? AND status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)",[routeId]);
    const [active]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE route_id=? AND status='running' LIMIT 1 FOR UPDATE",[routeId]);
    if(active.length)return fail(409,'rail_journey_already_running');
-   // Store both times directly from the MySQL UTC clock, avoiding a local-time
-   // conversion when a Windows API process uses a non-UTC timezone.
-   const [created]=await db.execute('INSERT INTO order_internal_rail_journeys(route_id,departed_at,expected_arrival_at,dispatched_by) VALUES(?,UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL ? MINUTE),?)',[routeId,Number(route.duration_minutes),actor.id]);
-   return ok({id:created.insertId,dispatched:true});
+   const body=await read(req);
+   const trainId=body?.train_consist_id?Number(body.train_consist_id):null;
+   let train=null;
+   if(trainId){
+    if(!Number.isSafeInteger(trainId)||trainId<1)return fail(400,'invalid_rail_train_id');
+    const [[locked]]=await db.execute("SELECT id,owner_faction_id,status FROM world_magitek_train_consists WHERE id=? FOR UPDATE",[trainId]);
+    if(!locked||locked.status!=='assembled'||locked.owner_faction_id!=='eclipse-order')return fail(409,'rail_train_not_available');
+    await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE train_consist_id=? AND status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)",[trainId]);
+    const [busyTrain]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE train_consist_id=? AND status='running' LIMIT 1 FOR UPDATE",[trainId]);
+    if(busyTrain.length)return fail(409,'rail_train_already_running');
+    train=(await trainSummary(db)).find(t=>Number(t.id)===trainId);
+    if(!train||train.wagon_count<1)return fail(409,'rail_train_no_cars');
+   }
+   // The train is a real manufactured consist. This records its available
+   // capacity, not a fictitious transfer of goods or consumption of fuel.
+   const [created]=await db.execute(`INSERT INTO order_internal_rail_journeys
+    (route_id,train_consist_id,cargo_capacity_snapshot,passenger_capacity_snapshot,crew_required_snapshot,departed_at,expected_arrival_at,dispatched_by)
+    VALUES(?,?,?,?,?,UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL ? MINUTE),?)`,[
+     routeId,trainId,train?.cargo_capacity||0,train?.transport_capacity||0,train?.crew_required||0,Number(route.duration_minutes),actor.id]);
+   return ok({id:created.insertId,dispatched:true,train_consist_id:trainId,
+    cargo_capacity:train?.cargo_capacity||0,passenger_capacity:train?.transport_capacity||0});
   });
  }
  const cancel=/^\/internal-rail\/journeys\/(\d+)\/cancel$/.exec(path);
