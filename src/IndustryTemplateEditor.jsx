@@ -1,9 +1,25 @@
 import React,{useState} from 'react';
 const defaults=()=>({name:'',slug:'',category:'mine',configuration:{inputs:[],outputs:[],byproducts:[],labor:1,heat:0,power:0,capacity:1,upgrade_level:1},rules:[]});
+export function equipmentAssemblyDraft(equipment,items=[]){
+ const id=typeof equipment==='string'?equipment:equipment?.item_id;
+ const e=typeof equipment==='string'?{}:equipment;
+ const kind=e.equipment_kind||'transport';
+ const floors={transport:[10,6,2],locomotive:[18,10,4],railcar:[12,7,2],armored_vehicle:[14,10,3],airship:[25,14,5],capital_airship:[120,100,80],field_equipment:[5,5,1],siege_equipment:[18,12,3],other:[8,5,1]};
+ const [base,labor,power]=floors[kind]||floors.other;
+ const material=Math.max(5,base+Math.ceil(Number(e.cargo_capacity||0)/50)+Math.ceil(Number(e.transport_capacity||0)/10));
+ const iron=Math.max(1,Math.ceil(material*.8));
+ return {...defaults(),category:'manufacturing',
+  name:(e.name||items.find(x=>x.id===id)?.name||'Magitek')+' Assembly Line',
+  slug:('works-'+id).slice(0,70),
+  configuration:{...defaults().configuration,
+   inputs:[{item_id:'iron-ingot',qty:iron},{item_id:'ceruleum-fuel',qty:material-iron}],
+   outputs:[{item_id:id,qty:1}],labor,heat:kind==='capital_airship'?40:5,
+   power,capacity:1,upgrade_level:1}};
+}
 const fields=[['status','Facility state'],['level','Facility level'],['workforce','Simulated workers available'],['heat_available','Fuel-backed heat available'],['power_available','Fuel-backed power available'],['capacity_pct','Operating capacity %'],['population','Settlement residents'],['stability','Civic stability'],['security','Security'],['temperature_f','Outdoor temperature (°F)'],['weather','Weather conditions']];
 const heading=s=>s.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function IndustryTemplateEditor({template=null,suggestedOutputItem=null,items=[],request,onSaved,onCancel}){
- const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:suggestedOutputItem?{...defaults(),category:'manufacturing',name:(items.find(i=>i.id===suggestedOutputItem)?.name||'Magitek')+' Assembly Line',slug:('works-'+suggestedOutputItem).slice(0,70),configuration:{...defaults().configuration,inputs:[],outputs:[{item_id:suggestedOutputItem,qty:1}],labor:10,heat:5,power:10,capacity:2}}:defaults());
+ const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:suggestedOutputItem?equipmentAssemblyDraft(suggestedOutputItem,items):defaults());
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
  const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30,weather:'clear',temperature_f:32});
  const [scenarioStock,setScenarioStock]=useState({});
