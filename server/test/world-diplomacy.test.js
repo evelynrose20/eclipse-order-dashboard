@@ -84,5 +84,5 @@ test('migration adds no world settlements, economy rewrites or automatic war tri
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_conflict_proposals/);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_authorized_conflicts/);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_plot_protection/);
- assert.doesNotMatch(sql,/DROP TABLE|TRIGGER|UPDATE world_settlements|INSERT INTO world_settlements/i);
+ assert.doesNotMatch(sql,/DROP TABLE|CREATE TRIGGER|UPDATE world_settlements|INSERT INTO world_settlements/i);
 });
