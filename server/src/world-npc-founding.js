@@ -12,7 +12,7 @@ export async function establishNpcSettlement(db,site,state){
  const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]);
  const [[facilities]]=await db.execute('SELECT COUNT(*) AS n FROM world_industry_facilities WHERE settlement_id=?',[site.id]);
  const [[past]]=await db.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[site.id]);
- const virgin=Number(past.n)===0;
+ const virgin=Number(past.n)===0||(Number(site.population)===0&&Number(facilities.n)===0&&upgrades.length===0);
  let population=Number(site.population)||0;
  let housingId=null,facilityId=null;
  // Only unused or underdeveloped locations receive a founding package.
@@ -30,7 +30,7 @@ export async function establishNpcSettlement(db,site,state){
    facilityId=created.insertId;
   }
  }
- if(virgin&&population===0&&housingCapacity(site,upgrades)+(housingId?30:0)>0){
+ if(virgin&&population===0&&(housingCapacity(site,upgrades)>0||housingId)){
   population=8;
   const employment=cappedEmployment({...site,population},Math.floor(settlementDemographics({...site,population,workforce:8}).eligible_workers*.8));
   await db.execute('UPDATE world_settlements SET population=?,workforce=? WHERE id=?',[population,employment,site.id]);
