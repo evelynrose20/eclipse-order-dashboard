@@ -1,3 +1,4 @@
+import {autonomouslyAssignNpcFarm,rankNpcFarmCandidates,npcCargoParameters} from '../src/world-npc-cargo.js';
 import {runNpcCargoAutomation} from '../src/world-npc-cargo.js';
 import {advanceCivicTemplateProjects} from '../src/world-civic-template-projects.js';
 import test from 'node:test';
@@ -1118,8 +1119,12 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const farmOptions=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation/'+npcId+'/farm/options',{id,account_role:'domina'});
   assert.equal(farmOptions.status,200,JSON.stringify(farmOptions.body));
   assert.ok(farmOptions.body.options.some(x=>x.source_type==='industry_site'&&Number(x.id)===npcCargoMapSiteId));
-  const assignFarm=await settlementSimulationRoute(admin,request('PUT',{source_type:'industry_site',source_id:npcCargoMapSiteId,travel_hours:24,cargo_capacity:20}),'/world-admin/simulation/'+npcId+'/farm',{id,account_role:'domina'});
-  assert.equal(assignFarm.status,200,JSON.stringify(assignFarm.body));
+  const [[npcForAutoFarm]]=await admin.execute('SELECT * FROM world_settlements WHERE id=?',[npcId]);
+  const autoFarm=await autonomouslyAssignNpcFarm(admin,npcForAutoFarm);
+  assert.equal(autoFarm.status,'established','NPC automatically chooses its own mapped faction farm');
+  const assignFarm={status:200,body:{facility_id:autoFarm.route.facility_id}};
+  const autoFarmAgain=await autonomouslyAssignNpcFarm(admin,npcForAutoFarm);
+  assert.equal(autoFarmAgain.status,'active','NPC AI does not duplicate a functioning supplier');
   const [[npcInitialFarm]]=await admin.execute('SELECT site_id,owner_faction_id,status,cycle_mode FROM world_industry_facilities WHERE id=?',[assignFarm.body.facility_id]);
   assert.equal(Number(npcInitialFarm.site_id),npcCargoMapSiteId,'farm production attaches to the selected mapped location');
   assert.equal(npcInitialFarm.owner_faction_id,'house-kurogane');
