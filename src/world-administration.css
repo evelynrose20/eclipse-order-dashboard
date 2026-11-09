@@ -356,3 +356,19 @@
 .wa-map-selection-panel .wa-inspector .wa-inspector-actions{grid-column:1/-1!important;display:flex!important;flex-wrap:wrap;gap:9px!important;border:0;padding:0}
 .wa-inspector-actions button{display:inline-flex;align-items:center;gap:8px}
 @media(max-width:760px){.wa-inspector .wa-inspector-hero{flex-direction:column}.wa-inspector .wa-inspector-status{max-width:100%;justify-content:flex-start}.wa-inspector-browse-head{flex-wrap:wrap}}
+
+
+/* Settlement inspector is a game-style window over the map, not another page section. */
+.wa-inspector-overlay{position:fixed;inset:0;z-index:990;background:rgba(3,9,14,.78);display:grid;place-items:center;padding:clamp(12px,3vw,40px);backdrop-filter:blur(5px)}
+.wa-inspector-modal{width:min(940px,100%);max-height:min(88vh,920px);overflow:auto;overscroll-behavior:contain;border:1px solid #a08864;box-shadow:0 24px 90px #000b,0 0 0 1px #dbba8047;scrollbar-color:#7a7769 #132330}
+.wa-inspector-modal-heading{position:sticky;top:0;z-index:2;background:linear-gradient(95deg,#263644,#15232c);border-bottom:1px solid #9a815c;min-height:54px}
+.wa-inspector-modal-heading>div{display:flex;align-items:center;gap:15px}
+.wa-root .wa-inspector-modal-heading button{height:35px;width:35px;display:grid;place-items:center;border:1px solid #697c81;background:#304450;color:#f2e3c7;border-radius:4px;font-size:16px}
+.wa-root .wa-inspector-modal-heading button:hover{border-color:#d4b588;background:#503c3b}
+.wa-inspector-modal .wa-inspector{padding:18px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.wa-inspector-modal .wa-inspector-hero,.wa-inspector-modal .wa-inspector-actions-top,.wa-inspector-modal .wa-inspector-actions,.wa-inspector-modal .wa-inspector-civic{grid-column:1/-1!important}
+.wa-inspector-modal .wa-inspector-civic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 18px}
+.wa-inspector-modal .wa-inspector-civic h4,.wa-inspector-modal .wa-inspector-civic .wa-civic-alerts,.wa-inspector-modal .wa-inspector-civic button{grid-column:1/-1}
+.wa-inspector-modal .wa-inspector>div:not(.wa-inspector-hero):not(.wa-inspector-actions-top):not(.wa-inspector-actions){min-width:0}
+@media(max-width:750px){.wa-inspector-modal .wa-inspector{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-inspector-modal .wa-inspector-civic{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:530px){.wa-inspector-overlay{padding:7px}.wa-inspector-modal{max-height:95vh}.wa-inspector-modal .wa-inspector,.wa-inspector-modal .wa-inspector-civic{grid-template-columns:1fr}.wa-inspector-modal-heading>div>span{display:none}}
