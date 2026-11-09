@@ -15,11 +15,13 @@ SET @wagons_sql := (SELECT IF(COUNT(*)=0,
  "ALTER TABLE world_magitek_equipment_templates ADD COLUMN max_wagons SMALLINT UNSIGNED NOT NULL DEFAULT 0",
  'DO 0') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND column_name='max_wagons');
 PREPARE garlean_wagons_stmt FROM @wagons_sql; EXECUTE garlean_wagons_stmt; DEALLOCATE PREPARE garlean_wagons_stmt;
-SET @check_sql := (SELECT IF(COUNT(*)>0, 'ALTER TABLE world_magitek_equipment_templates DROP CHECK chk_magitek_capacity', 'DO 0') FROM information_schema.table_constraints WHERE table_schema=DATABASE() AND table_name='world_magitek_equipment_templates' AND constraint_name='chk_magitek_capacity');
-PREPARE garlean_check_stmt FROM @check_sql; EXECUTE garlean_check_stmt; DEALLOCATE PREPARE garlean_check_stmt;
-ALTER TABLE world_magitek_equipment_templates ADD CONSTRAINT chk_magitek_capacity CHECK(
- transport_capacity<=10000 AND cargo_capacity<=100000 AND crew_required<=1000
- AND fuel_per_operation>=0 AND fuel_per_operation<=10000 AND max_wagons<=100);
+-- Preserve the original capacity constraint. MariaDB does not accept ALTER TABLE ... DROP CHECK.
+-- Add the new wagon limit independently and only once, so partially applied setup can resume.
+SET @wagon_check_sql := (SELECT IF(COUNT(*)=0,
+ 'ALTER TABLE world_magitek_equipment_templates ADD CONSTRAINT chk_magitek_wagons CHECK (max_wagons<=100)',
+ 'DO 0') FROM information_schema.table_constraints WHERE table_schema=DATABASE()
+ AND table_name='world_magitek_equipment_templates' AND constraint_name='chk_magitek_wagons');
+PREPARE garlean_wagon_check_stmt FROM @wagon_check_sql; EXECUTE garlean_wagon_check_stmt; DEALLOCATE PREPARE garlean_wagon_check_stmt;
 CREATE TABLE IF NOT EXISTS world_magitek_train_consists (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  name VARCHAR(140) NOT NULL,
