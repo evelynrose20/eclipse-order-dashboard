@@ -116,6 +116,15 @@ export async function industryRoute(pool,req,path,actor){
    }
    const manufactureError=await validateEquipmentManufacture(db,{...b,category:effectiveCategory});
    if(manufactureError)return fail(409,manufactureError);
+   // Never publish an NPC-shared recipe that produces a private Order vehicle.
+   const requestedScope=b.access_scope||(versionTarget
+    ?(await db.execute('SELECT access_scope FROM world_industry_templates WHERE id=?',[versionTarget]))[0][0]?.access_scope
+    :'order_only');
+   const equipmentOutputs=[...(b.configuration.outputs||[]),...(b.configuration.byproducts||[])].map(x=>x.item_id);
+   if(requestedScope==='shared'&&equipmentOutputs.length){
+    const [privateDesigns]=await db.query("SELECT item_id FROM world_magitek_equipment_templates WHERE access_scope='order_only' AND item_id IN ("+equipmentOutputs.map(()=>'?').join(',')+") LIMIT 1",equipmentOutputs);
+    if(privateDesigns.length)return fail(409,'shared_recipe_uses_order_only_equipment');
+   }
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
     const [[old]]=await db.execute('SELECT id,current_version,category,access_scope FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
