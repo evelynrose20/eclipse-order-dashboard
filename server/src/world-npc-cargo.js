@@ -102,17 +102,24 @@ export function npcCargoParameters(settlement,farm){
 export async function autonomouslyAssignNpcFarm(db,settlement){
  if(!settlement?.controlling_faction_id||settlement.controlling_faction_id==='eclipse-order')return {status:'not_npc'};
  const [[route]]=await db.execute('SELECT * FROM world_npc_cargo_routes WHERE settlement_id=? FOR UPDATE',[settlement.id]);
+ const candidates=await npcMappedFarmOptions(db,settlement);
  if(route){
   const [[facility]]=await db.execute('SELECT status,owner_faction_id FROM world_industry_facilities WHERE id=?',[route.facility_id]);
-  if(facility&&facility.owner_faction_id===settlement.controlling_faction_id){
-   // Existing assigned route remains a stable NPC supply contract. If its source is
-   // captured, standard industry/cargo checks stop production until ownership returns.
-   return {status:route.enabled?'active':'paused',route_id:route.id};
+  const sourceType=route.site_id?'industry_site':'settlement_marker';
+  const sourceId=Number(route.site_id||route.map_settlement_id);
+  const mapped=candidates.find(x=>x.source_type===sourceType&&Number(x.id)===sourceId);
+  if(mapped&&facility?.owner_faction_id===settlement.controlling_faction_id&&['operational','paused'].includes(facility.status)){
+   const policy=npcCargoParameters(settlement,mapped);
+   // Workforce controls available haulers; no staff-settable unlimited cargo.
+   if(Number(route.cargo_capacity)!==policy.cargo_capacity||Number(route.travel_hours)!==policy.travel_hours){
+    await db.execute('UPDATE world_npc_cargo_routes SET cargo_capacity=?,travel_hours=? WHERE id=?',[policy.cargo_capacity,policy.travel_hours,route.id]);
+   }
+   return {status:route.enabled?'active':'paused',route_id:route.id,cargo_capacity:policy.cargo_capacity};
   }
-  // Do not mutate a captured or missing route while goods are in flight.
-  return {status:'supplier_unavailable',route_id:route.id};
+  const [[inTransit]]=await db.execute("SELECT id FROM world_npc_cargo_shipments WHERE route_id=? AND status='in_transit' LIMIT 1",[route.id]);
+  if(inTransit)return {status:'awaiting_previous_cargo',route_id:route.id};
  }
- const candidates=await npcMappedFarmOptions(db,settlement);
+
  if(!candidates.length)return {status:'no_mapped_farm'};
  const [usedRoutes]=await db.execute('SELECT site_id,map_settlement_id FROM world_npc_cargo_routes');
  const used=usedRoutes.map(x=>x.site_id?{source_type:'industry_site',source_id:x.site_id}:{source_type:'settlement_marker',source_id:x.map_settlement_id});
