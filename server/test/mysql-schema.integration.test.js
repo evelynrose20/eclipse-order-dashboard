@@ -1319,7 +1319,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const designId=savedDesign.body.id;
   const tooCheap=await makeTemplate('ci-free-tank','CI Free Tank','manufacturing',{inputs:[{item_id:'iron-ingot',qty:1}],outputs:[{item_id:magitekDesign.item_id,qty:1}],byproducts:[],labor:1,heat:0,power:0,capacity:100,upgrade_level:1});
   assert.equal(tooCheap.status,409,'vehicles cannot be produced without real input materials, labor and power');
-  const magitekRecipe={inputs:[{item_id:'iron-ingot',qty:56},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:magitekDesign.item_id,qty:4}],byproducts:[],labor:10,heat:1,power:5,capacity:2,upgrade_level:1};
+  const magitekRecipe={inputs:[{item_id:'iron-ingot',qty:62},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:magitekDesign.item_id,qty:4}],byproducts:[],labor:10,heat:1,power:5,capacity:2,upgrade_level:1};
   const magitekFactoryTemplate=await makeTemplate('ci-magitek-armored-plant','CI Magitek Armored Works','manufacturing',magitekRecipe);
   assert.equal(magitekFactoryTemplate.status,200,JSON.stringify(magitekFactoryTemplate.body));
   const [[magitekDemographicsBefore]]=await admin.execute('SELECT population,workforce FROM world_settlements WHERE id=?',[mineId]);
@@ -1336,7 +1336,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(finishMagitek.body.completed,true,'magitek plant must be rebuilt with labor, not spawned operational');
   const emptyCommission=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:1}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
   assert.equal(emptyCommission.status,409,'a design cannot conjure a free vehicle');
-  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,'iron-ingot',56)",[magitekFactoryId]);
+  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,'iron-ingot',62)",[magitekFactoryId]);
   await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,'ceruleum-fuel',10)",[magitekFactoryId]);
   const magitekCycle=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+magitekFactoryId+'/run',staff);
   assert.equal(magitekCycle.status,200,JSON.stringify(magitekCycle.body));
