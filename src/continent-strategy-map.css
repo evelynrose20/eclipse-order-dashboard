@@ -73,3 +73,14 @@
 .csm-map .csm-handle{cursor:move;touch-action:none}
 @media(max-width:960px){.csm-reference-editor{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.csm-reference-editor{grid-template-columns:1fr}.csm-reference-actions{grid-column:1}}
+
+
+/* Built-in atlas relief is map ground, not a selectable image overlay. */
+.csm-map-shell{background:#172f37}
+.csm-terrain-toggle{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#d4dcca;white-space:nowrap;margin-left:auto}
+.csm-terrain-toggle input{accent-color:#d5ad71;width:14px;height:14px}
+.csm-terrain-toggle+.csm-zoom{margin-left:6px}
+.ilsabard-native-terrain{pointer-events:none}
+.csm-territory polygon,.csm-province polygon{stroke-linejoin:round}
+.csm-territory.selected polygon{filter:drop-shadow(0 0 3px #f4cb86)}
+@media(max-width:680px){.csm-layerbar{flex-wrap:wrap}.csm-terrain-toggle{margin-left:0}.csm-terrain-toggle+.csm-zoom{margin-left:auto}}
