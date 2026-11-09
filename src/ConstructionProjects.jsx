@@ -22,10 +22,10 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  const matName=id=>materials.find(m=>m.id===id)?.name||id;
  const ownReserved=id=>Number(reserved.find(r=>r.character_id===characterId&&r.material_id===id)?.quantity||0);
  const sharedAvailable=id=>Number(legacyMaterials.find(m=>m.id===id)?.quantity||0);
- const available=id=>selectedReq?.industry_item_id?Number(facilities.find(f=>String(f.id)===String(delivery.facility_id)&&f.item_id===id)?.quantity||0):delivery.source==='reserved'?ownReserved(id):sharedAvailable(id);
- const sourceFacilities=selectedReq?.industry_item_id?facilities.filter(f=>f.item_id===selectedReq.industry_item_id):[];
  const selectedStage=project?.stages.find(s=>String(s.id)===String(activeStage))||project?.stages.find(s=>s.status==='active')||project?.stages[0];
  const selectedReq=selectedStage?.requirements.find(r=>String(r.id)===String(delivery.requirement_id))||selectedStage?.requirements.find(r=>Number(r.contributed_quantity)<Number(r.required_quantity))||selectedStage?.requirements[0];
+ const available=id=>selectedReq?.industry_item_id?Number(facilities.find(f=>String(f.id)===String(delivery.facility_id)&&f.item_id===id)?.quantity||0):delivery.source==='reserved'?ownReserved(id):sharedAvailable(id);
+ const sourceFacilities=selectedReq?.industry_item_id?facilities.filter(f=>f.item_id===selectedReq.industry_item_id):[];
  const remaining=selectedReq?Math.max(0,Number(selectedReq.required_quantity)-Number(selectedReq.contributed_quantity)):0;
  const maxQuantity=Math.min(100,remaining,selectedReq?available(selectedReq.material_id):0);
  const total=project?.stages.reduce((sum,s)=>sum+s.requirements.reduce((n,r)=>n+Number(r.required_quantity),0),0)||0;
