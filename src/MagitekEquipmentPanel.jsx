@@ -22,11 +22,11 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
   {name:'Imperial-style Army Warship',equipment_kind:'capital_airship',transport_capacity:400,cargo_capacity:1200,crew_required:60},
  ];
  const make=(preset=null)=>{setDraft({...blank(),...(preset||{})});setEditing('new');setError('');};
- const edit=t=>{setDraft({...t,max_wagons:t.equipment_kind==='locomotive'?Number(t.max_wagons||8):0,enabled:!!t.enabled,fuel_item_id:t.fuel_item_id||null});setEditing(t.id);setError('');};
+ const edit=t=>{setDraft({...t,transport_capacity:Number(t.transport_capacity||0),cargo_capacity:Number(t.cargo_capacity||0),crew_required:Number(t.crew_required||0),fuel_per_operation:Number(t.fuel_per_operation||0),max_wagons:t.equipment_kind==='locomotive'?Number(t.max_wagons||8):0,enabled:!!t.enabled,fuel_item_id:t.fuel_item_id||null});setEditing(t.id);setError('');};
  const submit=async(path,method,body,done)=>{
   setBusy(true);setError('');setMessage('');
-  try{await request(path,{method,body});await reload();setMessage(done);setEditing(null);setAssign(null);}
-  catch(e){setError(e.message||'Equipment operation failed')}
+  try{await request(path,{method,body});await reload();setMessage(done);setEditing(null);setAssign(null);return true;}
+  catch(e){setError(e.message||'Equipment operation failed');return false;}
   finally{setBusy(false)}
  };
  const allManufacturing=facilities.filter(f=>f.owner_faction_id==='eclipse-order'&&f.controlling_faction_id==='eclipse-order'&&f.status==='operational'&&f.template_category==='manufacturing');
@@ -55,7 +55,7 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
      {reservedCars.map(x=><label key={x.id}><input type="checkbox" checked={trainDraft.car_lot_ids.includes(Number(x.id))} onChange={e=>setTrainDraft(d=>({...d,car_lot_ids:e.target.checked?[...d.car_lot_ids,Number(x.id)]:d.car_lot_ids.filter(id=>id!==Number(x.id))}))}/> {x.template_name} × {number(x.quantity)} · Lot #{x.id}</label>)}
      {!reservedCars.length&&<p className="wa-npc-subtle">Manufacture, commission and reserve railcars to assemble a train.</p>}
     </div>
-    <button type="button" disabled={busy||!trainDraft.name.trim()||!selectedLoco||!trainDraft.car_lot_ids.length||wagonCount>maximumWagons} onClick={async()=>{await submit('/world-admin/industry/trains','POST',{name:trainDraft.name,locomotive_lot_id:Number(trainDraft.locomotive_lot_id),car_lot_ids:trainDraft.car_lot_ids},'Train assembled from actual commissioned railway equipment.');setTrainDraft({name:'',locomotive_lot_id:'',car_lot_ids:[]});}}>Assemble train from reserves</button>
+    <button type="button" disabled={busy||!trainDraft.name.trim()||!selectedLoco||!trainDraft.car_lot_ids.length||wagonCount>maximumWagons} onClick={async()=>{if(await submit('/world-admin/industry/trains','POST',{name:trainDraft.name,locomotive_lot_id:Number(trainDraft.locomotive_lot_id),car_lot_ids:trainDraft.car_lot_ids},'Train assembled from actual commissioned railway equipment.'))setTrainDraft({name:'',locomotive_lot_id:'',car_lot_ids:[]});}}>Assemble train from reserves</button>
    </div>
    <div className="wa-industry-projects">{trains.filter(t=>t.status==='assembled').map(t=><article key={t.id}><div className="wa-industry-blockhead"><div><small>COMPLETE TRAIN · {t.wagon_count} WAGONS</small><strong>{t.name}</strong><p>{t.locomotive?.name}</p></div><button type="button" disabled={busy} onClick={()=>submit('/world-admin/industry/trains/'+t.id+'/disband','POST',{},'Train returned to locomotive and railcar reserves.')}>Disassemble</button></div><div className="wa-upgrade-details"><span>Freight {number(t.cargo_capacity)}</span><span>Passengers {number(t.transport_capacity)}</span><span>Crew {number(t.crew_required)}</span><span>Fuel {number(t.fuel_per_operation)} / operation</span></div><small>{t.cars.map(c=>c.quantity+' × '+c.name).join(' · ')}</small></article>)}{!trains.some(t=>t.status==='assembled')&&<p className="wa-npc-subtle">No assembled trains yet. A locomotive or wagon blueprint alone is not a complete train.</p>}</div>
   </section>
