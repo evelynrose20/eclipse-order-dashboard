@@ -1,4 +1,4 @@
-import {npcMappedFarmOptions,assignNpcMappedFarm} from './world-npc-cargo.js';
+import {npcMappedFarmOptions,assignNpcMappedFarm,autonomouslyAssignNpcFarm} from './world-npc-cargo.js';
 import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
@@ -272,6 +272,9 @@ export async function runSettlementSimulation(pool,now=new Date()){
    let effectiveSite=site,effectiveState=state;
    if(ownership==='npc'){
     await establishNpcSettlement(db,site,state);
+    // Autonomous faction AI claims an eligible map farm and negotiates its cargo
+    // route. Players only place map locations and decide territorial ownership.
+    const npcSupplyDecision=await autonomouslyAssignNpcFarm(db,site);
     [[effectiveSite]]=await db.execute('SELECT s.*,r.simulation_mode,r.weather_mode,r.weather,r.temperature_c FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?',[id]);
     [[effectiveState]]=await db.execute('SELECT * FROM world_settlement_autosim WHERE settlement_id=?',[id]);
    }
