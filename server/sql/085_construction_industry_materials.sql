@@ -19,6 +19,6 @@ PREPARE statement FROM @migration_sql;
 EXECUTE statement;
 DEALLOCATE PREPARE statement;
 ALTER TABLE world_industry_ledger
- MODIFY COLUMN action ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit') NOT NULL;
+ MODIFY COLUMN action ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply') NOT NULL;
 INSERT INTO schema_migrations(version) VALUES('085_construction_industry_materials')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
