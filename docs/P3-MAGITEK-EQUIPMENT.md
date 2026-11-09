@@ -27,3 +27,27 @@ The equipment blueprint is an output definition rather than an alternative produ
 ## Installation
 
 Pull the latest GitHub `main`, run `npm run setup:local` from `server` on the Windows API host, restart the service, then refresh the dashboard. The new migration `071_magitek_equipment_manufacturing.sql` extends the industry item category list and creates the blueprint, inventory and movement tables. It leaves existing facilities, industry recipes, rail routes and past material stock ledgers unchanged.
+
+## Official Garlean equipment and enormous military airships (migrations 072–073)
+
+The **Magitek & war stores** equipment library includes a conservative, lore-tagged seed list drawn from FFXIV:
+
+- **Canonical magitek types:** Reaper, Vanguard, Colossus and Juggernaut.
+- **Canonical imperial aircraft categories:** Magitek Gunship and Imperial Assault Craft.
+- **Canonical military airship classes:** Aurora-class Warship (medium) and Agrius-class Flying Fortress (capital-scale). The **Gration** is an actual named vessel of comparable scale, *not* a newly invented Gration-class design.
+- **Documented Garlean railway vehicle:** Mark XLIX Passenger Train, modeled as a locomotive/trainset for this sim.
+- **Original RP-derived designs:** Imperial-style Freight Locomotive, Freight Railcar and Troop Railcar. Those generic model names are not presented as verified Square Enix vehicle designations.
+
+References: [Official FFXIV ARR world lore](https://na.finalfantasyxiv.com/a_realm_reborn/world/lore), [Garlean Empire / Encyclopaedia Eorzea class summaries](https://ffxiv.consolegameswiki.com/wiki/The_Garlean_Empire), [Mark XLIX Endwalker sightseeing landmark](https://ffxiv.consolegameswiki.com/wiki/The_Runaway_Train).
+
+All passenger counts, military crew counts, resource requirements, movement fuel consumption and cargo capacities are **gameplay estimates**, not canon numeric statistics. Descriptions, provenance fields and edition revisions preserve that distinction; only the seeded official designs may claim verified FFXIV class/model status. Blueprints do not create free vehicles or finished production output.
+
+Capital-scale airships use the distinct **capital_airship** class, with larger allowed capacity and much higher manufacturing labor/power/material floors than small gunships or assault transports. To build an Agrius-class-style fleet, create an actual manufacturing facility template and work through its normal inputs, staff and fuel-backed power. A recommended starting production recipe is filled from the selected blueprint, including the much larger cost of capital ships. All completed ships are commissioned into the existing war fleet inventory and may be stationed as readiness assets; the flight/battle simulation is not yet connected.
+
+### Complete trains and internal railway services
+
+A locomotive blueprint or isolated freight wagon is not a complete train. **Magitek & war stores → Assemble complete trains** combines **one actually commissioned, reserve-status locomotive lot** with one or more reserved manufactured railcar lots. The unit quantity in a car lot counts toward the locomotive's pinned maximum hauled wagon count. The whole train records its **actual combined cargo capacity, passenger capacity and crew requirement** from the historical specifications of its physical carriages and locomotive. The same locomotive or wagon lot cannot be in two trains or reassigned independently while assembled. Disassembly returns all units to reserve; historical train records and the equipment ledger remain.
+
+**Internal Rail Logistics** can now select one of these assembled trains when dispatching a rail service. The journey records the consist ID and its actual capacity at departure. A train cannot run two simultaneous routes, be disassembled during its journey or begin a later leg from a station different from its last arrival. Older journey history is preserved, including earlier menu-only service records with no physical consist attached.
+
+This first integration is an **operational scheduling and capacity registry**, not yet full cargo loading/unloading. Assigning a train to a journey neither creates cargo nor moves workshop inventory; railway engine fuel and the goods being shipped must receive a separate actual stock/consumption implementation before automated train deliveries can be claimed. Existing road/rail map geometry remains unchanged and is not overwritten by the menu-based internal railway service.
