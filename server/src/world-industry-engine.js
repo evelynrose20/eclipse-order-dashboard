@@ -33,7 +33,7 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[facility]]=await db.execute(`SELECT f.*,COALESCE(s.population,0) AS population,
  COALESCE(s.civil_stability,70) AS stability,COALESCE(s.security_score,50) AS security,
  COALESCE(s.name,site.name) AS location_name,t.category AS industry_category,COALESCE(s.region_id,site.region_id) AS region_id,
- COALESCE(s.zone_id,site.zone_id) AS zone_id,COALESCE(home.region_id,s.region_id,site.region_id) AS labor_region_id,COALESCE(home.zone_id,s.zone_id,site.zone_id) AS labor_zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
+ COALESCE(s.zone_id,site.zone_id) AS zone_id,t.access_scope AS blueprint_scope,COALESCE(home.region_id,s.region_id,site.region_id) AS labor_region_id,COALESCE(home.zone_id,s.zone_id,site.zone_id) AS labor_zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
  FROM world_industry_facilities f
  JOIN world_industry_templates t ON t.id=f.template_id
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
@@ -95,6 +95,16 @@ export async function getIndustryPreview(db,id,lock=false){
  preview.power_required=config.power;
  if(['destroyed','abandoned'].includes(facility.map_condition))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['mapped_location_needs_rebuilding'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  if((facility.owner_faction_id||null)!==(facility.controlling_faction_id||null))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['facility_ownership_changed'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
+ // Access is checked for every dry-run and committed cycle, including grandfathered NPC factories.
+ // A shared manufacturing recipe cannot disclose Order-only output merely by referring to its item id.
+ const outputIds=[...new Set([...(config.outputs||[]),...(config.byproducts||[])].map(x=>x.item_id))];
+ let privateOutput=false;
+ if(facility.owner_faction_id!=='eclipse-order'&&outputIds.length){
+  const [restricted]=await db.query("SELECT item_id FROM world_magitek_equipment_templates WHERE access_scope='order_only' AND item_id IN ("+outputIds.map(()=>'?').join(',')+") LIMIT 1",outputIds);
+  privateOutput=restricted.length>0;
+ }
+ if(facility.owner_faction_id!=='eclipse-order'&&(facility.blueprint_scope==='order_only'||privateOutput))
+  return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['order_only_blueprint'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  return {facility,config,rules,stock,preview};
 }
 export async function produceIndustryCycle(db,id,now=new Date(),actorId=null,dry=false){
