@@ -2,6 +2,7 @@ import {npcMappedFarmOptions,assignNpcMappedFarm,autonomouslyAssignNpcFarm} from
 import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
 import {npcProvinceDevelopment} from './world-strategic-provinces.js';
+import {assessNpcDiplomaticTensions} from './world-diplomacy.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
 import {beginCivicTemplateProject,advanceCivicTemplateProjects} from './world-civic-template-projects.js';
 import {advanceWorkerHealth,workerHealthSnapshot} from './world-worker-care.js';
@@ -289,6 +290,11 @@ export async function runSettlementSimulation(pool,now=new Date()){
    results.push(result);
   }catch(error){await db.rollback().catch(()=>{});console.warn('[World simulation] Settlement cycle failed:',id,error?.code||error?.name||'error')}
   finally{db.release()}
+ }
+ // NPC diplomacy is advisory only; proposal creation never authorizes warfare or ownership changes.
+ // A diplomacy outage must never stop economy ticks.
+ if(results.some(r=>r.origin==='npc')){
+  try{await assessNpcDiplomaticTensions(pool)}catch(error){console.warn('[World simulation] Diplomatic assessment skipped:',error?.code||error?.name||'error')}
  }
  return {processed:results.length,events:results};
 }
