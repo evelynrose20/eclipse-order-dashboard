@@ -291,3 +291,23 @@
 /* Independent farms and production sites are map objects, not civilian settlements. */
 .wtm-industry-pin .wtm-pin-icon{border:1px solid #85b7a1;background:#183d38;color:#c9ebd6}
 .wtm-industry-pin .wtm-pin-state{background:#183d38;color:#ace0c3;border-color:#5d9e84}
+
+
+/* Terrain is a gameplay restriction, not a decorative route. Mountain ridge
+   lines designate an impassable band roughly 3.2% of map space each side. */
+.wtm-range-exclusion{fill:none;stroke:#716c54;stroke-width:6.4;stroke-linejoin:round;stroke-linecap:round;opacity:.36}
+.wtm-range-shadow{stroke:#101718;stroke-width:4.2;opacity:.85}
+.wtm-range-ridge{stroke:#c7c6b0;stroke-width:2.8;stroke-dasharray:1.4 2.8;opacity:.92;stroke-linecap:round}
+.wtm-range-peak{stroke:#eee2bf;stroke-width:1.05;opacity:1}
+.wtm-range-label{font-size:2.5px;letter-spacing:.04em;stroke-width:1}
+.wtm-mountain-rule{display:grid;gap:6px;background:#3a3330;border-left:4px solid #d8ac65;padding:13px 16px;color:#f0e7d5;font-size:12px;line-height:1.5}
+.wtm-mountain-rule>strong{font-size:13px;letter-spacing:.07em}
+.wtm-mountain-rule .wtm-mountain-conflict{color:#ffb8a4}
+.wtm-rivers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+.wtm-river-bank{fill:none;stroke:#102e3a;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.wtm-river-flow{fill:none;stroke:#7ec9df;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+.wtm-river-label{font-size:2.1px;fill:#c8ecf5;font-weight:700;paint-order:stroke;stroke:#13303d;stroke-width:.75}
+.wtm-river-draft>path{fill:none;stroke:#b2edfa;stroke-width:2.1;stroke-dasharray:2 2}
+.wtm-river-editor{border-top-color:#6199ac;background:#193745}
+.wtm-river-editor button{border-color:#74b1c0}
+.wtm-road-waterway,.wtm-road-skyway{display:none}
