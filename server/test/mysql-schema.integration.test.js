@@ -1319,9 +1319,11 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const designId=savedDesign.body.id;
   const tooCheap=await makeTemplate('ci-free-tank','CI Free Tank','manufacturing',{inputs:[{item_id:'iron-ingot',qty:1}],outputs:[{item_id:magitekDesign.item_id,qty:1}],byproducts:[],labor:1,heat:0,power:0,capacity:100,upgrade_level:1});
   assert.equal(tooCheap.status,409,'vehicles cannot be produced without real input materials, labor and power');
-  const magitekRecipe={inputs:[{item_id:'iron-ingot',qty:12},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:magitekDesign.item_id,qty:1}],byproducts:[],labor:10,heat:1,power:5,capacity:1,upgrade_level:1};
+  const magitekRecipe={inputs:[{item_id:'iron-ingot',qty:56},{item_id:'ceruleum-fuel',qty:2}],outputs:[{item_id:magitekDesign.item_id,qty:4}],byproducts:[],labor:10,heat:1,power:5,capacity:2,upgrade_level:1};
   const magitekFactoryTemplate=await makeTemplate('ci-magitek-armored-plant','CI Magitek Armored Works','manufacturing',magitekRecipe);
   assert.equal(magitekFactoryTemplate.status,200,JSON.stringify(magitekFactoryTemplate.body));
+  const [[magitekDemographicsBefore]]=await admin.execute('SELECT population,workforce FROM world_settlements WHERE id=?',[mineId]);
+  await admin.execute('UPDATE world_settlements SET population=600,workforce=300 WHERE id=?',[mineId]);
   const magitekFactory=await industryRoute(admin,request('POST',{...factorySettings,template_id:magitekFactoryTemplate.body.template_id,name:'CI Armored Magitek Assembly Plant',status:'operational',cycle_mode:'manual'}),'/world-admin/industry/facilities',staff);
   assert.equal(magitekFactory.status,200,JSON.stringify(magitekFactory.body));
   const magitekFactoryId=magitekFactory.body.id;
@@ -1334,7 +1336,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(finishMagitek.body.completed,true,'magitek plant must be rebuilt with labor, not spawned operational');
   const emptyCommission=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:1}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
   assert.equal(emptyCommission.status,409,'a design cannot conjure a free vehicle');
-  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,?,4)",[magitekFactoryId,magitekDesign.item_id]);
+  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,'iron-ingot',56)",[magitekFactoryId]);
+  await admin.execute("INSERT INTO world_industry_stock(facility_id,item_id,quantity) VALUES(?,'ceruleum-fuel',10)",[magitekFactoryId]);
+  const magitekCycle=await industryRoute(admin,request('POST',{}),'/world-admin/industry/facilities/'+magitekFactoryId+'/run',staff);
+  assert.equal(magitekCycle.status,200,JSON.stringify(magitekCycle.body));
+  assert.equal(magitekCycle.body.preview.outputs[magitekDesign.item_id],4,'factory physically produces four complete vehicles from materials');
+  const [[ironAfterAssembly]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ingot'",[magitekFactoryId]);
+  assert.equal(Number(ironAfterAssembly.quantity),0,'assembly consumes its metal stock');
+  await admin.execute('UPDATE world_settlements SET population=?,workforce=? WHERE id=?',[magitekDemographicsBefore.population,magitekDemographicsBefore.workforce,mineId]);
   const commissioned=await industryRoute(admin,request('POST',{equipment_template_id:designId,quantity:3}),'/world-admin/industry/equipment/facilities/'+magitekFactoryId+'/commission',staff);
   assert.equal(commissioned.status,200,JSON.stringify(commissioned.body));
   const inventoryId=commissioned.body.id;
