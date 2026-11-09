@@ -135,7 +135,7 @@ export async function equipmentRoute(pool,req,path,actor){
     WHERE c.status='assembled' AND (c.locomotive_lot_id=? OR
     EXISTS(SELECT 1 FROM world_magitek_train_cars j WHERE j.consist_id=c.id AND j.car_lot_id=?)) LIMIT 1`,[id,id]);
    if(assembled.length)return fail(409,'equipment_assigned_to_train_consist');
-   const destination=b.status==='assigned'?b.stationed_settlement_id:null;
+   const destination=b.status==='assigned'?b.stationed_settlement_id:b.status==='damaged'?unit.stationed_settlement_id:null;
    if(b.status==='assigned'&&!destination)return fail(400,'stationing_location_required');
    if(destination){
     const [[site]]=await db.execute('SELECT controlling_faction_id FROM world_settlements WHERE id=?',[destination]);
