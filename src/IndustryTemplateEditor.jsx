@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-const defaults=()=>({name:'',slug:'',category:'mine',configuration:{inputs:[],outputs:[],byproducts:[],labor:1,heat:0,power:0,capacity:1,upgrade_level:1},rules:[]});
+const defaults=()=>({name:'',slug:'',category:'mine',access_scope:'order_only',configuration:{inputs:[],outputs:[],byproducts:[],labor:1,heat:0,power:0,capacity:1,upgrade_level:1},rules:[]});
 export function equipmentAssemblyDraft(equipment,items=[]){
  const id=typeof equipment==='string'?equipment:equipment?.item_id;
  const e=typeof equipment==='string'?{}:equipment;
@@ -19,7 +19,7 @@ export function equipmentAssemblyDraft(equipment,items=[]){
 const fields=[['status','Facility state'],['level','Facility level'],['workforce','Simulated workers available'],['heat_available','Fuel-backed heat available'],['power_available','Fuel-backed power available'],['capacity_pct','Operating capacity %'],['population','Settlement residents'],['stability','Civic stability'],['security','Security'],['temperature_f','Outdoor temperature (°F)'],['weather','Weather conditions']];
 const heading=s=>s.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function IndustryTemplateEditor({template=null,suggestedOutputItem=null,items=[],request,onSaved,onCancel}){
- const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:suggestedOutputItem?equipmentAssemblyDraft(suggestedOutputItem,items):defaults());
+ const [draft,setDraft]=useState(()=>template?{name:template.name,slug:template.slug,category:template.category,access_scope:template.access_scope||'shared',configuration:structuredClone(template.configuration),rules:structuredClone(template.rules||[])}:suggestedOutputItem?equipmentAssemblyDraft(suggestedOutputItem,items):defaults());
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[test,setTest]=useState(null);
  const [scenario,setScenario]=useState({status:'operational',level:1,capacity_pct:100,workforce:30,heat_available:30,power_available:30,weather:'clear',temperature_f:32});
  const [scenarioStock,setScenarioStock]=useState({});
@@ -43,6 +43,7 @@ export default function IndustryTemplateEditor({template=null,suggestedOutputIte
    <label>Name<input value={draft.name} maxLength="120" disabled={Boolean(template)} required onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
    <label>Template ID<input value={draft.slug} maxLength="70" disabled={Boolean(template)} placeholder="voidsent-mine" onChange={e=>setDraft({...draft,slug:e.target.value.toLowerCase().replace(/\s+/g,'-')})}/></label>
    <label>Industry<select value={draft.category} disabled={Boolean(template)} onChange={e=>setDraft({...draft,category:e.target.value})}>{['mine','extraction','refinery','manufacturing','utilities','agriculture','other'].map(c=><option key={c} value={c}>{heading(c)}</option>)}</select></label>
+   <label>Blueprint access<select value={draft.access_scope} onChange={e=>setDraft({...draft,access_scope:e.target.value})}><option value="order_only">Eclipse Order only</option><option value="shared">Shared with NPC factions</option></select></label>
   </div>
   <div className="wa-industry-rule-layout">
    <section><h4>Production requirements</h4><div className="wa-industry-editor-grid">{[['labor','Workforce needed / operation'],['heat','Heat needed / operation'],['power','Power needed / operation'],['capacity','Maximum operations / cycle'],['upgrade_level','Minimum facility level']].map(([field,label])=><label key={field}>{label}<input type="number" step="1" min={field==='upgrade_level'||field==='capacity'||field==='labor'?1:0} max={field==='capacity'?100:field==='upgrade_level'?20:100000} value={draft.configuration[field]} onChange={e=>setConfig(field,Number(e.target.value))}/></label>)}</div>
