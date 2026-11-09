@@ -1,5 +1,6 @@
 import React,{useMemo} from 'react';
 import {safelyOffshore} from './terrain-geography.js';
+import AtlasBiomeRelief from './AtlasBiomeRelief.jsx';
 
 // A native, non-interactive terrain atlas, derived from the broad geography
 // in the supplied Three Great Continents reference. No source-map image,
@@ -115,9 +116,10 @@ export default function IlsabardTerrain({showRelief=true}){
   {offshoreIslands.map(([x,y,rx,ry,s],i)=><path key={'island'+i} d={coast(Array.from({length:10},(_,j)=>{const angle=Math.PI*2*j/10,noise=.72+HASH(s,j)*.56;return [x+Math.cos(angle)*rx*noise,y+Math.sin(angle)*ry*noise]}),s,1.7)} fill={i%4===0?'#668269':'#776f4c'} stroke="#b1a987" strokeWidth="1.1"/>)}
   <path d={paths.snowfield} fill="url(#ils-frost)" stroke="#93b0ae" strokeWidth="1.2" opacity=".96"/>
   <path d={paths.eastice} fill="url(#ils-frost)" stroke="#acb8b7" strokeWidth="1" opacity=".98"/>
+  <AtlasBiomeRelief paths={paths}/>
   <path d="M 315 146 Q 380 190 414 254 T 493 317 Q 529 339 554 388" fill="none" stroke="#d4bb83" strokeWidth="19" opacity=".16"/>
   <path d="M 630 325 Q 677 370 699 414 T 750 506" fill="none" stroke="#a69d71" strokeWidth="22" opacity=".2"/>
-  {showRelief&&<g clipPath="url(#ils-clip-all)">{forests}{mountains}
+  {showRelief&&<g clipPath="url(#ils-clip-all)" opacity=".42">{forests}{mountains}
    <path d="M 484 214 Q 474 266 486 299 Q 464 344 442 373 T 406 434" fill="none" stroke="#72979b" strokeWidth="3.5" strokeLinecap="round" opacity=".9"/>
    <path d="M 484 214 Q 474 266 486 299 Q 464 344 442 373 T 406 434" fill="none" stroke="#bbd1c6" strokeWidth=".8" opacity=".7"/>
    <path d="M 753 333 Q 773 378 775 425 Q 794 467 809 510" fill="none" stroke="#82a1a0" strokeWidth="3.4"/>
