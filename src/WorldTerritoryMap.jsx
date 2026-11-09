@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './world-territory-map.css';
 import MapIconPicker from './MapIconPicker.jsx';
 import {simplifyTrackStroke,insertRouteBend,nearestSmoothRoutePoint,orientTrackStroke} from './track-drawing.js';
+import {isMountainBlocked,npcTooCloseToMapEdge,validMountainShape} from '../server/src/world-terrain-placement.js';
 export const ICON_OPTIONS=[['settlement','Settlement','house'],['capital','Capital','crown'],['village','Village','house-chimney'],['mine','Mine','person-digging'],['factory','Factory','industry'],['refinery','Refinery','flask'],['fortress','Fortress','shield-halved'],['outpost','Outpost','flag'],['farm','Farm','wheat-awn'],['port','Port','anchor'],['depot','Depot','boxes-stacked'],['ruins','Ruins','landmark-dome'],['landmark','Landmark','monument'],['lumber_yard','Lumberyard','tree'],['logging_camp','Logging camp','tree-city'],['sawmill','Sawmill','screwdriver-wrench'],['forest','Forest','tree'],['orchard','Orchard','seedling'],['ranch','Ranch','cow'],['fishery','Fishery','fish'],['ceruleum_plant','Ceruleum processing plant','gas-pump'],['drilling_rig','Drilling rig','oil-well'],['rail_depot','Rail depot','train-subway'],['logging_road','Logging road','road'],['military_base','Military base','shield'],['lighthouse','Lighthouse','tower-observation'],['quarry','Quarry','mountain'],['workshop','Workshop','hammer'],['warehouse','Warehouse','warehouse'],['barracks','Barracks','person-military-rifle'],['watchtower','Watchtower','tower-observation'],['bridge','Bridge','bridge'],['market','Market','store'],['hospital','Hospital','hospital'],['laboratory','Laboratory','microscope'],['power_plant','Power plant','bolt'],['rail_station','Rail station','train'],['airfield','Airfield','plane']];
 export const STATUS_OPTIONS=[['peaceful','Peaceful'],['secure','Secure'],['contested','Contested'],['occupied','Occupied'],['liberated','Liberated'],['rebuilding','Rebuilding'],['abandoned','Abandoned'],['destroyed','Destroyed']];
 export const ROUTE_OPTIONS=[['road','Road'],['trail','Trail'],['rail','Railway (map only)']];
@@ -58,12 +59,12 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const traceRef=useRef(null),ignoreClickRef=useRef(false);
  const [junctionAction,setJunctionAction]=useState(''),[junctionPositions,setJunctionPositions]=useState({});
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
- const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]);
+ const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]),[mountainClosed,setMountainClosed]=useState(false);
  const [riverId,setRiverId]=useState(''),[riverName,setRiverName]=useState(''),[riverPoints,setRiverPoints]=useState([]);
 
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
- useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setRiverId('');setRiverName('');setRiverPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
+ useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setMountainClosed(false);setRiverId('');setRiverName('');setRiverPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const visibleSegmentNodes=new Set(networkSegments.filter(visibleTransport).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]));
@@ -99,8 +100,9 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const previewPoints=routeStart!=null&&routeEnd!=null&&pointForRef(routeStart)&&pointForRef(routeEnd)?[pointForRef(routeStart),...newRoutePoints,pointForRef(routeEnd)]:[];
  const currentMountain=mountains.find(m=>String(m.id)===mountainId);
  const distanceRidge=(point,pts)=>{if(!Array.isArray(pts)||pts.length<2)return Infinity;return Math.min(...pts.slice(1).map((b,i)=>{const a=pts[i],dx=b.x-a.x,dy=b.y-a.y,d=dx*dx+dy*dy,t=d?Math.max(0,Math.min(1,((point.x-a.x)*dx+(point.y-a.y)*dy)/d)):0;return Math.hypot(point.x-a.x-dx*t,point.y-a.y-dy*t)}))};
- const mountainNearby=point=>mountains.some(m=>distanceRidge(point,m.points)<3.2);
- const mountainDraftBlocked=mountainPoints.length>=2&&displayed.some(s=>distanceRidge({x:Number(s.map_x),y:Number(s.map_y)},mountainPoints)<3.2);
+ const mountainNearby=point=>mountains.some(m=>isMountainBlocked(point,m));
+ const mountainDraftBlocked=mountainPoints.length>=2&&displayed.some(s=>isMountainBlocked({x:Number(s.map_x),y:Number(s.map_y)},{points:mountainPoints,is_closed:mountainClosed}));
+ const mountainShapeValid=validMountainShape(mountainPoints,mountainClosed);
  const blockedOnMap=displayed.filter(s=>mountainNearby({x:Number(s.map_x),y:Number(s.map_y)}));
  const segmentPts=r=>polyline(r,byId);
  const activePoints=currentRoute?pointsForRoute(currentRoute,draftWaypoints):[];
@@ -130,7 +132,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   const drag=dragRef.current;if(!drag)return;
   dragRef.current=null;suppressRef.current=drag.moved;
   const p=coords(e);
-  if(p&&drag.moved){if(mountainNearby(p)){setPositions({});setError('Settlement cannot be placed on mountains. Choose clear terrain.');return}const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
+  if(p&&drag.moved){const old=settlements.find(s=>s.id===drag.id);if(old?.controlling_faction_id&&old.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge(p)){setPositions({});setError('NPC settlements need at least 10% clearance from all map edges.');return}if(mountainNearby(p)){setPositions({});setError('Settlement cannot be placed on mountains. Choose clear terrain.');return}const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
  }
  async function changeIcon(value){
   const s=displayed.find(s=>String(s.id)===String(selected));if(!s||!canEdit||busy)return;
@@ -150,13 +152,14 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   const existing=mountains.find(m=>String(m.id)===id);
   setMountainName(existing?.name||'');
   setMountainPoints(existing?.points?.map(p=>({...p}))||[]);
+  setMountainClosed(Boolean(Number(existing?.is_closed)));
  }
  async function saveMountain(){
-  if(!canEdit||busy||!mountainName.trim()||mountainPoints.length<2)return;
+  if(!canEdit||busy||!mountainName.trim()||!mountainShapeValid)return;
   if(mountainDraftBlocked){setError('Mountains cannot cover an existing settlement. Edit the ridge path.');return}
   setBusy(true);setError('');setNotice('');
   try{
-   await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),name:mountainName.trim(),points:mountainPoints}});
+   await request('/world-admin/mountains'+(mountainId?'/'+mountainId:''),{method:mountainId?'PUT':'POST',body:{region_id:Number(region.id),zone_id:Number(zoneId),name:mountainName.trim(),points:mountainPoints,is_closed:mountainClosed}});
    await reload();selectMountain('');setNotice('Mountain range saved.');
   }catch(e){setError(e.message||'Mountain range could not be saved.')}finally{setBusy(false)}
  }
@@ -438,17 +441,19 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
     {mountains.map(m=>{
      const pts=Array.isArray(m.points)?m.points:[];
      if(pts.length<2)return null;
-     const path=smoothRoadPath(pts),mid=pts[Math.floor(pts.length/2)];
-     return <g key={m.id} className="wtm-range" aria-label={m.name}>
+     const closed=Boolean(Number(m.is_closed)),path=closed?'M '+pts.map(p=>p.x+' '+p.y).join(' L ')+' Z':smoothRoadPath(pts),mid=pts[Math.floor(pts.length/2)];
+     return <g key={m.id} className={'wtm-range '+(closed?'wtm-mountain-area':'wtm-mountain-ridge')} aria-label={m.name}>
+      {closed&&<path d={path} className="wtm-range-fill"/>}
       <path d={path} className="wtm-range-exclusion"/>
       <path d={path} className="wtm-range-shadow"/>
       <path d={path} className="wtm-range-ridge"/>
-      {ridgeSymbols(pts).map((p,i)=><g key={i} className="wtm-relief-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.7)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.7)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+(p.size*.5)+' '+(p.size*.7)+' L 0 '+(p.size*.23)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.43)+' '+(-p.size*.54)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.42)+' '+(-p.size*.54)+' L '+(p.size*.09)+' '+(-p.size*.62)+' Z'} className="wtm-peak-snow"/></g>)}
+      {ridgeSymbols(closed?[...pts,pts[0]]:pts).map((p,i)=><g key={i} className="wtm-relief-peak" transform={'translate('+p.x+' '+p.y+')'}><path d={'M '+(-p.size)+' '+(p.size*.7)+' L 0 '+(-p.size*1.5)+' L '+p.size+' '+(p.size*.7)+' Z'} className="wtm-peak-rock"/><path d={'M 0 '+(-p.size*1.5)+' L '+(p.size*.5)+' '+(p.size*.7)+' L 0 '+(p.size*.23)+' Z'} className="wtm-peak-shade"/><path d={'M '+(-p.size*.43)+' '+(-p.size*.54)+' L 0 '+(-p.size*1.5)+' L '+(p.size*.42)+' '+(-p.size*.54)+' L '+(p.size*.09)+' '+(-p.size*.62)+' Z'} className="wtm-peak-snow"/></g>)}
       <text x={mid.x} y={Math.max(4,mid.y-3)} textAnchor="middle" className="wtm-range-label">{m.name}</text>
      </g>;
     })}
     {mode==='mountains'&&mountainPoints.length>0&&<g className="wtm-range-draft">
-     <path d={mountainPoints.length>=2?smoothRoadPath(mountainPoints):''} className="wtm-range-draft-path"/>
+     {mountainClosed&&mountainPoints.length>=3&&<path d={'M '+mountainPoints.map(p=>p.x+' '+p.y).join(' L ')+' Z'} className="wtm-range-draft-fill"/>}
+     <path d={mountainPoints.length>=2?(mountainClosed?'M '+mountainPoints.map(p=>p.x+' '+p.y).join(' L ')+' Z':smoothRoadPath(mountainPoints)):''} className="wtm-range-draft-path"/>
      {mountainPoints.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="1.15" fill="#f2cd8b" stroke="#19232c" strokeWidth=".5"/>)}
     </g>}
    </svg>
@@ -472,7 +477,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
    {displayed.map(s=><button key={s.id} type="button" className={'wtm-pin '+(String(s.id)===String(selected)?'selected ':'')+(routeStart===Number(s.id)?'origin ':'')} data-state={s.strategic_state||'peaceful'} data-type={s.map_icon||'settlement'} style={{left:s.map_x+'%',top:s.map_y+'%'}} onPointerDown={e=>pointerDown(e,s)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>{dragRef.current=null;setPositions({})}} onClick={e=>{e.stopPropagation();selectPin(s)}} title={s.name+' · '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')} aria-label={s.name+' ('+s.map_icon+'), '+(STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||'Peaceful')}><span className="wtm-pin-icon" aria-hidden="true"><i className={iconFor(s.map_icon)}/></span><span className="wtm-pin-name">{s.name}</span><span className="wtm-pin-state">{STATUS_OPTIONS.find(p=>p[0]===s.strategic_state)?.[1]||"Peaceful"}</span></button>)}
 
 
-    {canEdit&&['mountains','rivers'].includes(mode)&&<div className="wtm-mountain-draw" title={mode==='mountains'?'Click to trace mountain terrain':'Click to trace river'} onClick={e=>{const p=coords(e);if(p){if(mode==='mountains')setMountainPoints(old=>old.length<32?[...old,p]:old);else setRiverPoints(old=>old.length<32?[...old,p]:old)}}}/>}
+    {canEdit&&['mountains','rivers'].includes(mode)&&<div className="wtm-mountain-draw" title={mode==='mountains'?'Click to trace mountain terrain':'Click to trace river'} onClick={e=>{const p=coords(e);if(p){if(mode==='mountains')setMountainPoints(old=>{if(mountainClosed)return old;const targets=mountains.flatMap(m=>Array.isArray(m.points)?m.points:[]);const target=targets.find(q=>Math.hypot(q.x-p.x,q.y-p.y)<1.4);const point=target?{...target}:p;if(old.length>=3&&Math.hypot(point.x-old[0].x,point.y-old[0].y)<1.6){setMountainClosed(true);return old;}return old.length<256?[...old,point]:old});else setRiverPoints(old=>old.length<32?[...old,p]:old)}}}/>}
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
 
@@ -485,7 +490,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
   </div>
   </div>
   {canEdit&&<div className="wtm-bottom">
-   <span>{mode==='mountains'?'Mountains are unbuildable: no settlements can be placed here. Click to trace the ridge.':mode==='rivers'?'Click to trace a river. Rivers are natural geography, not transport routes.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':drawing?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
+   <span>{mode==='mountains'?'Mountain zones: click around the boundary, then close the loop to fill it. Click near the first point to close; click near another mountain vertex to connect. All filled terrain is unbuildable.':mode==='rivers'?'Click to trace a river. Rivers are natural geography, not transport routes.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':drawing?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
 
   </div>}
   {canEdit&&selectedNode&&(mode==='view'||mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
@@ -553,14 +558,15 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
     </>}
    </div>
   </section>}
-  {mode==='mountains'&&<div className="wtm-mountain-rule" role="note"><strong>NO SETTLEMENTS ON MOUNTAINS</strong><span>Mountain terrain blocks settlement construction and relocation. Drawing a new mountain range over existing settlements is also prohibited.</span>{mountainDraftBlocked&&<strong className="wtm-mountain-conflict">This range overlaps a settlement. Change the ridge before saving.</strong>}{blockedOnMap.length>0&&<span>Existing sites already overlapping ranges: {blockedOnMap.map(s=>s.name).join(', ')}. They were not automatically moved.</span>}</div>}
+  {mode==='mountains'&&<div className="wtm-mountain-rule" role="note"><strong>NO SETTLEMENTS ON MOUNTAINS</strong><span>Closed mountain loops create filled no-settlement zones. Draw up to 256 corners; connect outlines by clicking near an existing mountain vertex. New zones cannot cover existing settlements.</span>{mountainDraftBlocked&&<strong className="wtm-mountain-conflict">This range overlaps a settlement. Change the ridge before saving.</strong>}{blockedOnMap.length>0&&<span>Existing sites already overlapping ranges: {blockedOnMap.map(s=>s.name).join(', ')}. They were not automatically moved.</span>}</div>}
    {canEdit&&mode==='mountains'&&<div className="wtm-mountain-editor">
    <label>Mountain range<select value={mountainId} onChange={e=>selectMountain(e.target.value)}><option value="">+ New mountain range</option>{mountains.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
    <label>Range name<input maxLength={120} value={mountainName} placeholder="e.g. Northern Peaks" onChange={e=>setMountainName(e.target.value)}/></label>
-   <span>{mountainPoints.length} ridge points</span>
+   <span>{mountainPoints.length} / 256 points · {mountainClosed?'Closed mountain zone':'Open mountain ridge'}</span>
+   <button type="button" disabled={busy||mountainPoints.length<3} onClick={()=>setMountainClosed(v=>!v)}>{mountainClosed?'Open loop':'Close loop & fill'}</button>
    <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints(p=>p.slice(0,-1))}>Undo point</button>
    <button type="button" disabled={!mountainPoints.length||busy} onClick={()=>setMountainPoints([])}>Redraw</button>
-   <button type="button" disabled={busy||mountainDraftBlocked||mountainPoints.length<2||!mountainName.trim()} onClick={saveMountain}>Save range</button>
+   <button type="button" disabled={busy||mountainDraftBlocked||!mountainShapeValid||!mountainName.trim()} onClick={saveMountain}>Save range</button>
    {mountainId&&<button type="button" disabled={busy} onClick={deleteMountain}>Delete range</button>}
   </div>}
   {canEdit&&mode==='rivers'&&<div className="wtm-mountain-editor wtm-river-editor"><label>River<select value={riverId} onChange={e=>selectRiver(e.target.value)}><option value="">+ New river</option>{rivers.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>River name<input maxLength={120} value={riverName} placeholder="e.g. Cassian River" onChange={e=>setRiverName(e.target.value)}/></label><span>{riverPoints.length} river points · not transport</span><button type="button" disabled={!riverPoints.length||busy} onClick={()=>setRiverPoints(p=>p.slice(0,-1))}>Undo point</button><button type="button" disabled={!riverPoints.length||busy} onClick={()=>setRiverPoints([])}>Redraw</button><button type="button" disabled={busy||riverPoints.length<2||!riverName.trim()} onClick={saveRiver}>Save river</button>{riverId&&<button type="button" disabled={busy} onClick={deleteRiver}>Delete river</button>}</div>}
