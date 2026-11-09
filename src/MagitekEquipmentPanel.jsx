@@ -11,7 +11,14 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
  const [assignment,setAssignment]=useState({status:'reserve',stationed_settlement_id:'',notes:'',quantity:1});
  const items=data?.items||[],facilities=data?.facilities||[],settlements=data?.settlements||[];
  const namedItem=id=>items.find(x=>x.id===id)?.name||id;
- const make=()=>{setDraft(blank());setEditing('new');setError('');};
+ const presets=[
+  {name:'Magitek Cargo Hauler',equipment_kind:'transport',transport_capacity:4,cargo_capacity:50,crew_required:2},
+  {name:'Magitek Freight Wagon',equipment_kind:'railcar',transport_capacity:0,cargo_capacity:75,crew_required:1},
+  {name:'Magitek Locomotive',equipment_kind:'locomotive',transport_capacity:8,cargo_capacity:20,crew_required:3},
+  {name:'Magitek Armored Vehicle',equipment_kind:'armored_vehicle',transport_capacity:6,cargo_capacity:10,crew_required:3},
+  {name:'Magitek Airship',equipment_kind:'airship',transport_capacity:20,cargo_capacity:100,crew_required:8},
+ ];
+ const make=(preset=null)=>{setDraft({...blank(),...(preset||{})});setEditing('new');setError('');};
  const edit=t=>{setDraft({...t,enabled:!!t.enabled,fuel_item_id:t.fuel_item_id||null});setEditing(t.id);setError('');};
  const submit=async(path,method,body,done)=>{
   setBusy(true);setError('');setMessage('');
@@ -19,13 +26,14 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
   catch(e){setError(e.message||'Equipment operation failed')}
   finally{setBusy(false)}
  };
- const allManufacturing=facilities.filter(f=>f.owner_faction_id==='eclipse-order'&&f.controlling_faction_id==='eclipse-order'&&f.status==='operational');
+ const allManufacturing=facilities.filter(f=>f.owner_faction_id==='eclipse-order'&&f.controlling_faction_id==='eclipse-order'&&f.status==='operational'&&f.template_category==='manufacturing');
  const selectedFactory=facilities.find(f=>f.id===Number(commission.facility_id));
  const available=Number(selectedFactory?.stocks?.find(s=>s.item_id===templates.find(t=>t.id===Number(commission.equipment_template_id))?.item_id)?.quantity||0);
  const openAssignment=lot=>{setAssign(lot);setAssignment({status:lot.status,stationed_settlement_id:lot.stationed_settlement_id||'',notes:lot.notes||'',quantity:Number(lot.quantity)});};
  return <div className="wa-industry-workspace">
-  <div className="wa-industry-blockhead"><div><h3>Magitek manufacturing & war readiness</h3><p>Production designs, finished transports, rolling stock and military reserves. Every commissioned unit must first be manufactured.</p></div><button type="button" onClick={make}>+ Equipment template</button></div>
+  <div className="wa-industry-blockhead"><div><h3>Magitek manufacturing & war readiness</h3><p>Production designs, finished transports, rolling stock and military reserves. Every commissioned unit must first be manufactured.</p></div><button type="button" onClick={()=>make()}>+ Equipment template</button></div>
   {error&&<p role="alert" className="wa-error">{error}</p>}{message&&<p className="wa-notice">{message}</p>}
+  <div className="wa-industry-block"><div className="wa-industry-blockhead"><div><h4>Start an equipment design</h4><p>Choose a starter form or create a custom blueprint. These are editable drafts, not free finished units.</p></div></div><div className="wa-industry-buttons">{presets.map(t=><button type="button" key={t.equipment_kind} onClick={()=>make(t)}>{t.name}</button>)}</div></div>
   <div className="wa-industry-summary"><div><small>Equipment designs</small><strong>{templates.length}</strong></div><div><small>Commissioned units</small><strong>{number(inventory.filter(x=>x.status!=='retired').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div><div><small>Reserves</small><strong>{number(inventory.filter(x=>x.status==='reserve').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div><div><small>Assigned units</small><strong>{number(inventory.filter(x=>x.status==='assigned').reduce((n,x)=>n+Number(x.quantity),0))}</strong></div></div>
   <section className="wa-industry-block"><div className="wa-industry-blockhead"><div><h4>Equipment design templates</h4><p>Designs are reusable output items for your existing magitek factory recipes.</p></div></div>
    <div className="wa-industry-cards">{templates.map(t=><article key={t.id}><small>{labels[t.equipment_kind]} · Revision {t.revision} · {t.enabled?'Available':'Disabled'}</small><strong>{t.name}</strong><p>{t.description||'Custom equipment design'}</p><div className="wa-upgrade-details"><span>Crew {number(t.crew_required)}</span><span>Passengers {number(t.transport_capacity)}</span><span>Cargo {number(t.cargo_capacity)}</span><span>Fuel {number(t.fuel_per_operation)} {t.fuel_item_id?namedItem(t.fuel_item_id):'units'}</span></div><div className="wa-industry-buttons"><button type="button" onClick={()=>edit(t)}>Edit specifications</button><button type="button" onClick={()=>onBuildRecipe?.(t.item_id)}>Build factory recipe</button></div></article>)}{!templates.length&&<p className="wa-npc-subtle">Create a transport, locomotive, carriage, tank or other equipment design, then use it as an output of a Manufacturing facility template.</p>}</div>
