@@ -1366,6 +1366,55 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(splitLots.reduce((total,x)=>total+Number(x.quantity),0),3,'assigned and reserved units exactly conserve factory production');
   assert.ok(splitLots.some(x=>x.status==='reserve'&&Number(x.quantity)===1));
   assert.ok(splitLots.some(x=>x.status==='assigned'&&Number(x.quantity)===2));
+  // Canon Garlean designs are only blueprints; assembled trains consume real commissioned lots.
+  const garleanCatalog=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
+  assert.equal(garleanCatalog.status,200,JSON.stringify(garleanCatalog.body));
+  for(const name of ['Aurora-class Warship','Agrius-class Flying Fortress','Mark XLIX Passenger Train','Magitek Reaper','Imperial Assault Craft']){
+   assert.ok(garleanCatalog.body.templates.some(t=>t.name===name),'lore-grounded equipment blueprint seeded: '+name);
+  }
+  const bigShip=garleanCatalog.body.templates.find(t=>t.item_id==='garlean-agrius');
+  assert.equal(bigShip.equipment_kind,'capital_airship');
+  assert.equal(bigShip.lore_status,'canon_class');
+  const illegalCanon=await industryRoute(admin,request('POST',{...magitekDesign,item_id:'ci-fake-ffxiv-class',lore_status:'canon_class'}),'/world-admin/industry/equipment/templates',staff);
+  assert.equal(illegalCanon.status,409,'custom designs cannot claim official lore classification');
+  const mk=garleanCatalog.body.templates.find(t=>t.item_id==='garlean-mark-xlix');
+  assert.equal(mk.equipment_kind,'locomotive');
+  const trainBlueprint=garleanCatalog.body.templates.find(t=>t.item_id==='order-freight-locomotive');
+  const freightBlueprint=garleanCatalog.body.templates.find(t=>t.item_id==='order-freight-carriage');
+  const troopBlueprint=garleanCatalog.body.templates.find(t=>t.item_id==='order-troop-carriage');
+  assert.equal(trainBlueprint.lore_status,'lore_adapted','freight locomotives are not falsely marked official models');
+  const lotSpec=t=>JSON.stringify({name:t.name,item_id:t.item_id,equipment_kind:t.equipment_kind,
+   revision:Number(t.revision),max_wagons:Number(t.max_wagons),cargo_capacity:Number(t.cargo_capacity),
+   transport_capacity:Number(t.transport_capacity),crew_required:Number(t.crew_required),
+   fuel_item_id:t.fuel_item_id||null,fuel_per_operation:Number(t.fuel_per_operation)});
+  const insertLot=async(t,qty)=>{
+   const [entry]=await admin.execute(`INSERT INTO world_magitek_equipment_inventory
+    (equipment_template_id,origin_facility_id,owner_faction_id,quantity,specifications,registered_by)
+    VALUES(?,?,'eclipse-order',?,?,?)`,[t.id,magitekFactoryId,qty,lotSpec(t),id]);
+   return Number(entry.insertId);
+  };
+  const locoLot=await insertLot(trainBlueprint,1);
+  const freightLot=await insertLot(freightBlueprint,3);
+  const troopLot=await insertLot(troopBlueprint,1);
+  const beforeTrainLots=await admin.execute('SELECT id,quantity FROM world_magitek_equipment_inventory WHERE id IN (?,?,?)',[locoLot,freightLot,troopLot]);
+  assert.equal(beforeTrainLots[0].reduce((n,x)=>n+Number(x.quantity),0),5);
+  const madeTrain=await industryRoute(admin,request('POST',{name:'New Cassia Expedition Supply Train',locomotive_lot_id:locoLot,car_lot_ids:[freightLot,troopLot]}),'/world-admin/industry/trains',staff);
+  assert.equal(madeTrain.status,200,JSON.stringify(madeTrain.body));
+  assert.equal(madeTrain.body.wagon_count,4);
+  assert.equal(madeTrain.body.cargo_capacity,Number(trainBlueprint.cargo_capacity)+Number(freightBlueprint.cargo_capacity)*3+Number(troopBlueprint.cargo_capacity));
+  const duplicateTrain=await industryRoute(admin,request('POST',{name:'Exploit Duplicate',locomotive_lot_id:locoLot,car_lot_ids:[freightLot]}),'/world-admin/industry/trains',staff);
+  assert.equal(duplicateTrain.status,409,'a locomotive or carriage lot cannot join two active trains');
+  const trainCargoMutation=await industryRoute(admin,request('POST',{status:'reserve',notes:'Try to free assembled carriages'}),'/world-admin/industry/equipment/inventory/'+freightLot+'/state',staff);
+  assert.equal(trainCargoMutation.status,409,'assembled train parts cannot be reassigned independently');
+  const trainList=await industryRoute(admin,request('GET'),'/world-admin/industry/trains',staff);
+  assert.ok(trainList.body.trains.some(t=>Number(t.id)===Number(madeTrain.body.id)&&t.status==='assembled'));
+  const disbandTrain=await industryRoute(admin,request('POST',{}),'/world-admin/industry/trains/'+madeTrain.body.id+'/disband',staff);
+  assert.equal(disbandTrain.status,200);
+  const afterDisband=await admin.execute('SELECT id,quantity,status FROM world_magitek_equipment_inventory WHERE id IN (?,?,?)',[locoLot,freightLot,troopLot]);
+  assert.equal(afterDisband[0].reduce((n,x)=>n+Number(x.quantity),0),5,'disassembly cannot create or lose locomotives/railcars');
+  assert.ok(afterDisband[0].every(x=>x.status==='reserve'),'all disassembled rail equipment becomes available again');
+  const reassembled=await industryRoute(admin,request('POST',{name:'Reassembled Expedition Train',locomotive_lot_id:locoLot,car_lot_ids:[freightLot]}),'/world-admin/industry/trains',staff);
+  assert.equal(reassembled.status,200,'reusing railcars after disassembly is allowed');
   const [[beforeTakeoverStock]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='iron-ore'",[mineFacilityId]);
   await admin.execute("UPDATE world_settlements SET controlling_faction_id='house-kurogane' WHERE id=?",[mineId]);
   const productionAfterCapture=await industryRoute(admin,request('POST',{}),mineRunPath,staff);
