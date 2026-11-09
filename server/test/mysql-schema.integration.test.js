@@ -1112,14 +1112,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(npcFoundingState.development_points),0,'the founding package does not mint NPC development');
   const [[npcPlace]]=await admin.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[npcId]);
   const [npcFarmCreated]=await admin.execute("INSERT INTO world_industry_sites(region_id,zone_id,name,kind,controlling_faction_id,map_x,map_y,created_by) VALUES(?,?,?,'farm','house-kurogane',40,40,?)",[npcPlace.region_id,npcPlace.zone_id,'CI Mapped Agricultural Farm',id]);
-  const mappedFarmId=Number(npcFarmCreated.insertId);
+  const npcCargoMapSiteId=Number(npcFarmCreated.insertId);
   const farmOptions=await settlementSimulationRoute(admin,request('GET'),'/world-admin/simulation/'+npcId+'/farm/options',staff);
   assert.equal(farmOptions.status,200,JSON.stringify(farmOptions.body));
-  assert.ok(farmOptions.body.options.some(x=>x.source_type==='industry_site'&&Number(x.id)===mappedFarmId));
-  const assignFarm=await settlementSimulationRoute(admin,request('PUT',{source_type:'industry_site',source_id:mappedFarmId,travel_hours:24,cargo_capacity:20}),'/world-admin/simulation/'+npcId+'/farm',staff);
+  assert.ok(farmOptions.body.options.some(x=>x.source_type==='industry_site'&&Number(x.id)===npcCargoMapSiteId));
+  const assignFarm=await settlementSimulationRoute(admin,request('PUT',{source_type:'industry_site',source_id:npcCargoMapSiteId,travel_hours:24,cargo_capacity:20}),'/world-admin/simulation/'+npcId+'/farm',staff);
   assert.equal(assignFarm.status,200,JSON.stringify(assignFarm.body));
   const [[npcInitialFarm]]=await admin.execute('SELECT site_id,owner_faction_id,status,cycle_mode FROM world_industry_facilities WHERE id=?',[assignFarm.body.facility_id]);
-  assert.equal(Number(npcInitialFarm.site_id),mappedFarmId,'farm production attaches to the selected mapped location');
+  assert.equal(Number(npcInitialFarm.site_id),npcCargoMapSiteId,'farm production attaches to the selected mapped location');
   assert.equal(npcInitialFarm.owner_faction_id,'house-kurogane');
   assert.equal(npcInitialFarm.status,'operational');
   assert.equal(npcInitialFarm.cycle_mode,'automatic');
@@ -1138,7 +1138,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(arrivedCargo.delivered,1,'real shipment arrives after travel time');
   const [[foodAfterArrival]]=await admin.execute('SELECT food_units FROM world_settlement_autosim WHERE settlement_id=?',[npcId]);
   assert.equal(Number(foodAfterArrival.food_units),Number(foodBeforeShipment.food_units)+12,'only delivered cargo credits civilian stock');
-  const [[mappedFarmCount]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_facilities WHERE site_id=?',[mappedFarmId]);
+  const [[mappedFarmCount]]=await admin.execute('SELECT COUNT(*) AS n FROM world_industry_facilities WHERE site_id=?',[npcCargoMapSiteId]);
   assert.equal(Number(mappedFarmCount.n),1,'repeated cargo cycles never duplicate the mapped farm');
   const [[npcFirst]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
   assert.equal(Number(npcFirst.n),1);
