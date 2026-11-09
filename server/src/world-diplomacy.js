@@ -28,7 +28,7 @@ async function inTx(pool,fn){
 async function audit(db,actor,proposalId,decision,note=''){
  await db.execute('INSERT INTO world_conflict_decision_log(proposal_id,actor_id,decision,note) VALUES(?,?,?,?)',[proposalId,actor.id,decision,note]);
 }
-const scopeIsNpc=f=>f&&f.id!=='eclipse-order'&&['world','settlement'].includes(f.faction_scope);
+const scopeIsNpc=f=>f&&f.id!=='eclipse-order'&&['order_story','world','settlement'].includes(f.faction_scope);
 export function canGenerateNpcProposal({tension,trust,attacker,defender,target,protection}){
  if(!scopeIsNpc(attacker)||!scopeIsNpc(defender)||attacker.id===defender.id)return false;
  if(!target||target.controlling_faction_id!==defender.id)return false;
