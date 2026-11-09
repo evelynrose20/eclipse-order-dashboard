@@ -93,7 +93,7 @@ async function proposalCreate(pool,req){
   return ok({id:result.insertId,status:'pending'});
  });
 }
-async function assessment(pool){
+export async function assessNpcDiplomaticTensions(pool){
  return inTx(pool,async db=>{
   const [relations]=await db.execute(`SELECT a.id AS a_id,a.faction_scope AS a_scope,b.id AS b_id,b.faction_scope AS b_scope,r.tension,r.trust
     FROM world_faction_relations r JOIN order_factions a ON a.id=r.faction_a
@@ -112,7 +112,7 @@ async function assessment(pool){
     if(!target)continue;
     const [existing]=await db.execute(`SELECT id FROM world_conflict_proposals
       WHERE attacker_id=? AND defender_id=? AND target_settlement_id=? AND source_kind='npc_assessment'
-      AND status IN ('pending','postponed','approved','rp_event') LIMIT 1 FOR UPDATE`,[attacker.id,defender.id,target.id]);
+      AND (status IN ('pending','postponed','approved','rp_event') OR created_at>=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)) LIMIT 1 FOR UPDATE`,[attacker.id,defender.id,target.id]);
     if(existing.length)continue;
     const reason=`Diplomatic tension ${rel.tension}/100 and trust ${rel.trust}/100. ${attacker.id} considers pressure against ${defender.id} at ${target.name}.`;
     await db.execute(`INSERT INTO world_conflict_proposals(attacker_id,defender_id,target_settlement_id,conflict_kind,rationale,proposed_effect,source_kind)
@@ -211,7 +211,7 @@ export async function worldDiplomacyRoute(pool,req,path,actor){
  if(path==='/world-admin/diplomacy'&&req.method==='GET')return ok(await worldDiplomacySummary(pool));
  if(path==='/world-admin/diplomacy/relations'&&req.method==='PUT')return relationUpdate(pool,req,actor);
  if(path==='/world-admin/diplomacy/proposals'&&req.method==='POST')return proposalCreate(pool,req);
- if(path==='/world-admin/diplomacy/assess'&&req.method==='POST')return assessment(pool);
+ if(path==='/world-admin/diplomacy/assess'&&req.method==='POST')return assessNpcDiplomaticTensions(pool);
  if(path==='/world-admin/diplomacy/protection'&&req.method==='PUT')return protectionUpdate(pool,req,actor);
  if(path==='/world-admin/diplomacy/outcomes'&&req.method==='POST')return outcomeCreate(pool,req);
  const reviewMatch=/^\/world-admin\/diplomacy\/proposals\/(\d+)\/review$/.exec(path);
