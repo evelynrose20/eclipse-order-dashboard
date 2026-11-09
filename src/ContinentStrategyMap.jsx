@@ -183,8 +183,8 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
     <svg ref={svgRef} className={'csm-map '+(['draw','province-draw','trace','province-trace'].includes(tool)?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
      <defs><pattern id="csm-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#7994a0" strokeWidth=".55" opacity=".18"/></pattern></defs>
      {showTerrain?<IlsabardTerrain/>:<rect width={W} height={H} fill="#172b37"/>}
-     {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83" pointerEvents="none"/>}
-     {reference.visible&&overlayImage&&<image href={overlayImage} x={Number(reference.offset_x)} y={Number(reference.offset_y)} width={W*Number(reference.width_pct)/100} height={H*Number(reference.width_pct)/100} preserveAspectRatio="xMidYMid meet" opacity={Number(reference.opacity_pct)/100} pointerEvents="none"/>}
+     {!showTerrain&&continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83" pointerEvents="none"/>}
+     {referenceOpen&&reference.visible&&overlayImage&&<image href={overlayImage} x={Number(reference.offset_x)} y={Number(reference.offset_y)} width={W*Number(reference.width_pct)/100} height={H*Number(reference.width_pct)/100} preserveAspectRatio="xMidYMid meet" opacity={Number(reference.opacity_pct)/100} pointerEvents="none"/>}
      {!showTerrain&&<rect width={W} height={H} fill="url(#csm-grid)" pointerEvents="none"/>}
      {geometry.map(({zone,points})=>{
       const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
