@@ -23,13 +23,8 @@ export async function establishNpcSettlement(db,site,state){
    housingId=placed.insertId;
   }
  }
- if(virgin&&Number(facilities.n)===0){
-  const [[farmland]]=await db.execute("SELECT t.id,t.current_version FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version WHERE t.slug='starter-working-farmland' AND t.archived=0 LIMIT 1");
-  if(farmland){
-   const [created]=await db.execute("INSERT INTO world_industry_facilities(settlement_id,site_id,owner_faction_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by) VALUES(?,NULL,?,?,?,?,'operational',1,100,0,0,0,'automatic','normal','One-time NPC founding farm; further development requires real output',NULL)",[site.id,site.controlling_faction_id,farmland.id,farmland.current_version,site.name+' Founding Farm']);
-   facilityId=created.insertId;
-  }
- }
+ // Farms must be assigned to an existing mapped farm marker by the NPC settlement owner.
+ // No invisible or off-map industrial facility is created as a founding grant.
  if(virgin&&population===0&&(housingCapacity(site,upgrades)>0||housingId)){
   population=8;
   const employment=cappedEmployment({...site,population},Math.floor(settlementDemographics({...site,population,workforce:8}).eligible_workers*.8));
