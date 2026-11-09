@@ -1,3 +1,4 @@
+import {runNpcCargoAutomation} from './world-npc-cargo.js';
 import {weatherHazard} from './world-worker-hazards.js';
 import {climateForRegions} from './world-region-climate.js';
 import {settlementDemographics} from './world-demographics.js';
@@ -32,11 +33,13 @@ export async function getIndustryPreview(db,id,lock=false){
  const [[facility]]=await db.execute(`SELECT f.*,COALESCE(s.population,0) AS population,
  COALESCE(s.civil_stability,70) AS stability,COALESCE(s.security_score,50) AS security,
  COALESCE(s.name,site.name) AS location_name,t.category AS industry_category,COALESCE(s.region_id,site.region_id) AS region_id,
- COALESCE(s.zone_id,site.zone_id) AS zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
+ COALESCE(s.zone_id,site.zone_id) AS zone_id,COALESCE(home.region_id,s.region_id,site.region_id) AS labor_region_id,COALESCE(home.zone_id,s.zone_id,site.zone_id) AS labor_zone_id,s.strategic_state AS map_condition,COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id
  FROM world_industry_facilities f
  JOIN world_industry_templates t ON t.id=f.template_id
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_sites site ON site.id=f.site_id
+ LEFT JOIN world_npc_cargo_routes cargo ON cargo.facility_id=f.id
+ LEFT JOIN world_settlements home ON home.id=cargo.settlement_id
  LEFT JOIN world_zones z ON z.id=site.zone_id
  WHERE f.id=?`+(lock?' FOR UPDATE':''),[id]);
  if(!facility)return null;
@@ -48,15 +51,17 @@ export async function getIndustryPreview(db,id,lock=false){
  // Equal allocation across all active sites prevents double-counting the same employees.
  const [labor]=await db.execute(`SELECT s.id,s.population,s.workforce,COALESCE(h.sick_workers,0) AS sick_workers,COALESCE(h.injured_workers,0) AS injured_workers
  FROM world_settlements s LEFT JOIN world_settlement_worker_health h ON h.settlement_id=s.id WHERE s.region_id=? AND s.zone_id=? AND s.controlling_faction_id <=> ?`,
- [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
+ [facility.labor_region_id,facility.labor_zone_id,facility.controlling_faction_id]);
  const [[sites]]=await db.execute(`SELECT COUNT(*) AS n FROM world_industry_facilities f
  LEFT JOIN world_settlements s ON s.id=f.settlement_id
  LEFT JOIN world_industry_sites site ON site.id=f.site_id
+ LEFT JOIN world_npc_cargo_routes route ON route.facility_id=f.id
+ LEFT JOIN world_settlements home ON home.id=route.settlement_id
  LEFT JOIN world_zones z ON z.id=site.zone_id
- WHERE COALESCE(s.region_id,site.region_id)=? AND COALESCE(s.zone_id,site.zone_id)=?
+ WHERE COALESCE(home.region_id,s.region_id,site.region_id)=? AND COALESCE(home.zone_id,s.zone_id,site.zone_id)=?
  AND COALESCE(s.controlling_faction_id,z.controlling_faction_id) <=> ?
  AND f.status IN ('operational','rebuilding','liberated')`,
- [facility.region_id,facility.zone_id,facility.controlling_faction_id]);
+ [facility.labor_region_id,facility.labor_zone_id,facility.controlling_faction_id]);
  const availableWorkers=Math.floor(labor.reduce((sum,settlement)=>Math.max(0,sum+Math.max(0,settlementDemographics(settlement).employed-Number(settlement.sick_workers)-Number(settlement.injured_workers))),0)/Math.max(1,Number(sites.n)));
  const staffSettlement=labor.find(x=>Number(x.id)===Number(facility.settlement_id))||labor.find(x=>settlementDemographics(x).employed>0)||null;
  // Ceruleum in the facility's own stock supplies heat and power; one unit = ten utility units.
@@ -192,5 +197,6 @@ export async function runIndustryAutomation(pool,now=new Date()){
   const res=await atomicIndustry(pool,db=>advanceIndustryProject(db,p.id,now));
   if(res.status===200)construction++;
  }catch(e){console.warn('[P3 Industry] Construction failed',p.id,e?.code||e?.name||'unknown')}
- return {production,construction};
+ const cargo=await runNpcCargoAutomation(pool,now);
+ return {production,construction,cargo};
 }
