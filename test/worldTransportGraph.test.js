@@ -21,7 +21,7 @@ test('one original cartographic editor handles shared junctions, smooth curves a
  for(const tool of ['Plan a route','Edit routes','Mountains'])assert.ok(map.includes(tool),tool);
  for(const action of ['Place junction','Branch from route','Move places','Connect','Save new route','Save route changes'])assert.ok(map.includes(action),action);
  assert.match(map,/smoothRoadPath\(points\)/);
- assert.match(map,/networkSegments\.map/);
+ assert.match(map,/networkSegments\.filter\(visibleTransport\)\.map/);
  assert.match(map,/junctionPointerMove/);
  assert.match(map,/savePlannedRoute/);
  assert.match(map,/wtm-pin-state/);
