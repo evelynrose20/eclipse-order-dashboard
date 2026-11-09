@@ -124,6 +124,12 @@ export async function internalRailRoute(pool,req,path){
     await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=expected_arrival_at WHERE train_consist_id=? AND status='running' AND expected_arrival_at<=UTC_TIMESTAMP(3)",[trainId]);
     const [busyTrain]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE train_consist_id=? AND status='running' LIMIT 1 FOR UPDATE",[trainId]);
     if(busyTrain.length)return fail(409,'rail_train_already_running');
+    const [[lastArrival]]=await db.execute(`SELECT r.to_station_id FROM order_internal_rail_journeys j
+     JOIN order_internal_rail_routes r ON r.id=j.route_id
+     WHERE j.train_consist_id=? AND j.status='arrived'
+     ORDER BY j.id DESC LIMIT 1`,[trainId]);
+    if(lastArrival&&Number(lastArrival.to_station_id)!==Number(route.from_station_id))
+     return fail(409,'train_not_at_origin_station');
     train=(await trainSummary(db)).find(t=>Number(t.id)===trainId);
     if(!train||train.wagon_count<1)return fail(409,'rail_train_no_cars');
    }
