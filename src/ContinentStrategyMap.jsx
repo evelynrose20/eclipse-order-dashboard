@@ -1,4 +1,4 @@
-import React,{useMemo,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './continent-strategy-map.css';
 const W=1000,H=700;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -11,6 +11,8 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const [camera,setCamera]=useState({x:0,y:0,w:W,h:H});
  const [layer,setLayer]=useState('control'),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
  const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false);
+ const cameraRef=useRef(camera);
+ cameraRef.current=camera;
  const polygons=new Map((continent.territories||[]).map(x=>[Number(x.zone_id),x.polygon]));
  const active=zones.find(z=>String(z.id)===selected)||null;
  const activePoly=active?polygons.get(Number(active.id)):null;
@@ -27,7 +29,25 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   const w=clamp(v.w*factor,100,W),h=w*H/W;
   return {x:clamp(v.x+v.w*cx-w*cx,0,W-w),y:clamp(v.y+v.h*cy-h*cy,0,H-h),w,h};
  });
- const wheel=e=>{e.preventDefault();const r=svgRef.current?.getBoundingClientRect();if(!r)return;zoom(e.deltaY>0?1.13:.885,clamp((e.clientX-r.left)/r.width,0,1),clamp((e.clientY-r.top)/r.height,0,1))};
+ // Attach a non-passive native wheel listener: React's delegated wheel listener may be passive.
+ // Prevent page scrolling only over the actual map surface, not over the rest of the dashboard.
+ useEffect(()=>{
+  const node=svgRef.current;if(!node)return;
+  const handleWheel=e=>{
+   if(e.cancelable)e.preventDefault();
+   e.stopPropagation();
+   const rect=node.getBoundingClientRect();
+   if(!rect.width||!rect.height)return;
+   const factor=e.deltaY>0?1.13:.885;
+   const cx=clamp((e.clientX-rect.left)/rect.width,0,1),cy=clamp((e.clientY-rect.top)/rect.height,0,1);
+   setCamera(v=>{
+    const w=clamp(v.w*factor,100,W),h=w*H/W;
+    return {x:clamp(v.x+v.w*cx-w*cx,0,W-w),y:clamp(v.y+v.h*cy-h*cy,0,H-h),w,h};
+   });
+  };
+  node.addEventListener('wheel',handleWheel,{passive:false});
+  return ()=>node.removeEventListener('wheel',handleWheel);
+ },[]);
  const selectZone=id=>{setSelected(String(id));setDraft(null);setTool('inspect');setNotice('');setError('')};
  const startDraw=()=>{if(!active)return;setDraft([]);setTool('draw');setError('');setNotice('Click the map to mark the territory boundary. Finish with at least three corners.')};
  const startReshape=()=>{if(!activePoly)return;setDraft(activePoly.map(p=>({...p})));setTool('reshape');setError('')};
@@ -42,16 +62,27 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   catch(e){setError(e.message||'Unable to clear boundary')}finally{setBusy(false)}
  };
  const saveSettings=async()=>{setBusy(true);setError('');try{await request('/world-admin/continent/settings',{method:'PUT',body:settings});await onSaved?.();setEditSettings(false);setNotice('Continental map settings saved.')}catch(e){setError(e.message||'Unable to save map settings')}finally{setBusy(false)}};
- const mouseDown=e=>{if(e.button!==0||vertexRef.current)return;if(tool!=='inspect')return;panRef.current={x:e.clientX,y:e.clientY,ox:camera.x,oy:camera.y,moved:false};e.currentTarget.setPointerCapture(e.pointerId)};
+ const mouseDown=e=>{
+  if(e.button!==0||vertexRef.current||tool!=='inspect')return;
+  e.preventDefault();
+  const v=cameraRef.current;
+  panRef.current={id:e.pointerId,x:e.clientX,y:e.clientY,ox:v.x,oy:v.y,w:v.w,h:v.h,moved:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
  const mouseMove=e=>{
   if(vertexRef.current){const p=toPoint(e);if(p){const i=vertexRef.current.index;setDraft(old=>old?.map((q,j)=>j===i?p:q)||old)}return}
   if(!panRef.current)return;
   const r=svgRef.current?.getBoundingClientRect();if(!r)return;
-  const pan=panRef.current;const dx=e.clientX-pan.x,dy=e.clientY-pan.y;
+  const pan=panRef.current;
+  if(e.pointerId!==pan.id)return;
+  const dx=e.clientX-pan.x,dy=e.clientY-pan.y;
   if(Math.abs(dx)+Math.abs(dy)>4)pan.moved=true;
-  if(pan.moved){ignoreClick.current=true;setCamera(v=>({...v,x:clamp(pan.ox-dx/r.width*v.w,0,W-v.w),y:clamp(pan.oy-dy/r.height*v.h,0,H-v.h)}))}
+  if(pan.moved){ignoreClick.current=true;setCamera({x:clamp(pan.ox-dx/r.width*pan.w,0,W-pan.w),y:clamp(pan.oy-dy/r.height*pan.h,0,H-pan.h),w:pan.w,h:pan.h})}
  };
- const mouseUp=()=>{panRef.current=null;vertexRef.current=null};
+ const mouseUp=e=>{
+  if(panRef.current?.id===e.pointerId)panRef.current=null;
+  vertexRef.current=null;
+ };
  const mapClick=e=>{if(ignoreClick.current){ignoreClick.current=false;return}if(tool!=='draw'||!active)return;const p=toPoint(e);if(p)setDraft(old=>old.length>=100?old:[...old,p])};
  const geometry=zones.map(z=>({zone:z,points:polygons.get(Number(z.id))})).filter(x=>Array.isArray(x.points)&&x.points.length>=3);
  return <section className="csm-root">
@@ -61,7 +92,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   <div className="csm-body">
    <div className="csm-map-shell">
     <div className="csm-layerbar"><span>MAP MODE</span>{[['control','Political'],['status','Territory status']].map(([id,name])=><button key={id} type="button" aria-pressed={layer===id} className={layer===id?'active':''} onClick={()=>setLayer(id)}>{name}</button>)}<span className="csm-zoom">{Math.round(W/camera.w*100)}%</span></div>
-    <svg ref={svgRef} className={'csm-map '+(tool==='draw'?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onWheel={wheel} onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
+    <svg ref={svgRef} className={'csm-map '+(tool==='draw'?'csm-drawing':'')} viewBox={viewport} preserveAspectRatio="none" role="img" aria-label="Continent strategy map with editable territory polygons" onPointerDown={mouseDown} onPointerMove={mouseMove} onPointerUp={mouseUp} onPointerCancel={mouseUp} onClick={mapClick}>
      <defs><pattern id="csm-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#7994a0" strokeWidth=".55" opacity=".18"/></pattern></defs>
      <rect width={W} height={H} fill="#172b37"/>
      {continent.background_url&&<image href={continent.background_url} width={W} height={H} preserveAspectRatio="none" opacity=".83"/>}
@@ -78,7 +109,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
      {draft&&tool==='reshape'&&draft.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={clamp(camera.w/100,4,10)} fill="#f9da9f" stroke="#273542" strokeWidth="2" className="csm-handle" onPointerDown={e=>{e.stopPropagation();vertexRef.current={index:i};e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={mouseUp}/>)}
     </svg>
     {!continent.background_url&&<div className="csm-basemap-hint">Add a continent background image in Map settings. Existing regional images stay untouched.</div>}
-    <div className="csm-map-footer"><span>Drag to pan · Wheel to zoom · Click a territory to inspect</span><span>Cartography coordinates: 1000 × 700</span></div>
+    <div className="csm-map-footer"><span>Wheel to zoom · Drag to pan when zoomed in · Click a territory to inspect</span><span>Cartography coordinates: 1000 × 700</span></div>
    </div>
    <aside className="csm-inspector"><div className="csm-aside-heading"><span className="csm-kicker">TERRITORY INDEX</span><strong>{zones.length} territories</strong></div>
     <div className="csm-zone-list">{zones.map(z=><button type="button" key={z.id} className={selected===String(z.id)?'active':''} onClick={()=>selectZone(z.id)}><span className={'csm-zone-indicator '+(polygons.has(Number(z.id))?'mapped':'')}/><span><strong>{z.is_default?(regions.find(r=>Number(r.id)===Number(z.region_id))?.name||z.name):z.name}</strong><small>{factionName(z.controlling_faction_id)} · {pretty(z.strategic_state)}</small></span></button>)}</div>
