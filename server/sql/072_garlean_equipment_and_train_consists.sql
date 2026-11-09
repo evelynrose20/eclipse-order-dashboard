@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS world_magitek_train_consists (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  name VARCHAR(140) NOT NULL,
  owner_faction_id VARCHAR(45) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
- locomotive_lot_id BIGINT UNSIGNED NOT NULL UNIQUE,
+ locomotive_lot_id BIGINT UNSIGNED NOT NULL,
  status ENUM('assembled','disbanded') NOT NULL DEFAULT 'assembled',
  created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -36,10 +36,22 @@ CREATE TABLE IF NOT EXISTS world_magitek_train_consists (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS world_magitek_train_cars (
  consist_id BIGINT UNSIGNED NOT NULL,
- car_lot_id BIGINT UNSIGNED NOT NULL UNIQUE,
+ car_lot_id BIGINT UNSIGNED NOT NULL,
  PRIMARY KEY(consist_id,car_lot_id),
+ KEY ix_magitek_train_car_lot(car_lot_id),
  FOREIGN KEY(consist_id) REFERENCES world_magitek_train_consists(id),
  FOREIGN KEY(car_lot_id) REFERENCES world_magitek_equipment_inventory(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS world_magitek_train_events (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ consist_id BIGINT UNSIGNED NOT NULL,
+ action ENUM('assemble','disband') NOT NULL,
+ actor_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ description VARCHAR(300) NOT NULL DEFAULT '',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(consist_id) REFERENCES world_magitek_train_consists(id),
+ FOREIGN KEY(actor_id) REFERENCES accounts(id),
+ KEY ix_magitek_train_events(consist_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 -- Values are RP simulation defaults, not claimed canonical specifications.
 -- A seed creates an item blueprint and its equipment definition, never completed stock.
