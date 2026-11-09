@@ -311,3 +311,12 @@
 .wtm-river-editor{border-top-color:#6199ac;background:#193745}
 .wtm-river-editor button{border-color:#74b1c0}
 .wtm-road-waterway,.wtm-road-skyway{display:none}
+
+
+/* Illustrated relief repeated along the ridge, distinct from transport lines. */
+.wtm-range-shadow{stroke-width:4.9;stroke:#141b20;opacity:.72}
+.wtm-range-ridge{stroke-width:2.1;stroke:#807c70;stroke-dasharray:none;opacity:.68}
+.wtm-peak-rock{fill:#696c68;stroke:#161e23;stroke-width:.33;stroke-linejoin:round}
+.wtm-peak-shade{fill:#424d52;opacity:.95}
+.wtm-peak-snow{fill:#e0e0d0;stroke:#f8e9c7;stroke-width:.12}
+.wtm-relief-peak:nth-child(3n) .wtm-peak-rock{fill:#8c8b7c}
