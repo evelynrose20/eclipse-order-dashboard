@@ -67,6 +67,9 @@ export async function equipmentRoute(pool,req,path,actor){
     if(!old)return fail(404,'equipment_template_not_found');
     if(old.item_id!==b.item_id||old.equipment_kind!==b.equipment_kind)return fail(409,'equipment_identity_locked');
     if((b.lore_status||'original')!==old.lore_status)return fail(409,'lore_provenance_locked');
+    if(['canon_class','canon_vehicle'].includes(old.lore_status)&&
+      (b.name.trim()!==old.name||(b.lore_reference!==undefined&&b.lore_reference!==old.lore_reference)))
+      return fail(409,'canon_model_name_locked');
     await db.execute(`UPDATE world_magitek_equipment_templates SET name=?,description=?,transport_capacity=?,cargo_capacity=?,
       crew_required=?,fuel_item_id=?,fuel_per_operation=?,enabled=?,max_wagons=?,revision=revision+1 WHERE id=?`,[...fields(b),id]);
     await db.execute("UPDATE world_industry_items SET name=?,description=? WHERE id=? AND category='equipment'",[b.name.trim(),b.description,b.item_id]);
