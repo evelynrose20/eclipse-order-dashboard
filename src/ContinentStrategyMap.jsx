@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './continent-strategy-map.css';
+import {simplifyFreehand,insertVertex} from './continent-trace.js';
 const W=1000,H=700;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const pretty=s=>String(s||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -11,7 +12,13 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const [provinceId,setProvinceId]=useState(''),[provinceName,setProvinceName]=useState(''),[terrain,setTerrain]=useState('plains');
  const [camera,setCamera]=useState({x:W*.1,y:H*.1,w:W*.8,h:H*.8});
  const [layer,setLayer]=useState('control'),[editSettings,setEditSettings]=useState(false),[settings,setSettings]=useState(null);
- const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false);
+ const [referenceDraft,setReferenceDraft]=useState(null),[referenceOpen,setReferenceOpen]=useState(false),[traceSensitivity,setTraceSensitivity]=useState(2);
+ const [referencePending,setReferencePending]=useState(undefined),[uploading,setUploading]=useState(false);
+ const svgRef=useRef(null),panRef=useRef(null),vertexRef=useRef(null),ignoreClick=useRef(false),traceRef=useRef(null);
+ const reference=referenceDraft||continent.reference||{opacity_pct:75,offset_x:0,offset_y:0,width_pct:100,visible:true,original_name:''};
+ const overlayImage=referencePending===undefined?reference.image_data:referencePending;
+ const isTracing=['trace','province-trace'].includes(tool);
+ const isReshaping=['reshape','province-reshape'].includes(tool);
  const cameraRef=useRef(camera);
  cameraRef.current=camera;
  const polygons=new Map((continent.territories||[]).map(x=>[Number(x.zone_id),x.polygon]));
@@ -59,6 +66,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
  const startDraw=()=>{if(!active)return;setDraft([]);setTool('draw');setError('');setNotice('Click the map to mark the territory boundary. Finish with at least three corners.')};
  const startReshape=()=>{if(!activePoly)return;setDraft(activePoly.map(p=>({...p})));setTool('reshape');setError('')};
  const drawProvince=()=>{if(!province)return;setDraft([]);setTool('province-draw');setError('')};
+ const beginTrace=type=>{setDraft([]);traceRef.current=null;setTool(type);setError('');setNotice('Hold left mouse and trace the full outline in one stroke. Release to simplify and close it.')};
  const reshapeProvince=()=>{if(!Array.isArray(province?.polygon))return;setDraft(province.polygon.map(p=>({...p})));setTool('province-reshape');setError('')};
  const save=async()=>{
   if(!active||!draft||draft.length<3)return;
@@ -71,6 +79,34 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
   catch(e){setError(e.message||'Unable to clear boundary')}finally{setBusy(false)}
  };
  const saveSettings=async()=>{setBusy(true);setError('');try{await request('/world-admin/continent/settings',{method:'PUT',body:settings});await onSaved?.();setEditSettings(false);setNotice('Continental map settings saved.')}catch(e){setError(e.message||'Unable to save map settings')}finally{setBusy(false)}};
+ const importReference=async file=>{
+  if(!file)return;
+  if(!file.type.startsWith('image/')){setError('Choose a PNG, JPEG, or WebP image.');return}
+  setUploading(true);setError('');
+  try{
+   const bitmap=await createImageBitmap(file);
+   const canvas=document.createElement('canvas'),scale=Math.min(1,2048/bitmap.width);
+   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas unavailable');
+   ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();
+   let result='';
+   for(const q of [.76,.65,.52,.38,.26]){result=canvas.toDataURL('image/webp',q);if(result.length<=350000)break;}
+   if(!result.startsWith('data:image/webp;base64,')||result.length>350000)throw new Error('Image too large after compression. Try a smaller map image.');
+   setReferencePending(result);
+   setReferenceDraft(v=>({...continent.reference,...v,original_name:file.name.slice(0,180),visible:true}));
+   setNotice('Reference prepared. Align it, then click Save reference.');
+  }catch(e){setError(e.message||'Unable to prepare reference')}finally{setUploading(false)}
+ };
+ const saveReference=async()=>{
+  if(busy||uploading)return;
+  setBusy(true);setError('');
+  const v=referenceDraft||reference;
+  try{
+   await request('/world-admin/continent/reference',{method:'PUT',body:{original_name:v.original_name||'',opacity_pct:Number(v.opacity_pct),offset_x:Number(v.offset_x),offset_y:Number(v.offset_y),width_pct:Number(v.width_pct),visible:!!v.visible,...(referencePending!==undefined?{image_data:referencePending}:{})}});
+   await onSaved?.();setReferencePending(undefined);setReferenceDraft(null);setNotice('Reference map saved for the world.');
+  }catch(e){setError(e.message||'Unable to save reference')}finally{setBusy(false)}
+ };
+ const changeReference=(key,value)=>setReferenceDraft(v=>({...continent.reference,...v,[key]:value}));
  const mouseDown=e=>{
   if(e.button!==0||vertexRef.current||tool!=='inspect')return;
   e.preventDefault();
