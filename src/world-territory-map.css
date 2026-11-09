@@ -334,3 +334,20 @@
 .wtm-npc-edge-buffer{position:absolute;inset:0;z-index:1;pointer-events:none;border:0 solid rgba(207,127,83,.08);border-width:44px 0 0 0}
 .wtm-npc-edge-guide{position:absolute;inset:10%;width:80%;height:80%;border:1px dashed rgba(227,188,130,.32);z-index:1;pointer-events:none}
 .wtm-npc-edge-label{position:absolute;left:11%;top:11%;z-index:1;color:#c6a77b;font-size:10px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px #081019}
+
+
+/* Mountain cartography v2: read as landscape, not repeated icons. The polygon
+   remains exact; all color/hatching is visual and never changes collision. */
+.wtm-mountain-area .wtm-zone-base{fill:url(#wtm-highland-ground);opacity:.8;stroke:none}
+.wtm-mountain-area .wtm-zone-hatch{fill:url(#wtm-highland-contours);opacity:.46;stroke:none}
+.wtm-mountain-area .wtm-zone-inner{fill:none;stroke:#ded0aa;stroke-opacity:.12;stroke-width:15;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.wtm-mountain-area .wtm-zone-outline{fill:none;stroke:#b0a17e;stroke-opacity:.85;stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.wtm-mountain-ridge .wtm-ridge-shadow{fill:none;stroke:#847e6a;stroke-opacity:.2;stroke-width:34;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.wtm-mountain-ridge .wtm-ridge-ground{fill:none;stroke:#9b9175;stroke-opacity:.38;stroke-width:18;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.wtm-cartographic-summit{opacity:.89}
+.wtm-cartographic-summit .wtm-summit-face{fill:#777e79;stroke:#25343c;stroke-width:.16;stroke-linejoin:round}
+.wtm-cartographic-summit .wtm-summit-shadow{fill:#47555c}
+.wtm-cartographic-summit .wtm-summit-cap{fill:#b9baab;opacity:.73}
+.wtm-cartographic-summit .wtm-summit-cap-snow{fill:#e5dfca;opacity:.93}
+.wtm-cartographic-summit .wtm-summit-strata{fill:none;stroke:#a6a69a;stroke-width:.15;opacity:.68}
+.wtm-mountain-area .wtm-range-label,.wtm-mountain-ridge .wtm-range-label{fill:#e3ddc9;font-size:1.6px;font-weight:800;letter-spacing:.045em;stroke:#12212a;stroke-width:.37;paint-order:stroke;stroke-linejoin:round}
