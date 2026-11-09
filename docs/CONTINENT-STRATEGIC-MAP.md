@@ -45,3 +45,11 @@
 - For map authoring: choose the state (or create and select a province), choose **Trace state border (drag)** or **Trace province (drag)**, then hold the mouse button and trace a complete outline. Releasing automatically closes and simplifies the polygon into <=100 editable points. Use **Edit corners** to drag the vertex handles, click to insert a vertex, or Alt-click a handle to delete one.
 - Polygon validity is still enforced on the Windows API: malformed, tiny, or self-intersecting shapes are rejected. The trace is visual cartography, not automatic coastline or terrain inference.
 - Original separate region map backgrounds, all city-builder content, industrial blueprints, and existing province polygons remain untouched.
+
+
+## Native continent terrain (playable atlas)
+- `src/IlsabardTerrain.jsx` now renders actual SVG terrain under the polygon and faction overlays: coastlines and islands, temperate and forested land, eastern highlands, snowy northern Ilsabard, ridged mountains, trees, rivers and shaded seas. It is **native world-space geometry**, not the uploaded map image stretched over the grid.
+- The broad layout is an original cartographic interpretation **inspired by the supplied fan-made Three Great Continents map** and is not claimed as official FFXIV geography. The native atlas is intentionally free of the fan map's original labels, icons and decorative parchment framing.
+- Native **Terrain relief** is on by default. Existing reference images are only shown while the `Reference layers` editor is open, so they cannot obscure the ground during ordinary gameplay. Previously saved external map backgrounds remain available when relief is turned off.
+- Polygon province/state geometry and faction ownership remain independent database records rendered above this terrain. The existing local maps and city-builder remain unchanged.
+- Terrain imagery is an **art layer**; it does not silently assign resource deposits, climate, roads, buildings, province borders, or ownership. These remain authored and simulated by their existing systems.
