@@ -57,7 +57,7 @@ const validProject=b=>b&&whole(b.facility_id,1,Number.MAX_SAFE_INTEGER)&&txt(b.n
 async function summary(pool){
  const [items]=await pool.execute('SELECT i.*,m.name AS workshop_name,COALESCE(st.quantity,0) AS shared_qty FROM world_industry_items i LEFT JOIN fc_materials m ON m.id=i.workshop_material_id LEFT JOIN fc_material_stock st ON st.material_id=m.id ORDER BY i.name');
  const [workshop]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
- const [templates]=await pool.execute('SELECT t.id,t.name,t.slug,t.category,t.current_version,t.archived,v.configuration,v.rules FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version ORDER BY t.name');
+ const [templates]=await pool.execute('SELECT t.id,t.name,t.slug,t.category,t.access_scope,t.current_version,t.archived,v.configuration,v.rules FROM world_industry_templates t JOIN world_industry_template_versions v ON v.template_id=t.id AND v.version=t.current_version ORDER BY t.name');
  const [facilities]=await pool.execute(`SELECT f.*,COALESCE(s.name,site.name) AS settlement_name,
  COALESCE(s.region_id,site.region_id) AS region_id,COALESCE(s.zone_id,site.zone_id) AS zone_id,
  COALESCE(s.controlling_faction_id,z.controlling_faction_id) AS controlling_faction_id,
@@ -102,6 +102,7 @@ export async function industryRoute(pool,req,path,actor){
   const b=await body(req),versionTarget=match?Number(match[1]):null,editExisting=match?.[2]==='edit';
   const error=validateIndustryConfiguration(b?.configuration)||validateIndustryRules(b?.rules);
   if(error)return fail(400,error);
+  if(b.access_scope!==undefined&&!['shared','order_only'].includes(b.access_scope))return fail(400,'invalid_blueprint_access');
   if(!versionTarget&&(!txt(b.name,120)||!txt(b.slug,70)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(b.slug)||!['mine','extraction','refinery','manufacturing','utilities','agriculture','other'].includes(b.category)))return fail(400,'invalid_template');
   return atomicIndustry(pool,async db=>{
    await db.execute('SELECT id FROM world_industry_catalog_lock WHERE id=1 FOR UPDATE');
@@ -117,7 +118,7 @@ export async function industryRoute(pool,req,path,actor){
    if(manufactureError)return fail(409,manufactureError);
    if(!await noCycle(db,b.configuration,versionTarget))return fail(409,'circular_industry_dependency');
    if(versionTarget){
-    const [[old]]=await db.execute('SELECT id,current_version,category FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
+    const [[old]]=await db.execute('SELECT id,current_version,category,access_scope FROM world_industry_templates WHERE id=? FOR UPDATE',[versionTarget]);
     if(!old)return fail(404,'template_not_found');
     if(effectiveCategory!==old.category)return fail(409,'template_category_locked');
     if(editExisting){
@@ -126,18 +127,19 @@ export async function industryRoute(pool,req,path,actor){
      // Preserve prior recipes in an append-only audit record for historical review.
      await db.execute('INSERT INTO world_industry_template_edit_history(template_id,version,configuration,rules,edited_by) VALUES(?,?,?,?,?)',[versionTarget,old.current_version,JSON.stringify(array(existing.configuration)),JSON.stringify(array(existing.rules)),actor.id]);
      await db.execute('UPDATE world_industry_template_versions SET configuration=?,rules=? WHERE template_id=? AND version=?',[JSON.stringify(b.configuration),JSON.stringify(b.rules),versionTarget,old.current_version]);
+     await db.execute('UPDATE world_industry_templates SET access_scope=? WHERE id=?',[b.access_scope||old.access_scope,versionTarget]);
      await audit(db,actor.id,'industry',versionTarget,'template_edit',String(old.current_version));
      return ok({template_id:versionTarget,version:Number(old.current_version),updated:true});
     }
     if(Number(old.current_version)>=999)return fail(409,'template_version_limit');
     const next=Number(old.current_version)+1;
     await db.execute('INSERT INTO world_industry_template_versions(template_id,version,configuration,rules,published_by) VALUES(?,?,?,?,?)',[versionTarget,next,JSON.stringify(b.configuration),JSON.stringify(b.rules),actor.id]);
-    await db.execute('UPDATE world_industry_templates SET current_version=? WHERE id=?',[next,versionTarget]);
+    await db.execute('UPDATE world_industry_templates SET current_version=?,access_scope=? WHERE id=?',[next,b.access_scope||old.access_scope,versionTarget]);
     await audit(db,actor.id,'industry',versionTarget,'template_publish',String(next));
     return ok({template_id:versionTarget,version:next});
    }
    let created;
-   try{[created]=await db.execute('INSERT INTO world_industry_templates(name,slug,category,created_by) VALUES(?,?,?,?)',[b.name.trim(),b.slug,b.category,actor.id]);}
+   try{[created]=await db.execute('INSERT INTO world_industry_templates(name,slug,category,access_scope,created_by) VALUES(?,?,?,?,?)',[b.name.trim(),b.slug,b.category,b.access_scope||'order_only',actor.id]);}
    catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'template_slug_exists');throw e}
    await db.execute('INSERT INTO world_industry_template_versions(template_id,version,configuration,rules,published_by) VALUES(?,?,?,?,?)',[created.insertId,1,JSON.stringify(b.configuration),JSON.stringify(b.rules),actor.id]);
    await audit(db,actor.id,'industry',created.insertId,'template_create',b.slug);
@@ -170,8 +172,9 @@ export async function industryRoute(pool,req,path,actor){
    }else{
     [[loc]]=await db.execute('SELECT id,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
    }
-   const [[template]]=await db.execute('SELECT id,current_version FROM world_industry_templates WHERE id=? AND archived=0',[b.template_id]);
+   const [[template]]=await db.execute('SELECT id,current_version,access_scope FROM world_industry_templates WHERE id=? AND archived=0',[b.template_id]);
    if(!loc||!template)return fail(404,'site_or_template_not_found');
+   if(template.access_scope==='order_only'&&loc.controlling_faction_id!=='eclipse-order')return fail(409,'order_only_blueprint');
    // Workers, fuel, level and output capacity are simulated. No initial numbers from the form.
    const [created]=await db.execute(`INSERT INTO world_industry_facilities
    (settlement_id,site_id,owner_faction_id,template_id,template_version,name,status,level,capacity_pct,workforce,heat_available,power_available,cycle_mode,cycle_cadence,notes,created_by)
