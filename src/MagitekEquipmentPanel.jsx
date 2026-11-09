@@ -1,5 +1,6 @@
 import React,{useState} from 'react';
 const labels={transport:'Ground transport',locomotive:'Magitek locomotive',railcar:'Rail carriage',armored_vehicle:'Armored vehicle / tank',airship:'Airship',field_equipment:'Field equipment',siege_equipment:'Siege equipment',other:'Other magitek equipment'};
+const classLimits={transport:[100,2000,40],locomotive:[100,4000,60],railcar:[400,5000,30],armored_vehicle:[40,300,20],airship:[2000,20000,500],field_equipment:[50,3000,100],siege_equipment:[50,1000,100],other:[100,2000,100]};
 const blank=()=>({item_id:'',name:'',description:'',equipment_kind:'transport',transport_capacity:0,cargo_capacity:0,crew_required:1,fuel_item_id:null,fuel_per_operation:0,enabled:true});
 const number=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:3});
 export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe}){
@@ -54,11 +55,11 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
    <div className="wa-civic-build-fields" style={{padding:20,maxHeight:'65vh',overflow:'auto'}}>
     <label>Equipment item ID<input value={draft.item_id} disabled={editing!=='new'} placeholder="magitek-freight-wagon" onChange={e=>setDraft({...draft,item_id:e.target.value.toLowerCase().replace(/\s+/g,'-')})}/></label>
     <label>Name<input value={draft.name} maxLength="120" onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
-    <label>Equipment category<select disabled={editing!=='new'} value={draft.equipment_kind} onChange={e=>setDraft({...draft,equipment_kind:e.target.value})}>{Object.entries(labels).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
+    <label>Equipment category<select disabled={editing!=='new'} value={draft.equipment_kind} onChange={e=>{const limits=classLimits[e.target.value];setDraft({...draft,equipment_kind:e.target.value,transport_capacity:Math.min(draft.transport_capacity,limits[0]),cargo_capacity:Math.min(draft.cargo_capacity,limits[1]),crew_required:Math.min(draft.crew_required,limits[2])})}}>{Object.entries(labels).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
     <label>Available for new recipes<select value={draft.enabled?'on':'off'} onChange={e=>setDraft({...draft,enabled:e.target.value==='on'})}><option value="on">Available</option><option value="off">Disabled</option></select></label>
-    <label>Passenger / troop capacity<input type="number" min="0" max="10000" value={draft.transport_capacity} onChange={e=>setDraft({...draft,transport_capacity:Number(e.target.value)})}/></label>
-    <label>Cargo capacity (units)<input type="number" min="0" max="100000" value={draft.cargo_capacity} onChange={e=>setDraft({...draft,cargo_capacity:Number(e.target.value)})}/></label>
-    <label>Required crew<input type="number" min="0" max="1000" value={draft.crew_required} onChange={e=>setDraft({...draft,crew_required:Number(e.target.value)})}/></label>
+    <label>Passenger / troop capacity<input type="number" min="0" max={classLimits[draft.equipment_kind][0]} value={draft.transport_capacity} onChange={e=>setDraft({...draft,transport_capacity:Number(e.target.value)})}/></label>
+    <label>Cargo capacity (units)<input type="number" min="0" max={classLimits[draft.equipment_kind][1]} value={draft.cargo_capacity} onChange={e=>setDraft({...draft,cargo_capacity:Number(e.target.value)})}/></label>
+    <label>Required crew<input type="number" min="0" max={classLimits[draft.equipment_kind][2]} value={draft.crew_required} onChange={e=>setDraft({...draft,crew_required:Number(e.target.value)})}/></label>
     <label>Operating fuel<select value={draft.fuel_item_id||''} onChange={e=>setDraft({...draft,fuel_item_id:e.target.value||null})}><option value="">No operating fuel</option>{items.filter(i=>i.category==='fuel').map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></label>
     <label>Fuel per operation<input type="number" min="0" max="10000" step=".001" value={draft.fuel_per_operation} onChange={e=>setDraft({...draft,fuel_per_operation:Number(e.target.value)})}/></label>
     <label className="wide">Description<input value={draft.description} maxLength="500" onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
