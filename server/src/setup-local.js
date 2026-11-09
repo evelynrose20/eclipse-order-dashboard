@@ -159,6 +159,8 @@ async function main(){
   await pool.query(npcCargo);
   const magitek=await readFile(new URL('../sql/071_magitek_equipment_manufacturing.sql',import.meta.url),'utf8');
   await pool.query(magitek);
+  const garlean=await readFile(new URL('../sql/072_garlean_equipment_and_train_consists.sql',import.meta.url),'utf8');
+  await pool.query(garlean);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
