@@ -66,6 +66,9 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setRiverId('');setRiverName('');setRiverPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
+ const visibleSegmentNodes=new Set(networkSegments.filter(visibleTransport).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]));
+ const internalOnlyNodes=new Set(networkSegments.filter(r=>!visibleTransport(r)).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]).filter(id=>!visibleSegmentNodes.has(id)));
+ const visibleMapNode=n=>!n.settlement_id&&!internalOnlyNodes.has(Number(n.id));
  const graphNodes=useMemo(()=>new Map(networkNodes.map(n=>[Number(n.id),{...n,...(junctionPositions[n.id]||{})}])),[networkNodes,junctionPositions]);
  const selectedNode=networkNodes.find(n=>Number(n.id)===Number(selectedJunction)&&!n.settlement_id);
  const attachedSegments=selectedNode?networkSegments.filter(r=>Number(r.from_node_id)===Number(selectedNode.id)||Number(r.to_node_id)===Number(selectedNode.id)):[];
@@ -81,7 +84,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
  const labelForRef=id=>id==null?'Choose endpoint':Number(id)<0?(graphNodes.get(-Number(id))?.name||'Junction #'+(-Number(id))):(byId.get(Number(id))?.name||'Unknown place');
  // Route endpoints are site IDs (positive) or saved junction IDs (negative).
  // This stable representation also powers the accessible selectors below.
- const endpointOptions=[...displayed.map(site=>({value:String(site.id),label:site.name,kind:'site'})),...networkNodes.filter(n=>!n.settlement_id).map(n=>({value:String(-Number(n.id)),label:(n.name||'Junction #'+n.id)+(n.node_kind==='rail_switch'?' · rail switch':''),kind:'junction'}))];
+ const endpointOptions=[...displayed.map(site=>({value:String(site.id),label:site.name,kind:'site'})),...networkNodes.filter(visibleMapNode).map(n=>({value:String(-Number(n.id)),label:(n.name||'Junction #'+n.id)+(n.node_kind==='rail_switch'?' · rail switch':''),kind:'junction'}))];
  const routeEndpoint=(id)=>id==null?'':String(id);
  const chooseRouteEndpoint=(side,value)=>{
   const id=value===''?null:Number(value);
@@ -473,7 +476,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,sitePins=[]
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
 
-   {(mode==='view'||drawing||mode==='bend'||mode==='move')&&networkNodes.filter(n=>!n.settlement_id).map(n=>{
+   {(mode==='view'||drawing||mode==='bend'||mode==='move')&&networkNodes.filter(visibleMapNode).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
