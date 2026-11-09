@@ -10,18 +10,18 @@ const phaseName=s=>s.status==='active'?'Current chapter':s.status==='complete'?'
 export default function ConstructionProjects({request,characters=[],canManage=false,readOnly=false,userId='',initialEventId='',onSelectEvent}){
  const [projects,setProjects]=useState([]),[projectId,setProjectId]=useState('');
  const [showArchived,setShowArchived]=useState(false);
- const [project,setProject]=useState(null),[materials,setMaterials]=useState([]);
+ const [project,setProject]=useState(null),[materials,setMaterials]=useState([]),[legacyMaterials,setLegacyMaterials]=useState([]);
  const [facilities,setFacilities]=useState([]),[reserved,setReserved]=useState([]),[events,setEvents]=useState([]);
  const [draft,setDraft]=useState(null),[editingId,setEditingId]=useState(null),[activeStage,setActiveStage]=useState('');
  const [linkedEventId,setLinkedEventId]=useState('');
  const [characterId,setCharacterId]=useState('');
- const [delivery,setDelivery]=useState({requirement_id:'',quantity:1,source:'facility',facility_id:''});
+ const [delivery,setDelivery]=useState({requirement_id:'',quantity:1,source:'reserved',facility_id:''});
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const ownCharacters=characters.filter(c=>(c.player_user_id||c.player_account_id)===userId);
  const canCreate=canManage&&!readOnly;
  const matName=id=>materials.find(m=>m.id===id)?.name||id;
  const ownReserved=id=>Number(reserved.find(r=>r.character_id===characterId&&r.material_id===id)?.quantity||0);
- const sharedAvailable=id=>Number(reserved.find(m=>m.material_id===id&&m.scope==='shared')?.quantity||0);
+ const sharedAvailable=id=>Number(legacyMaterials.find(m=>m.id===id)?.quantity||0);
  const available=id=>selectedReq?.industry_item_id?Number(facilities.find(f=>String(f.id)===String(delivery.facility_id)&&f.item_id===id)?.quantity||0):delivery.source==='reserved'?ownReserved(id):sharedAvailable(id);
  const sourceFacilities=selectedReq?.industry_item_id?facilities.filter(f=>f.item_id===selectedReq.industry_item_id):[];
  const selectedStage=project?.stages.find(s=>String(s.id)===String(activeStage))||project?.stages.find(s=>s.status==='active')||project?.stages[0];
@@ -32,7 +32,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
  const done=project?.stages.reduce((sum,s)=>sum+s.requirements.reduce((n,r)=>n+Number(r.contributed_quantity),0),0)||0;
  async function load(target=projectId){
   const [catalog,industry,workshop,bags]=await Promise.all([request('/construction'),request('/construction/materials'),request('/workshop'),request('/workshop/reserved')]);
-  setProjects(catalog.projects||[]);setMaterials(industry.materials||[]);setFacilities(industry.facilities||[]);setReserved(bags.goods||[]);
+  setProjects(catalog.projects||[]);setMaterials(industry.materials||[]);setLegacyMaterials(workshop.materials||[]);setFacilities(industry.facilities||[]);setReserved(bags.goods||[]);
   if((catalog.projects||[]).length>0&&(catalog.projects||[]).every(p=>p.state==='archived'))setShowArchived(true);
   const chosen=(catalog.projects||[]).find(p=>String(p.id)===String(target))||(catalog.projects||[])[0];
   if(chosen){
@@ -124,7 +124,7 @@ export default function ConstructionProjects({request,characters=[],canManage=fa
      </section>
      {selectedStage&&<section className="eo-construction-work"><div className="eo-construction-section-heading"><span>PHASE {selectedStage.position} · {selectedStage.status.toUpperCase()}</span><h4>{selectedStage.name}</h4><p>{selectedStage.description||'Gather materials for the next milestone in the Order’s work.'}</p></div>
       <div className="eo-construction-requirements">{selectedStage.requirements.map(r=><div className="eo-construction-material" key={r.id}><div><strong>{r.material_name}</strong><small>{num(r.contributed_quantity)} / {num(r.required_quantity)} supplied</small></div><span>{percent(r.contributed_quantity,r.required_quantity)}%</span><div className="eo-construction-bar"><span style={{width:percent(r.contributed_quantity,r.required_quantity)+'%'}}/></div></div>)}</div>
-      {selectedStage.status==='active'&&project.state==='open'&&<div className="eo-construction-delivery"><div><span>THE MATERIALS DEPOT</span><h5>Deliver construction supplies</h5><p>Materials are delivered from the industrial site that holds them. Existing workshop commissions retain their original supply records.</p></div>
+      {selectedStage.status==='active'&&project.state==='open'&&<div className="eo-construction-delivery"><div><span>THE MATERIALS DEPOT</span><h5>Deliver construction supplies</h5><p>Industrial supplies are committed from the site that stores them. Earlier commissions may still use their recorded workshop materials.</p></div>
        <div className="eo-construction-fields"><label>Character sheet<select value={characterId} onChange={e=>setCharacterId(e.target.value)}><option value="">Choose character</option>{ownCharacters.map(c=><option key={c.id} value={c.id}>{c.name||c.character_name}</option>)}</select></label><label>Requested material<select value={selectedReq?.id||''} onChange={e=>setDelivery({...delivery,requirement_id:e.target.value,quantity:1})}>{selectedStage.requirements.filter(r=>Number(r.contributed_quantity)<Number(r.required_quantity)).map(r=><option key={r.id} value={r.id}>{r.material_name} · {r.required_quantity-r.contributed_quantity} needed</option>)}</select></label>{selectedReq?.industry_item_id?<label>Supply site<select value={delivery.facility_id} onChange={e=>setDelivery({...delivery,facility_id:e.target.value,quantity:1})}><option value="">Choose supplying facility</option>{sourceFacilities.map(f=><option key={f.id} value={f.id}>{f.name} · {num(f.quantity)} available</option>)}</select></label>:<label>Use supplies from<select value={delivery.source} onChange={e=>setDelivery({...delivery,source:e.target.value,quantity:1})}><option value="reserved">My character's reserved goods</option><option value="shared">FC common stores</option></select></label>}<label>Quantity<input type="number" min="1" max={Math.max(1,maxQuantity)} value={delivery.quantity} onChange={e=>setDelivery({...delivery,quantity:e.target.value})}/></label></div>
        <div className="eo-construction-delivery-foot"><span>{selectedReq?num(available(selectedReq.material_id))+' available from selected source':'No materials remaining'}</span><button type="button" disabled={busy||readOnly||!characterId||!selectedReq||(selectedReq.industry_item_id&&!canManage)||remaining===0||Number(delivery.quantity)<1||Number(delivery.quantity)>maxQuantity} onClick={give}>Contribute materials</button></div>
        {selectedReq&&maxQuantity===0&&<p className="eo-construction-hint">No supplies are available at the selected industrial site. Produce or transfer the required material through Sites, Industry & Projects.</p>}
