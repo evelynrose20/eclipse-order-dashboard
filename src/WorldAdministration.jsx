@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import WorldTerritoryMap,{ICON_OPTIONS} from './WorldTerritoryMap.jsx';
+import ContinentStrategyMap from './ContinentStrategyMap.jsx';
 import MapIconPicker from './MapIconPicker.jsx';
 import CivicNeedsPanel from './CivicNeedsPanel.jsx';
 import RegionClimatePanel from './RegionClimatePanel.jsx';
@@ -25,6 +26,7 @@ class WorldPanelBoundary extends React.Component{
 }
 export default function WorldAdministration({request,readOnly=false,userId='',characters=[]}){
  const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[zone,setZone]=useState(''),[selected,setSelected]=useState('');
+ const [mapLevel,setMapLevel]=useState('continent');
  const [editing,setEditing]=useState(null),[editType,setEditType]=useState(''),[preview,setPreview]=useState(true),[industryFocus,setIndustryFocus]=useState('');
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const load=async()=>{const result=await request('/world-admin');setData(result);const currentRegion=result.regions.some(r=>String(r.id)===region)?region:String(result.regions[0]?.id||'');setRegion(currentRegion);setZone(old=>result.zones?.some(z=>String(z.id)===old&&String(z.region_id)===currentRegion)?old:String(result.zones?.find(z=>String(z.region_id)===currentRegion&&z.is_default)?.id||result.zones?.find(z=>String(z.region_id)===currentRegion)?.id||''));setSelected(old=>result.settlements.some(s=>String(s.id)===old)?old:String(result.settlements[0]?.id||''));return result};
@@ -84,7 +86,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
    <nav className="wa-tabs" aria-label="World administration sections">
     {(canEdit?[['map','Territorial Map'],['settlements','Order Settlements'],['npc','NPC Settlements'],['unclaimed','Unclaimed'],['industry','Industry & Projects'],['civil','Civilian Welfare'],['reference','Simulation Rules']]:[['map','Territorial Map'],['settlements','Settlements'],['civil','Civilian Welfare']]).map(([id,name])=><button key={id} aria-current={section===id?'page':undefined} className={section===id?'active':''} onClick={()=>setSection(id)}>{name}</button>)}
    </nav>
-   {section!=='npc'&&section!=='industry'&&<div className="wa-geography-picker" aria-label="Territorial geography">
+   {section!=='npc'&&section!=='industry'&&(section!=='map'||mapLevel==='local')&&<div className="wa-geography-picker" aria-label="Territorial geography">
     <div className="wa-geography-line">
      <span className="wa-geography-label">Region</span>
      <div className="wa-geography-tabs" role="group" aria-label="Select region">
@@ -104,7 +106,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
      {canEdit&&activeRegion&&<button type="button" className="wa-accent wa-geography-create" onClick={newSettlement}><i className="fa-solid fa-plus" aria-hidden="true"/> Add settlement</button>}
     </div>}
    </div>}
-   {section!=='npc'&&section!=='industry'&&activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
+   {section!=='npc'&&section!=='industry'&&(section!=='map'||mapLevel==='local')&&activeZone&&<div className="wa-zone-summary" aria-label="Selected zone territorial control">
     <strong><i className="fa-solid fa-map-location-dot" aria-hidden="true"/> {activeZone.name}</strong>
     <span>{pretty(activeZone.strategic_state)}</span>
     <span>Government: {factionName(activeZone.governing_faction_id)}</span>
@@ -115,7 +117,9 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
 
    {canEdit&&section==='npc'&&<NpcSettlementsPanel request={request} factions={factions} onChanged={load}/>}
    {canEdit&&section==='industry'&&<WorldPanelBoundary><IndustrySitesPanel request={request} onChanged={load} userId={userId} characters={characters} initialLocationKey={industryFocus} onFocusCleared={()=>setIndustryFocus('')}/></WorldPanelBoundary>}
-   {activeRegion&&section==='map'&&<div className="wa-map-workspace"><section className="wa-panel wa-map-main-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} sitePins={industrySites.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId)} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
+   {section==='map'&&<div className="wa-continent-navigation"><button type="button" className={mapLevel==='continent'?'active':''} onClick={()=>setMapLevel('continent')}>Continent map</button><button type="button" className={mapLevel==='local'?'active':''} onClick={()=>setMapLevel('local')}>Detailed local map</button></div>}
+   {section==='map'&&mapLevel==='continent'&&<ContinentStrategyMap continent={data.continent||{}} zones={zones} regions={regions} settlements={settlements} factions={factions} canEdit={canEdit} request={request} onSaved={load} onOpenZone={chosen=>{changeRegion(String(chosen.region_id));setZone(String(chosen.id));setMapLevel('local')}}/>}
+   {activeRegion&&section==='map'&&mapLevel==='local'&&<div className="wa-map-workspace"><section className="wa-panel wa-map-main-panel"><div className="wa-panel-title"><strong>ZONE TERRITORY MAP</strong><span>{activeRegion.name} / {activeZone?.name}</span></div><WorldTerritoryMap key={activeZoneId} zoneId={Number(activeZoneId)} region={{...activeRegion,name:activeRegion.name+' / '+(activeZone?.name||''),map_background_url:activeZone?.map_background_url||''}} settlements={local} sitePins={industrySites.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId)} routes={routes.filter(r=>String(r.region_id)===region&&String(r.zone_id)===activeZoneId)} networkNodes={networkNodes.filter(n=>String(n.region_id)===region&&String(n.zone_id)===activeZoneId)} networkSegments={networkSegments.filter(e=>String(e.region_id)===region&&String(e.zone_id)===activeZoneId)} mountains={mountains.filter(m=>String(m.region_id)===region&&String(m.zone_id)===activeZoneId)} canEdit={canEdit} selected={selected} onSelect={setSelected} request={request} onSaved={load}/></section>
      <section className="wa-panel wa-map-selection-panel"><div className="wa-panel-title"><strong>SELECTED SETTLEMENT</strong><span>{local.length} locations</span></div>{current&&String(current.region_id)===region?<div className="wa-inspector"><h3>{current.name}</h3><p>{current.description||'No description yet.'}</p><div><span>Control</span><strong>{factionName(current.controlling_faction_id)}</strong></div><div><span>Government</span><strong>{factionName(current.governing_faction_id)}</strong></div><div><span>Supporting faction</span><strong>{factionName(current.supporting_faction_id)}</strong></div><div><span>Territorial state</span><strong>{pretty(current.strategic_state)}</strong></div><div><span>Residents</span><strong>{Number(current.population).toLocaleString()}</strong></div><section className="wa-inspector-civic"><h4>Civilian welfare</h4>
    {canEdit&&<div><span>Simulation</span><strong>{civicStatus(current,activeRegion)}</strong></div>}
    <div><span>Housing</span><strong>{civicValue(current.civic_summary?.housing_capacity)} places</strong></div><div><span>Defenses</span><strong>+{civicValue(current.civic_summary?.upgrade_effects?.defense_bonus)} protection</strong></div><div><span>Food reserves</span><strong>{current.civic_summary?.has_stock?civicValue(current.civic_summary.food_days,' days'):'No supplies recorded'}</strong></div>
