@@ -142,6 +142,7 @@ async function review(pool,req,actor,proposalId){
   const [[p]]=await db.execute('SELECT * FROM world_conflict_proposals WHERE id=? FOR UPDATE',[proposalId]);
   if(!p)return fail(404,'proposal_not_found');
   if(!['pending','postponed'].includes(p.status))return fail(409,'proposal_already_reviewed');
+  if(p.source_kind==='war_outcome')return fail(409,'outcome_requires_second_stage_review');
   const status={approve:'approved',reject:'rejected',postpone:'postponed',rp_event:'rp_event'}[b.decision];
   if(b.decision==='approve'&&p.target_settlement_id){
    const [[protection]]=await db.execute('SELECT protection FROM world_plot_protection WHERE settlement_id=?',[p.target_settlement_id]);
@@ -162,7 +163,7 @@ async function review(pool,req,actor,proposalId){
 // An approved conflict may produce a recommendation, never an automatic annexation.
 async function outcomeCreate(pool,req){
  const b=await payload(req);
- if(!b||!id(b.conflict_id)||!id(b.target_settlement_id)||!str(b.rationale,1500,true)||!['territory_transfer','peace'].includes(b.kind))return fail(400,'invalid_outcome_proposal');
+ if(!b||!id(b.conflict_id)||!str(b.rationale,1500,true)||!['territory_transfer','peace'].includes(b.kind)||(b.kind==='territory_transfer'&&!id(b.target_settlement_id)))return fail(400,'invalid_outcome_proposal');
  return inTx(pool,async db=>{
   const [[conflict]]=await db.execute('SELECT * FROM world_authorized_conflicts WHERE id=? FOR UPDATE',[b.conflict_id]);
   if(!conflict||!['authorized','active'].includes(conflict.status))return fail(409,'conflict_not_active');
@@ -173,7 +174,7 @@ async function outcomeCreate(pool,req){
   }
   const [result]=await db.execute(`INSERT INTO world_conflict_proposals
     (attacker_id,defender_id,target_settlement_id,conflict_kind,rationale,proposed_effect,source_kind,related_conflict_id)
-    VALUES(?,?,?,?,?,?,'war_outcome',?)`,[conflict.attacker_id,conflict.defender_id,b.target_settlement_id,b.kind,b.rationale.trim(),b.kind==='territory_transfer'?'Transfer control to attacker after explicit review':'Conclude authorized conflict after explicit review',conflict.id]);
+    VALUES(?,?,?,?,?,?,'war_outcome',?)`,[conflict.attacker_id,conflict.defender_id,b.kind==='territory_transfer'?b.target_settlement_id:null,b.kind,b.rationale.trim(),b.kind==='territory_transfer'?'Transfer control to attacker after explicit review':'Conclude authorized conflict after explicit review',conflict.id]);
   return ok({id:result.insertId,status:'pending',ownership_changed:false});
  });
 }
