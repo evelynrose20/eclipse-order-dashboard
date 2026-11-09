@@ -77,7 +77,7 @@ async function ensureNpcRows(pool){
  // No seed settlements: only existing, explicitly NPC-controlled sites are eligible.
  await pool.execute(`INSERT IGNORE INTO world_settlement_autosim
  (settlement_id,mode,ownership,cadence,food_units,fuel_units,water_units,medicine_units)
- SELECT s.id,'automatic','npc','normal',s.population*12,s.population*7,s.population*12,s.population*.2
+ SELECT s.id,'off','npc','normal',s.population*12,s.population*7,s.population*12,s.population*.2
  FROM world_settlements s WHERE s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order'`);
 }
 async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='clear'){
