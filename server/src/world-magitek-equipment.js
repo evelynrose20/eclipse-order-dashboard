@@ -107,6 +107,20 @@ export async function equipmentRoute(pool,req,path,actor){
     const [[site]]=await db.execute('SELECT controlling_faction_id FROM world_settlements WHERE id=?',[destination]);
     if(!site||site.controlling_faction_id!==unit.owner_faction_id)return fail(409,'stationing_requires_faction_control');
    }
+   const qty=b.quantity===undefined?Number(unit.quantity):Number(b.quantity);
+   if(!whole(qty,1,Number(unit.quantity)))return fail(400,'invalid_assigned_quantity');
+   if(qty<Number(unit.quantity)){
+    if(unit.status!=='reserve'||b.status!=='assigned')return fail(409,'partial_allocation_requires_reserve');
+    const [left]=await db.execute('UPDATE world_magitek_equipment_inventory SET quantity=quantity-? WHERE id=? AND quantity>=?',[qty,id,qty]);
+    if(left.affectedRows!==1)return fail(409,'equipment_allocation_balance_changed');
+    const [newLot]=await db.execute(`INSERT INTO world_magitek_equipment_inventory
+     (equipment_template_id,origin_facility_id,owner_faction_id,stationed_settlement_id,quantity,specifications,status,notes,registered_by)
+     VALUES(?,?,?,?,?,?,'assigned',?,?)`,[unit.equipment_template_id,unit.origin_facility_id,unit.owner_faction_id,destination,qty,
+      typeof unit.specifications==='string'?unit.specifications:JSON.stringify(unit.specifications),b.notes,actor.id]);
+    await db.execute("INSERT INTO world_magitek_equipment_movements(inventory_id,action,quantity,actor_id,detail) VALUES(?,'reserve',?,?,?)",[id,qty,actor.id,'Allocated to lot '+newLot.insertId]);
+    await db.execute("INSERT INTO world_magitek_equipment_movements(inventory_id,action,quantity,actor_id,detail) VALUES(?,'assign',?,?,?)",[newLot.insertId,qty,actor.id,'Allocated from reserve lot '+id]);
+    return ok({saved:true,status:'assigned',allocated_lot_id:newLot.insertId,quantity:qty});
+   }
    await db.execute('UPDATE world_magitek_equipment_inventory SET status=?,stationed_settlement_id=?,notes=? WHERE id=?',[b.status,destination,b.notes,id]);
    await db.execute('INSERT INTO world_magitek_equipment_movements(inventory_id,action,quantity,actor_id,detail) VALUES(?,?,?,?,?)',[id,b.status==='assigned'?'assign':b.status,unit.quantity,actor.id,b.notes]);
    return ok({saved:true,status:b.status});
