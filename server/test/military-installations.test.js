@@ -29,3 +29,11 @@ test('migration is in setup and preserves military ledger enum on repeat setup',
  assert.match(previous,/military_supply/);
  assert.match(migration,/military_supply/);
 });
+
+test('military UI follows World Administration steel-blue palette without purple panels',()=>{
+ const css=readFileSync(new URL('../../src/military-installations.css',import.meta.url),'utf8');
+ assert.match(css,/--military-bg:#182733/);
+ assert.match(css,/--military-border:#405462/);
+ assert.match(css,/\.military-metrics\{display:none\}/);
+ assert.doesNotMatch(css,/#69527e|#9984ae|#26202d|#211d28|#42354d|#a993b6/i);
+});
