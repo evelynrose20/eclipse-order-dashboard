@@ -1,3 +1,4 @@
+import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
 import {civicInfrastructureEffects,civilianStorageCapacity,npcConstructionPreference,civicProjectCost} from './world-civic-building-templates.js';
 import {beginCivicTemplateProject,advanceCivicTemplateProjects} from './world-civic-template-projects.js';
@@ -267,10 +268,16 @@ export async function runSettlementSimulation(pool,now=new Date()){
    const cadence=ownership==='order'&&state.cadence==='fast'?'normal':state.cadence;
    const key=simulationCycleKey(now,cadence);
    if(state.last_cycle_key===key){await db.rollback();continue}
-   const [weather]=await climateForRegions(db,[{...site,weather_mode:site.weather_mode}],now);
+   let effectiveSite=site,effectiveState=state;
+   if(ownership==='npc'){
+    await establishNpcSettlement(db,site,state);
+    [[effectiveSite]]=await db.execute('SELECT s.*,r.simulation_mode,r.weather_mode,r.weather,r.temperature_c FROM world_settlements s JOIN world_regions r ON r.id=s.region_id WHERE s.id=?',[id]);
+    [[effectiveState]]=await db.execute('SELECT * FROM world_settlement_autosim WHERE settlement_id=?',[id]);
+   }
+   const [weather]=await climateForRegions(db,[{...effectiveSite,weather_mode:effectiveSite.weather_mode}],now);
    const temperature=Number(weather.effective_weather.temperature_f);
    const weatherCondition=weather.effective_weather.weather||'clear';
-   const result=ownership==='npc'?await applyNpcCycle(db,site,state,now,key,temperature,weatherCondition):await applyOrderCycle(db,site,state,now,key,temperature,weatherCondition);
+   const result=ownership==='npc'?await applyNpcCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition):await applyOrderCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition);
    if(!result){await db.rollback();continue}
    await db.commit();
    results.push(result);
@@ -285,13 +292,14 @@ export async function settlementSimulationRoute(pool,req,path,actor){
  if(!command(actor))return {status:403,body:{error:'command_required'}};
  if(path==='/world-admin/simulation'&&req.method==='GET'){
   const [sites]=await pool.execute("SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,s.population,s.workforce,s.housing_capacity,s.security_score,s.medical_access,s.food_access,s.civil_stability,s.unrest,s.simulation_enabled,r.name AS region_name,r.simulation_mode,a.mode,a.ownership AS state_ownership,a.cadence,a.paused,a.last_cycle_key,a.food_units,a.fuel_units,a.water_units,a.medicine_units,a.development_points,a.last_industry_development_points FROM world_settlements s JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_settlement_autosim a ON a.settlement_id=s.id ORDER BY s.name");
+  const [foundings]=await pool.execute('SELECT settlement_id,founding_population,starter_housing_id,starter_facility_id FROM world_npc_settlement_foundings');
   const [healthStates]=await pool.execute('SELECT settlement_id,sick_workers,injured_workers FROM world_settlement_worker_health');
   const [educationStates]=await pool.execute('SELECT settlement_id,attainment FROM world_settlement_education');
   const [infrastructure]=await pool.execute('SELECT * FROM world_settlement_upgrades');
   const [templateProjects]=await pool.execute("SELECT p.id,p.settlement_id,p.upgrade_id,p.template_id,p.target_level,p.status,p.progress,p.labor_required,u.name FROM world_civic_building_projects p JOIN world_settlement_upgrades u ON u.id=p.upgrade_id WHERE p.owner_kind='npc' ORDER BY p.id DESC");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");
-  return {status:200,body:{settlements:sites.map(s=>({...s,demographics:settlementDemographics(s),worker_health:healthStates.find(x=>Number(x.settlement_id)===Number(s.id))||{sick_workers:0,injured_workers:0},education:educationPreview(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),storage_capacity:civilianStorageCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),housing_capacity_total:housingCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_effects:civicInfrastructureEffects(infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_projects:templateProjects.filter(p=>Number(p.settlement_id)===Number(s.id)),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
+  return {status:200,body:{settlements:sites.map(s=>({...s,founding:foundings.find(f=>Number(f.settlement_id)===Number(s.id))||null,demographics:settlementDemographics(s),worker_health:healthStates.find(x=>Number(x.settlement_id)===Number(s.id))||{sick_workers:0,injured_workers:0},education:educationPreview(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id)),educationStates.find(x=>Number(x.settlement_id)===Number(s.id))||{}),storage_capacity:civilianStorageCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),housing_capacity_total:housingCapacity(s,infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_effects:civicInfrastructureEffects(infrastructure.filter(x=>Number(x.settlement_id)===Number(s.id))),infrastructure_projects:templateProjects.filter(p=>Number(p.settlement_id)===Number(s.id)),ownership:settlementOwnership(s),mode:s.state_ownership&&s.state_ownership!==settlementOwnership(s)?'off':s.mode||(settlementOwnership(s)==='npc'?'automatic':'off'),cadence:s.cadence||'normal',paused:!!s.paused,projects:projects.filter(p=>p.settlement_id===s.id),history:history.filter(h=>h.settlement_id===s.id).slice(0,25)}))}};
  }
  const match=/^\/world-admin\/simulation\/(\d+)\/settings$/.exec(path);
  if(match&&req.method==='PUT'){
