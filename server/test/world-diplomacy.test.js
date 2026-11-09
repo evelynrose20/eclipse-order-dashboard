@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
 import {readFileSync} from 'node:fs';
-import {canGenerateNpcProposal,protectedOutcomeAllowed,worldDiplomacyRoute} from '../src/world-diplomacy.js';
+import {canGenerateNpcProposal,protectedOutcomeAllowed,canClaimLocation,stateAfterCapture,worldDiplomacyRoute} from '../src/world-diplomacy.js';
 const actor={id:'00000000-0000-0000-0000-000000000001',account_role:'domina'};
 const request=(method,body)=>Object.assign(Readable.from(body===undefined?[]:[Buffer.from(JSON.stringify(body))]),{method});
 test('only NPC factions with high tension, low trust, and valid preset defender locations qualify',()=>{
@@ -99,4 +99,39 @@ test('war outcome cannot be approved through initial war review endpoint',async(
  const res=await worldDiplomacyRoute({getConnection:async()=>db},request('POST',{decision:'approve',note:''}),'/world-admin/diplomacy/proposals/22/review',actor);
  assert.equal(res.status,409);
  assert.equal(res.body.error,'outcome_requires_second_stage_review');
+});
+
+test('destroyed and abandoned preset holdings begin rebuilding once capture is explicitly approved',()=>{
+ assert.equal(stateAfterCapture('destroyed'),'rebuilding');
+ assert.equal(stateAfterCapture('abandoned'),'rebuilding');
+ assert.equal(stateAfterCapture('rebuilding'),'rebuilding');
+ assert.equal(stateAfterCapture('secure'),'occupied');
+ assert.equal(stateAfterCapture('contested'),'occupied');
+});
+test('a neutral location can be claimed but an unrelated third party cannot be silently conquered',()=>{
+ assert.equal(canClaimLocation({controlling_faction_id:null},'defender'),true);
+ assert.equal(canClaimLocation({controlling_faction_id:'defender'},'defender'),true);
+ assert.equal(canClaimLocation({controlling_faction_id:'third-party'},'defender'),false);
+ assert.equal(canClaimLocation(null,'defender'),false);
+});
+test('explicit review of a ruined and unclaimed settlement starts rebuilding without changing other records',async()=>{
+ const queries=[];
+ const db={
+  beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},
+  execute:async(sql,params)=>{
+   queries.push({sql,params});
+   if(sql.startsWith('SELECT * FROM world_conflict_proposals'))return [[{id:72,status:'pending',source_kind:'war_outcome',related_conflict_id:8,conflict_kind:'territory_transfer',target_settlement_id:17}]];
+   if(sql.startsWith('SELECT * FROM world_authorized_conflicts'))return [[{id:8,status:'authorized',attacker_id:'a-faction',defender_id:'b-faction'}]];
+   if(sql.startsWith('SELECT id,controlling_faction_id,strategic_state FROM world_settlements'))return [[{id:17,controlling_faction_id:null,strategic_state:'destroyed'}]];
+   if(sql.startsWith('SELECT protection FROM world_plot_protection'))return [[null]];
+   return [{affectedRows:1}];
+  }
+ };
+ const res=await worldDiplomacyRoute({getConnection:async()=>db},request('POST',{decision:'approve',note:'Staff-approved recovery'}),'/world-admin/diplomacy/outcomes/72/review',actor);
+ assert.equal(res.status,200);
+ assert.equal(res.body.ownership_changed,true);
+ const takeover=queries.find(q=>q.sql.includes('UPDATE world_settlements'));
+ assert.deepEqual(takeover.params,['a-faction','rebuilding',17,null]);
+ assert.match(takeover.sql,/controlling_faction_id <=> \?/);
+ assert.doesNotMatch(takeover.sql,/population|workforce|industry|housing/);
 });
