@@ -18,7 +18,7 @@ export default function WorldDiplomacyPanel({request,factions=[],settlements=[],
   catch(e){setError(e.message||'Unable to save diplomatic action')}
   finally{setBusy(false)}
  };
- const npcFactions=factions.filter(f=>f.id!=='eclipse-order'&&['world','settlement'].includes(f.faction_scope));
+ const npcFactions=factions.filter(f=>f.id!=='eclipse-order'&&['order_story','world','settlement'].includes(f.faction_scope));
  const name=id=>factions.find(f=>f.id===id)?.name||id;
  const active=data?.conflicts?.filter(c=>['authorized','active'].includes(c.status))||[];
  const open=data?.proposals?.filter(p=>['pending','postponed'].includes(p.status))||[];
@@ -49,7 +49,7 @@ export default function WorldDiplomacyPanel({request,factions=[],settlements=[],
      <button disabled={busy||!outcome.conflict_id||!outcome.target_settlement_id||!outcome.rationale.trim()} type="submit">Submit outcome for approval</button>
     </form>
    </section>
-   <section className="wdi-section"><div className="wdi-section-head"><div><span className="wdi-eyebrow">POLITICAL PRESSURE</span><h4>Faction relations</h4><p>Only world and settlement NPC factions generate assessed disputes. Relationships never start a war automatically.</p></div></div>
+   <section className="wdi-section"><div className="wdi-section-head"><div><span className="wdi-eyebrow">POLITICAL PRESSURE</span><h4>Faction relations</h4><p>NPC faction relationships generate assessed disputes; the Eclipse Order is excluded from automatic NPC-vs-NPC proposals. Relationships never start a war automatically.</p></div></div>
     <div className="wdi-relation-list">{data.relations.map(r=><div key={r.faction_a+'-'+r.faction_b}><strong>{r.faction_a_name} / {r.faction_b_name}</strong><span>Tension {r.tension} · Trust {r.trust}</span></div>)}</div>
     <form className="wdi-form" onSubmit={e=>{e.preventDefault();void act('/relations',{...relationship,tension:Number(relationship.tension),trust:Number(relationship.trust)},'PUT','Faction relationship saved.')}}>
      <label>Faction A{factionSelect(relationship.faction_a,value=>setRelationship(v=>({...v,faction_a:value})),relationship.faction_b)}</label><label>Faction B{factionSelect(relationship.faction_b,value=>setRelationship(v=>({...v,faction_b:value})),relationship.faction_a)}</label>
