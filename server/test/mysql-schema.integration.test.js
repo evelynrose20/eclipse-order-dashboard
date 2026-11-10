@@ -983,6 +983,10 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
     {name:'Raise the observatory',description:'Fit the beams and roof',requirements:[{material_id:'iron-ingot',quantity:1}]}
    ]}),'/construction/'+projectId);
   assert.equal(revised.status,200,'director can revise a private plan before publication');
+  // Exercise pre-migration workshop commissions: their historical requirements remain
+  // readable and deliverable even though NEW projects now use industrial items.
+  await admin.execute(`UPDATE order_construction_requirements r JOIN order_construction_stages st ON st.id=r.stage_id
+   SET r.material_id=r.industry_item_id,r.industry_item_id=NULL WHERE st.project_id=?`,[projectId]);
   projectBefore=await constructionRoute(admin,request('GET'),'/construction/'+projectId);
   assert.match(projectBefore.body.project.description,/multi-session/);
   const secondEpisodeId='ffffffff-ffff-4fff-8fff-ffffffffffff';
