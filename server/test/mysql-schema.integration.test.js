@@ -1348,6 +1348,13 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(fuelRun.body.preview.outputs['ceruleum-fuel'],2);
   const depot=await industryRoute(admin,request('POST',{...factorySettings,settlement_id:portId,name:'CI Ceruleum Depot',template_id:rigTemplate.body.template_id,status:'operational',workforce:0,cycle_mode:'off'}),'/world-admin/industry/facilities',staff);
   assert.equal(depot.status,200,JSON.stringify(depot.body));
+  const liberatedDepot=await industryRoute(admin,request('POST',{status:'liberated'}),'/world-admin/industry/facilities/'+depot.body.id+'/transition',staff);
+  assert.equal(liberatedDepot.status,200);
+  const depotRebuild=await industryRoute(admin,request('POST',{...projectSetup,facility_id:depot.body.id,name:'CI Restore Port Supply Depot',needs:[]}),'/world-admin/industry/projects',staff);
+  assert.equal(depotRebuild.status,200);
+  const depotFinish=await industryRoute(admin,request('POST',{}),'/world-admin/industry/projects/'+depotRebuild.body.id+'/advance',staff);
+  assert.equal(depotFinish.status,200);
+  assert.equal(depotFinish.body.completed,true,'rail receiving depots require actual restoration');
   const fuelHandOff=await industryRoute(admin,request('POST',{item_id:'ceruleum-fuel',quantity:2,target_facility_id:depot.body.id}),'/world-admin/industry/facilities/'+refineryId+'/transfer',staff);
   assert.equal(fuelHandOff.status,200,JSON.stringify(fuelHandOff.body));
   const [[fuelDelivered]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel'",[depot.body.id]);
