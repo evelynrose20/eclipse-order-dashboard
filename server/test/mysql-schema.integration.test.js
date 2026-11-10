@@ -13,6 +13,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {worldAdministrationRoute} from '../src/world-administration.js';
 import {industryRoute} from '../src/world-industry.js';
+import {logisticsRoute} from '../src/world-logistics.js';
 import {runIndustryAutomation} from '../src/world-industry-engine.js';
 import {runSettlementSimulation,settlementSimulationRoute} from '../src/world-settlement-simulation.js';
 import {internalRailRoute} from '../src/internal-rail.js';
@@ -1417,6 +1418,38 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(splitLots.reduce((total,x)=>total+Number(x.quantity),0),3,'assigned and reserved units exactly conserve factory production');
   assert.ok(splitLots.some(x=>x.status==='reserve'&&Number(x.quantity)===1));
   assert.ok(splitLots.some(x=>x.status==='assigned'&&Number(x.quantity)===2));
+  // P4 freight acceptance: a commissioned vehicle reserves cargo/fuel once, arrives once,
+  // and may hand delivered ceruleum to a settlement's actual heating inventory.
+  const [assignedFreightLots]=await admin.execute("SELECT id FROM world_magitek_equipment_inventory WHERE origin_facility_id=? AND status='assigned' AND stationed_settlement_id=?",[magitekFactoryId,mineId]);
+  assert.ok(assignedFreightLots.length>0,'a commissioned and assigned transporter is required');
+  const freightTransport=await logisticsRoute(admin,request('POST',{name:'CI Garlean Supply Carrier',mode:'road',capacity:4,minutes_per_leg:10,fuel_item_id:'ceruleum-fuel',fuel_per_leg:1}),'/world-admin/logistics/templates',staff);
+  assert.equal(freightTransport.status,200,JSON.stringify(freightTransport.body));
+  const freightStockBefore=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel'",[magitekFactoryId]);
+  const fuelBefore=Number(freightStockBefore[0][0].quantity);
+  const freightManifest={request_key:'ci-freight-lot-000001',source_facility_id:magitekFactoryId,destination_facility_id:mineFacilityId,transport_template_id:freightTransport.body.id,vehicle_lot_id:assignedFreightLots[0].id,item_id:'ceruleum-fuel',quantity:1,escort_notes:'Order supply escort'};
+  const routeCheck=await logisticsRoute(admin,request('POST',freightManifest),'/world-admin/logistics/routes/preview',staff);
+  assert.equal(routeCheck.status,200);
+  assert.equal(routeCheck.body.connected,true,'local settlement freight needs no invented map junctions');
+  const sentFreight=await logisticsRoute(admin,request('POST',freightManifest),'/world-admin/logistics/dispatch',staff);
+  assert.equal(sentFreight.status,200,JSON.stringify(sentFreight.body));
+  const repeatedFreight=await logisticsRoute(admin,request('POST',freightManifest),'/world-admin/logistics/dispatch',staff);
+  assert.equal(repeatedFreight.body.already_submitted,true,'network retries must never dispatch two shipments');
+  const [[freightRemaining]]=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel'",[magitekFactoryId]);
+  assert.equal(Number(freightRemaining.quantity),fuelBefore-2,'one cargo unit plus one fuel unit actually leave the factory');
+  const freightId=Number(sentFreight.body.shipment_id);
+  const earlyArrival=await logisticsRoute(admin,request('POST',{}),'/world-admin/logistics/shipments/'+freightId+'/arrive',staff);
+  assert.equal(earlyArrival.status,409,'cargo cannot be received before arrival');
+  await admin.execute("UPDATE world_logistics_shipments SET due_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 MINUTE) WHERE id=?",[freightId]);
+  const arrivedFreight=await logisticsRoute(admin,request('POST',{}),'/world-admin/logistics/shipments/'+freightId+'/arrive',staff);
+  assert.equal(arrivedFreight.status,200,JSON.stringify(arrivedFreight.body));
+  const repeatedArrival=await logisticsRoute(admin,request('POST',{}),'/world-admin/logistics/shipments/'+freightId+'/arrive',staff);
+  assert.equal(repeatedArrival.status,409,'arrivals are applied only once');
+  const civicFreight=await logisticsRoute(admin,request('POST',{}),'/world-admin/logistics/shipments/'+freightId+'/civic',staff);
+  assert.equal(civicFreight.status,200,JSON.stringify(civicFreight.body));
+  const repeatedCivic=await logisticsRoute(admin,request('POST',{}),'/world-admin/logistics/shipments/'+freightId+'/civic',staff);
+  assert.equal(repeatedCivic.body.already_received,true,'heating fuel cannot be double-delivered to civilians');
+  const [[civicFuel]]=await admin.execute("SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code='ceruleum-fuel'",[mineId]);
+  assert.equal(Number(civicFuel.quantity),1,'received ceruleum is now actual civic heating fuel');
   // Canon Garlean designs are only blueprints; assembled trains consume real commissioned lots.
   const garleanCatalog=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
   assert.equal(garleanCatalog.status,200,JSON.stringify(garleanCatalog.body));
