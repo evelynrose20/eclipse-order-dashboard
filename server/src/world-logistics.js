@@ -6,6 +6,7 @@ import {itineraryRoute,stageItineraryArrival,handleItineraryRecall} from './worl
 import {logMovement,movementHistory} from './world-front-cargo.js';
 import {airfieldReady,vehicleReady,airFreightEconomics,advancedLogisticsRoute} from './world-logistics-advanced.js';
 import {journeyStops,railCargoWindow} from './world-rail-stops.js';
+import {npcBargainRoute} from './world-npc-bargaining.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -215,6 +216,7 @@ async function dispatch(db,b,actor,contract=null){
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
  if(path.startsWith('/world-admin/logistics/itineraries'))return itineraryRoute(pool,req,path,actor,dispatch,ledger);
+ if(path.startsWith('/world-admin/logistics/npc-bargains'))return npcBargainRoute(pool,req,path,actor,route);
  if(path.startsWith('/world-admin/logistics/advanced')||path.startsWith('/world-admin/logistics/airfields')||path.startsWith('/world-admin/logistics/fleet/')||path.startsWith('/world-admin/logistics/risks')||/^\/world-admin\/logistics\/shipments\/\d+\/escort$/.test(path))return advancedLogisticsRoute(pool,req,path,actor);
  if(path==='/world-admin/logistics/movements'&&req.method==='GET')return ok({movements:await movementHistory(pool)});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
@@ -638,6 +640,7 @@ export async function runNpcTradeAutomation(pool){
    }
    await db.execute('UPDATE world_settlement_autosim SET food_units=food_units+? WHERE settlement_id=?',[t.amount,target.id]);
    await db.execute("UPDATE world_npc_trade_shipments SET status='delivered',delivered_at=UTC_TIMESTAMP() WHERE id=?",[t.id]);
+   await logMovement(db,{system:'npc',reference:t.id,action:'arrival',item:'food-units',quantity:t.amount,source:'settlement:'+t.source_settlement_id,destination:'settlement:'+t.destination_settlement_id});
    return ok({delivered:true});
   });
   if(output.body.delivered)delivered++;if(output.body.held)held++;
@@ -679,6 +682,7 @@ export async function runNpcTradeAutomation(pool){
    if(!returnPath)return ok({skipped:true});
    await db.execute('UPDATE world_settlement_autosim SET food_units=food_units+? WHERE settlement_id=?',[caravan.amount,source.id]);
    await db.execute("UPDATE world_npc_trade_shipments SET status='returned' WHERE id=?",[caravan.id]);
+   await logMovement(db,{system:'npc',reference:caravan.id,action:'cancel',item:'food-units',quantity:caravan.amount,source:'transit:'+caravan.id,destination:'settlement:'+caravan.source_settlement_id});
    await db.execute("INSERT INTO world_npc_trade_events(shipment_id,action,notes) VALUES(?,'return',?)",[caravan.id,'Unreceived cargo returned to original settlement reserves']);
    return ok({returned:true});
   });
