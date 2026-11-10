@@ -112,6 +112,10 @@ test('rosefires.com is the exact approved Discord login origin and return destin
  assert.equal(authorize.searchParams.get('redirect_uri'),config.redirectUri);
  assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/eclipse-order-dashboard/'}).frontendUrl,'https://rosefires.com/',
    'the exact old GitHub Pages landing URL is safely migrated to the approved custom origin');
+ for(const former of ['https://rosefires.com/eclipse-order-dashboard/','https://rosefires.com/eclipse-order-dashboard']){
+  const redirected=discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:former});
+  assert.equal(redirected.frontendUrl,'https://rosefires.com/','custom-domain callback must land at the root, not the old repository path');
+ }
  assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://unrelated.example/'}),null,
    'an unrelated OAuth landing origin remains rejected');
 });
