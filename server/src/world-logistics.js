@@ -143,7 +143,7 @@ export async function logisticsRoute(pool,req,path,actor){
  }
  if(path==='/world-admin/logistics/templates'&&req.method==='POST'){
   const b=await body(req);
-  if(!name(b?.name,120)||!modes.includes(b.mode)||!qty(b.capacity)||!Number.isInteger(b.minutes_per_leg)||b.minutes_per_leg<1||b.minutes_per_leg>10080||typeof b.fuel_per_leg!=='number'||b.fuel_per_leg<0||b.fuel_per_leg>100000||Math.round(b.fuel_per_leg*1000)!==b.fuel_per_leg||b.fuel_per_leg>0&&!b.fuel_item_id)return fail(400,'invalid_transport_template');
+  if(!name(b?.name,120)||!modes.includes(b.mode)||!qty(b.capacity)||!Number.isInteger(b.minutes_per_leg)||b.minutes_per_leg<1||b.minutes_per_leg>10080||typeof b.fuel_per_leg!=='number'||b.fuel_per_leg<0||b.fuel_per_leg>100000||Math.round(b.fuel_per_leg*1000)!==b.fuel_per_leg*1000||b.fuel_per_leg>0&&!b.fuel_item_id)return fail(400,'invalid_transport_template');
   return tx(pool,async db=>{
    if(b.fuel_item_id){const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.fuel_item_id]);if(!item)return fail(400,'unknown_fuel_item')}
    const [saved]=await db.execute('INSERT INTO world_logistics_transport_templates(name,mode,capacity,minutes_per_leg,fuel_item_id,fuel_per_leg,created_by) VALUES(?,?,?,?,?,?,?)',[b.name.trim(),b.mode,b.capacity,b.minutes_per_leg,b.fuel_item_id||null,b.fuel_per_leg,actor.id]);
