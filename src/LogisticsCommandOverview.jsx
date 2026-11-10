@@ -62,12 +62,13 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
   return x&&validPoint(x.map_x)&&validPoint(x.map_y)?{x:Number(x.map_x),y:Number(x.map_y)}:null;
  };
  const routeNode=world?.network_nodes||[],segments=(world?.network_segments||[]).filter(e=>Number(e.zone_id)===Number(zone?.id));
+ const linePoints=(a,b,waypoints=[])=>[a,...(Array.isArray(waypoints)?waypoints.filter(p=>validPoint(p.x)&&validPoint(p.y)).map(p=>({x:Number(p.x),y:Number(p.y)})):[]),b];
  const lines=segments.map(segment=>{
   const a=findById(routeNode,segment.from_node_id),b=findById(routeNode,segment.to_node_id);
-  return a&&b&&validPoint(a.map_x)&&validPoint(a.map_y)&&validPoint(b.map_x)&&validPoint(b.map_y)?{id:'network-'+segment.id,type:segment.route_type,from:{x:Number(a.map_x),y:Number(a.map_y)},to:{x:Number(b.map_x),y:Number(b.map_y)}}:null;
+  return a&&b&&validPoint(a.map_x)&&validPoint(a.map_y)&&validPoint(b.map_x)&&validPoint(b.map_y)?{id:'network-'+segment.id,type:segment.route_type,from:{x:Number(a.map_x),y:Number(a.map_y)},to:{x:Number(b.map_x),y:Number(b.map_y)},waypoints:segment.waypoints}:null;
  }).filter(Boolean);
  const oldLines=(world?.routes||[]).filter(r=>Number(r.zone_id)===Number(zone?.id)).map(r=>{
-  const a=position(r.from_settlement_id),b=position(r.to_settlement_id);return a&&b?{id:'old-'+r.id,type:r.route_type,from:a,to:b}:null
+  const a=position(r.from_settlement_id),b=position(r.to_settlement_id);return a&&b?{id:'old-'+r.id,type:r.route_type,from:a,to:b,waypoints:r.waypoints}:null
  }).filter(Boolean);
  const serviceLines=railServices.filter(r=>r.from_type==='settlement'&&r.to_type==='settlement'&&r.status==='active').map(r=>{const a=position(r.from_id),b=position(r.to_id);return a&&b?{id:r.id,from:a,to:b,name:r.name}:null}).filter(Boolean);
  const freightLines=activeFreight.map(s=>{
@@ -91,10 +92,10 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
   <div className="supply-operations">
    <section className="supply-theater">
     <div className="supply-bar"><div><span className="supply-kicker">STRATEGIC THEATER</span><h3>Territorial supply network</h3></div><div className="supply-toolbar"><label>Region <select value={region?.id||''} onChange={e=>{setSelectedRegion(e.target.value);setSelectedZone('');setSelectedSite('')}}>{regions.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>Zone <select value={zone?.id||''} onChange={e=>{setSelectedZone(e.target.value);setSelectedSite('')}}>{regionZones.map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select></label><button type="button" onClick={openWorld}>Open territory map <i className="fa-solid fa-arrow-up-right-from-square"/></button></div></div>
-    {region&&zone?<div className="supply-map" role="group" aria-label={'Supply network for '+zone.name}>
+    {region&&zone?<div className="supply-map" role="group" aria-label={'Supply network for '+zone.name} style={region.map_background_url?{backgroundImage:'linear-gradient(#091a24a8,#091a24a8),url("'+region.map_background_url+'")',backgroundSize:'cover',backgroundPosition:'center'}:{}}>
       <div className="supply-map-grid" aria-hidden="true"/>
       <svg className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-       {[...oldLines,...lines].map(l=><line key={l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link mode-'+l.type}/>)}
+       {[...oldLines,...lines].map(l=><polyline key={l.id} points={linePoints(l.from,l.to,l.waypoints).map(p=>p.x+','+p.y).join(' ')} className={'supply-link mode-'+l.type}/>)}
        {serviceLines.map(l=><line key={'service-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className="supply-link mode-rail-service"/>)}
        {freightLines.map(l=><line key={'freight-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-'+l.status}/>)}
       </svg>
