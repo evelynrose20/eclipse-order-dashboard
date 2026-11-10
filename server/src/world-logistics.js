@@ -466,6 +466,7 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   if(action==='resume'){
    if(s.status!=='disrupted')return fail(409,'shipment_not_disrupted');
+   if(s.train_journey_id){const [[train]]=await db.execute('SELECT status FROM order_internal_rail_journeys WHERE id=?',[s.train_journey_id]);if(!train||train.status==='cancelled')return fail(409,'cancelled_train_requires_cargo_recall')}
    const [[incident]]=await db.execute("SELECT id FROM world_logistics_incidents WHERE shipment_id=? AND disposition='pending'",[id]);
    if(incident)return fail(409,'convoy_requires_command_decision');
    await db.execute("UPDATE world_logistics_shipments SET status='in_transit' WHERE id=?",[id]);
