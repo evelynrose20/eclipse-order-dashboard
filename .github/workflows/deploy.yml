@@ -32,6 +32,13 @@ jobs:
           # Public API URL only; no database secrets in frontend builds.
           VITE_ECLIPSE_API_URL: https://api.rosefires.com
         run: npm run build
+      - name: Add GitHub Pages routes for direct navigation
+        run: |
+          mkdir -p dist/venue dist/portal dist/app
+          cp dist/index.html dist/venue/index.html
+          cp dist/index.html dist/portal/index.html
+          cp dist/index.html dist/app/index.html
+          cp dist/index.html dist/404.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
