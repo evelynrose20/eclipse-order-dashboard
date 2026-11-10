@@ -184,6 +184,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcShipments]=await pool.execute("SELECT s.id,s.route_id,s.settlement_id,s.item_id,s.quantity,s.status,s.arrival_at,s.delivered_at,i.name AS item_name FROM world_npc_cargo_shipments s JOIN world_industry_items i ON i.id=s.item_id ORDER BY s.id DESC LIMIT 120");
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
   const [depotLinks]=await pool.execute("SELECT l.*,f.name AS facility_name,s.name AS hub_name FROM world_logistics_depot_links l JOIN world_industry_facilities f ON f.id=l.facility_id JOIN world_settlements s ON s.id=l.hub_settlement_id ORDER BY l.facility_id");
+  const [insulationNeeds]=await pool.execute("SELECT n.*,p.settlement_id,p.status AS project_status,u.name AS project_name,s.name AS settlement_name FROM world_logistics_insulation_needs n JOIN world_civic_building_projects p ON p.id=n.project_id JOIN world_settlement_upgrades u ON u.id=p.upgrade_id JOIN world_settlements s ON s.id=p.settlement_id WHERE p.status='active' ORDER BY n.project_id DESC");
   const [allSettlements]=await pool.execute('SELECT id,name,region_id,zone_id,controlling_faction_id FROM world_settlements ORDER BY name');
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
@@ -192,8 +193,21 @@ export async function logisticsRoute(pool,req,path,actor){
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds});
  }
+ const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
+ if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!goodId(b?.facility_id)||!qty(b.quantity))return fail(400,'invalid_insulation_delivery');
+  const [[need]]=await db.execute("SELECT n.*,p.status,p.settlement_id,p.owner_kind FROM world_logistics_insulation_needs n JOIN world_civic_building_projects p ON p.id=n.project_id WHERE n.project_id=? FOR UPDATE",[Number(insulationMatch[1])]);
+  if(!need||need.status!=='active'||need.owner_kind!=='order')return fail(409,'insulation_project_not_active');
+  if(Number(need.committed_qty)+Number(b.quantity)>Number(need.required_qty)+0.00001)return fail(409,'insulation_requirement_exceeded');
+  const [[depot]]=await db.execute("SELECT f.settlement_id,f.owner_faction_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[b.facility_id]);
+  if(!depot||Number(depot.settlement_id)!==Number(need.settlement_id)||depot.owner_faction_id!=='eclipse-order'||depot.controlling_faction_id!=='eclipse-order')return fail(409,'insulation_must_arrive_at_order_settlement');
+  if(!await ledger(db,b.facility_id,need.item_id,-Number(b.quantity),'project_commit',need.project_id,actor))return fail(409,'insulation_stock_insufficient');
+  await db.execute('UPDATE world_logistics_insulation_needs SET committed_qty=committed_qty+? WHERE project_id=?',[b.quantity,need.project_id]);
+  return ok({saved:true,remaining:round(Number(need.required_qty)-Number(need.committed_qty)-b.quantity)});
+ });
  if(path==='/world-admin/logistics/depots'&&req.method==='POST')return tx(pool,async db=>{
   const b=await body(req);
   if(!goodId(b?.facility_id)||!goodId(b.hub_settlement_id)||!modes.includes(b.mode)||!Number.isInteger(b.travel_minutes)||b.travel_minutes<1||b.travel_minutes>10080||typeof b.construction_item_id!=='string'||!qty(b.construction_quantity))return fail(400,'invalid_depot_access');
