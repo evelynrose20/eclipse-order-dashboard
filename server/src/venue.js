@@ -22,14 +22,14 @@ function validateEntry(entry){
  return entry&&typeof entry.id==='string'&&/^[a-z0-9][a-z0-9-]{0,79}$/.test(entry.id)
  &&typeof entry.name==='string'&&entry.name.trim().length>0&&entry.name.length<=120
  &&typeof entry.title==='string'&&entry.title.length<=120
- &&typeof entry.description==='string'&&entry.description.length<=1800
+ &&typeof entry.description==='string'&&entry.description.length<=900
  &&typeof entry.vacancy==='boolean'
  &&typeof entry.image==='string'&&entry.image.length<=500
  &&photoUrlOk(entry.image);
 }
 export function validateRoster(value){
  if(!value||!Array.isArray(value.staff)||!Array.isArray(value.thralls))return false;
- if(value.staff.length>80||value.thralls.length>80)return false;
+ if(value.staff.length>25||value.thralls.length>25)return false;
  const entries=[...value.staff,...value.thralls];
  return entries.every(validateEntry)&&new Set(entries.map(x=>x.id)).size===entries.length;
 }
