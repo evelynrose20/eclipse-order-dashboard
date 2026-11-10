@@ -5,13 +5,13 @@ import './venue-roster.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
 const DISCORD='https://discord.gg/ksqTw4SHYn';
-const VENUE_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\\/+$/,'');
+const VENUE_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 function imageSource(value){if(!value)return '';if(value.startsWith('https://'))return value;if(value.startsWith('/venue/images/'))return VENUE_API+value;return '/venue-images/'+value}
 function Mark(){return <span className="venue-mark" aria-hidden="true"><OrderEmblem className="venue-order-emblem"/></span>}
 function RosterCard({person,category}){
  const [imageError,setImageError]=useState(false);
- const filename=/^[a-z0-9][a-z0-9-]*\.(jpg|jpeg|png|webp)$/i.test(person.image||'')?person.image:null;
- const picture=!person.vacancy&&filename&&!imageError;
+ const photo=person.image||'';
+ const picture=!person.vacancy&&!!photo&&!imageError;
  return <article className={'venue-roster-card'+(person.vacancy?' is-vacancy':'')}>
   <div className="venue-roster-portrait">
    {picture?<img src={imageSource(photo)} alt={'Portrait of '+person.name} loading="lazy" onError={()=>setImageError(true)}/>:<div className="venue-roster-fallback" aria-hidden="true"><Mark/><span>{person.vacancy?'POSITION AVAILABLE':category==='staff'?'THE MIDNIGHT ECLIPSE':'THE HOUSEHOLD'}</span></div>}
