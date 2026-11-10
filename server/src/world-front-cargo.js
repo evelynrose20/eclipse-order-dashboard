@@ -1,6 +1,7 @@
 import {resolveSession} from './auth.js';
 import {randomUUID} from 'node:crypto';
 import {airfieldReady,vehicleReady} from './world-logistics-advanced.js';
+import {journeyStops,railCargoWindow} from './world-rail-stops.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const key=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const command=actor=>['domina','high_command'].includes(actor?.account_role);
@@ -97,16 +98,18 @@ export async function frontCargoRoute(pool,req,path){
    if(shipment.mode==='air'&&!await airfieldReady(db,source.settlement_id,dest.settlement_id))return fail(409,'airfields_required_at_both_ends');
    const [[held]]=await db.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id=? FOR UPDATE',[source.id,shipment.material_id]);
    if(!held||Number(held.quantity)<Number(shipment.quantity))return fail(409,'front_cargo_stock_insufficient');
-   let vehicleId=null,trainId=null,travel=await routeMinutes(db,source.settlement_id,dest.settlement_id,shipment.mode);
+   let vehicleId=null,trainId=null,unloadingAt=null,travel=await routeMinutes(db,source.settlement_id,dest.settlement_id,shipment.mode);
    if(shipment.mode==='rail'){
     if(!key(b?.train_journey_id))return fail(409,'running_train_required');
     const [[train]]=await db.execute("SELECT j.*,r.from_type,r.to_type,r.from_id,r.to_id,c.owner_faction_id,c.status AS consist_status FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.id=? FOR UPDATE",[Number(b.train_journey_id)]);
-    if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'||train.from_type!=='settlement'||train.to_type!=='settlement'||Number(train.from_id)!==Number(source.settlement_id)||Number(train.to_id)!==Number(dest.settlement_id))return fail(409,'train_does_not_serve_front_hubs');
-    const [[window]]=await db.execute('SELECT TIMESTAMPDIFF(MINUTE,?,UTC_TIMESTAMP()) AS elapsed,? > UTC_TIMESTAMP() AS running',[train.departed_at,train.expected_arrival_at]);
-    if(!window.running||Number(window.elapsed)>30)return fail(409,'rail_loading_window_closed');
-    const [[used]]=await db.execute("SELECT (SELECT COALESCE(SUM(quantity),0) FROM world_logistics_shipments WHERE train_journey_id=? AND status<>'cancelled')+(SELECT COALESCE(SUM(quantity),0) FROM world_logistics_front_cargo WHERE train_journey_id=? AND status IN ('in_transit','held','arrived')) AS loaded",[train.id,train.id]);
+    if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'||train.from_type!=='settlement'||train.to_type!=='settlement')return fail(409,'train_does_not_serve_front_hubs');
+    const stops=await journeyStops(db,[train.id]);
+    const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
+    const loading=railCargoWindow(train,stops,source.settlement_id,dest.settlement_id,new Date(clock.now));
+    if(!loading)return fail(409,'rail_loading_window_closed_or_stop_not_served');
+    const [[used]]=await db.execute("SELECT (SELECT COALESCE(SUM(quantity),0) FROM world_logistics_shipments WHERE train_journey_id=? AND status IN ('in_transit','disrupted'))+(SELECT COALESCE(SUM(quantity),0) FROM world_logistics_front_cargo WHERE train_journey_id=? AND status IN ('in_transit','held')) AS loaded",[train.id,train.id]);
     if(Number(used.loaded)+Number(shipment.quantity)>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
-    trainId=train.id;travel=null;
+    trainId=train.id;unloadingAt=loading.arrival_at;travel=null;
    }else{
     if(travel==null)return fail(409,'no_connected_transport_route');
     if(!key(b?.vehicle_lot_id))return fail(409,'commissioned_vehicle_required');
@@ -132,7 +135,7 @@ export async function frontCargoRoute(pool,req,path){
    }
    await db.execute('UPDATE order_front_stock SET quantity=quantity-? WHERE front_id=? AND material_id=?',[shipment.quantity,source.id,shipment.material_id]);
    if(shipment.mode==='air')travel=Math.max(10,Math.ceil(Number(travel)*.65));
-   const due=trainId?await db.execute('SELECT expected_arrival_at AS due_at FROM order_internal_rail_journeys WHERE id=?',[trainId]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at',[travel]);
+   const due=trainId?await db.execute('SELECT ? AS due_at',[unloadingAt]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at',[travel]);
    await db.execute("UPDATE world_logistics_front_cargo SET status='in_transit',source_settlement_id=?,destination_settlement_id=?,transport_template_id=?,vehicle_lot_id=?,train_journey_id=?,fuel_item_id=?,fuel_used=?,due_at=?,dispatched_by=? WHERE id=?",
     [source.settlement_id,dest.settlement_id,profile.id,vehicleId,trainId,profile.fuel_item_id||null,fuel,due[0][0].due_at,actor.id,ident]);
    await logMovement(db,{system:'front',reference:ident,action:'dispatch',item:shipment.material_id,quantity:shipment.quantity,source:'front:'+source.id,destination:'front:'+dest.id});
