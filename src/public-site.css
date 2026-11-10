@@ -372,3 +372,13 @@
 .public-membership-discord span{margin-left:auto}
 @media(max-width:1300px){.public-activities-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-header-discord{display:none}}
 @media(max-width:760px){.public-activities-grid{grid-template-columns:1fr}.public-activity-card{padding:24px}.public-activities-after{align-items:stretch;flex-direction:column;padding:22px}.public-activities-after>.public-button-primary{align-self:flex-start}}
+
+/* Midnight Eclipse venue entry, located inside the Visit Us estate card */
+.public-estate-venue{padding:21px 0 15px;margin-top:20px;border-top:1px solid #8b454e}
+.public-estate-venue-title{display:flex;align-items:center;gap:12px}
+.public-estate-venue-title>i{font-size:24px;color:#d76772}
+.public-estate-venue-title strong{font:600 22px/1.2 var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:.045em;color:#f6ece9}
+.public-estate-venue-title small{display:block;font-size:9px;color:#c0bac1;letter-spacing:.08em;margin-top:3px}
+.public-estate-venue>p{font-size:12px;color:#c8d2d4;line-height:1.8;margin:12px 0 16px}
+.public-estate-venue>a{display:flex!important;justify-content:space-between;align-items:center;gap:13px;text-align:left;width:100%}
+.public-estate-venue-note{display:block;margin:14px 0 0;color:#b6c4ce;font-size:11px;line-height:1.65}
