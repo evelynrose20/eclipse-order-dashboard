@@ -199,6 +199,8 @@ async function main(){
   await pool.query(recurringFreight);
   const transportCorridors=await readFile(new URL('../sql/091_logistics_corridors_incidents.sql',import.meta.url),'utf8');
   await pool.query(transportCorridors);
+  const freightWarStores=await readFile(new URL('../sql/092_logistics_military_receipts.sql',import.meta.url),'utf8');
+  await pool.query(freightWarStores);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
