@@ -28,3 +28,9 @@ test('exact former GitHub Pages return migrates but unknown external origin is s
  assert.equal(inspectDiscordConfig({...valid,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/eclipse-order-dashboard/'}).configured,true);
  assert.equal(inspectDiscordConfig({...valid,DISCORD_FRONTEND_URL:'https://foreign.example/'}).configured,false);
 });
+
+test('custom-domain legacy project path is identified with the root URL fix',()=>{
+ const cfg=inspectDiscordConfig({...valid,DISCORD_FRONTEND_URL:'https://rosefires.com/eclipse-order-dashboard/'});
+ assert.equal(cfg.configured,true,'server safely normalizes its callback destination');
+ assert.ok(cfg.issues.some(s=>s.includes('old project subpath')));
+});
