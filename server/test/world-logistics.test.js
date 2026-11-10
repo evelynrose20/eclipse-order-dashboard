@@ -80,3 +80,16 @@ test('rail shipments must use an actual assembled train journey with checked fre
  assert.match(sql,/fk_freight_train_journey/);
  assert.doesNotMatch(sql,/DROP TABLE|DELETE FROM order_internal_rail_journeys/i);
 });
+
+test('NPC relief holds, reroutes and returns only previously dispatched food',()=>{
+ const src=readFileSync(new URL('../src/world-logistics.js',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/098_npc_relief_recovery.sql',import.meta.url),'utf8');
+ assert.match(src,/reroute_count/);
+ assert.match(src,/status='returned'/);
+ assert.match(src,/world_npc_trade_events/);
+ assert.match(src,/civilianStorageCapacity\(source,upgrades\)/);
+ assert.match(src,/world_logistics_trade_treaties/);
+ assert.match(sql,/original_destination_settlement_id/);
+ assert.match(sql,/held_at/);
+ assert.doesNotMatch(sql,/DROP TABLE|DELETE FROM world_settlement_autosim/i);
+});
