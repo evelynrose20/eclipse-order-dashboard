@@ -139,14 +139,35 @@ async function dispatch(db,b,actor,contract=null){
   const [access]=await db.execute("SELECT id FROM world_logistics_trade_treaties WHERE faction_a=? AND faction_b=? AND status='active' LIMIT 1",a);
   if(!access.length)return fail(409,'cross_faction_trade_treaty_required');
  }
- const path=await route(db,source.settlement_id,dest.settlement_id,transport.mode);
+ let path=await route(db,source.settlement_id,dest.settlement_id,transport.mode);
  if(!path)return fail(409,'no_connected_transport_route');
- const vehicle=await availableVehicle(db,b.vehicle_lot_id,transport.mode,source.settlement_id);
- if(!vehicle)return fail(409,'assigned_transport_vehicle_required');
- if(vehicle.owner_faction_id!==source.controlling_faction_id)return fail(409,'vehicle_faction_mismatch');
- const vehicleSpecs=typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
- const physicalCapacity=Number(vehicleSpecs?.cargo_capacity||0)*Number(vehicle.quantity||1);
- if(physicalCapacity<=0||amount>physicalCapacity)return fail(409,'vehicle_cargo_capacity_exceeded');
+ let vehicle=null,trainJourney=null;
+ if(transport.mode==='rail'){
+  if(!goodId(b.train_journey_id))return fail(409,'rail_train_journey_required');
+  const [[train]]=await db.execute(`SELECT j.id,j.status,j.train_consist_id,j.cargo_capacity_snapshot,j.departed_at,j.expected_arrival_at,
+   r.id AS service_id,r.from_type,r.from_id,r.to_type,r.to_id,r.duration_minutes,
+   c.status AS consist_status,c.owner_faction_id
+   FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id
+   JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.id=? FOR UPDATE`,[Number(b.train_journey_id)]);
+  if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'
+    ||train.from_type!=='settlement'||train.to_type!=='settlement'
+    ||Number(train.from_id)!==Number(source.settlement_id)||Number(train.to_id)!==Number(dest.settlement_id))
+   return fail(409,'rail_journey_not_at_route');
+  const [[window]]=await db.execute('SELECT TIMESTAMPDIFF(MINUTE,?,UTC_TIMESTAMP()) AS elapsed,? > UTC_TIMESTAMP() AS still_running',[train.departed_at,train.expected_arrival_at]);
+  if(!window.still_running||Number(window.elapsed)>30)return fail(409,'rail_loading_window_closed');
+  const [[loaded]]=await db.execute("SELECT COALESCE(SUM(quantity),0) AS used FROM world_logistics_shipments WHERE train_journey_id=? AND status<>'cancelled'",[train.id]);
+  if(Number(loaded.used)+amount>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
+  trainJourney=train;
+  path={node_ids:['settlement:'+source.settlement_id,'settlement:'+dest.settlement_id],
+   segment_ids:['internal-rail:'+train.service_id],legs:1,duration_minutes:Number(train.duration_minutes)};
+ }else{
+  vehicle=await availableVehicle(db,b.vehicle_lot_id,transport.mode,source.settlement_id);
+  if(!vehicle)return fail(409,'assigned_transport_vehicle_required');
+  if(vehicle.owner_faction_id!==source.controlling_faction_id)return fail(409,'vehicle_faction_mismatch');
+  const vehicleSpecs=typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
+  const physicalCapacity=Number(vehicleSpecs?.cargo_capacity||0)*Number(vehicle.quantity||1);
+  if(physicalCapacity<=0||amount>physicalCapacity)return fail(409,'vehicle_cargo_capacity_exceeded');
+ }
  const totalLegs=path.legs+(source.site_id?1:0)+(dest.site_id?1:0);
  const totalMinutes=(path.duration_minutes??Number(transport.minutes_per_leg)*path.legs)+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
  const fuel=round(Number(transport.fuel_per_leg)*totalLegs);
@@ -157,11 +178,11 @@ async function dispatch(db,b,actor,contract=null){
   if(!fuelStock||Number(fuelStock.quantity)<fuel+(transport.fuel_item_id===itemId?amount:0))return fail(409,'freight_fuel_insufficient');
  }
  const minutes=totalMinutes;
- const [[time]]=await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
+ const [[time]]=trainJourney?await db.execute('SELECT DATE_ADD(?,INTERVAL ? MINUTE) AS due_at',[trainJourney.expected_arrival_at,Number(dest.access_minutes||0)]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
  const due=time.due_at;
  if(!due)return fail(409,'invalid_travel_time');
- const [created]=await db.execute('INSERT INTO world_logistics_shipments(request_key,contract_id,source_facility_id,destination_facility_id,transport_template_id,vehicle_lot_id,item_id,quantity,fuel_item_id,fuel_used,route_segments,route_nodes,mode,due_at,escort_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
- [b.request_key,contract?.id??null,sourceId,destId,templateId,vehicle.id,itemId,amount,transport.fuel_item_id||null,fuel,JSON.stringify([...(source.site_id?['depot:'+sourceId]:[]),...path.segment_ids,...(dest.site_id?['depot:'+destId]:[])]),JSON.stringify(path.node_ids),transport.mode,due,b.escort_notes||'',contract?.created_by||actor.id]);
+ const [created]=await db.execute('INSERT INTO world_logistics_shipments(request_key,contract_id,source_facility_id,destination_facility_id,transport_template_id,vehicle_lot_id,train_journey_id,item_id,quantity,fuel_item_id,fuel_used,route_segments,route_nodes,mode,due_at,escort_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+ [b.request_key,contract?.id??null,sourceId,destId,templateId,vehicle?.id||null,trainJourney?.id||null,itemId,amount,transport.fuel_item_id||null,fuel,JSON.stringify([...(source.site_id?['depot:'+sourceId]:[]),...path.segment_ids,...(dest.site_id?['depot:'+destId]:[])]),JSON.stringify(path.node_ids),transport.mode,due,b.escort_notes||'',contract?.created_by||actor.id]);
  if(!await ledger(db,sourceId,itemId,-amount,'freight_dispatch',created.insertId,actor))return fail(409,'freight_stock_insufficient');
  if(fuel>0&&!await ledger(db,sourceId,transport.fuel_item_id,-fuel,'freight_fuel',created.insertId,actor))return fail(409,'freight_fuel_insufficient');
  await record(db,created.insertId,'dispatch','Cargo loaded; '+totalLegs+' transport legs',actor);
@@ -177,7 +198,8 @@ export async function logisticsRoute(pool,req,path,actor){
   const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0');
   const [items]=await pool.execute('SELECT id,name,category FROM world_industry_items ORDER BY name');
   const [vehicles]=await pool.execute("SELECT v.id,v.quantity,v.status,v.stationed_settlement_id,v.owner_faction_id,t.name,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.status='assigned' ORDER BY t.name");
-  const [history]=await pool.execute('SELECT shipment_id,action,note,created_at FROM world_logistics_events ORDER BY id DESC LIMIT 120');
+  const [railJourneys]=await pool.execute("SELECT j.id,j.route_id,j.train_consist_id,j.status,j.cargo_capacity_snapshot,j.departed_at,j.expected_arrival_at,c.name AS train_name,r.name AS route_name,r.from_type,r.from_id,r.to_type,r.to_id,r.duration_minutes FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.status='running' AND j.expected_arrival_at>UTC_TIMESTAMP() ORDER BY j.expected_arrival_at LIMIT 80");
+ const [history]=await pool.execute('SELECT shipment_id,action,note,created_at FROM world_logistics_events ORDER BY id DESC LIMIT 120');
   const [civicTypes]=await pool.execute('SELECT * FROM world_logistics_civic_item_types ORDER BY item_id');
   const [civicReceipts]=await pool.execute('SELECT shipment_id,settlement_id,item_id,quantity FROM world_logistics_civic_receipts');
   const [npcRoutes]=await pool.execute("SELECT r.id,r.settlement_id,r.facility_id,r.site_id,r.map_settlement_id,r.travel_hours,r.cargo_capacity,r.enabled,settlement.name AS destination_name,COALESCE(site.name,marker.name) AS source_name FROM world_npc_cargo_routes r JOIN world_settlements settlement ON settlement.id=r.settlement_id LEFT JOIN world_industry_sites site ON site.id=r.site_id LEFT JOIN world_settlements marker ON marker.id=r.map_settlement_id ORDER BY r.id");
@@ -194,7 +216,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
