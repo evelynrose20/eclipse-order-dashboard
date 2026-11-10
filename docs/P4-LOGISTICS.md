@@ -6,7 +6,7 @@ The **Industry & Logistics → Logistics & Freight** sidebar workspace is for Do
 
 ### First use
 
-1. Run migration 087, 088, and 089 with `npm run setup:local` under `server/` **after backing up the live MariaDB database**. Run the full setup; the migration chain is additive and re-runnable. Restart the Windows API process afterward, then refresh the hosted frontend.
+1. Run migrations 087–090 with `npm run setup:local` under `server/` **after backing up the live MariaDB database**. Run the full setup; the migration chain is additive and re-runnable. Restart the Windows API process afterward, then refresh the hosted frontend.
 2. Create or select an existing **settlement-linked industrial facility** at origin and destination. Goods must already exist in the real `world_industry_stock` inventory. Neither player-reserved workshop materials nor front reservations are borrowed.
 3. Produce and commission a suitable transport through **Magitek & War Stores**. Assign its equipment inventory lot to the **origin settlement**; the lot's recorded `cargo_capacity` and quantity limit the actual payload.
 4. Register a transport type in Logistics & Freight. Select road, rail, air, sea, or pack, set cargo capacity, time per leg and real fuel consumption. The first operational freight fleet is road/rail/air using commissioned equipment; sea and pack templates are preparatory until matching assets are modeled.
@@ -17,7 +17,7 @@ The **Industry & Logistics → Logistics & Freight** sidebar workspace is for Do
 
 ### Recurring contracts
 
-Trade, relief, military and industry agreements store a recurring cadence, cargo, source, destination and transport template. **Dispatch due cargo** is currently staff-confirmed, not autonomous; cargo and fuel are not silently taken at a daily reset. Every dispatch requires an available commissioned lot and inventory. Use Pause/Resume/Retire to manage agreements.
+Trade, relief, military and industry agreements store a recurring cadence, cargo, source, destination and transport template. **Dispatch due cargo** remains available as a manual action. An officer may alternatively select a commissioned stationed vehicle and explicitly **Enable auto** per agreement; this is OFF by default. The Windows clock dispatches at most one eligible shipment per cadence using the same stock/fuel/capacity checks and idempotency key. If stock, fuel, an available vehicle or the route is missing, no shipment is created. Use Disable auto, Pause/Resume or Retire at any time.
 
 ### Safety and audit
 
@@ -61,4 +61,4 @@ Ground paths use **actual road/trail nodes and segments**, falling back to saved
 
 ## Outstanding P4 scope
 
-This is **not the entire planned P4 simulation**. Remaining work includes automatic contract dispatch with explicit opt-in, NPC political/economic trade agreements, generalized cross-region air/sea/road and site-to-site routes, asset models for ships/pack animals, physical escorts, weather-based delay/damage and DM event queues, industrial insulation material consumption by civic projects, faction-approved access to reserved front goods, and comprehensive live deployment acceptance. Update `docs/LIVING-WORLD-TODO.md` rather than checking those features prematurely.
+This is **not the entire planned P4 simulation**. Remaining work includes NPC political/economic trade agreements, generalized cross-region air/sea/road and site-to-site routes, asset models for ships/pack animals, physical escorts, weather-based delay/damage and DM event queues, industrial insulation material consumption by civic projects, faction-approved access to reserved front goods, and comprehensive live deployment acceptance. Update `docs/LIVING-WORLD-TODO.md` rather than checking those features prematurely.
