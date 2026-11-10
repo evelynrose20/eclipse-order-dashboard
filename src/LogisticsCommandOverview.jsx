@@ -5,7 +5,7 @@ const num=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:1});
 const kind=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const validPoint=x=>Number.isFinite(Number(x))&&Number(x)>=0&&Number(x)<=100;
 const findById=(items,id)=>items.find(x=>Number(x.id)===Number(id));
-const warn=s=>s?.civic_summary?.warnings||[];
+const warn=s=>Array.isArray(s?.civic_summary?.warnings)?s.civic_summary.warnings:[];
 const risk=s=>{
  const c=s?.civic_summary||{};
  if(['destroyed','abandoned'].includes(s?.strategic_state))return 'lost';
@@ -45,10 +45,10 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const focusMilitary=(military?.installations||[]).filter(i=>Number(i.settlement_id)===Number(focus?.id));
  const focusRail=(rails?.stations||[]).filter(st=>st.stop_type==='settlement'&&Number(st.stop_id)===Number(focus?.id));
  const focusNeeds=warn(focus);
- const focusNpcRoutes=npcRoutes.filter(r=>Number(r.settlement_id)===Number(focus?.id));
- const focusNpcStock=npcWarehouses.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const activeFreight=(freight.shipments||[]).filter(s=>['in_transit','disrupted'].includes(s.status));
  const npcRoutes=freight.npc_routes||[],npcShipments=freight.npc_shipments||[],npcWarehouses=freight.npc_warehouse||[];
+ const focusNpcRoutes=npcRoutes.filter(r=>Number(r.settlement_id)===Number(focus?.id));
+ const focusNpcStock=npcWarehouses.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const npcActive=npcShipments.filter(s=>s.status==='in_transit');
  const railJourneys=(rails?.journeys||[]).filter(j=>j.status==='running');
  const railServices=rails?.routes||[];
