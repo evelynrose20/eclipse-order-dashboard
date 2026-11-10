@@ -107,3 +107,14 @@
 .freight-root .freight-quantity{max-width:310px}
 .freight-root .freight-quantity small{font-size:11px;color:#a6b9c6}
 @media(max-width:700px){.freight-fleet-grid,.freight-partner-grid{grid-template-columns:1fr}.freight-cargo-choices,.freight-purpose-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.freight-console-footer{flex-wrap:wrap}.freight-stage-nav button span{font-size:10px}}
+
+.freight-relation-board{margin:12px 18px;display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px}
+.freight-relation-board>div{display:grid;gap:6px;align-content:center;padding:12px 14px;background:#203642;border:1px solid #415966}
+.freight-relation-board small{font-size:10px;color:#b1c0cb}.freight-relation-board strong{font-size:22px;color:#f1d5a9}
+.freight-relation-board progress{height:6px;width:100%;accent-color:#bca47b}.freight-relation-board>div:nth-child(2) progress{accent-color:#bd7f6e}
+.freight-relation-board .freight-relations-state{border-left:3px solid #b17e64}.freight-relation-board .freight-relations-state.is-ready{border-left-color:#8cab99}
+.freight-relations-state i{font-size:18px;color:#c2a880}.freight-relations-state strong{font-size:13px}
+.freight-treaty-notes{display:grid;gap:7px;margin:10px 18px 18px;color:#b8c7d0;font-size:12px}
+.freight-treaty-notes textarea{width:100%;min-height:92px;padding:12px;background:#111f2b;color:#eef0ed;border:1px solid #53687a;resize:vertical;border-radius:3px;font:inherit}
+.freight-treaty-factions{max-height:180px}
+@media(max-width:700px){.freight-relation-board{grid-template-columns:1fr 1fr}.freight-relation-board .freight-relations-state{grid-column:1/-1}}
