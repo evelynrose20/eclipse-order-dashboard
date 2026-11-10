@@ -43,3 +43,16 @@ test('supply view keeps mapped road geometry and background images',()=>{
  assert.match(command,/mode-rail-service/);
  assert.match(command,/cargo-npc/);
 });
+
+test('missing freight API leaves world command visible and disables unavailable writes',()=>{
+ assert.match(freight,/emptyFreight/);
+ assert.match(freight,/setData\(previous=>previous\|\|emptyFreight\(\)\)/);
+ assert.match(freight,/disabled=\{!freightAvailable\}/);
+ assert.match(freight,/onPlanSupply=\{freightAvailable\?planSupply:undefined\}/);
+});
+test('supply map uses native Cassian terrain rather than grey empty background',()=>{
+ const terrain=readFileSync(new URL('../../src/LogisticsTerrain.jsx',import.meta.url),'utf8');
+ assert.match(command,/<LogisticsTerrain\/>/);
+ assert.match(terrain,/supply-terrain/);
+ assert.match(terrain,/supply-terrain-map-contour/);
+});
