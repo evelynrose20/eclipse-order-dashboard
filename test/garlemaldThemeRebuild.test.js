@@ -7,7 +7,7 @@ test('hero has custom industrial fortress instead of the old circle illustration
  assert.match(site,/className="imperial-architecture"/);
  for(const className of ['imperial-structure-left','imperial-structure-center','imperial-structure-right','imperial-citadel-crest','imperial-cityline'])assert.ok(site.includes(className),className);
  assert.doesNotMatch(site,/public-hero-ring|public-hero-disk|public-hero-stars/);
- assert.match(site,/WITHOUT <em>EMPIRE\.<\/em>/);
+ assert.match(site,/BUILDING AN <em>EMPIRE\.<\/em>/);
 });
 test('crest is a custom geometric symbol and the page uses an industrial lettering system',()=>{
  const emblem=get('src/OrderEmblem.jsx');
