@@ -77,7 +77,7 @@ async function availableVehicle(db,id,mode,sourceSettlement){
  return running.length?null:lot;
 }
 async function dispatch(db,b,actor,contract=null){
- if(!name(b.request_key,64)||!/^[a-zA-Z0-9_-]{12,64}$/.test(b.request_key))return fail(400,'invalid_dispatch_key');
+ if(!b||!name(b.request_key,64)||!/^[a-zA-Z0-9_-]{12,64}$/.test(b.request_key))return fail(400,'invalid_dispatch_key');
  const [[exists]]=await db.execute('SELECT id,status FROM world_logistics_shipments WHERE request_key=?',[b.request_key]);
  if(exists)return ok({shipment_id:exists.id,status:exists.status,already_submitted:true});
  const sourceId=Number(contract?.source_facility_id??b.source_facility_id),destId=Number(contract?.destination_facility_id??b.destination_facility_id);
@@ -106,16 +106,16 @@ async function dispatch(db,b,actor,contract=null){
   if(!fuelStock||Number(fuelStock.quantity)<fuel+(transport.fuel_item_id===itemId?amount:0))return fail(409,'freight_fuel_insufficient');
  }
  const minutes=Number(transport.minutes_per_leg)*path.legs;
- const [[now]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
- const due=new Date(new Date(now.now+'Z').getTime()+minutes*60000);
- if(!Number.isFinite(due.getTime()))return fail(409,'invalid_travel_time');
+ const [[time]]=await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
+ const due=time.due_at;
+ if(!due)return fail(409,'invalid_travel_time');
  const [created]=await db.execute('INSERT INTO world_logistics_shipments(request_key,contract_id,source_facility_id,destination_facility_id,transport_template_id,vehicle_lot_id,item_id,quantity,fuel_item_id,fuel_used,route_segments,route_nodes,mode,due_at,escort_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
  [b.request_key,contract?.id??null,sourceId,destId,templateId,vehicle.id,itemId,amount,transport.fuel_item_id||null,fuel,JSON.stringify(path.segment_ids),JSON.stringify(path.node_ids),transport.mode,due,b.escort_notes||'',actor.id]);
  if(!await ledger(db,sourceId,itemId,-amount,'freight_dispatch',created.insertId,actor))return fail(409,'freight_stock_insufficient');
  if(fuel>0&&!await ledger(db,sourceId,transport.fuel_item_id,-fuel,'freight_fuel',created.insertId,actor))return fail(409,'freight_fuel_insufficient');
  await record(db,created.insertId,'dispatch','Cargo loaded; '+path.legs+' route legs',actor);
  if(contract)await db.execute('UPDATE world_logistics_contracts SET last_dispatched_at=UTC_TIMESTAMP() WHERE id=?',[contract.id]);
- return ok({shipment_id:created.insertId,status:'in_transit',due_at:due.toISOString(),legs:path.legs});
+ return ok({shipment_id:created.insertId,status:'in_transit',due_at:new Date(due).toISOString(),legs:path.legs});
 }
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
