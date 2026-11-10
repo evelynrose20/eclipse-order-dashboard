@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {frontCargoRoute} from './world-front-cargo.js';
 import {cycleDate} from './treasury.js';
 
 const ok=body=>({status:200,body});
@@ -131,6 +132,7 @@ export async function authorizeFrontTrade(conn,frontId,actor,{materialId,quantit
 }
 
 export async function frontsRoute(pool,req,path){
+ if(path.startsWith('/fronts/cargo'))return frontCargoRoute(pool,req,path);
  if(!pool)return fail(503,'database_unavailable');
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
