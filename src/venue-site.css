@@ -110,3 +110,28 @@
 .venue-food-note{font-size:12px!important;color:#e5a9a8!important;font-style:italic}
 @media(max-width:760px){.venue-food-grid{grid-template-columns:1fr}.venue-food-art{height:205px}}
 @media(max-width:440px){.venue-food-copy{padding:22px}.venue-food-heading{flex-direction:column;gap:8px}}
+
+/* Dedicated menu presentation */
+.venue-menu-intro{padding:72px 0 54px;background:radial-gradient(ellipse at 78% 20%,#8c293533,transparent 50%),linear-gradient(130deg,#17202a,#0a0d11);border-bottom:1px solid #6e313b}
+.venue-menu-intro h1{font:700 clamp(72px,9vw,126px)/.9 var(--imperial-heading,'Arial Narrow',sans-serif);margin:18px 0;letter-spacing:-.02em}
+.venue-menu-intro h1 em{font-style:normal;color:#e7515c}
+.venue-menu-intro p{font-size:16px;color:#c1c9cc}
+.venue-menu-categories{display:flex;flex-wrap:wrap;gap:10px;margin-top:25px}
+.venue-menu-categories a{padding:10px 19px;background:#252d36;border:1px solid #9e4550;color:#f5e9e7;text-transform:uppercase;letter-spacing:.08em;font-weight:700;font-size:11px}
+.venue-menu-categories a:hover{background:#963540}
+.venue-menu-teaser{background:linear-gradient(120deg,#1a232d,#12171d)}
+.venue-menu-teaser-layout{display:flex;justify-content:space-between;align-items:center;gap:32px}
+.venue-menu-teaser-layout p{max-width:620px}
+.venue-menu-teaser-layout>.venue-btn{flex:none}
+.venue-desserts{background:linear-gradient(145deg,#1b161f,#0c1016)}
+.venue-dessert-card .venue-food-art{background:radial-gradient(ellipse at 48% 72%,#a4516690,transparent 62%),linear-gradient(125deg,#382932,#191d24)}
+.venue-food-art-gilded-cake{background:radial-gradient(ellipse at 48% 72%,#c39a5680,transparent 62%),linear-gradient(125deg,#332622,#191d24)!important}
+.venue-food-art-mousse{background:radial-gradient(ellipse at 48% 72%,#75455c80,transparent 62%),linear-gradient(125deg,#2c2230,#191d24)!important}
+.venue-food-art-parfait{background:radial-gradient(ellipse at 48% 72%,#ad354d80,transparent 62%),linear-gradient(125deg,#30232e,#191d24)!important}
+.venue-dessert-card .venue-food-plate i{color:#ebb2b9}
+/* Any picture uploaded at /public/venue-images/<menu-slug>.jpg replaces the illustrated fallback. */
+.venue-drink-art,.venue-food-art{isolation:isolate}
+.venue-card-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:3;display:block}
+.venue-card-photo[hidden]{display:none}
+.venue-drink-index,.venue-food-index{z-index:4;text-shadow:0 2px 7px #000}
+@media(max-width:760px){.venue-menu-teaser-layout{align-items:flex-start;flex-direction:column}.venue-menu-intro{padding:48px 0}}
