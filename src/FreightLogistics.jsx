@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useState} from 'react';
 import './freight-logistics.css';
 const initialManifest=()=>({source_facility_id:'',destination_facility_id:'',transport_template_id:'',vehicle_lot_id:'',item_id:'',quantity:1,escort_notes:''});
 const initialTransport=()=>({name:'',mode:'road',capacity:100,minutes_per_leg:60,fuel_item_id:'',fuel_per_leg:0});
@@ -13,7 +13,7 @@ export default function FreightLogistics({request}){
  const [civic,setCivic]=useState({item_id:'',resource_kind:'food',food_group:''});
  const [selectedContract,setSelectedContract]=useState(null),[preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const load=async()=>setData(await request('/world-admin/logistics'));
- useEffect(()=>{load().catch(e=>setError(e.message||'Freight records unavailable'))},[]);
+ useEffect(()=>{load().catch(e=>setError(e.message||'Freight records unavailable'));const timer=setInterval(()=>load().catch(()=>{}),30000);return()=>clearInterval(timer)},[]);
  const facilities=data?.facilities||[],templates=data?.templates||[],contracts=data?.contracts||[],shipments=data?.shipments||[],vehicles=data?.vehicles||[],stocks=data?.stocks||[],items=data?.items||[];
  const civicTypes=data?.civic_types||[],civicReceipts=data?.civic_receipts||[];
  const itemName=id=>items.find(x=>x.id===id)?.name||id;
@@ -25,7 +25,7 @@ export default function FreightLogistics({request}){
  const selectedStock=sourceStocks.find(s=>s.item_id===manifest.item_id);
  const active=shipments.filter(s=>['in_transit','disrupted'].includes(s.status));
  const dueContracts=contracts.filter(c=>c.status==='active'&&(!c.last_dispatched_at||Date.now()-new Date(c.last_dispatched_at).getTime()>=Number(c.cadence_days)*86400000));
- const keys=useMemo(()=>new Set(shipments.map(x=>x.request_key)),[shipments]);
+
  const openShipment=(c=null)=>{setManifest(initialManifest());setSelectedContract(c);setPreview(null);setDialog('shipment');setError('')};
  const close=()=>{setDialog('');setSelectedContract(null);setPreview(null)};
  async function action(path,body,method='POST',message='Records updated'){
@@ -49,7 +49,7 @@ export default function FreightLogistics({request}){
  }
  if(!data)return <section className="freight-root"><p>{error||'Loading logistics and trade…'}</p>{error&&<button onClick={()=>load().catch(e=>setError(e.message))}>Retry</button>}</section>;
  return <section className="freight-root">
-  <header className="freight-toolbar"><div><span>ECONOMY / SUPPLY COMMAND</span><h2>Logistics, Trade & Transport</h2><p>Connected freight, industrial supply movements and scheduled trade agreements.</p></div><div className="freight-actions"><button type="button" onClick={()=>{setCivic({item_id:'',resource_kind:'food',food_group:''});setDialog('civic')}}><i className="fa-solid fa-wheat-awn"/> Civic goods</button><button type="button" onClick={()=>{setTransport(initialTransport());setDialog('template')}}><i className="fa-solid fa-truck-fast"/> Transport type</button><button type="button" onClick={()=>{setContract(initialContract());setDialog('contract')}}><i className="fa-solid fa-file-contract"/> Trade agreement</button><button className="freight-primary" type="button" onClick={()=>openShipment()}><i className="fa-solid fa-box"/> Dispatch freight</button></div></header>
+  <header className="freight-toolbar"><div><span>ECONOMY / SUPPLY COMMAND</span><h2>Logistics, Trade & Transport</h2><p>Connected freight, industrial supply movements and scheduled trade agreements.</p></div><div className="freight-actions"><button type="button" onClick={()=>load().catch(e=>setError(e.message))}><i className="fa-solid fa-rotate"/> Refresh</button><button type="button" onClick={()=>{setCivic({item_id:'',resource_kind:'food',food_group:''});setDialog('civic')}}><i className="fa-solid fa-wheat-awn"/> Civic goods</button><button type="button" onClick={()=>{setTransport(initialTransport());setDialog('template')}}><i className="fa-solid fa-truck-fast"/> Transport type</button><button type="button" onClick={()=>{setContract(initialContract());setDialog('contract')}}><i className="fa-solid fa-file-contract"/> Trade agreement</button><button className="freight-primary" type="button" onClick={()=>openShipment()}><i className="fa-solid fa-box"/> Dispatch freight</button></div></header>
   {error&&<p className="wa-error" role="alert">{error}</p>}{notice&&<p className="wa-notice" role="status">{notice}</p>}
   <div className="freight-stats"><div><small>In transit</small><strong>{active.length}</strong></div><div><small>Active agreements</small><strong>{contracts.filter(c=>c.status==='active').length}</strong></div><div><small>Ready for dispatch</small><strong>{dueContracts.length}</strong></div><div><small>Received cargo</small><strong>{shipments.filter(s=>s.status==='arrived').length}</strong></div></div>
   <nav className="freight-tabs" aria-label="Logistics workspaces">{[['shipments','Shipments','fa-route'],['contracts','Trade & aid agreements','fa-file-contract'],['transport','Transport roster','fa-truck'],['history','Movement ledger','fa-list']].map(([id,label,icon])=><button type="button" key={id} className={tab===id?'active':''} onClick={()=>setTab(id)}><i className={'fa-solid '+icon}/> {label}</button>)}</nav>
