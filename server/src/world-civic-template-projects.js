@@ -64,8 +64,11 @@ export async function beginCivicTemplateProject(db,{settlement,template,upgrade=
   const [created]=await db.execute("INSERT INTO world_settlement_upgrades(settlement_id,name,category,status,condition_pct,level,housing_bonus,service_bonus,defense_bonus,notes,material_id,material_cost,construction_progress,created_by,template_id,effect_snapshot,template_revision) VALUES(?,?,?,'building',100,1,0,0,0,'',NULL,0,0,?,?,?,?)",[settlement.id,template.name,template.category,actorId,template.id,effectSnapshot(template),template.revision]);
   upgradeId=created.insertId;
  }
- const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,project_kind,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision,created_by) VALUES(?,?,?,?,?,'active',0,?,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,repair?'repair':upgrade?'upgrade':'build',cost.labor_required,owner_kind==='order'?cost.material_id:null,owner_kind==='order'?cost.material_required:0,owner_kind==='npc'?1:0,cost.npc_development_cost,owner_kind,repair?JSON.stringify(parse(upgrade.effect_snapshot)):effectSnapshot(template),repair?upgrade.template_revision:template.revision,actorId]);
- if(owner_kind==='order')for(const line of cost.materials){
+ const [p]=await db.execute("INSERT INTO world_civic_building_projects(upgrade_id,settlement_id,template_id,target_level,project_kind,status,progress,labor_required,material_id,material_required,materials_paid,npc_development_cost,owner_kind,effect_snapshot,template_revision,created_by) VALUES(?,?,?,?,?,'active',0,?,?,?,?,?,?,?,?,?)",[upgradeId,settlement.id,template.id,target,repair?'repair':upgrade?'upgrade':'build',cost.labor_required,owner_kind==='order'&&template.effect_key!=='insulation'?cost.material_id:null,owner_kind==='order'&&template.effect_key!=='insulation'?cost.material_required:0,owner_kind==='npc'||owner_kind==='order'&&template.effect_key==='insulation'?1:0,cost.npc_development_cost,owner_kind,repair?JSON.stringify(parse(upgrade.effect_snapshot)):effectSnapshot(template),repair?upgrade.template_revision:template.revision,actorId]);
+ if(owner_kind==='order'&&template.effect_key==='insulation'){
+   await db.execute("INSERT INTO world_logistics_insulation_needs(project_id,item_id,required_qty) VALUES(?,'freight-insulation',?)",[p.insertId,Math.max(10,Math.ceil(10*target*factor))]);
+  }
+  if(owner_kind==='order'&&template.effect_key!=='insulation')for(const line of cost.materials){
   await db.execute('INSERT INTO world_civic_project_needs(project_id,material_id,required_qty,committed_qty) VALUES(?,?,?,0)',[p.insertId,line.material_id,line.required_qty]);
  }
  return ok({project_id:p.insertId,upgrade_id:upgradeId,target_level:target,cost});
@@ -84,6 +87,10 @@ export async function advanceCivicTemplateProjects(db,settlement,key,ownerKind,h
    // No other system can spend goods reserved for this project.
    result.blocked.push(p.id);
    continue;
+  }
+  const [[insulation]]=await db.execute('SELECT required_qty,committed_qty FROM world_logistics_insulation_needs WHERE project_id=?',[p.id]);
+  if(insulation&&Number(insulation.committed_qty)+0.00001<Number(insulation.required_qty)){
+   result.blocked.push(p.id);continue;
   }
   const work=Math.min(capacity,Math.max(0,Math.ceil(capacity*.3)),Math.max(0,Number(p.labor_required)-Number(p.progress)),30);
   if(!work){result.blocked.push(p.id);continue}
