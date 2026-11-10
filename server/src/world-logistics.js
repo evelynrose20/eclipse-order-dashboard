@@ -1,3 +1,4 @@
+import {civilianStorageCapacity} from './world-civic-building-templates.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air','sea','pack'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -136,7 +137,9 @@ export async function logisticsRoute(pool,req,path,actor){
   const [items]=await pool.execute('SELECT id,name,category FROM world_industry_items ORDER BY name');
   const [vehicles]=await pool.execute("SELECT v.id,v.quantity,v.status,v.stationed_settlement_id,v.owner_faction_id,t.name,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.status='assigned' ORDER BY t.name");
   const [history]=await pool.execute('SELECT shipment_id,action,note,created_at FROM world_logistics_events ORDER BY id DESC LIMIT 120');
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles});
+  const [civicTypes]=await pool.execute('SELECT * FROM world_logistics_civic_item_types ORDER BY item_id');
+  const [civicReceipts]=await pool.execute('SELECT shipment_id,settlement_id,item_id,quantity FROM world_logistics_civic_receipts');
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts});
  }
  if(path==='/world-admin/logistics/templates'&&req.method==='POST'){
   const b=await body(req);
@@ -145,6 +148,18 @@ export async function logisticsRoute(pool,req,path,actor){
    if(b.fuel_item_id){const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.fuel_item_id]);if(!item)return fail(400,'unknown_fuel_item')}
    const [saved]=await db.execute('INSERT INTO world_logistics_transport_templates(name,mode,capacity,minutes_per_leg,fuel_item_id,fuel_per_leg,created_by) VALUES(?,?,?,?,?,?,?)',[b.name.trim(),b.mode,b.capacity,b.minutes_per_leg,b.fuel_item_id||null,b.fuel_per_leg,actor.id]);
    return ok({id:saved.insertId});
+  });
+ }
+ if(path==='/world-admin/logistics/civic/items'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||typeof b.item_id!=='string'||!['food','fuel','water','medicine'].includes(b.resource_kind)||(b.resource_kind==='food'&&!name(b.food_group,75)))return fail(400,'invalid_civic_item_classification');
+  return tx(pool,async db=>{
+   const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.item_id]);
+   if(!item)return fail(404,'item_not_found');
+   const [used]=await db.execute('SELECT shipment_id FROM world_logistics_civic_receipts WHERE item_id=? LIMIT 1',[b.item_id]);
+   if(used.length)return fail(409,'civic_item_classification_in_use');
+   await db.execute('INSERT INTO world_logistics_civic_item_types(item_id,resource_kind,food_group) VALUES(?,?,?) ON DUPLICATE KEY UPDATE resource_kind=VALUES(resource_kind),food_group=VALUES(food_group)',[b.item_id,b.resource_kind,b.resource_kind==='food'?b.food_group:null]);
+   return ok({saved:true});
   });
  }
  if(path==='/world-admin/logistics/contracts'&&req.method==='POST'){
@@ -181,6 +196,35 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   await db.execute('UPDATE world_logistics_contracts SET status=? WHERE id=?',[action==='pause'?'paused':action==='resume'?'active':'retired',contract.id]);
   return ok({status:action==='pause'?'paused':action==='resume'?'active':'retired'});
+ });
+ match=/^\/world-admin\/logistics\/shipments\/(\d+)\/civic$/.exec(path);
+ if(match&&req.method==='POST')return tx(pool,async db=>{
+  const id=Number(match[1]);
+  const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[id]);
+  if(!shipment)return fail(404,'shipment_not_found');
+  if(shipment.status!=='arrived')return fail(409,'shipment_not_received');
+  const [[previous]]=await db.execute('SELECT shipment_id FROM world_logistics_civic_receipts WHERE shipment_id=?',[id]);
+  if(previous)return ok({saved:true,already_received:true});
+  const [[kind]]=await db.execute('SELECT resource_kind,food_group FROM world_logistics_civic_item_types WHERE item_id=?',[shipment.item_id]);
+  if(!kind)return fail(409,'cargo_not_approved_for_civilian_use');
+  const [[facility]]=await db.execute('SELECT settlement_id FROM world_industry_facilities WHERE id=?',[shipment.destination_facility_id]);
+  if(!facility?.settlement_id)return fail(409,'destination_not_linked_to_settlement');
+  const [[settlement]]=await db.execute('SELECT id,population FROM world_settlements WHERE id=? FOR UPDATE',[facility.settlement_id]);
+  if(!settlement)return fail(404,'settlement_not_found');
+  const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[settlement.id]);
+  if(['food','water'].includes(kind.resource_kind)){
+   const capacity=civilianStorageCapacity(settlement,upgrades)[kind.resource_kind];
+   const [[stockTotal]]=await db.execute('SELECT COALESCE(SUM(quantity),0) AS total FROM world_civic_stock WHERE settlement_id=? AND resource_kind=?',[settlement.id,kind.resource_kind]);
+   if(Number(stockTotal.total)+Number(shipment.quantity)>capacity)return fail(409,'civilian_storage_capacity_exceeded');
+  }
+  const [[existing]]=await db.execute('SELECT resource_kind,food_group FROM world_civic_stock WHERE settlement_id=? AND item_code=? FOR UPDATE',[settlement.id,shipment.item_id]);
+  if(existing&&(existing.resource_kind!==kind.resource_kind||String(existing.food_group||'')!==String(kind.food_group||'')))return fail(409,'civilian_goods_classification_conflict');
+  if(!await ledger(db,shipment.destination_facility_id,shipment.item_id,-Number(shipment.quantity),'civic_delivery',id,actor))return fail(409,'destination_stock_insufficient');
+  const [[item]]=await db.execute('SELECT name FROM world_industry_items WHERE id=?',[shipment.item_id]);
+  await db.execute('INSERT INTO world_civic_stock(settlement_id,item_code,item_label,resource_kind,food_group,quantity) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',[settlement.id,shipment.item_id,item.name,kind.resource_kind,kind.food_group,shipment.quantity]);
+  await db.execute('INSERT INTO world_civic_movements(settlement_id,item_code,resource_kind,food_group,quantity_delta,reason,actor_id) VALUES(?,?,?,?,?,?,?)',[settlement.id,shipment.item_id,kind.resource_kind,kind.food_group,shipment.quantity,'Freight delivery #'+id,actor.id]);
+  await db.execute('INSERT INTO world_logistics_civic_receipts(shipment_id,settlement_id,item_id,quantity,actor_id) VALUES(?,?,?,?,?)',[id,settlement.id,shipment.item_id,shipment.quantity,actor.id]);
+  return ok({saved:true,settlement_id:settlement.id,resource_kind:kind.resource_kind});
  });
  match=/^\/world-admin\/logistics\/shipments\/(\d+)\/(arrive|cancel|disrupt|resume)$/.exec(path);
  if(match&&req.method==='POST')return tx(pool,async db=>{
