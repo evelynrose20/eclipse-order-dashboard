@@ -31,7 +31,8 @@ test('public website includes original Order identity, sections, and accessible 
 test('homepage reads only public recruitment state without private accounts or fake external links',()=>{
  assert.match(site,/fetch\(RECRUITMENT_API\+'\/recruitment'/);
  assert.doesNotMatch(site,/useLocal|localApi|sessionStorage|access_token|password/i);
- assert.doesNotMatch(site,/discord\.gg|Shirogane Ward|Plot 7|www\.rkcmateus\.com/);
+ assert.match(site,/discord\.gg\/ksqTw4SHYn/);
+ assert.doesNotMatch(site,/Shirogane Ward|Plot 7|www\.rkcmateus\.com/);
  assert.doesNotMatch(site,/href="#"/);
  assert.match(style,/@media\(max-width:760px\)/);
  assert.match(style,/@media\(prefers-reduced-motion:reduce\)/);
