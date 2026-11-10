@@ -18,7 +18,7 @@
 .supply-command button:not(.supply-map-site){background:#293f4b;border:1px solid #5a6c79;border-radius:3px;padding:7px 10px;color:#e8d6bc}
 .supply-command button:hover:not(:disabled):not(.supply-map-site){background:#344d5c}
 .supply-command button:disabled{opacity:.5;cursor:not-allowed}
-.supply-map{position:relative;height:320px;overflow:hidden;background:radial-gradient(ellipse at 55% 40%,#253a43 0%,#172a35 58%,#101e2a 100%);border-bottom:1px solid #405462;isolation:isolate}
+.supply-map{position:relative;height:clamp(460px,57vh,680px);overflow:hidden;background:radial-gradient(ellipse at 55% 40%,#253a43 0%,#172a35 58%,#101e2a 100%);border-bottom:1px solid #405462;isolation:isolate}
 .supply-map-grid{position:absolute;inset:0;opacity:.28;background-image:linear-gradient(#8196a41f 1px,transparent 1px),linear-gradient(90deg,#8196a41f 1px,transparent 1px);background-size:28px 28px}
 .supply-map::before{content:'NEW CASSIA / OPERATIONAL NETWORK';position:absolute;left:12px;top:13px;color:#b9a989;letter-spacing:.17em;font-size:9px;z-index:1;font-weight:700}
 .supply-map-links{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
@@ -66,7 +66,7 @@
 .supply-system-grid small{color:#d5b77f;font-size:10px;margin-top:auto}
 .supply-notice{padding:10px;border-left:3px solid #cea770;background:#3b3530;color:#e8d2b6;margin:0}
 @media(max-width:1050px){.supply-operations{grid-template-columns:1fr}.supply-intel{display:block}.supply-statusbar{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:750px){.supply-statusbar{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-location-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-system-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-bar{flex-wrap:wrap}.supply-map{height:290px}.supply-map-site span{display:none}.supply-map-site.selected span{display:inline}}
+@media(max-width:750px){.supply-statusbar{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-location-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-system-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.supply-bar{flex-wrap:wrap}.supply-map{height:clamp(340px,52vh,520px)}.supply-map-site span{display:none}.supply-map-site.selected span{display:inline}}
 @media(max-width:480px){.supply-system-grid{grid-template-columns:1fr}.supply-inspector-head{flex-wrap:wrap}.supply-map-legend{gap:7px;font-size:8px}.supply-statusbar{grid-template-columns:1fr 1fr}}
 
 .supply-link.cargo-npc{stroke:#9fb67f;stroke-width:1.3;stroke-dasharray:3 3;opacity:.8}
@@ -79,3 +79,11 @@
 .supply-terrain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.93}
 .supply-map-grid{z-index:1;pointer-events:none}
 .supply-map-links{z-index:2}
+
+/* More room for the strategic theater; fleet markers must remain readable. */
+.supply-map-site{padding:6px 9px!important;font-size:11px!important}
+.supply-map-legend{bottom:12px;padding:9px 11px;gap:12px}
+.supply-map-cargo{position:absolute;z-index:3;transform:translate(-50%,-50%);display:grid;place-items:center;width:22px;height:22px;border:1px solid #e1c994;border-radius:50%;background:#1b3544;color:#f3dfb8;box-shadow:0 0 0 4px #101b2380;pointer-events:auto;cursor:help}
+.supply-map-cargo i{font-size:10px}
+.supply-map-cargo.is-rail{border-color:#d6bd8e}.supply-map-cargo.is-air{border-color:#8cc5d9}.supply-map-cargo.is-pack{border-color:#c1bd84}.supply-map-cargo.is-npc{border-color:#9fbc87;background:#273a31}.supply-map-cargo.is-held{border-color:#d78e7f;background:#49332e;animation:none}
+@media(prefers-reduced-motion:reduce){.supply-link.cargo-in_transit,.supply-link.cargo-disrupted{animation:none}}
