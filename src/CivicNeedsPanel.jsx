@@ -1,13 +1,14 @@
 import React,{useEffect,useState} from 'react';
 import SettlementUpgradesPanel from './SettlementUpgradesPanel.jsx';
 import SettlementClockPanel from './SettlementClockPanel.jsx';
+import OrderCityBuilder from './OrderCityBuilder.jsx';
 const today=()=>new Date().toISOString().slice(0,10);
 const num=v=>Number(v||0);
 const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
 const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grain',quantity_delta:0,reason:''};
 export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const [tab,setTab]=useState('overview');
+ const [tab,setTab]=useState('city');
  const [addMenu,setAddMenu]=useState(false),[creationAction,setCreationAction]=useState('');
  const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults);
  const [event,setEvent]=useState({kind:'petition',title:'',detail:''}),[cycleDate,setCycleDate]=useState(today()),[proposed,setProposed]=useState(null);
@@ -26,9 +27,9 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
  if(!data)return <section className="wa-panel"><h3>{settlement.name} · Civilian needs</h3>{error?<p role="alert" className="wa-error">{error}</p>:<p>Loading civic records…</p>}</section>;
  const p=data.preview;
  const empty=Number(settlement.population)===0;
- const groups=[['overview','Overview','fa-gauge-high'],['upgrades','Buildings & defenses','fa-building'],['supplies','Provisions','fa-boxes-stacked'],['people','Residents','fa-people-group'],['aid','Relief routes','fa-truck-medical'],['events','Civic events','fa-scroll'],['policy','Simulation','fa-sliders']];
+ const groups=[['city','City builder','fa-city'],['overview','Overview','fa-gauge-high'],['upgrades','Buildings & defenses','fa-building'],['supplies','Provisions','fa-boxes-stacked'],['people','Residents','fa-people-group'],['aid','Relief routes','fa-truck-medical'],['events','Civic events','fa-scroll'],['policy','Simulation','fa-sliders']];
  return <section className="wa-panel wa-civic-detail" aria-label={'Civic administration for '+settlement.name}>
-  <div className="wa-panel-title"><strong>{settlement.name} · Civilian welfare</strong><span>{empty?'Uninhabited':profile.paused?'Paused':profile.enabled_mode==='off'?'Simulation off':profile.enabled_mode}</span></div>
+  <div className="wa-panel-title"><strong>{settlement.name} · City administration</strong><span>{empty?'Uninhabited':profile.paused?'Paused':profile.enabled_mode==='off'?'Simulation off':profile.enabled_mode}</span></div>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   <div className="wa-civic-tabs" role="tablist" aria-label="Civilian welfare sections">{groups.map(([key,label,icon])=><button role="tab" aria-selected={tab===key} key={key} className={tab===key?'active':''} onClick={()=>setTab(key)}><i className={'fa-solid '+icon} aria-hidden="true"/> {label}</button>)}</div>
   {canEdit&&<div className="wa-civic-add-menu"><button type="button" className="wa-accent" aria-expanded={addMenu} onClick={()=>setAddMenu(true)}><i className="fa-solid fa-plus" aria-hidden="true"/> Add to settlement</button></div>}
@@ -46,6 +47,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     <div><span>Unrest risk</span><strong>{empty?'Not applicable':p.risk+'/100'}</strong></div>
   </div>
   {empty&&<div className="wa-civic-empty"><i className="fa-solid fa-house-circle-xmark"/><div><strong>No residents — no provisions required</strong><p>This settlement has no civilian food, water, heating or medical consumption. Construct housing before residents can move in. Existing stock is preserved.</p></div><button type="button" onClick={()=>setTab('upgrades')}>Add housing</button></div>}
+  {tab==='city'&&<OrderCityBuilder settlement={settlement} request={request} canEdit={canEdit} onChanged={onChanged} onBuild={()=>{setTab('upgrades');setCreationAction('build')}} onSupply={()=>setTab('supplies')}/>}
   {tab==='overview'&&<div className="wa-civic-dashboard">
    <div className="wa-civic-values">{[['Food stored / capacity',format(p.food_stock)+' / '+format(p.food_storage_capacity)],['Fuel stock',format(p.fuel_stock)],['Water stored / capacity',format(p.water_stock)+' / '+format(p.water_storage_capacity)],['Waterworks production',format(p.waterworks_generated)+' units/cycle'],['Medical stock',format(p.medicine_stock)],['Diet groups / 30 days',empty?'—':p.food_groups_30d.length],['Heating coverage',p.heating_coverage_effective+'%'],['Civic pressure',empty?'—':p.pressure+'/100']].map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>
    <div className="wa-civic-overview-actions"><h3>Settlement administration</h3><p>{empty?'Develop the settlement with housing and essential infrastructure before accepting residents.':p.warnings.length?p.warnings.map(x=>x.replaceAll('_',' ')).join(' · '):'No immediate civilian warnings.'}</p><button type="button" onClick={()=>setTab('upgrades')}>Manage structures</button><button type="button" onClick={()=>setTab('people')}>View population</button>{!empty&&<button type="button" onClick={()=>setTab('supplies')}>Review provisions</button>}</div>
