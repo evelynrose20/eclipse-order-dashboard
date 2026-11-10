@@ -1,3 +1,4 @@
+import {orderCityRoute} from './world-order-city.js';
 import {civicTemplateCatalogRoute} from './world-civic-template-projects.js';
 import {resolveSession} from './auth.js';
 import {industryRoute} from './world-industry.js';
@@ -118,6 +119,7 @@ async function worldAdministrationRouteCore(pool,req,path){
  if(!command)return fail(403,'command_required');
  if(path.startsWith('/world-admin/diplomacy'))return worldDiplomacyRoute(pool,req,path,actor);
  if(path.startsWith('/world-admin/recovery'))return recoveryClaimsRoute(pool,req,path,actor);
+ if(path.startsWith('/world-admin/city/'))return orderCityRoute(pool,req,path,actor);
  if(path==='/world-admin/military'||path.startsWith('/world-admin/military/'))return militaryInstallationsRoute(pool,req,path,actor);
  if(path==='/world-admin/logistics'||path.startsWith('/world-admin/logistics/'))return logisticsRoute(pool,req,path,actor);
  if(path==='/world-admin/industry'||path.startsWith('/world-admin/industry/'))return industryRoute(pool,req,path,actor);
