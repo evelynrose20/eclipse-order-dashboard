@@ -52,3 +52,6 @@
 .freight-form footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #405462;padding-top:13px}
 .freight-root .wa-error{border:1px solid #ad676a;background:#482e32;color:#f3c9ca;padding:10px}
 @media(max-width:830px){.freight-toolbar{align-items:flex-start;flex-direction:column}.freight-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.freight-form{grid-template-columns:1fr}}
+
+.freight-auto{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.freight-auto select{background:#101f2a;border:1px solid #526879;color:#e7e8e9;border-radius:4px;min-height:35px;max-width:245px;font:inherit;padding:7px 8px}
