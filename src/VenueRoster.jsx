@@ -17,7 +17,7 @@ function RosterCard({person,category}){
   <div className="venue-roster-copy"><span className="venue-roster-label">{person.vacancy?'RECRUITING':category==='staff'?'VENUE STAFF':'VENUE THRALL'}</span><h3>{person.name}</h3><strong>{person.title}</strong><p>{person.description}</p>{person.vacancy&&<a href={DISCORD} target="_blank" rel="noopener noreferrer">Ask about this role <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"/></a>}</div>
  </article>;
 }
-function validEntry(item){return item&&typeof item.id==='string'&&typeof item.name==='string'&&typeof item.title==='string'&&typeof item.description==='string'&&typeof item.vacancy!=='undefined'&&typeof item.image==='string'}
+function validEntry(item){return item&&typeof item.id==='string'&&typeof item.name==='string'&&typeof item.title==='string'&&typeof item.description==='string'&&(typeof item.vacancy==='undefined'||typeof item.vacancy==='boolean')&&typeof item.image==='string'}
 export default function VenueRoster(){
  const [data,setData]=useState(null);
  const [state,setState]=useState('loading');
