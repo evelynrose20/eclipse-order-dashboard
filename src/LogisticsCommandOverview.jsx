@@ -50,6 +50,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const focusNpcRoutes=npcRoutes.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const focusNpcStock=npcWarehouses.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const npcActive=npcShipments.filter(s=>s.status==='in_transit');
+ const npcRelief=(freight.npc_trades||[]).filter(s=>['in_transit','held'].includes(s.status));
  const railJourneys=(rails?.journeys||[]).filter(j=>j.status==='running');
  const railServices=rails?.routes||[];
  const marketContracts=(exchange?.contracts||[]).filter(c=>c.status==='open');
@@ -71,6 +72,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
   const a=position(r.from_settlement_id),b=position(r.to_settlement_id);return a&&b?{id:'old-'+r.id,type:r.route_type,from:a,to:b,waypoints:r.waypoints}:null
  }).filter(Boolean);
  const serviceLines=railServices.filter(r=>r.from_type==='settlement'&&r.to_type==='settlement'&&r.status==='active').map(r=>{const a=position(r.from_id),b=position(r.to_id);return a&&b?{id:r.id,from:a,to:b,name:r.name}:null}).filter(Boolean);
+ const npcReliefLines=npcRelief.map(s=>{const from=position(s.source_settlement_id),to=position(s.destination_settlement_id);return from&&to?{id:s.id,from,to,status:s.status}:null}).filter(Boolean);
  const freightLines=activeFreight.map(s=>{
   const a=freight.facilities.find(f=>Number(f.id)===Number(s.source_facility_id)),b=freight.facilities.find(f=>Number(f.id)===Number(s.destination_facility_id));
   const from=position(a?.settlement_id),to=position(b?.settlement_id);
@@ -97,6 +99,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
       <svg className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
        {[...oldLines,...lines].map(l=><polyline key={l.id} points={linePoints(l.from,l.to,l.waypoints).map(p=>p.x+','+p.y).join(' ')} className={'supply-link mode-'+l.type}/>)}
        {serviceLines.map(l=><line key={'service-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className="supply-link mode-rail-service"/>)}
+       {npcReliefLines.map(l=><line key={'relief-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-npc-relief '+l.status}/>)}
        {freightLines.map(l=><line key={'freight-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-'+l.status}/>)}
       </svg>
       {npcRoutes.filter(r=>r.map_settlement_id).map(r=>{const from=position(r.map_settlement_id),to=position(r.settlement_id);return from&&to?<svg key={'npc-route-'+r.id} className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} className="supply-link cargo-npc"/></svg>:null})}
@@ -117,9 +120,10 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     {!shortageSites.length&&<p className="supply-muted">No civilian shortages flagged by the current settlement records.</p>}
     <div className="supply-intel-heading"><h3>Active movements</h3><button onClick={()=>onTab?.('shipments')}>All cargo</button></div>
     {activeFreight.slice(0,5).map(s=><div className="supply-movement" key={s.id}><i className={'fa-solid fa-'+(s.mode==='rail'?'train':s.mode==='air'?'plane':'truck')}/><span><strong>{s.item_name} × {num(s.quantity)}</strong><small>{s.source_name} → {s.destination_name}</small><small>{s.status==='disrupted'?'Movement interrupted':'ETA '+duration(s.due_at)}</small></span></div>)}
+    {npcRelief.slice(0,3).map(s=><div className="supply-movement" key={'relief-'+s.id}><i className="fa-solid fa-hand-holding-heart"/><span><strong>NPC food relief · {num(s.amount)} food units</strong><small>{s.origin_name} → {s.destination_name}</small><small>{s.status==='held'?'Awaiting access or storage':'Arriving '+new Date(s.due_at).toLocaleString()}</small></span></div>)}
     {npcActive.slice(0,3).map(s=><div className="supply-movement" key={'npc-'+s.id}><i className="fa-solid fa-tractor"/><span><strong>NPC farm cargo · {s.item_name} × {num(s.quantity)}</strong><small>{npcRoutes.find(r=>Number(r.id)===Number(s.route_id))?.source_name||'Mapped farm'} → {sites.find(x=>Number(x.id)===Number(s.settlement_id))?.name||'NPC settlement'}</small><small>Arriving {new Date(s.arrival_at).toLocaleString()}</small></span></div>)}
     {railJourneys.slice(0,3).map(j=><div className="supply-movement" key={'rail-'+j.id}><i className="fa-solid fa-train"/><span><strong>Rail journey #{j.id}</strong><small>{kind(j.display_status||j.status)} · {duration(j.expected_arrival_at)} remaining</small></span></div>)}
-    {!activeFreight.length&&!railJourneys.length&&!npcActive.length&&<p className="supply-muted">No convoys, farm deliveries or trains currently recorded as moving.</p>}
+    {!activeFreight.length&&!railJourneys.length&&!npcActive.length&&!npcRelief.length&&<p className="supply-muted">No convoys, farm deliveries or trains currently recorded as moving.</p>}
     {militaryAlerts.length>0&&<div className="supply-alert-note"><i className="fa-solid fa-shield-halved"/> {militaryAlerts.length} military installations need attention.</div>}
     <div className="supply-intel-heading"><h3>Foreign demand</h3><button onClick={()=>go('trade')}>Market</button></div>
     {marketContracts.slice(0,4).map(c=><button key={c.id} className="supply-priority" onClick={()=>go('trade')}><i className="fa-solid fa-coins"/><span><strong>{c.faction_name||'Foreign market'} · {c.material_name||c.equipment_name||'Trade order'}</strong><small>{num(Math.max(0,Number(c.required_quantity||0)-Number(c.delivered_quantity||0)))} units remaining</small></span><i className="fa-solid fa-chevron-right"/></button>)}
@@ -132,7 +136,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     <button onClick={()=>go('world')}><i className="fa-solid fa-industry"/><strong>Industry & restoration</strong><span>{freight.facilities?.length||0} registered facilities · actual production and construction</span><small>Open World Administration</small></button>
     <button onClick={()=>go('internal-rail')}><i className="fa-solid fa-train"/><strong>Internal rail logistics</strong><span>{rails?railServices.length+' services · '+(rails.stations?.length||0)+' stations':'Rail data unavailable'} · train operations</span><small>Open railway command</small></button>
     <button onClick={()=>go('trade')}><i className="fa-solid fa-scale-balanced"/><strong>Merchant Exchange</strong><span>{exchange?(exchange.contracts?.length||0)+' contracts · '+(exchange.deliveries?.length||0)+' deliveries':'Market data unavailable'} · diplomacy and trade</span><small>Open the market</small></button>
-    <button onClick={()=>go('world')}><i className="fa-solid fa-seedling"/><strong>NPC settlements & farms</strong><span>{npcRoutes.length} mapped farm supply routes · {npcActive.length} cargo journeys</span><small>Open settlement management</small></button>
+    <button onClick={()=>go('world')}><i className="fa-solid fa-seedling"/><strong>NPC settlements & farms</strong><span>{npcRoutes.length} mapped farm routes · {npcRelief.length} relief convoys</span><small>Open settlement management</small></button>
     <button onClick={()=>go('world')}><i className="fa-solid fa-shield-halved"/><strong>Castrums & military supply</strong><span>{military?(military.installations?.length||0)+' installations':'Military records unavailable'} · garrisons and war stores</span><small>Open military installations</small></button>
     <button onClick={()=>go('fronts')}><i className="fa-solid fa-store"/><strong>Order fronts</strong><span>{fronts?(fronts.fronts?.length||0)+' registered fronts · ':'Existing businesses · '}reserved stock and commercial operations</span><small>Open Order fronts</small></button>
    </div>
