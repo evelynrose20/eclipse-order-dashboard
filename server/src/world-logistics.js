@@ -2,6 +2,7 @@ import {civilianStorageCapacity} from './world-civic-building-templates.js';
 import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
+import {randomUUID} from 'node:crypto';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -205,6 +206,11 @@ export async function logisticsRoute(pool,req,path,actor){
  if(path==='/world-admin/logistics'&&req.method==='GET'){
   const [templates]=await pool.execute('SELECT * FROM world_logistics_transport_templates ORDER BY name');
   const [contracts]=await pool.execute("SELECT c.*,f.name AS source_name,d.name AS destination_name,t.name AS transport_name,i.name AS item_name FROM world_logistics_contracts c JOIN world_industry_facilities f ON f.id=c.source_facility_id JOIN world_industry_facilities d ON d.id=c.destination_facility_id JOIN world_logistics_transport_templates t ON t.id=c.transport_template_id JOIN world_industry_items i ON i.id=c.item_id ORDER BY c.id DESC LIMIT 200");
+  const [itineraries]=await pool.execute(`SELECT i.id,i.name,i.item_id,i.quantity,l.id AS leg_id,l.step_number,l.source_facility_id,l.destination_facility_id,l.transport_template_id,l.shipment_id,s.status AS shipment_status,s.due_at,t.mode,f.name AS source_name,d.name AS destination_name
+    FROM world_logistics_itineraries i JOIN world_logistics_itinerary_legs l ON l.itinerary_id=i.id
+    JOIN world_logistics_transport_templates t ON t.id=l.transport_template_id
+    JOIN world_industry_facilities f ON f.id=l.source_facility_id JOIN world_industry_facilities d ON d.id=l.destination_facility_id
+    LEFT JOIN world_logistics_shipments s ON s.id=l.shipment_id ORDER BY i.id DESC,l.step_number LIMIT 500`);
   const [shipments]=await pool.execute("SELECT s.*,f.name AS source_name,d.name AS destination_name,t.name AS transport_name,i.name AS item_name FROM world_logistics_shipments s JOIN world_industry_facilities f ON f.id=s.source_facility_id JOIN world_industry_facilities d ON d.id=s.destination_facility_id JOIN world_logistics_transport_templates t ON t.id=s.transport_template_id JOIN world_industry_items i ON i.id=s.item_id ORDER BY s.id DESC LIMIT 200");
   const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0');
   const [items]=await pool.execute('SELECT id,name,category FROM world_industry_items ORDER BY name');
@@ -231,7 +237,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -320,6 +326,47 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   await db.execute('UPDATE world_logistics_corridors SET state=? WHERE id=?',[b.state,corridor.id]);
   return ok({state:b.state});
+ });
+ if(path==='/world-admin/logistics/itineraries'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||!name(b.name,140)||!qty(b.quantity)||typeof b.item_id!=='string'||!Array.isArray(b.legs)||b.legs.length<2||b.legs.length>6)return fail(400,'invalid_itinerary');
+  const steps=b.legs.map(leg=>({source:Number(leg.source_facility_id),destination:Number(leg.destination_facility_id),template:Number(leg.transport_template_id)}));
+  if(steps.some((leg,i)=>!goodId(leg.source)||!goodId(leg.destination)||!goodId(leg.template)||leg.source===leg.destination||(i>0&&steps[i-1].destination!==leg.source)))return fail(400,'itinerary_legs_must_connect');
+  return tx(pool,async db=>{
+   const [templates]=await db.execute('SELECT id,mode,capacity FROM world_logistics_transport_templates WHERE id IN ('+steps.map(()=>'?').join(',')+') AND active=1',[...steps.map(l=>l.template)]);
+   if(steps.some(l=>!templates.some(t=>Number(t.id)===l.template&&modes.includes(t.mode)&&Number(t.capacity)>=b.quantity)))return fail(409,'itinerary_transport_unavailable');
+   const [points]=await db.execute('SELECT id,settlement_id FROM world_industry_facilities WHERE id IN ('+steps.flatMap(l=>[l.source,l.destination]).map(()=>'?').join(',')+')',[...steps.flatMap(l=>[l.source,l.destination])]);
+   if(steps.some(l=>!points.some(p=>Number(p.id)===l.source)||!points.some(p=>Number(p.id)===l.destination)))return fail(404,'itinerary_facility_missing');
+   for(const leg of steps){
+    const a=points.find(p=>Number(p.id)===leg.source),z=points.find(p=>Number(p.id)===leg.destination);
+    const t=templates.find(t=>Number(t.id)===leg.template);
+    if(!a?.settlement_id||!z?.settlement_id||!await route(db,a.settlement_id,z.settlement_id,t.mode))return fail(409,'itinerary_route_not_connected');
+   }
+   const [created]=await db.execute('INSERT INTO world_logistics_itineraries(name,item_id,quantity,created_by) VALUES(?,?,?,?)',[b.name.trim(),b.item_id,b.quantity,actor.id]);
+   for(let i=0;i<steps.length;i++){const leg=steps[i];await db.execute('INSERT INTO world_logistics_itinerary_legs(itinerary_id,step_number,source_facility_id,destination_facility_id,transport_template_id) VALUES(?,?,?,?,?)',[created.insertId,i+1,leg.source,leg.destination,leg.template]);}
+   return ok({id:created.insertId,steps:steps.length});
+  });
+ }
+ const itineraryDispatch=/^\\/world-admin\\/logistics\\/itineraries\\/(\\d+)\\/dispatch$/.exec(path);
+ if(itineraryDispatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  const [legs]=await db.execute(`SELECT l.*,s.status AS shipment_status FROM world_logistics_itinerary_legs l
+    LEFT JOIN world_logistics_shipments s ON s.id=l.shipment_id WHERE l.itinerary_id=? ORDER BY l.step_number FOR UPDATE`,[Number(itineraryDispatch[1])]);
+  if(!legs.length)return fail(404,'itinerary_not_found');
+  const next=legs.find(l=>!l.shipment_id);
+  if(!next)return fail(409,'itinerary_already_dispatched');
+  const prev=legs[Number(next.step_number)-2];
+  if(prev&&prev.shipment_status!=='arrived')return fail(409,'previous_cargo_not_received');
+  if(prev&&Number(prev.destination_facility_id)!==Number(next.source_facility_id))return fail(409,'itinerary_depot_mismatch');
+  const [[info]]=await db.execute('SELECT item_id,quantity FROM world_logistics_itineraries WHERE id=? FOR UPDATE',[Number(itineraryDispatch[1])]);
+  const outcome=await dispatch(db,{
+   request_key:randomUUID(),source_facility_id:next.source_facility_id,destination_facility_id:next.destination_facility_id,
+   transport_template_id:next.transport_template_id,item_id:info.item_id,quantity:Number(info.quantity),
+   vehicle_lot_id:b?.vehicle_lot_id,train_journey_id:b?.train_journey_id,escort_notes:'Linked transport leg '+next.step_number
+  },actor);
+  if(outcome.status!==200)return outcome;
+  await db.execute('UPDATE world_logistics_itinerary_legs SET shipment_id=? WHERE id=? AND shipment_id IS NULL',[outcome.body.shipment_id,next.id]);
+  return ok({...outcome.body,step_number:next.step_number,itinerary_id:Number(itineraryDispatch[1])});
  });
  if(path==='/world-admin/logistics/templates'&&req.method==='POST'){
   const b=await body(req);
