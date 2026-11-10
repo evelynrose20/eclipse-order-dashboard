@@ -65,6 +65,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const militaryAlerts=militaryInstallations.filter(i=>i.state!=='operational');
  const prioritySites=orderSites;
  const [showAllPriorities,setShowAllPriorities]=useState(false);
+ const [showAllHoldings,setShowAllHoldings]=useState(false);
  const openSettlement=s=>{setSelectedRegion(String(s.region_id));setSelectedZone(String(s.zone_id));setSelectedSite(String(s.id))};
  const importantSites=[...prioritySites].sort((a,b)=>{
   const importance=s=>(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?2:0)+(/capital|new cassia/i.test(s.name)?3:0);
@@ -136,8 +137,9 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     {!shortageSites.length&&<p className="supply-muted">No supply shortages recorded at Order-controlled settlements.</p>}
     {shortageSites.length>6&&<button className="supply-priority-more" onClick={()=>setShowAllPriorities(!showAllPriorities)}>{showAllPriorities?'Show fewer alerts':'View all '+shortageSites.length+' Order supply alerts'}</button>}
     <div className="supply-intel-heading"><h3>Order holdings</h3><span>{orderSites.length} locations</span></div>
-    {importantSites.map(s=><button className="supply-priority" key={'holding-'+s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className={'fa-solid '+(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?'fa-shield-halved':'fa-city')}/></span><span><strong>{s.name}</strong><small>{risk(s)==='alert'?'Supply attention required':kind(s.strategic_state)+' · Order controlled'}{militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?' · Military installation':''}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
-    {!importantSites.length&&<p className="supply-muted">No active Order-controlled settlements are registered.</p>}
+    {importantSites.slice(0,showAllHoldings?undefined:8).map(s=><button className="supply-priority" key={'holding-'+s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className={'fa-solid '+(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?'fa-shield-halved':'fa-city')}/></span><span><strong>{s.name}</strong><small>{risk(s)==='alert'?'Supply attention required':kind(s.strategic_state)+' · Order controlled'}{militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?' · Military installation':''}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
+    {!importantSites.length&&<p className="supply-muted">No Order-controlled settlements are registered.</p>}
+    {importantSites.length>8&&<button className="supply-priority-more" onClick={()=>setShowAllHoldings(!showAllHoldings)}>{showAllHoldings?'Show fewer holdings':'View all '+importantSites.length+' Order holdings'}</button>
     {installationSites.length>0&&<div className="supply-intel-heading"><h3>Castrums & installations</h3><span>{installationSites.length} registered</span></div>}
     {installationSites.map(({installation:i,settlement:s})=><button className="supply-priority" key={'installation-'+i.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className="fa-solid fa-shield-halved"/></span><span><strong>{i.name}</strong><small>{s.name} · {kind(i.state)} · {num(i.condition_pct)}% integrity</small></span><i className="fa-solid fa-chevron-right"/></button>)}
     <div className="supply-intel-heading"><h3>Active movements</h3><button onClick={()=>onTab?.('shipments')}>All cargo</button></div>
