@@ -65,7 +65,7 @@ export default function VenueMenu(){
  return <div className="midnight-venue venue-menu-page">
   <a className="venue-skip" href="#venue-menu-main">Skip to menu</a>
   <header className="venue-header"><a className="venue-brand" href="/venue/"><VenueMark/><span>THE MIDNIGHT <em>ECLIPSE</em><small>AN ECLIPSE ORDER VENUE</small></span></a>
-   <nav aria-label="Menu navigation"><a href="/venue/">Venue home</a><a href="#menu">Drinks</a><a href="#food">Food</a><a href="#desserts">Desserts</a><a href="/venue/#travel">Travel & location</a></nav>
+   <nav aria-label="Menu navigation"><a href="/venue/">Venue home</a><a href="#menu">Drinks</a><a href="#food">Food</a><a href="#desserts">Desserts</a><a href="/venue/#travel">Travel & location</a><a href="/venue/rules/">Venue Rules</a></nav>
   </header>
   <main id="venue-menu-main">
    <section className="venue-menu-intro"><div className="venue-inner"><span className="venue-eyebrow">THE MIDNIGHT ECLIPSE · HOUSE SELECTION</span><h1>THE <em>MENU.</em></h1><p>Drinks, kitchen specialties, and sweets for evenings beneath the eclipse.</p><div className="venue-menu-categories"><a href="#menu">Drinks</a><a href="#food">Food</a><a href="#desserts">Desserts</a></div></div></section>
@@ -90,6 +90,6 @@ export default function VenueMenu(){
    </div></section>
 
   </main>
-  <footer className="venue-footer"><div><VenueMark/><span>THE MIDNIGHT ECLIPSE<small>AN ECLIPSE ORDER VENUE</small></span></div><div><a href="/venue/">Back to the venue</a><a href="/">The Eclipse Order</a><a href="#venue-menu-main">Back to top ↑</a></div><small>Menu prices are in-character gil only. Not affiliated with Square Enix.</small></footer>
+  <footer className="venue-footer"><div><VenueMark/><span>THE MIDNIGHT ECLIPSE<small>AN ECLIPSE ORDER VENUE</small></span></div><div><a href="/venue/">Back to the venue</a><a href="/">The Eclipse Order</a><a href="/venue/rules/">Venue Rules</a><a href="#venue-menu-main">Back to top ↑</a></div><small>Menu prices are in-character gil only. Not affiliated with Square Enix.</small></footer>
  </div>;
 }

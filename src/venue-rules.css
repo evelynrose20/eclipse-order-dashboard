@@ -1,0 +1,29 @@
+/* The Midnight Eclipse — visitor rules */
+.venue-rules-hero{padding:clamp(60px,8vw,110px) 0 66px;background:radial-gradient(ellipse at 72% 35%,#982a3640,transparent 55%),linear-gradient(135deg,#17202a,#090c11);border-bottom:1px solid #79414a}
+.venue-rules-hero h1{font:700 clamp(61px,8.5vw,119px)/.9 var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:-.02em;margin:20px 0 26px}
+.venue-rules-hero h1 em,.venue-rules-outro h2 em{color:#e75a63;font-style:normal}
+.venue-rules-hero p{max-width:770px;font-size:17px;line-height:1.85;color:#c2cbd0}
+.venue-rules-jump{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.venue-rules-jump a{border:1px solid #99515c;background:#27303b;padding:11px 18px;font-size:11px;text-transform:uppercase;font-weight:750;letter-spacing:.09em}
+.venue-rules-jump a:hover{background:#953b49}
+.venue-rules-priority{background:#272029;border-block:1px solid #a14b58}
+.venue-rules-priority .venue-inner{display:flex;align-items:flex-start;gap:20px;padding-top:22px;padding-bottom:22px}
+.venue-rules-priority i{font-size:29px;color:#f3a7b2;margin-top:3px}
+.venue-rules-priority strong{font-size:16px;color:#ffe0e3}
+.venue-rules-priority p{margin:6px 0 0;color:#d1c5c7;font-size:13px;line-height:1.75}
+.venue-rules-section{background:#121a22}
+.venue-rules-thralls{background:#171920}.venue-rules-ooc{background:#0d151d}
+.venue-rules-section .venue-section-top h2{max-width:900px}
+.venue-rules-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.venue-rule-card{background:#1d252e;border:1px solid #58454c;border-top:2px solid #a94451;min-width:0;padding:26px 29px}
+.venue-rules-thralls .venue-rule-card{background:#222028}
+.venue-rule-index{font-size:10px;letter-spacing:.2em;color:#ce9fa4;font-weight:700}
+.venue-rule-card h3{font:600 clamp(24px,2.2vw,32px)/1.14 var(--imperial-heading,'Arial Narrow',sans-serif);margin:17px 0 15px;color:#f3e7e3}
+.venue-rule-card p{font-size:13px;line-height:1.85;color:#c2cbcf;margin:0 0 13px}
+.venue-rule-card p:last-child{margin-bottom:0}
+.venue-rules-outro{background:linear-gradient(120deg,#28232b,#101923);padding:75px 0;border-top:1px solid #79414a}
+.venue-rules-outro .venue-inner{display:flex;align-items:center;justify-content:space-between;gap:32px}
+.venue-rules-outro h2{font:600 clamp(40px,5vw,65px)/1 var(--imperial-heading,'Arial Narrow',sans-serif);margin:13px 0}
+.venue-rules-outro p{max-width:670px;color:#c2cbd0}
+.venue-rules-outro .venue-btn{flex:none}
+@media(max-width:760px){.venue-rules-grid{grid-template-columns:1fr}.venue-rule-card{padding:23px}.venue-rules-outro .venue-inner{flex-direction:column;align-items:flex-start}}
