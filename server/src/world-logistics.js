@@ -1,4 +1,5 @@
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
+import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air','sea','pack'],purposes=['trade','relief','military','industry'];
@@ -205,7 +206,8 @@ export async function logisticsRoute(pool,req,path,actor){
   const [shipments]=await pool.execute("SELECT s.*,f.name AS source_name,d.name AS destination_name,t.name AS transport_name,i.name AS item_name FROM world_logistics_shipments s JOIN world_industry_facilities f ON f.id=s.source_facility_id JOIN world_industry_facilities d ON d.id=s.destination_facility_id JOIN world_logistics_transport_templates t ON t.id=s.transport_template_id JOIN world_industry_items i ON i.id=s.item_id ORDER BY s.id DESC LIMIT 200");
   const [stocks]=await pool.execute('SELECT facility_id,item_id,quantity FROM world_industry_stock WHERE quantity>0');
   const [items]=await pool.execute('SELECT id,name,category FROM world_industry_items ORDER BY name');
-  const [vehicles]=await pool.execute("SELECT v.id,v.quantity,v.status,v.stationed_settlement_id,v.owner_faction_id,t.name,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.status='assigned' ORDER BY t.name");
+  const [vehicles]=await pool.execute("SELECT v.id,v.quantity,v.status,v.stationed_settlement_id,v.owner_faction_id,v.specifications,t.name,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.status IN ('assigned','reserve','damaged') AND v.owner_faction_id='eclipse-order' ORDER BY t.name");
+  const assembledTrains=(await trainSummary(pool)).filter(t=>t.status==='assembled'&&t.owner_faction_id==='eclipse-order');
   const [railJourneys]=await pool.execute("SELECT j.id,j.route_id,j.train_consist_id,j.status,j.cargo_capacity_snapshot,j.departed_at,j.expected_arrival_at,c.name AS train_name,r.name AS route_name,r.from_type,r.from_id,r.to_type,r.to_id,r.duration_minutes FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.status='running' AND j.expected_arrival_at>UTC_TIMESTAMP() ORDER BY j.expected_arrival_at LIMIT 80");
  const [history]=await pool.execute('SELECT shipment_id,action,note,created_at FROM world_logistics_events ORDER BY id DESC LIMIT 120');
   const [civicTypes]=await pool.execute('SELECT * FROM world_logistics_civic_item_types ORDER BY item_id');
@@ -225,7 +227,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -317,11 +319,33 @@ export async function logisticsRoute(pool,req,path,actor){
  });
  if(path==='/world-admin/logistics/templates'&&req.method==='POST'){
   const b=await body(req);
-  if(!name(b?.name,120)||!modes.includes(b.mode)||!qty(b.capacity)||!Number.isInteger(b.minutes_per_leg)||b.minutes_per_leg<1||b.minutes_per_leg>10080||typeof b.fuel_per_leg!=='number'||b.fuel_per_leg<0||b.fuel_per_leg>100000||Math.round(b.fuel_per_leg*1000)!==b.fuel_per_leg*1000||b.fuel_per_leg>0&&!b.fuel_item_id)return fail(400,'invalid_transport_template');
+  if(!b||!['lot','train'].includes(b.fleet_kind)||!goodId(b.fleet_id))return fail(400,'select_manufactured_transport');
   return tx(pool,async db=>{
-   if(b.fuel_item_id){const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.fuel_item_id]);if(!item)return fail(400,'unknown_fuel_item')}
-   const [saved]=await db.execute('INSERT INTO world_logistics_transport_templates(name,mode,capacity,minutes_per_leg,fuel_item_id,fuel_per_leg,created_by) VALUES(?,?,?,?,?,?,?)',[b.name.trim(),b.mode,b.capacity,b.minutes_per_leg,b.fuel_item_id||null,b.fuel_per_leg,actor.id]);
-   return ok({id:saved.insertId});
+   let name,mode,capacity,fuelId=null,fuelPer=0;
+   const fleetId=Number(b.fleet_id);
+   if(b.fleet_kind==='lot'){
+    const [[lot]]=await db.execute("SELECT v.id,v.quantity,v.status,v.owner_faction_id,v.specifications,t.name,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.id=? FOR UPDATE",[fleetId]);
+    if(!lot||lot.owner_faction_id!=='eclipse-order'||!['assigned','reserve'].includes(lot.status))return fail(409,'transport_not_in_order_stock');
+    const specs=typeof lot.specifications==='string'?JSON.parse(lot.specifications):lot.specifications;
+    mode=['transport','armored_vehicle'].includes(lot.equipment_kind)?'road':['airship','capital_airship'].includes(lot.equipment_kind)?'air':null;
+    if(!mode)return fail(409,'equipment_not_a_transport');
+    capacity=Number(specs?.cargo_capacity||0)*Number(lot.quantity);
+    fuelId=specs?.fuel_item_id||null;
+    fuelPer=Number(specs?.fuel_per_operation||0);
+    name=lot.name;
+   }else{
+    const train=(await trainSummary(db)).find(t=>Number(t.id)===fleetId);
+    if(!train||train.status!=='assembled'||train.owner_faction_id!=='eclipse-order')return fail(409,'assembled_train_not_found');
+    mode='rail';capacity=Number(train.cargo_capacity);fuelId=train.fuel_item_id||null;fuelPer=Number(train.fuel_per_operation||0);name=train.name;
+   }
+   if(!Number.isFinite(capacity)||capacity<=0||capacity>1000000||!Number.isFinite(fuelPer)||fuelPer<0||fuelPer>100000)return fail(409,'transport_has_no_usable_cargo_capacity');
+   if(fuelPer&&!fuelId)return fail(409,'fleet_fuel_type_unavailable');
+   const column=b.fleet_kind==='lot'?'source_equipment_lot_id':'source_train_consist_id';
+   const [[existing]]=await db.execute('SELECT id FROM world_logistics_transport_templates WHERE '+column+'=?',[fleetId]);
+   if(existing)return ok({id:existing.id,already_registered:true});
+   const [saved]=await db.execute('INSERT INTO world_logistics_transport_templates(name,mode,capacity,minutes_per_leg,fuel_item_id,fuel_per_leg,source_equipment_lot_id,source_train_consist_id,created_by) VALUES(?,?,?,?,?,?,?,?,?)',
+    [name,mode,capacity,60,fuelId,fuelPer,b.fleet_kind==='lot'?fleetId:null,b.fleet_kind==='train'?fleetId:null,actor.id]);
+   return ok({id:saved.insertId,name,mode,capacity});
   });
  }
  if(path==='/world-admin/logistics/civic/items'&&req.method==='POST'){
