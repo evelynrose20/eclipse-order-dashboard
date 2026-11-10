@@ -4,6 +4,7 @@ import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
 import {thrallsRoute} from './thralls.js';
 import {recruitmentRoute} from './recruitment.js';
+import {venueRoute} from './venue.js';
 import {loreRoute} from './lore.js';
 import {faqRoute} from './faq.js';
 import {discordRoute} from './discord-oauth.js';
@@ -115,6 +116,7 @@ const server=http.createServer(async(req,res)=>{
   if(pathname==='/faq'||pathname.startsWith('/faq/'))result=await faqRoute(pool,req,pathname);
   else if(pathname==='/lore'||pathname==='/lore/public'||pathname.startsWith('/lore/'))result=await loreRoute(pool,req,pathname);
   else if(pathname==='/recruitment')result=await recruitmentRoute(pool,req,pathname);
+  else if(pathname==='/venue/public'||pathname==='/venue/manage'||pathname==='/venue/upload'||pathname.startsWith('/venue/images/'))result=await venueRoute(pool,req,pathname);
   else if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
@@ -158,6 +160,10 @@ const server=http.createServer(async(req,res)=>{
  if(result.redirect){
   res.writeHead(302,{'Location':result.redirect,'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'});
   res.end();return;
+ }
+ if(result.rawBody){
+  res.writeHead(result.status,{...cors,'Content-Type':result.contentType||'application/octet-stream','Cache-Control':'public, max-age=86400','X-Content-Type-Options':'nosniff'});
+  res.end(result.rawBody);return;
  }
  res.writeHead(result.status,{
   ...cors,
