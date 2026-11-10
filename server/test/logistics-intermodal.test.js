@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateItinerary} from '../server/src/world-logistics-itineraries.js';
-import {logMovement} from '../server/src/world-front-cargo.js';
-const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+import {validateItinerary} from '../src/world-logistics-itineraries.js';
+import {logMovement} from '../src/world-front-cargo.js';
+const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const good={name:'New Cassia supply corridor',item_id:'ceruleum-fuel',quantity:10,legs:[
  {mode:'rail',source_facility_id:1,destination_facility_id:2,transport_template_id:11},
  {mode:'air',source_facility_id:2,destination_facility_id:3,transport_template_id:12}
