@@ -47,6 +47,7 @@ export default function SettlementEditor({editing,setEditing,onSave,onClose,busy
  },[busy,onClose]);
  const set=(key,value)=>setEditing(old=>({...old,[key]:value}));
  const simulated=Boolean(editing.id)&&(simulatedIds?.has(Number(editing.id))||Boolean(editing.controlling_faction_id&&editing.controlling_faction_id!=='eclipse-order'));
+ const playerCity=Boolean(editing.id)&&editing.controlling_faction_id==='eclipse-order';
  const isNpc=Boolean(editing.controlling_faction_id&&editing.controlling_faction_id!=='eclipse-order');
  const coordOK=validCoord(editing.map_x)&&validCoord(editing.map_y);
  const marginOK=!isNpc||(Number(editing.map_x)>=10&&Number(editing.map_x)<=90&&Number(editing.map_y)>=10&&Number(editing.map_y)<=90);
@@ -61,7 +62,7 @@ export default function SettlementEditor({editing,setEditing,onSave,onClose,busy
  const jumpToInvalid=()=>{if(!nameOK||!zoneOK)setTab('overview');else setTab('map')};
  const numberField=key=>{
   const [label,max]=numbers[key];
-  return <label key={key} className="se-number-field"><span>{label}</span><input type="number" min="0" max={max} step={key==='food_days'?'.1':'1'} disabled={simulated} value={editing[key]??0} onChange={e=>set(key,e.target.value)}/>{max===100&&<span className="se-meter" aria-hidden="true"><i style={{width:pct(editing[key])+'%'}}/></span>}</label>;
+  return <label key={key} className="se-number-field"><span>{label}</span><input type="number" min="0" max={max} step={key==='food_days'?'.1':'1'} disabled={simulated||(playerCity&&['population','workforce','housing_capacity'].includes(key))} value={editing[key]??0} onChange={e=>set(key,e.target.value)}/>{max===100&&<span className="se-meter" aria-hidden="true"><i style={{width:pct(editing[key])+'%'}}/></span>}</label>;
  };
  return <div className="wa-overlay se-overlay" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)onClose()}}>
   <form className="se-window" aria-label={editing.id?'Edit settlement':'Create settlement'} role="dialog" aria-modal="true" onSubmit={onSave}>
@@ -107,6 +108,7 @@ export default function SettlementEditor({editing,setEditing,onSave,onClose,busy
      </div>}
      {tab==='civic'&&<div className="se-panel">
       <div className="se-section-heading"><i className="fa-solid fa-heart-pulse" aria-hidden="true"/><div><h4>Civilian conditions</h4><p>View or configure base settlement figures and service conditions.</p></div></div>
+      {playerCity&&<div className="se-help"><i className="fa-solid fa-city" aria-hidden="true"/>Residents, available workers, and housing capacity are managed through the City Builder and completed construction. Civilian simulation remains off unless deliberately configured elsewhere.</div>}
       {simulated&&<div className="se-help"><i className="fa-solid fa-lock" aria-hidden="true"/>This location's resident counts and civic outcomes are simulation-managed. Fields are read-only here; improve services and resources through actual development.</div>}
       <div className="se-civic-groups">{groups.map(([label,fields])=><section className="se-civic-group" key={label}><h4>{label}</h4><div className="se-grid">{fields.map(numberField)}</div></section>)}</div>
       <label className="se-sim-option"><input type="checkbox" checked={Boolean(editing.simulation_enabled)} onChange={e=>set('simulation_enabled',e.target.checked)}/><span><strong>Enable civilian simulation eligibility</strong><small>Automatic cycles must be configured separately. This checkbox does not start simulation or run a cycle.</small></span></label>
