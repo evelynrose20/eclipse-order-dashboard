@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {freightPath} from '../src/world-logistics.js';
+import {freightPath,corridorPath,shouldInterruptForWeather} from '../src/world-logistics.js';
 
 const nodes=[{id:1,settlement_id:10},{id:2,settlement_id:null},{id:3,settlement_id:20},{id:4,settlement_id:30}];
 const edges=[
@@ -44,4 +44,26 @@ test('freight command UI follows shared imperial industrial styling',()=>{
  assert.match(css,/#182733/);
  assert.match(css,/#405462/);
  assert.doesNotMatch(css,/#69527e|#9984ae|#26202d|#211d28/i);
+});
+
+test('explicit operational inter-region corridors support multi-hop supply movement',()=>{
+ const routes=[{id:1,origin_settlement_id:10,destination_settlement_id:20,travel_minutes:75},{id:2,origin_settlement_id:20,destination_settlement_id:30,travel_minutes:90}];
+ assert.deepEqual(corridorPath(routes,10,30),{node_ids:['settlement:10','settlement:20','settlement:30'],segment_ids:['corridor:1','corridor:2'],legs:2,duration_minutes:165});
+ assert.equal(corridorPath(routes,10,40),null);
+});
+test('snow convoy risks are replay-stable, blizzards always interrupt without changing cargo quantity',()=>{
+ assert.equal(shouldInterruptForWeather('clear',4),null);
+ assert.equal(shouldInterruptForWeather('blizzard',7),'blizzard');
+ assert.equal(shouldInterruptForWeather('snow',8),'snowstorm');
+ assert.equal(shouldInterruptForWeather('snow',7),null);
+});
+test('corridor construction consumes real facility stock and incidents require command orders',()=>{
+ const src=readFileSync(new URL('../src/world-logistics.js',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/091_logistics_corridors_incidents.sql',import.meta.url),'utf8');
+ assert.match(src,/corridor_construction_materials_insufficient/);
+ assert.match(src,/construction_supplies_must_be_at_corridor_endpoint/);
+ assert.match(src,/convoy_requires_command_decision/);
+ assert.match(src,/escort_garrison_unavailable/);
+ assert.match(sql,/world_logistics_corridors/);
+ assert.match(sql,/world_logistics_incidents/);
 });
