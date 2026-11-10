@@ -89,7 +89,7 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 
 ## P4 — Logistics, trade and transports
 
-**Substantial P4 mechanics now implemented on main (migrations 087–098), with live Windows/browser acceptance still outstanding.** Supply Command defaults to a territory-centered strategic view, with original workshops, sites, NPC farming, internal rail, diplomacy, military installations and the Merchant Exchange still accessible as their own systems. The screen was protected by a render error boundary and a regression test after a `npcRoutes` initialization bug caused the grey-screen crash.
+**Substantial P4 mechanics now implemented on main (migrations 087–099), with live Windows/browser acceptance still outstanding.** Supply Command defaults to a territory-centered strategic view, with original workshops, sites, NPC farming, internal rail, diplomacy, military installations and the Merchant Exchange still accessible as their own systems. The screen was protected by a render error boundary and a regression test after a `npcRoutes` initialization bug caused the grey-screen crash.
 
 - [x] **Cargo simulation:** Commissioned vehicles, cargo limits, route previews, actual facility stock/fuel deductions, uniquely keyed manifests, timed arrivals, replay-safe receipts and returns; never consume privately reserved goods.
 - [x] **Configured rail services:** Freight uses menu-based Internal Rail Logistics service routes, not mandatory physical mapped rail stations. Existing train services and journeys remain intact.
@@ -201,3 +201,10 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 - [x] Selecting a mapped settlement exposes local needs, warehouses, garrisons and industry with a targeted freight-dispatch entry where a destination facility exists.
 - [ ] Finish *mechanical* integration still outstanding: production-to-contract planning, NPC political trade permissions, front-authorized reservations, escorts, weather interruptions, cross-region multimodal routing, rail train cargo linkage, and industrial insulation construction. This overview reads pre-existing systems; it does not claim all of them share one transaction engine.
 - [ ] Verify map and command layout on the live frontend with actual populated world data; automated tests do not constitute a browser screenshot review.
+
+### P4 command-screen polish and manufactured fleet registration
+- [x] Enlarge the territorial supply map to a practical strategic viewport while retaining the existing zone/region selectors, terrain, roads and junctions.
+- [x] Display moving freight icons calculated from real dispatch/arrival dates. Follow saved network and legacy road bends where available; no moving markers are fabricated for idle fleets. Show NPC farm deliveries and running internal trains when their endpoints are in the selected zone.
+- [x] Replace free-form new transport registration with selection of existing Order inventory lots or assembled trains. Server derives cargo capacity, route mode and fuel from pinned manufactured specifications (migration 099). Historic templates remain so old contracts are not deleted; new templates cannot be entered arbitrarily.
+- [x] Replace basic trade and diplomatic proposal forms with stock-aware depot selection, existing transport cards, faction signatories, treaty trust/tension indicators and imperial command-step flows.
+- [ ] Verify the expanded map and command windows visually with real populated browser data, including route bends, crowded pins, inactive stock and mobile viewport. Keep unfinished combat/markets/multimodal scope above open.
