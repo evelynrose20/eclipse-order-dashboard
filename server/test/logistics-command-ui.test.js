@@ -56,3 +56,16 @@ test('supply map uses native Cassian terrain rather than grey empty background',
  assert.match(terrain,/supply-terrain/);
  assert.match(terrain,/supply-terrain-map-contour/);
 });
+
+test('Order supply alerts exclude NPC-controlled and unclaimed settlements',()=>{
+ assert.match(command,/const orderSites=sites\.filter\(s=>s\.controlling_faction_id==='eclipse-order'\)/);
+ assert.match(command,/const shortageSites=orderSites\.filter\(s=>risk\(s\)==='alert'\)/);
+ assert.doesNotMatch(command,/const shortageSites=sites\.filter/);
+});
+test('Order holdings and military installations remain visible even with no civilian shortage',()=>{
+ assert.match(command,/Order holdings/);
+ assert.match(command,/Castrums & installations/);
+ assert.match(command,/const installationSites=militaryInstallations\.map/);
+ assert.match(command,/onClick=\{\(\)=>openSettlement\(s\)\}/);
+ assert.match(command,/View all/);
+});
