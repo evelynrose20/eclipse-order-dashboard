@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import './front-cargo.css';
+import {canLoadAtRailStop} from './rail-journey-selection.js';
 const num=x=>Number(x||0);
 export default function FrontCargoPanel({request,freight=null,command=false}){
  const [state,setState]=useState({hubs:[],shipments:[]}),[fronts,setFronts]=useState([]),[materials,setMaterials]=useState([]),[world,setWorld]=useState(freight),[form,setForm]=useState({source_front_id:'',destination_front_id:'',material_id:'',quantity:1,mode:'road'}),[hub,setHub]=useState({front_id:'',settlement_id:''}),[selection,setSelection]=useState({}),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -32,7 +33,7 @@ export default function FrontCargoPanel({request,freight=null,command=false}){
    const sourceHub=getHub(order.source_front_id),destHub=getHub(order.destination_front_id),choice=selection[order.id]||{};
    const sourceId=num(sourceHub?.settlement_id),destId=num(destHub?.settlement_id);
    const fleet=(world?.vehicles||[]).filter(v=>v.status==='assigned'&&num(v.stationed_settlement_id)===sourceId&&(order.mode==='road'?['transport','armored_vehicle'].includes(v.equipment_kind):['airship','capital_airship'].includes(v.equipment_kind)));
-   const rail=(world?.rail_journeys||[]).filter(j=>j.status==='running'&&j.from_type==='settlement'&&j.to_type==='settlement'&&num(j.from_id)===sourceId&&num(j.to_id)===destId);
+   const rail=(world?.rail_journeys||[]).filter(j=>canLoadAtRailStop(j,sourceId,destId));
    const depots=(world?.facilities||[]).filter(f=>num(f.settlement_id)===sourceId&&f.owner_faction_id==='eclipse-order');
    return <article className="fc-shipment" key={order.id}><div className="fc-shipment-head"><div><strong>{frontName(order.source_front_id)} → {frontName(order.destination_front_id)}</strong><small>{order.quantity} × {materials.find(m=>m.id===order.material_id)?.name||order.material_id} · {order.mode}</small></div><span className={'freight-status is-'+order.status}>{order.status.replaceAll('_',' ')}</span></div>
     {order.status==='requested'&&<div className="fc-shipment-actions"><button disabled={busy} onClick={()=>send('/fronts/cargo/'+order.id+'/approve',{},'Owner authorized this shipment.')}>Authorize as source owner</button><button disabled={busy} onClick={()=>send('/fronts/cargo/'+order.id+'/cancel',{},'Request cancelled.')}>Cancel request</button></div>}
