@@ -14,6 +14,6 @@ test('Supply Command renders with missing optional sources without crashing the 
   }));
   assert.match(output,/Supply priorities/);
   assert.match(output,/Territorial supply network/);
-  assert.match(output,/Industry & restoration/);
+  assert.match(output,/Industry &amp; restoration/);
  }finally{await vite.close()}
 });
