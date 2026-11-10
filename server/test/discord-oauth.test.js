@@ -99,6 +99,20 @@ test('GitHub Pages callback defaults to the deployed project path when frontend 
  assert.equal(url.searchParams.has('portal'),true);
  assert.ok(new URLSearchParams(url.hash.slice(1)).has('discord_ticket'));
 });
+test('rosefires.com is the exact approved Discord login origin and return destination',()=>{
+ const migrated={...env,API_ALLOWED_ORIGIN:'https://rosefires.com',
+   DISCORD_FRONTEND_URL:'https://rosefires.com/',
+   DISCORD_REDIRECT_URI:'https://api.rosefires.com/auth/discord/callback'};
+ const config=discordOAuthConfig(migrated);
+ assert.ok(config,'custom domain must be accepted for Discord sign-in');
+ assert.equal(config.frontendOrigin,'https://rosefires.com');
+ assert.equal(config.frontendUrl,'https://rosefires.com/');
+ assert.equal(config.redirectUri,'https://api.rosefires.com/auth/discord/callback');
+ const authorize=new URL(discordAuthorizationUrl(config,'test-state'));
+ assert.equal(authorize.searchParams.get('redirect_uri'),config.redirectUri);
+ assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/eclipse-order-dashboard/'}),null,
+   'old GitHub Pages return path cannot be mixed with custom domain origin');
+});
 test('adult acknowledgement is mandatory before beginning Discord OAuth',async()=>{
  const m=setup();
  const result=await call(m,'/auth/discord/start',request('POST',{body:{adult_confirmed:false}}));
