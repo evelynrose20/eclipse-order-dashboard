@@ -106,3 +106,11 @@ Airships must originate from actually manufactured Order equipment, require fuel
 The system does **not** yet implement: an autonomous multi-stop consist with physical station loading beyond the existing initial window, the full owner-authorized private-front stock handoff, a shared cross-system receipt ledger, NPC market bargaining and variable prices, or simulated escort combat and equipment wear. Those are separate remaining features. Do not mark them completed based on this migration alone.
 
 **Deploy:** Backup live MariaDB, update Windows API code, run `npm run setup:local` in `server/` to apply migration 101, restart Windows API, refresh public site and verify with an actual first-leg dispatch, delivery and second-leg handoff.
+
+## Garlean airship landing facilities (migration 102)
+
+Airships need more than a constructed hull. **Supply Command → Airship docks** lists planned, operational, damaged and closed landing facilities. Command can plan a dock at an Order-controlled settlement, choose an actual industrial construction material and quantity, then commission it using local industrial stock from a facility at the same settlement. Construction and repair debit the stock transactionally. There is one landing facility record per settlement. Damaging or closing a dock blocks new air freight departing from or arriving there; existing cargo is not silently destroyed or erased.
+
+**Airship dispatch and route previews** require operational docks at both endpoints. Existing travel corridors and fleet fuel/capacity restrictions still apply. An airship's manufacture continues to require its own industry blueprint recipe; docks are an *additional* infrastructure cost, not a substitute for hull production. These are Garlean airships only—no sea ports, naval routes or player pack trains.
+
+**Deployment:** Backup production MariaDB; run the additive migration 102 through the Windows API setup and restart the service. Existing historical shipments, industrial inventories, and NPC caravan records are preserved.
