@@ -55,3 +55,55 @@
 
 .freight-auto{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .freight-auto select{background:#101f2a;border:1px solid #526879;color:#e7e8e9;border-radius:4px;min-height:35px;max-width:245px;font:inherit;padding:7px 8px}
+
+/* Imperial command windows: visually distinct decisions, physical inventory and authored routes. */
+.freight-modal{width:min(950px,calc(100vw - 28px));border:1px solid #7b7161;background:#13232e}
+.freight-modal>header{background:linear-gradient(90deg,#263d4b,#1b2d39);border-bottom:2px solid #a58c68;padding:16px 21px}
+.freight-modal>header h3{font:800 21px var(--imperial-heading,'Barlow Condensed',sans-serif);letter-spacing:.02em}
+.freight-console-intro{display:flex;gap:16px;align-items:center;background:#1d3240;padding:17px 20px;border-bottom:1px solid #475e6c}
+.freight-console-intro>i{font-size:26px;color:#d6b784;width:38px;text-align:center}
+.freight-console-intro strong{font:800 18px var(--imperial-heading,'Barlow Condensed',sans-serif);color:#f0dbb9}
+.freight-console-intro p{font-size:12px;color:#a9bac6;margin:5px 0 0;line-height:1.5}
+.freight-fleet-workflow,.freight-treaty-workflow{display:grid;min-width:0}
+.freight-fleet-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid #405462}
+.freight-fleet-filters input{background:#101f2a;border:1px solid #526879;border-radius:3px;color:#e7e8e9;font:inherit;padding:10px;flex:1;min-width:180px}
+.freight-fleet-filters button.active,.freight-stage-nav button.active{background:#495040;color:#f0dfbb;border-color:#c4ab7f}
+.freight-fleet-grid{padding:14px 17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:400px;overflow:auto}
+.freight-root .freight-fleet-choice{display:flex;gap:13px;align-items:flex-start;text-align:left;padding:13px!important;background:#1b2e3b!important;border:1px solid #405764!important;min-height:105px}
+.freight-root .freight-fleet-choice.selected,.freight-scrolling-choices button.selected,.freight-cargo-choices button.selected,.freight-purpose-grid button.selected{border-color:#d4b681!important;background:#364539!important;box-shadow:inset 3px 0 #d4b681}
+.freight-fleet-choice>i{font-size:21px;color:#d3b78b;width:26px;margin-top:2px}
+.freight-fleet-choice>span{display:grid;gap:6px;flex:1}
+.freight-fleet-choice strong{color:#eadcc9;font-size:13px}
+.freight-fleet-choice small{color:#a6bac6;font-size:11px;line-height:1.4}
+.freight-fleet-choice>b{font-size:10px;color:#dfc191;align-self:flex-start;text-transform:uppercase}
+.freight-console-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;background:#203440;border-top:1px solid #4b6270}
+.freight-console-footer>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.freight-console-footer>div:first-child:not(:last-child){display:grid;gap:4px}
+.freight-console-footer strong{font-size:12px;color:#ead4af}
+.freight-console-footer small{font-size:11px;color:#aabdc7}
+.freight-stage-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#526576}
+.freight-root .freight-stage-nav button{background:#1e303d;border:none;border-radius:0;padding:14px 10px;display:flex;gap:9px;justify-content:center;align-items:center}
+.freight-stage-nav button i{color:#d1ad7d}
+.freight-workflow-content{padding:0 0 17px;display:grid;gap:13px}
+.freight-workflow-content>label{display:grid;gap:7px;margin:0 20px;color:#b4c3cc;font-size:12px}
+.freight-workflow-content>label input{min-height:40px;padding:9px 12px;background:#101f2a;border:1px solid #526879;color:#e7e8e9;border-radius:3px;font:inherit}
+.freight-partner-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:2px 18px 0}
+.freight-partner-grid section{min-width:0;background:#142733;border:1px solid #425768}
+.freight-partner-grid h4,.freight-workflow-heading{margin:0;padding:12px 14px;color:#e9d0a5;font-size:12px;text-transform:uppercase;letter-spacing:.08em;background:#233744}
+.freight-scrolling-choices{max-height:245px;overflow:auto;padding:6px;display:grid;align-content:start;gap:5px}
+.freight-root .freight-scrolling-choices button{border:1px solid transparent;background:#1c303d;text-align:left;display:flex;align-items:center;gap:10px;padding:11px}
+.freight-scrolling-choices button i{font-size:15px;color:#c4a773}
+.freight-scrolling-choices button span{display:grid;gap:3px}.freight-scrolling-choices strong{font-size:12px}.freight-scrolling-choices small{color:#a4b8c6;font-size:10px}
+.freight-cargo-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:0 18px}
+.freight-root .freight-cargo-choices button{background:#1b303c;border:1px solid #465967;border-radius:3px;padding:12px;text-align:left;display:grid;gap:6px}
+.freight-cargo-choices i{font-size:17px;color:#c8ad80}.freight-cargo-choices strong{font-size:12px}.freight-cargo-choices small{color:#a9bac6;font-size:11px}
+.freight-purpose-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 19px}
+.freight-root .freight-purpose-grid button{display:grid;place-items:center;gap:7px;padding:14px 9px;border:1px solid #455e6a;background:#19303c}
+.freight-purpose-grid i{font-size:19px;color:#cbb088}
+.freight-order-summary{margin:0 19px;background:#1c3440;padding:14px;border:1px solid #526579;border-left:3px solid #bca077;display:grid;gap:7px}
+.freight-order-summary strong{font-size:14px;color:#efddbb}
+.freight-order-summary span{font-size:12px;color:#c8d4d9}
+.freight-order-summary small{font-size:11px;color:#a9bac6}
+.freight-root .freight-quantity{max-width:310px}
+.freight-root .freight-quantity small{font-size:11px;color:#a6b9c6}
+@media(max-width:700px){.freight-fleet-grid,.freight-partner-grid{grid-template-columns:1fr}.freight-cargo-choices,.freight-purpose-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.freight-console-footer{flex-wrap:wrap}.freight-stage-nav button span{font-size:10px}}
