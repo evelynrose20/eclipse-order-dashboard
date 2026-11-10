@@ -188,7 +188,7 @@ const settlementTick=async()=>{
   const result=await runSettlementSimulation(pool,new Date());
   const industry=await runIndustryAutomation(pool,new Date());
   const freight=await runLogisticsAutomation(pool);
-  if(freight.arrived||freight.disrupted)console.log('[World freight] Arrived:',freight.arrived,'awaiting review:',freight.disrupted);
+  if(freight.arrived||freight.disrupted||freight.dispatched)console.log('[World freight] Dispatched:',freight.dispatched,'arrived:',freight.arrived,'awaiting review:',freight.disrupted);
   if(industry.production||industry.construction)console.log('[P3 Industry] Production cycles:',industry.production,'construction:',industry.construction);
   if(result.processed)console.log('[World simulation] Processed',result.processed,'autonomous settlement cycles');
  }catch(error){console.warn('[World simulation] Check unavailable:',error?.code||error?.name||'database_unavailable')}
