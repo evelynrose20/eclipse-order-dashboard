@@ -107,7 +107,7 @@ export default function PublicSite(){
     </div>
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
-     <h1>AN ORDER<br/><span className="imperial-headline-line">WITHOUT <em>EMPIRE.</em></span></h1>
+     <h1>AN ORDER<br/><span className="imperial-headline-line">BUILDING AN <em>EMPIRE.</em></span></h1>
      <p className="public-hero-subtitle">A Garlean-born syndicate of intelligence, criminal enterprise and hard-won loyalties. From the shadows of the Empire to the streets of New Cassia, the Eclipse Order builds its own power.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className="public-button-ghost"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our Discord <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
