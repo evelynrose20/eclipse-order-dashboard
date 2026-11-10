@@ -135,3 +135,10 @@
 .venue-card-photo[hidden]{display:none}
 .venue-drink-index,.venue-food-index{z-index:4;text-shadow:0 2px 7px #000}
 @media(max-width:760px){.venue-menu-teaser-layout{align-items:flex-start;flex-direction:column}.venue-menu-intro{padding:48px 0}}
+
+/* Venue house-rules invitation */
+.venue-rules-promo{background:linear-gradient(115deg,#25212a,#121a23)}
+.venue-rules-promo p{max-width:640px}
+.venue-rules-promo .venue-btn{flex:none}
+.venue-adult-note a{color:#f1b5b7;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:760px){.venue-rules-promo .venue-menu-teaser-layout{align-items:flex-start;flex-direction:column}}
