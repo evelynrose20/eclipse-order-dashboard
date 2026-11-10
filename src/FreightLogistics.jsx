@@ -17,6 +17,7 @@ import LogisticsAgreementEditor from './LogisticsAgreementEditor.jsx';
 import LogisticsItineraries from './LogisticsItineraries.jsx';
 import FrontCargoPanel from './FrontCargoPanel.jsx';
 import LogisticsReadiness from './LogisticsReadiness.jsx';
+import {canLoadAtRailStop} from './rail-journey-selection.js';
 const emptyFreight=()=>({facilities:[],stocks:[],templates:[],contracts:[],shipments:[],vehicles:[],items:[],npc_routes:[],npc_shipments:[],npc_warehouse:[],npc_trades:[],civic_types:[],civic_receipts:[]});
 const initialManifest=()=>({source_facility_id:'',destination_facility_id:'',transport_template_id:'',vehicle_lot_id:'',train_journey_id:'',item_id:'',quantity:1,escort_notes:''});
 const initialContract=()=>({name:'',purpose:'trade',source_facility_id:'',destination_facility_id:'',transport_template_id:'',item_id:'',quantity:10,cadence_days:1});
@@ -42,7 +43,7 @@ export default function FreightLogistics({request,onNavigate}){
  const mode=templates.find(x=>String(x.id)===String(selectedContract?.transport_template_id||manifest.transport_template_id))?.mode||'road';
  const sourceFacility=facilities.find(x=>String(x.id)===String(selectedContract?.source_facility_id||manifest.source_facility_id));
  const destinationFacility=facilities.find(x=>String(x.id)===String(selectedContract?.destination_facility_id||manifest.destination_facility_id));
- const railJourneys=(data?.rail_journeys||[]).filter(j=>j.from_type==='settlement'&&j.to_type==='settlement'&&Number(j.from_id)===Number(sourceFacility?.settlement_id)&&Number(j.to_id)===Number(destinationFacility?.settlement_id));
+ const railJourneys=(data?.rail_journeys||[]).filter(j=>canLoadAtRailStop(j,sourceFacility?.settlement_id,destinationFacility?.settlement_id));
  const availableVehicles=vehicles.filter(x=>x.status==='assigned'&&Number(x.stationed_settlement_id)===Number(sourceFacility?.settlement_id)&&equipmentFor[mode]?.includes(x.equipment_kind)&&!shipments.some(s=>Number(s.vehicle_lot_id)===Number(x.id)&&['in_transit','disrupted'].includes(s.status)));
  const sourceStocks=stocks.filter(s=>String(s.facility_id)===String(manifest.source_facility_id));
  const selectedStock=sourceStocks.find(s=>s.item_id===manifest.item_id);
@@ -62,7 +63,7 @@ export default function FreightLogistics({request,onNavigate}){
   setBusy(true);setError('');
   try{
    const p=selectedContract||manifest;
-   const result=await request('/world-admin/logistics/routes/preview',{method:'POST',body:{source_facility_id:Number(p.source_facility_id),destination_facility_id:Number(p.destination_facility_id),transport_template_id:Number(p.transport_template_id)}});
+   const result=await request('/world-admin/logistics/routes/preview',{method:'POST',body:{source_facility_id:Number(p.source_facility_id),destination_facility_id:Number(p.destination_facility_id),transport_template_id:Number(p.transport_template_id),train_journey_id:Number(manifest.train_journey_id)}});
    setPreview(result);
   }catch(e){setError(e.message||'Route unavailable')}finally{setBusy(false)}
  }
