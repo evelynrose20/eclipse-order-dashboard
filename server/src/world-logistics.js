@@ -182,7 +182,7 @@ async function dispatch(db,b,actor,contract=null){
  }
  const totalLegs=path.legs+(source.site_id?1:0)+(dest.site_id?1:0);
  const totalMinutes=(path.duration_minutes??Number(transport.minutes_per_leg)*path.legs)+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
- const fuel=round(Number(transport.fuel_per_leg)*totalLegs);
+ const fuel=round(Number(transport.fuel_per_leg)*totalLegs*(transport.mode==='air'?3:1));
  const [[stock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[sourceId,itemId]);
  if(!stock||Number(stock.quantity)<amount)return fail(409,'freight_stock_insufficient');
  if(fuel>0){
@@ -430,7 +430,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [[t]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=?',[b.transport_template_id]);
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
   const pathResult=a?.settlement_id&&z?.settlement_id&&t&&modes.includes(t.mode)?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
-  return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)):null});
+  return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)*(t.mode==='air'?3:1)):null});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
  let match=/^\/world-admin\/logistics\/contracts\/(\d+)\/(dispatch|pause|resume|retire|automation)$/.exec(path);
