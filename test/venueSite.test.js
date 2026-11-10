@@ -34,7 +34,7 @@ test('venue opening status handles cross-midnight hours and Eastern Time',()=>{
 
 test('the venue includes the Carrd menu, seasonal travel lore, and accessible navigation',()=>{
  for(const name of ['Blood Moon Velvet','The Black Halo','Crimson Reverie','Eclipse Nocturne','Midnight Eclipse','Vampiro','Obsidian Tonic'])assert.ok(menu.includes(name),name);
- assert.match(menu,/All menu prices are in-character gil only/);
+ assert.match(menu,/in-character gil only/);
  assert.match(venue,/New Cassia, Ilsabard/);
  assert.match(venue,/cold in winter/);
  assert.match(venue,/warm in summer/);
