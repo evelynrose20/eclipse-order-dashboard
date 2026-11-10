@@ -4,6 +4,7 @@ import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 import {itineraryRoute,stageItineraryArrival,handleItineraryRecall} from './world-logistics-itineraries.js';
 import {logMovement,movementHistory} from './world-front-cargo.js';
+import {airfieldReady,vehicleReady,airFreightEconomics,advancedLogisticsRoute} from './world-logistics-advanced.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -131,6 +132,7 @@ async function availableVehicle(db,id,mode,sourceSettlement){
  if(!lot||lot.status!=='assigned'||Number(lot.stationed_settlement_id)!==Number(sourceSettlement)||!classes[mode].includes(lot.equipment_kind))return null;
  const [running]=await db.execute("SELECT id FROM world_logistics_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
  const [frontBusy]=await db.execute("SELECT id FROM world_logistics_front_cargo WHERE vehicle_lot_id=? AND status IN ('in_transit','held') LIMIT 1",[id]);
+ if(!(await vehicleReady(db,id)))return null;
  return running.length||frontBusy.length?null:lot;
 }
 async function dispatch(db,b,actor,contract=null){
@@ -156,6 +158,7 @@ async function dispatch(db,b,actor,contract=null){
   const [access]=await db.execute("SELECT id FROM world_logistics_trade_treaties WHERE faction_a=? AND faction_b=? AND status='active' LIMIT 1",a);
   if(!access.length)return fail(409,'cross_faction_trade_treaty_required');
  }
+ if(transport.mode==='air'&&!await airfieldReady(db,source.settlement_id,dest.settlement_id))return fail(409,'airfields_required_at_both_ends');
  let path=await route(db,source.settlement_id,dest.settlement_id,transport.mode);
  if(!path)return fail(409,'no_connected_transport_route');
  let vehicle=null,trainJourney=null;
@@ -186,8 +189,10 @@ async function dispatch(db,b,actor,contract=null){
   if(physicalCapacity<=0||amount>physicalCapacity)return fail(409,'vehicle_cargo_capacity_exceeded');
  }
  const totalLegs=path.legs+(source.site_id?1:0)+(dest.site_id?1:0);
- const totalMinutes=(path.duration_minutes??Number(transport.minutes_per_leg)*path.legs)+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
- const fuel=round(Number(transport.fuel_per_leg)*totalLegs);
+ const originalMinutes=(path.duration_minutes??Number(transport.minutes_per_leg)*path.legs)+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
+ const airCosts=transport.mode==='air'?airFreightEconomics({fuelPerLeg:transport.fuel_per_leg,legs:totalLegs,durationMinutes:originalMinutes}):null;
+ const totalMinutes=airCosts?.minutes??originalMinutes;
+ const fuel=airCosts?.fuel??round(Number(transport.fuel_per_leg)*totalLegs);
  const [[stock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[sourceId,itemId]);
  if(!stock||Number(stock.quantity)<amount)return fail(409,'freight_stock_insufficient');
  if(fuel>0){
@@ -209,6 +214,7 @@ async function dispatch(db,b,actor,contract=null){
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
  if(path.startsWith('/world-admin/logistics/itineraries'))return itineraryRoute(pool,req,path,actor,dispatch,ledger);
+ if(path.startsWith('/world-admin/logistics/advanced')||path.startsWith('/world-admin/logistics/airfields')||path.startsWith('/world-admin/logistics/fleet/')||path.startsWith('/world-admin/logistics/risks')||/^\/world-admin\/logistics\/shipments\/\d+\/escort$/.test(path))return advancedLogisticsRoute(pool,req,path,actor);
  if(path==='/world-admin/logistics/movements'&&req.method==='GET')return ok({movements:await movementHistory(pool)});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
   const [templates]=await pool.execute('SELECT * FROM world_logistics_transport_templates ORDER BY name');
@@ -390,7 +396,10 @@ export async function logisticsRoute(pool,req,path,actor){
   const [[t]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=?',[b.transport_template_id]);
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
   const pathResult=a?.settlement_id&&z?.settlement_id&&t?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
-  return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)):null});
+  const baseDuration=pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null;
+  const airQuote=pathResult&&t.mode==='air'?airFreightEconomics({fuelPerLeg:t.fuel_per_leg,legs:pathResult.legs,durationMinutes:baseDuration}):null;
+  const airEnabled=t?.mode==='air'&&a?.settlement_id&&z?.settlement_id?await airfieldReady(pool,a.settlement_id,z.settlement_id):true;
+  return ok({connected:!!pathResult&&!!airEnabled,route:pathResult,duration_minutes:airQuote?.minutes??baseDuration,fuel_required:airQuote?.fuel??(pathResult?round(pathResult.legs*Number(t.fuel_per_leg)):null)});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
  let match=/^\/world-admin\/logistics\/contracts\/(\d+)\/(dispatch|pause|resume|retire|automation)$/.exec(path);
