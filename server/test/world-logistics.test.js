@@ -94,3 +94,28 @@ test('NPC relief holds, reroutes and returns only previously dispatched food',()
  assert.match(sql,/held_at/);
  assert.doesNotMatch(sql,/DROP TABLE|DELETE FROM world_settlement_autosim/i);
 });
+
+test('new freight templates require existing manufactured lots or assembled trains, not invented vehicle statistics',()=>{
+ const src=readFileSync(new URL('../src/world-logistics.js',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/099_inventory_backed_transport.sql',import.meta.url),'utf8');
+ assert.match(src,/select_manufactured_transport/);
+ assert.match(src,/transport_not_in_order_stock/);
+ assert.match(src,/assembled_train_not_found/);
+ assert.match(src,/fleet_kind/);
+ assert.match(src,/source_equipment_lot_id/);
+ assert.match(src,/source_train_consist_id/);
+ assert.match(sql,/world_magitek_equipment_inventory/);
+ assert.match(sql,/world_magitek_train_consists/);
+});
+test('the map has chronological moving freight, NPC cargo and real train markers',()=>{
+ const map=readFileSync(new URL('../../src/LogisticsMovingCargo.jsx',import.meta.url),'utf8');
+ const overview=readFileSync(new URL('../../src/LogisticsCommandOverview.jsx',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../../src/logistics-command-overview.css',import.meta.url),'utf8');
+ assert.match(map,/cargoProgress/);
+ assert.match(map,/cargoTrack/);
+ assert.match(map,/departed_at/);
+ assert.match(map,/npc_shipments/);
+ assert.match(map,/railJourneys/);
+ assert.match(overview,/<LogisticsMovingCargo/);
+ assert.match(css,/height:clamp\(460px,57vh,680px\)/);
+});
