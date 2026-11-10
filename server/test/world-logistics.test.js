@@ -67,3 +67,16 @@ test('corridor construction consumes real facility stock and incidents require c
  assert.match(sql,/world_logistics_corridors/);
  assert.match(sql,/world_logistics_incidents/);
 });
+
+test('rail shipments must use an actual assembled train journey with checked freight capacity',()=>{
+ const src=readFileSync(new URL('../src/world-logistics.js',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/097_rail_freight_journeys.sql',import.meta.url),'utf8');
+ assert.match(src,/rail_train_journey_required/);
+ assert.match(src,/train_cargo_capacity_exceeded/);
+ assert.match(src,/rail_loading_window_closed/);
+ assert.match(src,/cargo_capacity_snapshot/);
+ assert.match(src,/train_journey_id/);
+ assert.match(src,/railJourneyHold/);
+ assert.match(sql,/fk_freight_train_journey/);
+ assert.doesNotMatch(sql,/DROP TABLE|DELETE FROM order_internal_rail_journeys/i);
+});
