@@ -1,6 +1,6 @@
 import {housingCapacity} from './world-settlement-upgrades.js';
 import {previewPopulationChange} from './world-population-simulation.js';
-import {settlementDemographics} from './world-demographics.js';
+import {settlementDemographics,cappedEmployment} from './world-demographics.js';
 
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const day=now=>new Date(now).toISOString().slice(0,10);
@@ -80,7 +80,11 @@ export async function runOrderCityResidents(pool,now=new Date()){
    await db.execute('UPDATE world_order_city_policies SET last_intake_date=? WHERE settlement_id=?',[cycle,row.settlement_id]);
    if(forecast.expected_arrivals<=0)return ok({blocked:true});
    const next=forecast.residents+forecast.expected_arrivals;
-   await db.execute("UPDATE world_settlements SET population=? WHERE id=? AND controlling_faction_id='eclipse-order' AND population=?",[next,row.settlement_id,forecast.residents]);
+   // The eligible labor pool follows new adults, but no individual factory or
+   // construction project is staffed or created by this policy.
+   const availableLabor=cappedEmployment({...info.settlement,population:next},Math.max(Number(info.settlement.workforce)||0,Math.ceil(next*.4)));
+   await db.execute("UPDATE world_settlements SET population=?,workforce=? WHERE id=? AND controlling_faction_id='eclipse-order' AND population=?",
+     [next,availableLabor,row.settlement_id,forecast.residents]);
    await db.execute('INSERT INTO world_order_city_arrivals(settlement_id,cycle_date,residents_before,residents_arrived,residents_after,housing_capacity,food_stock,water_stock) VALUES(?,?,?,?,?,?,?,?)',[row.settlement_id,cycle,forecast.residents,forecast.expected_arrivals,next,forecast.housing_capacity,forecast.food_stock,forecast.water_stock]);
    return ok({arrivals:forecast.expected_arrivals});
   });
