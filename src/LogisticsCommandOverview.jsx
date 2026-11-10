@@ -69,6 +69,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const oldLines=(world?.routes||[]).filter(r=>Number(r.zone_id)===Number(zone?.id)).map(r=>{
   const a=position(r.from_settlement_id),b=position(r.to_settlement_id);return a&&b?{id:'old-'+r.id,type:r.route_type,from:a,to:b}:null
  }).filter(Boolean);
+ const serviceLines=railServices.filter(r=>r.from_type==='settlement'&&r.to_type==='settlement'&&r.status==='active').map(r=>{const a=position(r.from_id),b=position(r.to_id);return a&&b?{id:r.id,from:a,to:b,name:r.name}:null}).filter(Boolean);
  const freightLines=activeFreight.map(s=>{
   const a=freight.facilities.find(f=>Number(f.id)===Number(s.source_facility_id)),b=freight.facilities.find(f=>Number(f.id)===Number(s.destination_facility_id));
   const from=position(a?.settlement_id),to=position(b?.settlement_id);
@@ -94,12 +95,13 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
       <div className="supply-map-grid" aria-hidden="true"/>
       <svg className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
        {[...oldLines,...lines].map(l=><line key={l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link mode-'+l.type}/>)}
+       {serviceLines.map(l=><line key={'service-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className="supply-link mode-rail-service"/>)}
        {freightLines.map(l=><line key={'freight-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-'+l.status}/>)}
       </svg>
       {npcRoutes.filter(r=>r.map_settlement_id).map(r=>{const from=position(r.map_settlement_id),to=position(r.settlement_id);return from&&to?<svg key={'npc-route-'+r.id} className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} className="supply-link cargo-npc"/></svg>:null})}
       {mapSites.map(s=><button key={s.id} type="button" style={{left:s.map_x+'%',top:s.map_y+'%'}} className={'supply-map-site is-'+risk(s)+(Number(focus?.id)===Number(s.id)?' selected':'')} onClick={()=>setSelectedSite(String(s.id))} title={s.name+' · '+kind(s.strategic_state)} aria-label={'Inspect '+s.name}><i className={'fa-solid fa-'+(['mine','quarry'].includes(s.map_icon)?'mountain':s.map_icon==='farm'?'wheat-awn':'city')}/><span>{s.name}</span></button>)}
       {!mapSites.length&&<div className="supply-map-empty">There are no mapped settlements in this zone. Add locations in World Administration.</div>}
-      <div className="supply-map-legend"><span><b className="legend-stable"/> Supplied / no alerts</span><span><b className="legend-alert"/> Needs attention</span><span><b className="legend-lost"/> Destroyed or abandoned</span><span><b className="legend-route"/> Active freight</span></div>
+      <div className="supply-map-legend"><span><b className="legend-stable"/> Supplied / no alerts</span><span><b className="legend-alert"/> Needs attention</span><span><b className="legend-lost"/> Destroyed or abandoned</span><span><b className="legend-route"/> Active freight</span><span><b className="legend-rail"/> Internal rail service</span></div>
     </div>:<div className="supply-map-empty">Select a mapped region to view the transport network.</div>}
     <div className="supply-inspector">
      {focus?<><div className="supply-inspector-head"><div><small>SELECTED LOCATION · {kind(focus.strategic_state)}</small><h4>{focus.name}</h4><span>{focus.controlling_faction_id==='eclipse-order'?'Eclipse Order controlled':focus.controlling_faction_id?'Controlled by another faction':'Unclaimed'} · {num(focus.population)} residents</span></div><button type="button" onClick={openWorld}>Manage location</button></div>
