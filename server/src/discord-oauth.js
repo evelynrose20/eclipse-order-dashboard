@@ -32,7 +32,14 @@ export function discordOAuthConfig(env=process.env){
  const defaultSite=env.API_ALLOWED_ORIGIN==='https://evelynrose20.github.io'
   ?env.API_ALLOWED_ORIGIN+'/eclipse-order-dashboard/'
   :env.API_ALLOWED_ORIGIN+'/';
- const configuredSite=env.DISCORD_FRONTEND_URL||'';
+ const previousGithubSite='https://evelynrose20.github.io/eclipse-order-dashboard/';
+ const originalConfiguredSite=env.DISCORD_FRONTEND_URL||'';
+ // Keep OAuth return URLs restricted to the configured frontend origin. If the
+ // user migrates from this exact former GitHub Pages URL, default to their new
+ // approved origin rather than making Discord unavailable with no diagnosis.
+ const configuredSite=env.API_ALLOWED_ORIGIN==='https://rosefires.com'&&
+  (originalConfiguredSite===previousGithubSite||originalConfiguredSite===previousGithubSite.slice(0,-1))
+   ?defaultSite:originalConfiguredSite;
  // A configured account-root URL is also wrong for this GitHub Pages project.
  // Normalize only that exact known mistake; retain explicit custom subpaths.
  const site=env.API_ALLOWED_ORIGIN==='https://evelynrose20.github.io'&&
