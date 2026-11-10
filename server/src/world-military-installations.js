@@ -1,3 +1,4 @@
+import {installationReadiness} from './world-military-readiness.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const whole=(x,min,max)=>Number.isSafeInteger(x)&&x>=min&&x<=max;
 const text=(x,max)=>typeof x==='string'&&x.trim().length>0&&x.length<=max;
@@ -30,7 +31,7 @@ export async function militaryInstallationsRoute(pool,req,path,actor){
   const [facilities]=await pool.execute(`SELECT f.id,f.name,f.settlement_id,f.owner_faction_id,s.item_id,s.quantity
     FROM world_industry_facilities f JOIN world_industry_stock s ON s.facility_id=f.id WHERE s.quantity>0 ORDER BY f.name`);
   const [history]=await pool.execute('SELECT * FROM world_military_activity ORDER BY id DESC LIMIT 150');
-  return ok({installations:installations.map(i=>({...i,garrison:garrisons.filter(g=>g.installation_id===i.id),
+  return ok({installations:installations.map(i=>({...i,...installationReadiness(i),garrison:garrisons.filter(g=>g.installation_id===i.id),
    ammunition:ammo.filter(a=>a.installation_id===i.id),
    magitek:equipment.filter(e=>e.stationed_settlement_id===i.settlement_id&&e.owner_faction_id===i.controlling_faction_id),
    history:history.filter(h=>h.installation_id===i.id)})),settlements,items,facilities});
