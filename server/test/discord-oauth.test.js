@@ -110,8 +110,10 @@ test('rosefires.com is the exact approved Discord login origin and return destin
  assert.equal(config.redirectUri,'https://api.rosefires.com/auth/discord/callback');
  const authorize=new URL(discordAuthorizationUrl(config,'test-state'));
  assert.equal(authorize.searchParams.get('redirect_uri'),config.redirectUri);
- assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/eclipse-order-dashboard/'}),null,
-   'old GitHub Pages return path cannot be mixed with custom domain origin');
+ assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://evelynrose20.github.io/eclipse-order-dashboard/'}).frontendUrl,'https://rosefires.com/',
+   'the exact old GitHub Pages landing URL is safely migrated to the approved custom origin');
+ assert.equal(discordOAuthConfig({...migrated,DISCORD_FRONTEND_URL:'https://unrelated.example/'}),null,
+   'an unrelated OAuth landing origin remains rejected');
 });
 test('adult acknowledgement is mandatory before beginning Discord OAuth',async()=>{
  const m=setup();
