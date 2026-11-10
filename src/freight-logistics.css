@@ -128,3 +128,11 @@
 .freight-itinerary-form fieldset{border:1px solid #4c5f6a;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px}
 .freight-itinerary-form legend{color:#debf8c;font-weight:750;padding:0 6px}
 @media(max-width:750px){.freight-itinerary-form fieldset{grid-template-columns:1fr}}
+
+/* Airship infrastructure */
+.freight-airdock-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.freight-airdock{display:flex;flex-direction:column;justify-content:space-between;gap:16px;min-width:0;background:#1a2833;border:1px solid #4a6070;padding:18px}
+.freight-airdock h4{margin:9px 0 5px;font:700 24px var(--imperial-heading,'Barlow Condensed',sans-serif);color:#e7e9e7}
+.freight-airdock p{color:#b4c0c8;font-size:12px;margin:0 0 8px}
+.freight-airdock small{color:#d8c5a6}
+@media(max-width:780px){.freight-airdock-grid{grid-template-columns:1fr}}

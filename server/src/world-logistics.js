@@ -119,6 +119,10 @@ async function railJourneyHold(db,shipment,actor){
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
 }
+async function operationalAirDocks(db,from,to){
+ const [rows]=await db.execute("SELECT settlement_id FROM world_logistics_air_docks WHERE settlement_id IN (?,?) AND status='operational'",[from,to]);
+ return new Set(rows.map(r=>Number(r.settlement_id))).size===(Number(from)===Number(to)?1:2);
+}
 async function availableVehicle(db,id,mode,sourceSettlement){
  if(!goodId(id))return null;
  const [[lot]]=await db.execute("SELECT v.*,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.id=? FOR UPDATE",[id]);
@@ -146,6 +150,7 @@ async function dispatch(db,b,actor,contract=null){
  if((source.site_id&&source.site_faction_id!==source.controlling_faction_id)||(dest.site_id&&dest.site_faction_id!==dest.controlling_faction_id))return fail(409,'depot_access_control_mismatch');
  if(!source.controlling_faction_id||!dest.controlling_faction_id||source.owner_faction_id!==source.controlling_faction_id||dest.owner_faction_id!==dest.controlling_faction_id)return fail(409,'freight_requires_valid_territorial_control');
  if(['ruined','captured'].includes(source.status)||['ruined','captured'].includes(dest.status)||['destroyed','abandoned'].includes(source.strategic_state)||['destroyed','abandoned'].includes(dest.strategic_state))return fail(409,'freight_location_unavailable');
+ if(transport.mode==='air'&&!await operationalAirDocks(db,source.settlement_id,dest.settlement_id))return fail(409,'airship_landing_facilities_required');
  if(source.controlling_faction_id!==dest.controlling_faction_id){
   const a=[source.controlling_faction_id,dest.controlling_faction_id].sort();
   const [access]=await db.execute("SELECT id FROM world_logistics_trade_treaties WHERE faction_a=? AND faction_b=? AND status='active' LIMIT 1",a);
@@ -228,6 +233,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcTrades]=await pool.execute('SELECT t.*,a.name AS origin_name,b.name AS destination_name,original.name AS original_destination_name FROM world_npc_trade_shipments t JOIN world_settlements a ON a.id=t.source_settlement_id JOIN world_settlements b ON b.id=t.destination_settlement_id LEFT JOIN world_settlements original ON original.id=t.original_destination_settlement_id ORDER BY t.id DESC LIMIT 120');
   const [npcTradeEvents]=await pool.execute('SELECT shipment_id,action,notes,created_at FROM world_npc_trade_events ORDER BY id DESC LIMIT 120');
   const [allSettlements]=await pool.execute('SELECT id,name,region_id,zone_id,controlling_faction_id FROM world_settlements ORDER BY name');
+  const [airDocks]=await pool.execute("SELECT d.*,s.name AS settlement_name,s.controlling_faction_id FROM world_logistics_air_docks d JOIN world_settlements s ON s.id=d.settlement_id ORDER BY s.name");
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
   const [treaties]=await pool.execute("SELECT t.*,a.name AS faction_a_name,b.name AS faction_b_name FROM world_logistics_trade_treaties t JOIN order_factions a ON a.id=t.faction_a JOIN order_factions b ON b.id=t.faction_b ORDER BY t.id DESC");
@@ -237,7 +243,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
-  return ok({itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -326,6 +332,35 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   await db.execute('UPDATE world_logistics_corridors SET state=? WHERE id=?',[b.state,corridor.id]);
   return ok({state:b.state});
+ });
+ if(path==='/world-admin/logistics/air-docks'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||!goodId(b.settlement_id)||!name(b.name,120)||typeof b.material_item_id!=='string'||!qty(b.material_quantity))return fail(400,'invalid_airship_dock');
+  return tx(pool,async db=>{
+   const [[settlement]]=await db.execute('SELECT id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
+   if(!settlement||settlement.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(settlement.strategic_state))return fail(409,'air_dock_requires_order_settlement');
+   const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.material_item_id]);
+   if(!item)return fail(404,'construction_item_not_found');
+   const [previous]=await db.execute('SELECT id FROM world_logistics_air_docks WHERE settlement_id=?',[settlement.id]);
+   if(previous.length)return fail(409,'air_dock_already_registered');
+   const [created]=await db.execute('INSERT INTO world_logistics_air_docks(settlement_id,name,material_item_id,material_quantity,created_by) VALUES(?,?,?,?,?)',[settlement.id,b.name.trim(),b.material_item_id,b.material_quantity,actor.id]);
+   return ok({id:created.insertId,status:'planned'});
+  });
+ }
+ const dockMatch=/^\/world-admin\/logistics\/air-docks\/(\d+)\/status$/.exec(path);
+ if(dockMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!['operational','damaged','closed'].includes(b?.status))return fail(400,'invalid_air_dock_status');
+  const [[dock]]=await db.execute('SELECT * FROM world_logistics_air_docks WHERE id=? FOR UPDATE',[Number(dockMatch[1])]);
+  if(!dock)return fail(404,'air_dock_not_found');
+  if(b.status==='operational'&&dock.status!=='operational'){
+   if(!goodId(b.facility_id))return fail(400,'air_dock_supply_depot_required');
+   const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.settlement_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[Number(b.facility_id)]);
+   if(!facility||Number(facility.settlement_id)!==Number(dock.settlement_id)||facility.owner_faction_id!=='eclipse-order'||facility.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(facility.strategic_state))return fail(409,'air_dock_supply_must_be_local');
+   if(!await ledger(db,facility.id,dock.material_item_id,-Number(dock.material_quantity),'corridor_build',dock.id,actor))return fail(409,'air_dock_materials_insufficient');
+  }
+  await db.execute('UPDATE world_logistics_air_docks SET status=?,commissioned_at=IF(?="operational",UTC_TIMESTAMP(),commissioned_at) WHERE id=?',[b.status,b.status,dock.id]);
+  return ok({status:b.status});
  });
  if(path==='/world-admin/logistics/itineraries'&&req.method==='POST'){
   const b=await body(req);
@@ -429,7 +464,8 @@ export async function logisticsRoute(pool,req,path,actor){
   const [rows]=await pool.execute('SELECT id,settlement_id FROM world_industry_facilities WHERE id IN (?,?)',[b.source_facility_id,b.destination_facility_id]);
   const [[t]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=?',[b.transport_template_id]);
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
-  const pathResult=a?.settlement_id&&z?.settlement_id&&t&&modes.includes(t.mode)?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
+  const hasLanding=t?.mode!=='air'||(a?.settlement_id&&z?.settlement_id&&await operationalAirDocks(pool,a.settlement_id,z.settlement_id));
+  const pathResult=a?.settlement_id&&z?.settlement_id&&t&&modes.includes(t.mode)&&hasLanding?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
   return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)*(t.mode==='air'?3:1)):null});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
