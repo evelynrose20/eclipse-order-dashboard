@@ -295,6 +295,8 @@ async function worldAdministrationRouteCore(pool,req,path){
    // Staff may set starting conditions when creating a settlement, but
    // cannot overwrite simulated workforce, population, stability or stores.
    const [[history]]=await db.execute('SELECT id FROM world_settlement_sim_history WHERE settlement_id=? LIMIT 1',[Number(match[1])]);
+   const playerCity=old.controlling_faction_id==='eclipse-order'&&b.controlling_faction_id==='eclipse-order';
+   if(playerCity&&['population','workforce','housing_capacity'].some(k=>b[k]!==undefined&&Number(b[k])!==Number(old[k])))return fail(409,'order_city_residents_require_housing_and_intake');
    const autonomous=Boolean(history)||(old.controlling_faction_id&&old.controlling_faction_id!=='eclipse-order')||(b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order');
    if(autonomous){
     const locked=['population','workforce','food_days','food_variety','heating_coverage','insulation','housing','medical_access','food_access','security_score','civil_stability','unrest','weather_exposure','housing_capacity'];
