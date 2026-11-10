@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {randomUUID} from 'node:crypto';
+import {airfieldReady,vehicleReady} from './world-logistics-advanced.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const key=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const command=actor=>['domina','high_command'].includes(actor?.account_role);
@@ -93,6 +94,7 @@ export async function frontCargoRoute(pool,req,path){
    if(!key(b?.transport_template_id))return fail(400,'transport_required');
    const [[profile]]=await db.execute('SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1',[Number(b.transport_template_id)]);
    if(!profile||profile.mode!==shipment.mode||Number(profile.capacity)<Number(shipment.quantity))return fail(409,'front_transport_capacity_or_mode');
+   if(shipment.mode==='air'&&!await airfieldReady(db,source.settlement_id,dest.settlement_id))return fail(409,'airfields_required_at_both_ends');
    const [[held]]=await db.execute('SELECT quantity FROM order_front_stock WHERE front_id=? AND material_id=? FOR UPDATE',[source.id,shipment.material_id]);
    if(!held||Number(held.quantity)<Number(shipment.quantity))return fail(409,'front_cargo_stock_insufficient');
    let vehicleId=null,trainId=null,travel=await routeMinutes(db,source.settlement_id,dest.settlement_id,shipment.mode);
@@ -109,7 +111,7 @@ export async function frontCargoRoute(pool,req,path){
     if(travel==null)return fail(409,'no_connected_transport_route');
     if(!key(b?.vehicle_lot_id))return fail(409,'commissioned_vehicle_required');
     const [[vehicle]]=await db.execute("SELECT v.*,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.id=? FOR UPDATE",[Number(b.vehicle_lot_id)]);
-    if(!vehicle||vehicle.status!=='assigned'||vehicle.owner_faction_id!=='eclipse-order'||Number(vehicle.stationed_settlement_id)!==Number(source.settlement_id)||!(shipment.mode==='air'?['airship','capital_airship']:['transport','armored_vehicle']).includes(vehicle.equipment_kind))return fail(409,'front_vehicle_not_available');
+    if(!vehicle||vehicle.status!=='assigned'||vehicle.owner_faction_id!=='eclipse-order'||Number(vehicle.stationed_settlement_id)!==Number(source.settlement_id)||!(shipment.mode==='air'?['airship','capital_airship']:['transport','armored_vehicle']).includes(vehicle.equipment_kind)||!await vehicleReady(db,vehicle.id))return fail(409,'front_vehicle_not_available');
     const specs=typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
     if(Number(specs?.cargo_capacity||0)*Number(vehicle.quantity||1)<Number(shipment.quantity))return fail(409,'front_vehicle_capacity_exceeded');
     const [busy]=await db.execute("SELECT id FROM world_logistics_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[vehicle.id]);
@@ -129,6 +131,7 @@ export async function frontCargoRoute(pool,req,path){
     await db.execute('INSERT INTO world_industry_ledger(facility_id,item_id,delta,balance_after,action,reference_key,actor_id) VALUES(?,?,?,?,?,?,?)',[Number(b.fuel_facility_id),profile.fuel_item_id,-fuel,after,'freight_fuel','frontcargo:'+ident,actor.id]);
    }
    await db.execute('UPDATE order_front_stock SET quantity=quantity-? WHERE front_id=? AND material_id=?',[shipment.quantity,source.id,shipment.material_id]);
+   if(shipment.mode==='air')travel=Math.max(10,Math.ceil(Number(travel)*.65));
    const due=trainId?await db.execute('SELECT expected_arrival_at AS due_at FROM order_internal_rail_journeys WHERE id=?',[trainId]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at',[travel]);
    await db.execute("UPDATE world_logistics_front_cargo SET status='in_transit',source_settlement_id=?,destination_settlement_id=?,transport_template_id=?,vehicle_lot_id=?,train_journey_id=?,fuel_item_id=?,fuel_used=?,due_at=?,dispatched_by=? WHERE id=?",
     [source.settlement_id,dest.settlement_id,profile.id,vehicleId,trainId,profile.fuel_item_id||null,fuel,due[0][0].due_at,actor.id,ident]);
