@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {airFreightEconomics} from '../server/src/world-logistics-advanced.js';
-import {planRailStops,railCargoWindow,trainLocation} from '../server/src/world-rail-stops.js';
-import {priceNpcFood} from '../server/src/world-npc-bargaining.js';
-const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+import {airFreightEconomics} from '../src/world-logistics-advanced.js';
+import {planRailStops,railCargoWindow,trainLocation} from '../src/world-rail-stops.js';
+import {priceNpcFood} from '../src/world-npc-bargaining.js';
+const read=p=>readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 
 test('airship travel is faster and requires materially more fuel',()=>{
  const quote=airFreightEconomics({fuelPerLeg:12,legs:2,durationMinutes:180});
