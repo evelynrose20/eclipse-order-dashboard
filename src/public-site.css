@@ -348,3 +348,27 @@
 .public-recruitment-announcement .public-reopening-date{margin-top:16px;font-size:13px}
 .public-reopening-date span{color:#b1bdc1;margin-right:6px}
 .public-reopening-date time{color:#e0e5e5;font-weight:700}
+
+/* Community entry and public FC event showcase */
+.public-header-discord{display:inline-flex;align-items:center;gap:8px;color:#e0e5e5!important;font-size:11px;font-weight:700;white-space:nowrap}
+.public-header-discord i,.public-membership-discord i{font-size:17px;color:#d8c0ba}
+.public-header-discord:hover,.public-membership-discord:hover{color:#fff!important}
+.public-activities{background:linear-gradient(145deg,#202a33,#151d25 70%);border-block:1px solid #92394377}
+.public-activities-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-top:34px}
+.public-activity-card{position:relative;min-width:0;padding:28px 24px 30px;background:linear-gradient(155deg,#2b3540,#19232c);border:1px solid #6c525563;box-shadow:0 16px 36px #0002}
+.public-activity-card:before{content:'';position:absolute;left:0;top:0;width:46px;height:2px;background:#bd545c}
+.public-activity-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:33px}
+.public-activity-symbol{display:grid;place-items:center;width:48px;height:48px;background:#9239432b;border:1px solid #bd545c66;border-radius:4px;color:#d7b6b0;font-size:22px}
+.public-activity-category{font-size:9px;letter-spacing:.16em;color:#b1bdc1}
+.public-activity-card h3{font:500 clamp(23px,2vw,31px)/1.15 var(--imperial-heading,'Arial Narrow',sans-serif);color:#f4e6dc;margin:0 0 8px}
+.public-activity-card strong{display:block;font-size:11px;color:#d6b5aa;font-weight:700;letter-spacing:.025em;margin-bottom:16px}
+.public-activity-card p{font-size:13px;color:#bdc5c8;line-height:1.75;margin:0}
+.public-activities-after{display:flex;align-items:center;justify-content:space-between;gap:30px;border:1px solid #92394370;background:#111a22;margin-top:20px;padding:26px 30px}
+.public-activities-after h3{font:500 25px/1.3 var(--imperial-heading,'Arial Narrow',sans-serif);color:#f4e6dc;margin:0 0 8px}
+.public-activities-after p{max-width:770px;line-height:1.7;color:#bdc5c8;margin:0 0 10px}
+.public-activities-after small{display:block;color:#a7b3ba;font-size:11px;line-height:1.6}
+.public-activities-after>.public-button-primary{flex:none}
+.public-membership-discord{display:inline-flex;align-items:center;gap:12px;color:#f4e6dc!important;border:1px solid #923943;background:#29343e;padding:17px;font-size:12px;font-weight:750}
+.public-membership-discord span{margin-left:auto}
+@media(max-width:1300px){.public-activities-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-header-discord{display:none}}
+@media(max-width:760px){.public-activities-grid{grid-template-columns:1fr}.public-activity-card{padding:24px}.public-activities-after{align-items:stretch;flex-direction:column;padding:22px}.public-activities-after>.public-button-primary{align-self:flex-start}}
