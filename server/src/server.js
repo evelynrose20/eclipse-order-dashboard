@@ -1,3 +1,4 @@
+import {runOrderCityResidents} from './world-order-city.js';
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
@@ -186,6 +187,8 @@ const settlementTick=async()=>{
  settlementTickRunning=true;
  try{
   const result=await runSettlementSimulation(pool,new Date());
+  const residential=await runOrderCityResidents(pool,new Date());
+  if(residential.arrivals)console.log('[Order cities] New residents:',residential.arrivals);
   const industry=await runIndustryAutomation(pool,new Date());
   const freight=await runLogisticsAutomation(pool);
   const npcRelief=await runNpcTradeAutomation(pool);
