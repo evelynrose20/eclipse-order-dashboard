@@ -347,7 +347,7 @@ export async function logisticsRoute(pool,req,path,actor){
    return ok({id:created.insertId,steps:steps.length});
   });
  }
- const itineraryDispatch=/^\\/world-admin\\/logistics\\/itineraries\\/(\\d+)\\/dispatch$/.exec(path);
+ const itineraryDispatch=/^\/world-admin\/logistics\/itineraries\/(\d+)\/dispatch$/.exec(path);
  if(itineraryDispatch&&req.method==='POST')return tx(pool,async db=>{
   const b=await body(req);
   const [legs]=await db.execute(`SELECT l.*,s.status AS shipment_status FROM world_logistics_itinerary_legs l
