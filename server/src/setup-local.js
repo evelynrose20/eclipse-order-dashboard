@@ -193,6 +193,8 @@ async function main(){
   await pool.query(logisticsFreight);
   const civicFreight=await readFile(new URL('../sql/088_logistics_civic_supplies.sql',import.meta.url),'utf8');
   await pool.query(civicFreight);
+  const scheduledFreight=await readFile(new URL('../sql/089_logistics_scheduled_arrivals.sql',import.meta.url),'utf8');
+  await pool.query(scheduledFreight);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
