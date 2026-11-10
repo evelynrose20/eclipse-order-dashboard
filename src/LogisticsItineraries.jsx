@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import {canLoadAtRailStop} from './rail-journey-selection.js';
 const blank=()=>({name:'',item_id:'',quantity:10,legs:[{source_facility_id:'',destination_facility_id:'',mode:'road',transport_template_id:''},{source_facility_id:'',destination_facility_id:'',mode:'rail',transport_template_id:''}]});
 const money=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:3});
 const validId=x=>Number(x)>0;
@@ -54,7 +55,7 @@ export default function LogisticsItineraries({request,freight,onRefresh}){
    const next=order.legs.find(l=>!l.shipment_id);
    const awaiting=['planned','at_hub'].includes(order.state)&&next;
    const start=facilities.find(f=>Number(f.id)===Number(next?.source_facility_id));
-   const available=awaiting&&next.mode==='rail'?trains.filter(t=>t.status==='running'&&t.from_type==='settlement'&&t.to_type==='settlement'&&Number(t.from_id)===Number(start?.settlement_id)&&Number(t.to_id)===Number(facilities.find(f=>Number(f.id)===Number(next.destination_facility_id))?.settlement_id)):[];
+   const available=awaiting&&next.mode==='rail'?trains.filter(t=>canLoadAtRailStop(t,start?.settlement_id,facilities.find(f=>Number(f.id)===Number(next.destination_facility_id))?.settlement_id)):[];
    const actual=awaiting&&next.mode!=='rail'?vehicles.filter(v=>v.status==='assigned'&&Number(v.stationed_settlement_id)===Number(start?.settlement_id)&&(next.mode==='air'?['airship','capital_airship'].includes(v.equipment_kind):['transport','armored_vehicle'].includes(v.equipment_kind))):available;
    return <article className="freight-itinerary-card" key={order.id}><div className="freight-itinerary-title"><div><span className={'freight-status is-'+order.state}>{order.state.replaceAll('_',' ')}</span><h4>{order.name}</h4><small>{money(order.quantity)} {items.find(x=>x.id===order.item_id)?.name||order.item_id}</small></div><span>{order.legs.length} planned legs</span></div>
     <div className="freight-itinerary-steps">{order.legs.map(l=><div key={l.leg_number} className={l.shipment_status==='arrived'?'completed':''}><strong>{l.leg_number}. {l.mode==='air'?'Airship':l.mode==='rail'?'Train':'Road convoy'}</strong><span>{nameOf(l.source_facility_id)} → {nameOf(l.destination_facility_id)}</span><small>{l.shipment_status||'Awaiting departure'} {l.due_at?' · ETA '+new Date(l.due_at).toLocaleString():''}</small></div>)}</div>
