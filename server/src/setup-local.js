@@ -223,6 +223,8 @@ async function main(){
   await pool.query(frontFreight);
   const airshipReadiness=await readFile(new URL('../sql/103_airship_ports_escort_readiness.sql',import.meta.url),'utf8');
   await pool.query(airshipReadiness);
+  const railwayStops=await readFile(new URL('../sql/104_internal_rail_journey_stops.sql',import.meta.url),'utf8');
+  await pool.query(railwayStops);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
