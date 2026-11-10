@@ -177,8 +177,10 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
+  const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
+  const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents});
  }
  if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
   const b=await body(req);
@@ -274,6 +276,26 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   await db.execute('UPDATE world_logistics_contracts SET status=? WHERE id=?',[action==='pause'?'paused':action==='resume'?'active':'retired',contract.id]);
   return ok({status:action==='pause'?'paused':action==='resume'?'active':'retired'});
+ });
+ match=/^\/world-admin\/logistics\/shipments\/(\d+)\/military$/.exec(path);
+ if(match&&req.method==='POST')return tx(pool,async db=>{
+  const id=Number(match[1]),b=await body(req);
+  if(!goodId(b?.installation_id))return fail(400,'installation_required');
+  const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[id]);
+  if(!shipment)return fail(404,'shipment_not_found');
+  if(shipment.status!=='arrived')return fail(409,'shipment_not_received');
+  const [[already]]=await db.execute('SELECT installation_id FROM world_logistics_military_receipts WHERE shipment_id=?',[id]);
+  if(already)return ok({already_received:true,installation_id:already.installation_id});
+  const [[installation]]=await db.execute("SELECT i.id,i.settlement_id,i.state,s.controlling_faction_id FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE i.id=? FOR UPDATE",[b.installation_id]);
+  const [[facility]]=await db.execute('SELECT settlement_id,owner_faction_id FROM world_industry_facilities WHERE id=?',[shipment.destination_facility_id]);
+  if(!installation||!facility||Number(installation.settlement_id)!==Number(facility.settlement_id)||facility.owner_faction_id!==installation.controlling_faction_id)return fail(409,'military_destination_mismatch');
+  if(['destroyed','abandoned'].includes(installation.state))return fail(409,'installation_cannot_receive_supplies');
+  const [[item]]=await db.execute("SELECT id FROM world_industry_items WHERE id=? AND category IN ('supply','equipment','refined')",[shipment.item_id]);
+  if(!item)return fail(409,'cargo_not_eligible_for_war_stores');
+  if(!await ledger(db,shipment.destination_facility_id,shipment.item_id,-Number(shipment.quantity),'military_delivery',id,actor))return fail(409,'destination_stock_insufficient');
+  await db.execute('INSERT INTO world_military_ammunition(installation_id,item_id,quantity) VALUES(?,?,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',[installation.id,shipment.item_id,shipment.quantity]);
+  await db.execute('INSERT INTO world_logistics_military_receipts(shipment_id,installation_id,item_id,quantity,actor_id) VALUES(?,?,?,?,?)',[id,installation.id,shipment.item_id,shipment.quantity,actor.id]);
+  return ok({saved:true,installation_id:installation.id,quantity:shipment.quantity});
  });
  match=/^\/world-admin\/logistics\/shipments\/(\d+)\/civic$/.exec(path);
  if(match&&req.method==='POST')return tx(pool,async db=>{
