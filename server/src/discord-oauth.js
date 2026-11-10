@@ -66,14 +66,21 @@ export function discordAuthorizationUrl(config,state,intent='login'){
  url.searchParams.set('prompt','consent');
  return url.toString();
 }
-function returnUrl(config,params){
+export function discordPortalReturnUrl(config,params){
+ // On the custom domain GitHub Pages serves the app at /, while ?portal
+ // selects the actual member dashboard. The public home page must not
+ // receive OAuth tickets, and /eclipse-order-dashboard/ is not deployed.
  const url=new URL(config.frontendUrl||config.frontendOrigin+'/');
+ if(config.frontendOrigin==='https://rosefires.com'){
+  url.pathname='/';
+  url.search='';
+ }
  url.searchParams.set('portal','');
  url.hash=new URLSearchParams(params).toString();
  return url.toString();
 }
 function redirect(config,params){
- return {status:302,redirect:returnUrl(config,params),body:null};
+ return {status:302,redirect:discordPortalReturnUrl(config,params),body:null};
 }
 export async function fetchDiscordIdentity(config,code,httpFetch=fetch){
  const response=await httpFetch('https://discord.com/api/oauth2/token',{
