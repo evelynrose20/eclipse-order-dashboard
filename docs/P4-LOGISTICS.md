@@ -62,3 +62,9 @@ Ground paths use **actual road/trail nodes and segments**, falling back to saved
 ## Outstanding P4 scope
 
 This is **not the entire planned P4 simulation**. Remaining work includes NPC political/economic trade agreements, generalized cross-region air/sea/road and site-to-site routes, asset models for ships/pack animals, physical escorts, weather-based delay/damage and DM event queues, industrial insulation material consumption by civic projects, faction-approved access to reserved front goods, and comprehensive live deployment acceptance. Update `docs/LIVING-WORLD-TODO.md` rather than checking those features prematurely.
+
+## Strategic Supply Command overview
+
+The Logistics & Freight page now defaults to **Supply Command**, a read-only strategic overlay over existing world systems. It uses current World Administration region and zone data, saved map background imagery, stored road bends/junctions and settlement pins. It shows manufactured freight movements, menu-based internal rail services and running trains, NPC mapped-farm cargo, civilian food/heat alerts, industrial facility stores, military castrums, merchant exchange demand and Order fronts. Selecting a location offers a targeted freight manifest if that location has an industrial destination facility. Other controls open the existing World Administration, Internal Rail Logistics, Merchant Exchange and Order Fronts screens without replacing or deleting their histories.
+
+**Important boundary:** Visibility and navigation are integrated, but the older specialized systems still retain their own transaction rules. NPC agricultural shipments, player-front market contracts and staff rail journeys have **not** been silently rewritten as world-logistics manifests. Their common simulation/ownership rules and weather/escort/multimodal transport remain ongoing work. The strategic view is not a replacement territory editor and does not create map objects.
