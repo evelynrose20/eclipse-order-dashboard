@@ -13,7 +13,7 @@ import {authRoute} from '../src/auth.js';
 import {factionRoute} from '../src/factions.js';
 import {worldAdministrationRoute} from '../src/world-administration.js';
 import {industryRoute} from '../src/world-industry.js';
-import {logisticsRoute} from '../src/world-logistics.js';
+import {logisticsRoute,runLogisticsAutomation} from '../src/world-logistics.js';
 import {runIndustryAutomation} from '../src/world-industry-engine.js';
 import {runSettlementSimulation,settlementSimulationRoute} from '../src/world-settlement-simulation.js';
 import {internalRailRoute} from '../src/internal-rail.js';
@@ -1450,6 +1450,14 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(repeatedCivic.body.already_received,true,'heating fuel cannot be double-delivered to civilians');
   const [[civicFuel]]=await admin.execute("SELECT quantity FROM world_civic_stock WHERE settlement_id=? AND item_code='ceruleum-fuel'",[mineId]);
   assert.equal(Number(civicFuel.quantity),1,'received ceruleum is now actual civic heating fuel');
+  const secondFreight=await logisticsRoute(admin,request('POST',{...freightManifest,request_key:'ci-freight-lot-000002'}),'/world-admin/logistics/dispatch',staff);
+  assert.equal(secondFreight.status,200,JSON.stringify(secondFreight.body));
+  await admin.execute('UPDATE world_logistics_shipments SET due_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 MINUTE) WHERE id=?',[secondFreight.body.shipment_id]);
+  const automatedArrival=await runLogisticsAutomation(admin);
+  assert.equal(automatedArrival.arrived,1,'scheduled receipt moves cargo once when the journey finishes');
+  const automatedAgain=await runLogisticsAutomation(admin);
+  assert.equal(automatedAgain.arrived,0,'repeated clock cycles do not duplicate destination stock');
+
   // Canon Garlean designs are only blueprints; assembled trains consume real commissioned lots.
   const garleanCatalog=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
   assert.equal(garleanCatalog.status,200,JSON.stringify(garleanCatalog.body));
