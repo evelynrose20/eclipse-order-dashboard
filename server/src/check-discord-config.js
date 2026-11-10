@@ -22,6 +22,7 @@ export function inspectDiscordConfig(env=process.env){
    const old=['https://evelynrose20.github.io/eclipse-order-dashboard','https://evelynrose20.github.io/eclipse-order-dashboard/'].includes(frontend);
    const url=new URL(frontend);
    if(!old&&url.origin!==origin)issues.push('DISCORD_FRONTEND_URL points to another origin. Use '+origin+'/.');
+   if(origin==='https://rosefires.com'&&['/eclipse-order-dashboard/','/eclipse-order-dashboard'].includes(url.pathname))issues.push('DISCORD_FRONTEND_URL uses the old project subpath. On rosefires.com use https://rosefires.com/ instead.');
   }catch{issues.push('DISCORD_FRONTEND_URL is not a valid HTTPS URL.')}
  }
  if(!discordOAuthConfig(env)&&issues.length===0)issues.push('Discord OAuth configuration failed validation; check the exact frontend and API URLs.');
