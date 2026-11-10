@@ -3,12 +3,12 @@ import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
-const modes=['road','rail','air','sea','pack'],purposes=['trade','relief','military','industry'];
+const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const qty=x=>typeof x==='number'&&Number.isFinite(x)&&x>0&&x<=1000000&&Math.round(x*1000)===x*1000;
 const round=x=>Math.round(Number(x)*1000)/1000;
 const name=(x,max)=>typeof x==='string'&&x.trim().length>0&&x.length<=max;
-const allowed={road:['road','trail'],pack:['road','trail'],rail:['rail'],air:['skyway'],sea:['waterway']};
+const allowed={road:['road','trail'],pack:['road','trail'],rail:['rail'],air:['skyway']};
 async function body(req){const chunks=[];let size=0;for await(const c of req){size+=c.length;if(size>18000)return null;chunks.push(c)}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}}
 async function tx(pool,run){const db=await pool.getConnection();try{await db.beginTransaction();const output=await run(db);if(output.status===200)await db.commit();else await db.rollback();return output}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
 async function ledger(db,id,item,delta,action,shipment,actor){
@@ -121,8 +121,8 @@ async function record(db,shipment,action,note,actor){
 async function availableVehicle(db,id,mode,sourceSettlement){
  if(!goodId(id))return null;
  const [[lot]]=await db.execute("SELECT v.*,t.equipment_kind FROM world_magitek_equipment_inventory v JOIN world_magitek_equipment_templates t ON t.id=v.equipment_template_id WHERE v.id=? FOR UPDATE",[id]);
- const classes={road:['transport','armored_vehicle'],rail:['locomotive'],air:['airship','capital_airship'],sea:['other'],pack:[]};
- if(!lot||lot.status!=='assigned'||Number(lot.stationed_settlement_id)!==Number(sourceSettlement)||!classes[mode].includes(lot.equipment_kind))return null;
+ const classes={road:['transport','armored_vehicle'],rail:['locomotive'],air:['airship','capital_airship']};
+ if(!lot||!classes[mode]||lot.status!=='assigned'||Number(lot.stationed_settlement_id)!==Number(sourceSettlement)||!classes[mode].includes(lot.equipment_kind))return null;
  const [running]=await db.execute("SELECT id FROM world_logistics_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
  return running.length?null:lot;
 }
@@ -380,7 +380,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [rows]=await pool.execute('SELECT id,settlement_id FROM world_industry_facilities WHERE id IN (?,?)',[b.source_facility_id,b.destination_facility_id]);
   const [[t]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=?',[b.transport_template_id]);
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
-  const pathResult=a?.settlement_id&&z?.settlement_id&&t?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
+  const pathResult=a?.settlement_id&&z?.settlement_id&&t&&modes.includes(t.mode)?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
   return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)):null});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
