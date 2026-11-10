@@ -5,6 +5,7 @@ import {climateForRegions} from './world-region-climate.js';
 import {itineraryRoute,stageItineraryArrival,handleItineraryRecall} from './world-logistics-itineraries.js';
 import {logMovement,movementHistory} from './world-front-cargo.js';
 import {airfieldReady,vehicleReady,airFreightEconomics,advancedLogisticsRoute} from './world-logistics-advanced.js';
+import {journeyStops,railCargoWindow} from './world-rail-stops.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -161,6 +162,7 @@ async function dispatch(db,b,actor,contract=null){
  }
  if(transport.mode==='air'&&!await airfieldReady(db,source.settlement_id,dest.settlement_id))return fail(409,'airfields_required_at_both_ends');
  let path=await route(db,source.settlement_id,dest.settlement_id,transport.mode);
+ if(!path&&transport.mode==='rail'&&goodId(b.train_journey_id))path={node_ids:[],segment_ids:[],legs:1};
  if(!path)return fail(409,'no_connected_transport_route');
  let vehicle=null,trainJourney=null;
  if(transport.mode==='rail'){
@@ -170,17 +172,15 @@ async function dispatch(db,b,actor,contract=null){
    c.status AS consist_status,c.owner_faction_id
    FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id
    JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.id=? FOR UPDATE`,[Number(b.train_journey_id)]);
-  if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'
-    ||train.from_type!=='settlement'||train.to_type!=='settlement'
-    ||Number(train.from_id)!==Number(source.settlement_id)||Number(train.to_id)!==Number(dest.settlement_id))
-   return fail(409,'rail_journey_not_at_route');
-  const [[window]]=await db.execute('SELECT TIMESTAMPDIFF(MINUTE,?,UTC_TIMESTAMP()) AS elapsed,? > UTC_TIMESTAMP() AS still_running',[train.departed_at,train.expected_arrival_at]);
-  if(!window.still_running||Number(window.elapsed)>30)return fail(409,'rail_loading_window_closed');
-  const [[loaded]]=await db.execute("SELECT COALESCE(SUM(quantity),0) AS used FROM world_logistics_shipments WHERE train_journey_id=? AND status<>'cancelled'",[train.id]);
+  if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'||train.from_type!=='settlement'||train.to_type!=='settlement')return fail(409,'rail_journey_not_at_route');
+  const stopRecords=await journeyStops(db,[train.id]);
+  const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
+  const loading=railCargoWindow(train,stopRecords,source.settlement_id,dest.settlement_id,new Date(clock.now));
+  if(!loading)return fail(409,'rail_loading_window_closed_or_stop_not_served');
+  const [[loaded]]=await db.execute("SELECT (SELECT COALESCE(SUM(quantity),0) FROM world_logistics_shipments WHERE train_journey_id=? AND status IN ('in_transit','disrupted'))+(SELECT COALESCE(SUM(quantity),0) FROM world_logistics_front_cargo WHERE train_journey_id=? AND status IN ('in_transit','held')) AS used",[train.id,train.id]);
   if(Number(loaded.used)+amount>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
-  trainJourney=train;
-  path={node_ids:['settlement:'+source.settlement_id,'settlement:'+dest.settlement_id],
-   segment_ids:['internal-rail:'+train.service_id],legs:1,duration_minutes:Number(train.duration_minutes)};
+  trainJourney={...train,unload_at:loading.arrival_at};
+  path={node_ids:['settlement:'+source.settlement_id,'settlement:'+dest.settlement_id],segment_ids:['internal-rail:'+train.service_id],legs:1,duration_minutes:Math.max(1,Math.ceil((new Date(loading.arrival_at)-new Date(clock.now))/60000))};
  }else{
   vehicle=await availableVehicle(db,b.vehicle_lot_id,transport.mode,source.settlement_id);
   if(!vehicle)return fail(409,'assigned_transport_vehicle_required');
@@ -201,7 +201,7 @@ async function dispatch(db,b,actor,contract=null){
   if(!fuelStock||Number(fuelStock.quantity)<fuel+(transport.fuel_item_id===itemId?amount:0))return fail(409,'freight_fuel_insufficient');
  }
  const minutes=totalMinutes;
- const [[time]]=trainJourney?await db.execute('SELECT DATE_ADD(?,INTERVAL ? MINUTE) AS due_at',[trainJourney.expected_arrival_at,Number(dest.access_minutes||0)]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
+ const [[time]]=trainJourney?await db.execute('SELECT DATE_ADD(?,INTERVAL ? MINUTE) AS due_at',[trainJourney.unload_at,Number(dest.access_minutes||0)]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
  const due=time.due_at;
  if(!due)return fail(409,'invalid_travel_time');
  const [created]=await db.execute('INSERT INTO world_logistics_shipments(request_key,contract_id,source_facility_id,destination_facility_id,transport_template_id,vehicle_lot_id,train_journey_id,item_id,quantity,fuel_item_id,fuel_used,route_segments,route_nodes,mode,due_at,escort_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
