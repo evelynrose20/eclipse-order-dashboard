@@ -133,6 +133,11 @@ async function dispatch(db,b,actor,contract=null){
  if(!source.settlement_id||!dest.settlement_id)return fail(409,'freight_requires_settlement_linked_facilities');
  if(!source.controlling_faction_id||!dest.controlling_faction_id||source.owner_faction_id!==source.controlling_faction_id||dest.owner_faction_id!==dest.controlling_faction_id)return fail(409,'freight_requires_valid_territorial_control');
  if(['ruined','captured'].includes(source.status)||['ruined','captured'].includes(dest.status)||['destroyed','abandoned'].includes(source.strategic_state)||['destroyed','abandoned'].includes(dest.strategic_state))return fail(409,'freight_location_unavailable');
+ if(source.controlling_faction_id!==dest.controlling_faction_id){
+  const a=[source.controlling_faction_id,dest.controlling_faction_id].sort();
+  const [access]=await db.execute("SELECT id FROM world_logistics_trade_treaties WHERE faction_a=? AND faction_b=? AND status='active' LIMIT 1",a);
+  if(!access.length)return fail(409,'cross_faction_trade_treaty_required');
+ }
  const path=await route(db,source.settlement_id,dest.settlement_id,transport.mode);
  if(!path)return fail(409,'no_connected_transport_route');
  const vehicle=await availableVehicle(db,b.vehicle_lot_id,transport.mode,source.settlement_id);
@@ -177,11 +182,38 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
+  const [treaties]=await pool.execute("SELECT t.*,a.name AS faction_a_name,b.name AS faction_b_name FROM world_logistics_trade_treaties t JOIN order_factions a ON a.id=t.faction_a JOIN order_factions b ON b.id=t.faction_b ORDER BY t.id DESC");
+  const [factions]=await pool.execute('SELECT id,name FROM order_factions ORDER BY name');
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions});
  }
+ if(path==='/world-admin/logistics/treaties'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||typeof b.faction_a!=='string'||typeof b.faction_b!=='string'||b.faction_a===b.faction_b||!purposes.includes(b.purpose)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_trade_treaty');
+  return tx(pool,async db=>{
+   const [factions]=await db.execute('SELECT id FROM order_factions WHERE id IN (?,?)',[b.faction_a,b.faction_b]);
+   if(factions.length!==2)return fail(404,'faction_not_found');
+   const [a,z]=[b.faction_a,b.faction_b].sort();
+   const [saved]=await db.execute("INSERT INTO world_logistics_trade_treaties(faction_a,faction_b,purpose,notes,created_by) VALUES(?,?,?,?,?)",[a,z,b.purpose,b.notes,actor.id]);
+   return ok({id:saved.insertId,status:'proposed'});
+  });
+ }
+ const treatyMatch=/^\/world-admin\/logistics\/treaties\/(\d+)\/status$/.exec(path);
+ if(treatyMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!['active','suspended','retired'].includes(b?.status))return fail(400,'invalid_treaty_status');
+  const [[t]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(treatyMatch[1])]);
+  if(!t)return fail(404,'treaty_not_found');
+  if(t.status==='retired')return fail(409,'treaty_retired');
+  if(b.status==='active'){
+   const [[relation]]=await db.execute('SELECT trust,tension FROM world_faction_relations WHERE faction_a=? AND faction_b=?',[t.faction_a,t.faction_b]);
+   if(!relation||Number(relation.trust)<40||Number(relation.tension)>65)return fail(409,'faction_relations_do_not_support_trade');
+  }
+  await db.execute("UPDATE world_logistics_trade_treaties SET status=?,approved_by=IF(?='active',?,approved_by),approved_at=IF(?='active',UTC_TIMESTAMP(),approved_at) WHERE id=?",[b.status,b.status,actor.id,b.status,t.id]);
+  return ok({status:b.status});
+ });
  if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
   const b=await body(req);
   if(!b||!name(b.name,140)||!modes.includes(b.mode)||!goodId(b.origin_settlement_id)||!goodId(b.destination_settlement_id)||Number(b.origin_settlement_id)===Number(b.destination_settlement_id)||!Number.isInteger(b.travel_minutes)||b.travel_minutes<1||b.travel_minutes>10080||typeof b.construction_item_id!=='string'||!qty(b.construction_quantity))return fail(400,'invalid_corridor');
