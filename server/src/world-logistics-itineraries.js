@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 // Multi-leg Order freight. Intermediate receipts are removed from general depot stock
 // into escrow inside the SAME arrival transaction, so no other dispatch can borrow them.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -78,7 +79,7 @@ export async function itineraryRoute(pool,req,path,actor,dispatch,ledger){
     await db.execute('DELETE FROM world_logistics_itinerary_reservations WHERE itinerary_id=?',[itineraryId]);
    }
    const manifest={
-    request_key:'itinerary_'+itineraryId+'_'+next.leg_number+'_freight',
+    request_key:randomUUID(),
     source_facility_id:Number(next.source_facility_id),destination_facility_id:Number(next.destination_facility_id),
     transport_template_id:Number(next.transport_template_id),item_id:order.item_id,quantity:Number(order.quantity),
     vehicle_lot_id:Number(b.vehicle_lot_id)||null,train_journey_id:Number(b.train_journey_id)||null,
