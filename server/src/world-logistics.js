@@ -3,6 +3,7 @@ import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 import {itineraryRoute,stageItineraryArrival,handleItineraryRecall} from './world-logistics-itineraries.js';
+import {logMovement,movementHistory} from './world-front-cargo.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -118,6 +119,10 @@ async function railJourneyHold(db,shipment,actor){
 }
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
+ if(['dispatch','arrival','cancel'].includes(action)){
+  const [[cargo]]=await db.execute('SELECT item_id,quantity,source_facility_id,destination_facility_id FROM world_logistics_shipments WHERE id=?',[shipment]);
+  if(cargo)await logMovement(db,{system:'industry',reference:shipment,action,item:cargo.item_id,quantity:cargo.quantity,source:'facility:'+cargo.source_facility_id,destination:'facility:'+cargo.destination_facility_id});
+ }
 }
 async function availableVehicle(db,id,mode,sourceSettlement){
  if(!goodId(id))return null;
@@ -125,7 +130,8 @@ async function availableVehicle(db,id,mode,sourceSettlement){
  const classes={road:['transport','armored_vehicle'],rail:['locomotive'],air:['airship','capital_airship'],sea:['other'],pack:[]};
  if(!lot||lot.status!=='assigned'||Number(lot.stationed_settlement_id)!==Number(sourceSettlement)||!classes[mode].includes(lot.equipment_kind))return null;
  const [running]=await db.execute("SELECT id FROM world_logistics_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
- return running.length?null:lot;
+ const [frontBusy]=await db.execute("SELECT id FROM world_logistics_front_cargo WHERE vehicle_lot_id=? AND status IN ('in_transit','held') LIMIT 1",[id]);
+ return running.length||frontBusy.length?null:lot;
 }
 async function dispatch(db,b,actor,contract=null){
  if(!b||!name(b.request_key,64)||!/^[a-zA-Z0-9_-]{12,64}$/.test(b.request_key))return fail(400,'invalid_dispatch_key');
@@ -203,6 +209,7 @@ async function dispatch(db,b,actor,contract=null){
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
  if(path.startsWith('/world-admin/logistics/itineraries'))return itineraryRoute(pool,req,path,actor,dispatch,ledger);
+ if(path==='/world-admin/logistics/movements'&&req.method==='GET')return ok({movements:await movementHistory(pool)});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
   const [templates]=await pool.execute('SELECT * FROM world_logistics_transport_templates ORDER BY name');
   const [contracts]=await pool.execute("SELECT c.*,f.name AS source_name,d.name AS destination_name,t.name AS transport_name,i.name AS item_name FROM world_logistics_contracts c JOIN world_industry_facilities f ON f.id=c.source_facility_id JOIN world_industry_facilities d ON d.id=c.destination_facility_id JOIN world_logistics_transport_templates t ON t.id=c.transport_template_id JOIN world_industry_items i ON i.id=c.item_id ORDER BY c.id DESC LIMIT 200");
