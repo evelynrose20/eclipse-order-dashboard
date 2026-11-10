@@ -2,12 +2,13 @@ import {resolveSession} from './auth.js';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 
 const fail=(status,error)=>({status,body:{error}});
 const ok=body=>({status:200,body});
 const ROSTER_KEY='venue_public_roster';
 const DEFAULT_ROSTER=new URL('../../public/venue-roster.json',import.meta.url);
-const UPLOAD_DIRECTORY=resolve(process.env.VENUE_UPLOAD_DIR||new URL('../venue-uploads',import.meta.url).pathname);
+const UPLOAD_DIRECTORY=resolve(process.env.VENUE_UPLOAD_DIR||fileURLToPath(new URL('../venue-uploads',import.meta.url)));
 const IMAGE_TYPES={jpeg:'image/jpeg',png:'image/png',webp:'image/webp'};
 const IMAGE_EXTENSIONS={jpeg:'jpg',png:'png',webp:'webp'};
 const publicUrl=name=>'/venue/images/'+name;
