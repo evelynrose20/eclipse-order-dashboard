@@ -1,5 +1,7 @@
 import {discordOAuthConfig} from './discord-oauth.js';
 import {validSnowflake,guildConfiguration} from './discord-guild.js';
+import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
 
 export function inspectDiscordConfig(env=process.env){
  const issues=[];
@@ -25,7 +27,7 @@ export function inspectDiscordConfig(env=process.env){
  if(!discordOAuthConfig(env)&&issues.length===0)issues.push('Discord OAuth configuration failed validation; check the exact frontend and API URLs.');
  return {configured:Boolean(discordOAuthConfig(env)),issues,origin,apiHost,callback,frontend};
 }
-if(import.meta.url===new URL(process.argv[1]||'', 'file://').href){
+if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  const result=inspectDiscordConfig();
  console.log(result.configured?'Discord OAuth settings: VALID':'Discord OAuth settings: INVALID');
  if(result.issues.length)for(const issue of result.issues)console.log(' - '+issue);
