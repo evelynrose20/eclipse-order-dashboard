@@ -1,0 +1,54 @@
+/* P4 freight follows existing World Administration / Industry typography and steel-blue chrome. */
+.freight-root{display:grid;gap:13px;min-width:0;color:#e7e4df;font-family:var(--imperial-ui,'IBM Plex Sans',Arial,sans-serif);font-size:12px}
+.freight-root *{box-sizing:border-box}
+.freight-root button{cursor:pointer;font:inherit}
+.freight-root button:disabled{opacity:.5;cursor:not-allowed}
+.freight-root :is(button,input,select,textarea):focus-visible{outline:2px solid #debf8c;outline-offset:2px}
+.freight-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;background:#182733;border:1px solid #435565;padding:16px;border-radius:5px}
+.freight-toolbar span{font-size:10px;color:#cca673;letter-spacing:.13em;font-weight:800}
+.freight-toolbar h2{font:800 24px var(--imperial-heading,'Barlow Condensed',Arial,sans-serif);color:#f1dabc;margin:5px 0}
+.freight-toolbar p{color:#acbdc9;font-size:12px;margin:0}
+.freight-actions{display:flex;gap:7px;flex-wrap:wrap}
+.freight-root button{background:#304553;border:1px solid #617887;border-radius:4px;padding:9px 12px;color:#e6d6c3;font-size:12px}
+.freight-root button:hover:not(:disabled){background:#3a5161}
+.freight-root button.freight-primary{border-color:#aa916c;color:#f3debd}
+.freight-actions button i{margin-right:6px}
+.freight-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.freight-stats>div{display:grid;gap:4px;padding:12px;border:1px solid #405462;border-radius:5px;background:#1b2a36}
+.freight-stats small{color:#a1b3c1;font-size:11px}.freight-stats strong{color:#f1dabc;font-size:20px}
+.freight-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:9px;background:#182734;border:1px solid #405260;border-radius:5px}
+.freight-tabs button{border-color:#3d5160;color:#bbc9d2;background:#243543}
+.freight-tabs button.active{background:#47493e;border-color:#d2b17f;color:#f3dfc4}
+.freight-list{display:grid;align-content:start;background:#182733;border:1px solid #415463;border-radius:5px;min-height:110px}
+.freight-list-head{padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #415463}
+.freight-list-head h3{color:#eecda5;font-size:15px;margin:0}
+.freight-list-head span{color:#9eb3bf;font-size:11px}
+.freight-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid #344955}
+.freight-row>div:first-child{display:grid;gap:5px;min-width:min(240px,100%);flex:1}
+.freight-row strong{font-size:13px;color:#e7d7bf}
+.freight-row small{font-size:11px;color:#a9bac6}
+.freight-row-meta{display:grid;gap:5px;color:#a1b3c1;font-size:11px}
+.freight-row-meta strong{font-size:11px}
+.freight-row-actions{display:flex;flex-wrap:wrap;gap:6px}
+.freight-status{font-size:10px;color:#d5c092;text-transform:uppercase;letter-spacing:.09em;font-weight:750}
+.freight-status.is-arrived,.freight-status.is-active{color:#a9dfc3}
+.freight-status.is-disrupted{color:#f0be85}
+.freight-status.is-cancelled,.freight-status.is-retired{color:#b4abb1}
+.freight-empty{padding:19px 16px;color:#a1b3c1}
+.freight-vehicle,.freight-history{padding:12px 16px;border-bottom:1px solid #344955;display:flex;justify-content:space-between;gap:12px}
+.freight-vehicle strong,.freight-history strong{color:#eecda5}
+.freight-vehicle span,.freight-history small{color:#a9bac6}
+.freight-overlay{position:fixed;inset:0;background:#080e14df;z-index:320;display:grid;place-items:center;padding:16px}
+.freight-modal{width:min(750px,100%);max-height:87vh;overflow:auto;background:#182733;border:1px solid #5d7180;border-radius:5px;box-shadow:0 20px 60px #080d13b3}
+.freight-modal header{position:sticky;top:0;z-index:2;background:#233543;border-bottom:1px solid #405462;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 17px}
+.freight-modal h3{margin:0;color:#f1dabc;font-size:17px}
+.freight-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:16px}
+.freight-form label{display:grid;gap:5px;font-size:11px;color:#b7c3cb;min-width:0}
+.freight-form :is(input,select,textarea){background:#101f2a;border:1px solid #526879;border-radius:4px;color:#e7e8e9;padding:9px;min-height:37px;min-width:0;width:100%;font:inherit}
+.freight-form label small{color:#9eb3bf}
+.freight-form .freight-hint,.freight-routecheck,.freight-form footer{grid-column:1/-1}
+.freight-hint{padding:10px 12px;background:#233642;border-left:3px solid #a28c70;color:#c1cdd4;margin:0;line-height:1.6}
+.freight-routecheck{display:flex;flex-wrap:wrap;align-items:center;gap:10px;color:#c5d2da}
+.freight-form footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #405462;padding-top:13px}
+.freight-root .wa-error{border:1px solid #ad676a;background:#482e32;color:#f3c9ca;padding:10px}
+@media(max-width:830px){.freight-toolbar{align-items:flex-start;flex-direction:column}.freight-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.freight-form{grid-template-columns:1fr}}
