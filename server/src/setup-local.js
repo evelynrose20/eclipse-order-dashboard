@@ -213,6 +213,8 @@ async function main(){
   await pool.query(joinedRailFreight);
   const npcCaravanRecovery=await readFile(new URL('../sql/098_npc_relief_recovery.sql',import.meta.url),'utf8');
   await pool.query(npcCaravanRecovery);
+  const inventoryTransport=await readFile(new URL('../sql/099_inventory_backed_transport.sql',import.meta.url),'utf8');
+  await pool.query(inventoryTransport);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
