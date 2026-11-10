@@ -59,8 +59,19 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const marketContracts=(exchange?.contracts||[]).filter(c=>c.status==='open');
  const externalContracts=marketContracts.length;
  const orderStock=freight.stocks||[];
- const shortageSites=sites.filter(s=>risk(s)==='alert').sort((a,b)=>warn(b).length-warn(a).length);
- const militaryAlerts=(military?.installations||[]).filter(i=>i.state!=='operational');
+ const orderSites=sites.filter(s=>s.controlling_faction_id==='eclipse-order');
+ const shortageSites=orderSites.filter(s=>risk(s)==='alert').sort((a,b)=>warn(b).length-warn(a).length);
+ const militaryInstallations=(military?.installations||[]).filter(i=>i.controlling_faction_id==='eclipse-order');
+ const militaryAlerts=militaryInstallations.filter(i=>i.state!=='operational');
+ const prioritySites=orderSites;
+ const [showAllPriorities,setShowAllPriorities]=useState(false);
+ const openSettlement=s=>{setSelectedRegion(String(s.region_id));setSelectedZone(String(s.zone_id));setSelectedSite(String(s.id))};
+ const importantSites=[...prioritySites].sort((a,b)=>{
+  const importance=s=>(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?2:0)+(/capital|new cassia/i.test(s.name)?3:0);
+  return importance(b)-importance(a)||a.name.localeCompare(b.name);
+ });
+ const installationSites=militaryInstallations.map(i=>({installation:i,settlement:sites.find(s=>Number(s.id)===Number(i.settlement_id))})).filter(x=>x.settlement);
+
  const position=id=>{
   const x=findById(mapSites,id);
   return x&&validPoint(x.map_x)&&validPoint(x.map_y)?{x:Number(x.map_x),y:Number(x.map_y)}:null;
@@ -121,8 +132,14 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
    </section>
    <aside className="supply-intel">
     <div className="supply-intel-heading"><span className="supply-kicker">OPERATIONS DESK</span><h3>Supply priorities</h3></div>
-    {shortageSites.slice(0,6).map(s=><button className="supply-priority" key={s.id} onClick={()=>{setSelectedRegion(String(s.region_id));setSelectedZone(String(s.zone_id));setSelectedSite(String(s.id))}}><span className="supply-priority-icon"><i className="fa-solid fa-triangle-exclamation"/></span><span><strong>{s.name}</strong><small>{warn(s).slice(0,2).map(kind).join(' · ')||'Civilian reserves at risk'}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
-    {!shortageSites.length&&<p className="supply-muted">No civilian shortages flagged by the current settlement records.</p>}
+    {shortageSites.slice(0,showAllPriorities?undefined:6).map(s=><button className="supply-priority" key={s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className="fa-solid fa-triangle-exclamation"/></span><span><strong>{s.name}</strong><small>{warn(s).slice(0,2).map(kind).join(' · ')||'Civilian reserves at risk'}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
+    {!shortageSites.length&&<p className="supply-muted">No supply shortages recorded at Order-controlled settlements.</p>}
+    {shortageSites.length>6&&<button className="supply-priority-more" onClick={()=>setShowAllPriorities(!showAllPriorities)}>{showAllPriorities?'Show fewer alerts':'View all '+shortageSites.length+' Order supply alerts'}</button>}
+    <div className="supply-intel-heading"><h3>Order holdings</h3><span>{orderSites.length} locations</span></div>
+    {importantSites.map(s=><button className="supply-priority" key={'holding-'+s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className={'fa-solid '+(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?'fa-shield-halved':'fa-city')}/></span><span><strong>{s.name}</strong><small>{risk(s)==='alert'?'Supply attention required':kind(s.strategic_state)+' · Order controlled'}{militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?' · Military installation':''}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
+    {!importantSites.length&&<p className="supply-muted">No active Order-controlled settlements are registered.</p>}
+    {installationSites.length>0&&<div className="supply-intel-heading"><h3>Castrums & installations</h3><span>{installationSites.length} registered</span></div>}
+    {installationSites.map(({installation:i,settlement:s})=><button className="supply-priority" key={'installation-'+i.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className="fa-solid fa-shield-halved"/></span><span><strong>{i.name}</strong><small>{s.name} · {kind(i.state)} · {num(i.condition_pct)}% integrity</small></span><i className="fa-solid fa-chevron-right"/></button>)}
     <div className="supply-intel-heading"><h3>Active movements</h3><button onClick={()=>onTab?.('shipments')}>All cargo</button></div>
     {activeFreight.slice(0,5).map(s=><div className="supply-movement" key={s.id}><i className={'fa-solid fa-'+(s.mode==='rail'?'train':s.mode==='air'?'plane':'truck')}/><span><strong>{s.item_name} × {num(s.quantity)}</strong><small>{s.source_name} → {s.destination_name}</small><small>{s.status==='disrupted'?'Movement interrupted':'ETA '+duration(s.due_at)}</small></span></div>)}
     {npcRelief.slice(0,3).map(s=><div className="supply-movement" key={'relief-'+s.id}><i className="fa-solid fa-hand-holding-heart"/><span><strong>NPC food relief · {num(s.amount)} food units</strong><small>{s.origin_name} → {s.destination_name}</small><small>{s.status==='held'?'Awaiting access or storage':'Arriving '+new Date(s.due_at).toLocaleString()}</small></span></div>)}
