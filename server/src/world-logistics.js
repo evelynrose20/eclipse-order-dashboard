@@ -398,7 +398,13 @@ export async function logisticsRoute(pool,req,path,actor){
   const [rows]=await pool.execute('SELECT id,settlement_id FROM world_industry_facilities WHERE id IN (?,?)',[b.source_facility_id,b.destination_facility_id]);
   const [[t]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=?',[b.transport_template_id]);
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
-  const pathResult=a?.settlement_id&&z?.settlement_id&&t?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
+  let pathResult=a?.settlement_id&&z?.settlement_id&&t?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
+  if(t?.mode==='rail'&&goodId(b.train_journey_id)){
+   const [[train]]=await pool.execute("SELECT j.*,r.from_type,r.from_id,r.to_type,r.to_id FROM order_internal_rail_journeys j JOIN order_internal_rail_routes r ON r.id=j.route_id WHERE j.id=?",[Number(b.train_journey_id)]);
+   const rows=train?await journeyStops(pool,[train.id]):[];
+   const stop=train&&train.status==='running'?railCargoWindow(train,rows,a?.settlement_id,z?.settlement_id,new Date()):null;
+   pathResult=stop?{node_ids:['settlement:'+a.settlement_id,'settlement:'+z.settlement_id],segment_ids:['journey:'+train.id],legs:1,duration_minutes:Math.max(1,Math.ceil((new Date(stop.arrival_at)-Date.now())/60000))}:null;
+  }
   const baseDuration=pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null;
   const airQuote=pathResult&&t.mode==='air'?airFreightEconomics({fuelPerLeg:t.fuel_per_leg,legs:pathResult.legs,durationMinutes:baseDuration}):null;
   const airEnabled=t?.mode==='air'&&a?.settlement_id&&z?.settlement_id?await airfieldReady(pool,a.settlement_id,z.settlement_id):true;
