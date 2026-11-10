@@ -12,7 +12,7 @@ const UPLOAD_DIRECTORY=resolve(process.env.VENUE_UPLOAD_DIR||fileURLToPath(new U
 const IMAGE_TYPES={jpeg:'image/jpeg',png:'image/png',webp:'image/webp'};
 const IMAGE_EXTENSIONS={jpeg:'jpg',png:'png',webp:'webp'};
 const publicUrl=name=>'/venue/images/'+name;
-const photoUrlOk=url=>typeof url==='string'&&url.length<=500&&(url===''||(/^https:\/\/[^\s<>"']+$/i.test(url)&&!url.includes('@'))||/^\/venue\/images\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(url));
+const photoUrlOk=url=>typeof url==='string'&&url.length<=500&&(url===''||(/^https:\/\/[^\s<>"']+$/i.test(url)&&!url.includes('@'))||/^[a-z0-9][a-z0-9-]{0,79}\.(jpg|png|webp)$/.test(url)||/^\/venue\/images\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(url));
 async function readInput(req,limit=65536){
  const buffers=[];let total=0;
  for await(const chunk of req){total+=chunk.length;if(total>limit)return null;buffers.push(chunk);}
