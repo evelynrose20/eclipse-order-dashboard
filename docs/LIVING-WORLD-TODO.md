@@ -114,7 +114,7 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 
 - [x] Default strategic territory command instead of the old blank shipment register, with specialist freight tabs retained.
 - [x] Read-only overlays for territorial routes, industry facilities/stores, NPC farming and food relief, railway journeys, merchant exchange demand, fronts and castrum installations.
-- [x] Existing map imagery and road junction geometry reused, with safe fallback if the overlay fails to render.
+- [x] Existing map imagery and road junction geometry reused, with safe fallback if the overlay fails to render. Native Cassian terrain is also rendered when no image is configured; an older Windows freight API no longer leaves the entire page stuck in an empty loading/grey state.
 - [ ] Final populated-browser visual acceptance remains required; do not mark it done solely because builds pass.
 
 ## P5 — Military forces
