@@ -215,7 +215,8 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
   const [depotLinks]=await pool.execute("SELECT l.*,f.name AS facility_name,s.name AS hub_name FROM world_logistics_depot_links l JOIN world_industry_facilities f ON f.id=l.facility_id JOIN world_settlements s ON s.id=l.hub_settlement_id ORDER BY l.facility_id");
   const [insulationNeeds]=await pool.execute("SELECT n.*,p.settlement_id,p.status AS project_status,u.name AS project_name,s.name AS settlement_name FROM world_logistics_insulation_needs n JOIN world_civic_building_projects p ON p.id=n.project_id JOIN world_settlement_upgrades u ON u.id=p.upgrade_id JOIN world_settlements s ON s.id=p.settlement_id WHERE p.status='active' ORDER BY n.project_id DESC");
-  const [npcTrades]=await pool.execute('SELECT t.*,a.name AS origin_name,b.name AS destination_name FROM world_npc_trade_shipments t JOIN world_settlements a ON a.id=t.source_settlement_id JOIN world_settlements b ON b.id=t.destination_settlement_id ORDER BY t.id DESC LIMIT 120');
+  const [npcTrades]=await pool.execute('SELECT t.*,a.name AS origin_name,b.name AS destination_name,original.name AS original_destination_name FROM world_npc_trade_shipments t JOIN world_settlements a ON a.id=t.source_settlement_id JOIN world_settlements b ON b.id=t.destination_settlement_id LEFT JOIN world_settlements original ON original.id=t.original_destination_settlement_id ORDER BY t.id DESC LIMIT 120');
+  const [npcTradeEvents]=await pool.execute('SELECT shipment_id,action,notes,created_at FROM world_npc_trade_events ORDER BY id DESC LIMIT 120');
   const [allSettlements]=await pool.execute('SELECT id,name,region_id,zone_id,controlling_faction_id FROM world_settlements ORDER BY name');
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
@@ -224,7 +225,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -556,7 +557,7 @@ export async function runLogisticsAutomation(pool){
  * A failed destination holds cargo, never creates replacement inventory.
  */
 export async function runNpcTradeAutomation(pool){
- if(!pool)return {dispatched:0,delivered:0,held:0};
+ if(!pool)return {dispatched:0,delivered:0,held:0,redirected:0,returned:0};
  let delivered=0,held=0,dispatched=0,redirected=0,returned=0;
  const [due]=await pool.execute("SELECT id FROM world_npc_trade_shipments WHERE status='in_transit' AND due_at<=UTC_TIMESTAMP() ORDER BY due_at,id LIMIT 20");
  for(const row of due){
