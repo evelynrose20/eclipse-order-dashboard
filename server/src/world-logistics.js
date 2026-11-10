@@ -120,6 +120,7 @@ async function railJourneyHold(db,shipment,actor){
 }
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
+ if(['arrival','cancel'].includes(action))await db.execute("UPDATE world_logistics_convoy_escorts SET status='released' WHERE shipment_id=? AND status='assigned'",[shipment]);
  if(['dispatch','arrival','cancel'].includes(action)){
   const [[cargo]]=await db.execute('SELECT item_id,quantity,source_facility_id,destination_facility_id FROM world_logistics_shipments WHERE id=?',[shipment]);
   if(cargo)await logMovement(db,{system:'industry',reference:shipment,action,item:cargo.item_id,quantity:cargo.quantity,source:'facility:'+cargo.source_facility_id,destination:'facility:'+cargo.destination_facility_id});
@@ -528,6 +529,7 @@ export async function logisticsRoute(pool,req,path,actor){
     const event=shouldInterruptForWeather(currentWeather,id);
     if(event){
      await db.execute('INSERT INTO world_logistics_incidents(shipment_id,incident_type,severity,weather_snapshot) VALUES(?,?,?,?)',[id,event,event==='blizzard'?3:1,String(currentWeather)]);
+     await db.execute("INSERT INTO world_logistics_risk_reviews(shipment_id,risk_type,proposed_wear,narrative,created_by) VALUES(?,'weather',?,?,NULL)",[id,event==='blizzard'?18:6,'Severe weather risk awaiting staff decision']);
      await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes=? WHERE id=?",[event==='blizzard'?'Blizzard blocks the convoy':'Snowstorm delays delivery',id]);
      await record(db,id,'disrupt','Weather interruption requires convoy orders',actor);
      return ok({status:'disrupted',incident:event});
@@ -566,6 +568,7 @@ export async function runLogisticsAutomation(pool){
     const incidentType=shouldInterruptForWeather(currentWeather,shipment.id);
     if(incidentType){
      await db.execute("INSERT INTO world_logistics_incidents(shipment_id,incident_type,severity,weather_snapshot) VALUES(?,?,?,?)",[shipment.id,incidentType,incidentType==='blizzard'?3:1,String(currentWeather)]);
+      await db.execute("INSERT INTO world_logistics_risk_reviews(shipment_id,risk_type,proposed_wear,narrative,created_by) VALUES(?,'weather',?,?,NULL)",[shipment.id,incidentType==='blizzard'?18:6,'Severe weather risk awaiting staff decision']);
      await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes=? WHERE id=?",[incidentType==='blizzard'?'Blizzard has blocked the convoy':'Heavy snowfall has slowed the convoy',shipment.id]);
      await record(db,shipment.id,'disrupt','Weather interruption requiring a convoy order',{id:null});
      return ok({disrupted:true});
