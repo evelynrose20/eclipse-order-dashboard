@@ -13,3 +13,6 @@ server/*.log
 docs/.obsidian/workspace.json
 docs/.obsidian/workspace-mobile.json
 docs/.obsidian/cache/
+
+# Public venue portrait uploads are stored on the Windows API host, not GitHub
+server/venue-uploads/

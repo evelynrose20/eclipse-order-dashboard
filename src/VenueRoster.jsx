@@ -5,14 +5,16 @@ import './venue-roster.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
 const DISCORD='https://discord.gg/ksqTw4SHYn';
+const VENUE_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
+function imageSource(value){if(!value)return '';if(value.startsWith('https://'))return value;if(value.startsWith('/venue/images/'))return VENUE_API+value;return '/venue-images/'+value}
 function Mark(){return <span className="venue-mark" aria-hidden="true"><OrderEmblem className="venue-order-emblem"/></span>}
 function RosterCard({person,category}){
  const [imageError,setImageError]=useState(false);
- const filename=/^[a-z0-9][a-z0-9-]*\.(jpg|jpeg|png|webp)$/i.test(person.image||'')?person.image:null;
- const picture=!person.vacancy&&filename&&!imageError;
+ const photo=person.image||'';
+ const picture=!person.vacancy&&!!photo&&!imageError;
  return <article className={'venue-roster-card'+(person.vacancy?' is-vacancy':'')}>
   <div className="venue-roster-portrait">
-   {picture?<img src={'/venue-images/'+filename} alt={'Portrait of '+person.name} loading="lazy" onError={()=>setImageError(true)}/>:<div className="venue-roster-fallback" aria-hidden="true"><Mark/><span>{person.vacancy?'POSITION AVAILABLE':category==='staff'?'THE MIDNIGHT ECLIPSE':'THE HOUSEHOLD'}</span></div>}
+   {picture?<img src={imageSource(photo)} alt={'Portrait of '+person.name} loading="lazy" onError={()=>setImageError(true)}/>:<div className="venue-roster-fallback" aria-hidden="true"><Mark/><span>{person.vacancy?'POSITION AVAILABLE':category==='staff'?'THE MIDNIGHT ECLIPSE':'THE HOUSEHOLD'}</span></div>}
   </div>
   <div className="venue-roster-copy"><span className="venue-roster-label">{person.vacancy?'RECRUITING':category==='staff'?'VENUE STAFF':'VENUE THRALL'}</span><h3>{person.name}</h3><strong>{person.title}</strong><p>{person.description}</p>{person.vacancy&&<a href={DISCORD} target="_blank" rel="noopener noreferrer">Ask about this role <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"/></a>}</div>
  </article>;
@@ -26,7 +28,8 @@ export default function VenueRoster(){
   let active=true;const controller=new AbortController();
   async function load(){
    try{
-    const response=await fetch('/venue-roster.json',{cache:'no-store',signal:controller.signal});
+    let response=VENUE_API?await fetch(VENUE_API+'/venue/public',{cache:'no-store',signal:controller.signal}).catch(()=>null):null;
+    if(!response?.ok)response=await fetch('/venue-roster.json',{cache:'no-store',signal:controller.signal});
     if(!response.ok)throw new Error('roster unavailable');
     const result=await response.json();
     if(!Array.isArray(result.staff)||!Array.isArray(result.thralls)||!result.staff.every(validEntry)||!result.thralls.every(validEntry))throw new Error('invalid roster');
