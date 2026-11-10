@@ -89,15 +89,21 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 
 ## P4 — Logistics, trade and transports
 
-- [ ] Configurable transportation templates (freight truck, railway, airship, ships, pack animals).
-- [ ] Routes and transport pathfinding using territory roads.
-- [ ] Convoy manifest, cargo capacity, escort, fuel, vehicle readiness, idempotent dispatch/delivery.
-- [ ] Regular shipments, emergency aid, faction support agreements and custom trade contracts.
-- [ ] In-transit inventory and destination receipt; no double-spending or double delivery.
-- [ ] Weather disruptions and DM-created convoy events.
-- [ ] trade between settlements for food.
-- [ ] Heat needing ceruleum
-- [ ] Insulation needing to be made at industry
+**Implemented P4 freight foundation on main (migrations 087–089):** A new **Logistics & Freight** command workspace now connects industrial stock, route graph and menu-based internal rail services, commissioned vehicle lots, timed manifests, recurring *manually dispatched* agreements, destination receipts, and civilian deliveries. SQL-backed cargo is removed at dispatch and added only once at arrival. Due shipments are received by the Windows API clock. The UI uses the imperial World Administration design rules. **This is a working foundation, not yet the entire intended logistics and trading simulation.** Live Windows deployment and browser acceptance are outstanding.
+
+- [x] Staff-configurable transport type templates with route mode, carrying capacity, travel duration and fuel requirements. Operational ships/pack animals still need corresponding physically commissioned vehicle types.
+- [ ] **Complete multimodal routing:** graph pathfinding now works for road/trail and configured skyway/waterway connections within regions; existing menu-based Order rail services work across zones/regions; wider cross-region road/water/air networks and map disruptions remain to implement.
+- [x] Inventory-safe cargo manifests with source facility debits, fuel use, actual commissioned equipment capacity, unique dispatch keys, audited in-transit state and idempotent arrival/cancellation. Escort notes are available; mechanical escort readiness and transport damage still need work.
+- [ ] **Complete automated recurring trade and diplomacy:** trade, relief, military and industry agreements are recorded with cadences and next-eligible dispatch, but recurring dispatch still needs explicit staff confirmation, and NPC faction trade-policy approvals/automatic bargaining are not yet simulated.
+- [x] Cargo cannot exist in origin stock and in-transit/destination stock simultaneously; due deliveries are processed once by the Windows API clock, with safety holds for unavailable destinations.
+- [ ] **Complete dynamic transport incidents:** staff can disrupt and resume convoys; weather-derived delays, encounter queues, escort battles and damage/repairs are still outstanding.
+- [x] Trade food and medical supplies between settlement-linked industry depots, followed by an audited transfer from arrived freight into real civilian stock. Requires actual produced inventory and a suitable route; no fabricated stock.
+- [x] Refined ceruleum can be delivered through freight into actual civic fuel stock, used by existing heating requirements.
+- [ ] **Industrial insulation demand:** freight insulation panels now exist in the industrial catalog, but civic insulation construction has not yet been converted from legacy material requirements to real industrial deliveries.
+- [ ] NPC-independent logistics, site-to-site depots that have no settlement anchor, cross-region generalized routes, and secure player/front-reserved freight authorizations.
+- [ ] Full Windows service backup/setup/restart and real-browser acceptance, including parallel dispatch races, captured destinations, offline arrivals, NPC trade, and mobile layout.
+
+P4 technical rollout and current limitations: [P4-LOGISTICS.md](P4-LOGISTICS.md).
 
 ## P5 — Military forces
 
