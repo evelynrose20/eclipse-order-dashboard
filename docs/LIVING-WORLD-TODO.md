@@ -208,3 +208,12 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 - [x] Replace free-form new transport registration with selection of existing Order inventory lots or assembled trains. Server derives cargo capacity, route mode and fuel from pinned manufactured specifications (migration 099). Historic templates remain so old contracts are not deleted; new templates cannot be entered arbitrarily.
 - [x] Replace basic trade and diplomatic proposal forms with stock-aware depot selection, existing transport cards, faction signatories, treaty trust/tension indicators and imperial command-step flows.
 - [ ] Verify the expanded map and command windows visually with real populated browser data, including route bends, crowded pins, inactive stock and mobile viewport. Keep unfinished combat/markets/multimodal scope above open.
+
+## Order-controlled City Builder — separate from NPC autonomy
+
+- [x] Player-controlled settlements now have a dedicated **City builder** panel in Civilian Welfare. Completed housing sets residential capacity; existing food/water stock and territorial safety gate new residents.
+- [x] Resident intake is an **independent, explicitly opt-in** Order policy, initially **OFF**. Enabling it does not turn on regional simulation or an NPC economy, and does not create buildings, factories, merchant routes, materials, or faction decisions.
+- [x] At most one daily intake check can occur for an opted-in settlement; no catch-up population burst after downtime. Only actual free housing and provisions permit residents. Resident counts and the eligible labor pool update together, without assigning individual factory jobs or creating construction projects.
+- [x] Order settlement population, workforce and base housing are not arbitrary edit-form fields after founding. Planned and completed housing remains managed through the existing building templates and construction projects.
+- [x] Military installation status now considers the linked territory: a castrum located at a **Rebuilding** settlement is not operationally ready even if the military installation record still reports undamaged structures. Structural integrity and operational readiness are shown separately, without fabricating damage.
+- [ ] Allow deeper city-builder zoning, service coverage and labor assignment with real economy costs. The independent resident policy is intentionally off until explicitly enabled, and the original NPC autonomy / regional simulation settings are untouched.
