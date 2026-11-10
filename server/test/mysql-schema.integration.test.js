@@ -1457,6 +1457,23 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(automatedArrival.arrived,1,'scheduled receipt moves cargo once when the journey finishes');
   const automatedAgain=await runLogisticsAutomation(admin);
   assert.equal(automatedAgain.arrived,0,'repeated clock cycles do not duplicate destination stock');
+  // Recurring trade is OFF by default. Enabling it requires a commissioned, stationed vehicle.
+  const recurringContract=await logisticsRoute(admin,request('POST',{name:'CI Winter Fuel Run',purpose:'relief',source_facility_id:magitekFactoryId,destination_facility_id:mineFacilityId,transport_template_id:freightTransport.body.id,item_id:'ceruleum-fuel',quantity:1,cadence_days:1}),'/world-admin/logistics/contracts',staff);
+  assert.equal(recurringContract.status,200,JSON.stringify(recurringContract.body));
+  const contractId=recurringContract.body.id;
+  const [[offByDefault]]=await admin.execute('SELECT auto_dispatch FROM world_logistics_contracts WHERE id=?',[contractId]);
+  assert.equal(Number(offByDefault.auto_dispatch),0,'recurring shipment automation starts disabled');
+  const autoEnabled=await logisticsRoute(admin,request('POST',{enabled:true,vehicle_lot_id:assignedFreightLots[0].id}),'/world-admin/logistics/contracts/'+contractId+'/automation',staff);
+  assert.equal(autoEnabled.status,200,JSON.stringify(autoEnabled.body));
+  const firstAuto=await runLogisticsAutomation(admin);
+  assert.equal(firstAuto.dispatched,1,'due agreement loads one real shipment on the assigned vehicle');
+  const repeatedAuto=await runLogisticsAutomation(admin);
+  assert.equal(repeatedAuto.dispatched,0,'an automatic contract cannot dispatch twice within one cadence');
+  const [[autoShipments]]=await admin.execute('SELECT COUNT(*) AS n FROM world_logistics_shipments WHERE contract_id=?',[contractId]);
+  assert.equal(Number(autoShipments.n),1);
+  const autoDisabled=await logisticsRoute(admin,request('POST',{enabled:false}),'/world-admin/logistics/contracts/'+contractId+'/automation',staff);
+  assert.equal(autoDisabled.status,200);
+
 
   // Canon Garlean designs are only blueprints; assembled trains consume real commissioned lots.
   const garleanCatalog=await industryRoute(admin,request('GET'),'/world-admin/industry/equipment',staff);
