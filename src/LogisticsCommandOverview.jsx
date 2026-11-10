@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './logistics-command-overview.css';
 import LogisticsTerrain from './LogisticsTerrain.jsx';
+import LogisticsMovingCargo from './LogisticsMovingCargo.jsx';
 
 const num=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:1});
 const kind=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -106,6 +107,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
        {freightLines.map(l=><line key={'freight-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-'+l.status}/>)}
       </svg>
       {npcRoutes.filter(r=>r.map_settlement_id).map(r=>{const from=position(r.map_settlement_id),to=position(r.settlement_id);return from&&to?<svg key={'npc-route-'+r.id} className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} className="supply-link cargo-npc"/></svg>:null})}
+      <LogisticsMovingCargo freight={freight} sites={sites} segments={world?.network_segments||[]} routeNodes={routeNode} zone={zone}/>
       {mapSites.map(s=><button key={s.id} type="button" style={{left:s.map_x+'%',top:s.map_y+'%'}} className={'supply-map-site is-'+risk(s)+(Number(focus?.id)===Number(s.id)?' selected':'')} onClick={()=>setSelectedSite(String(s.id))} title={s.name+' · '+kind(s.strategic_state)} aria-label={'Inspect '+s.name}><i className={'fa-solid fa-'+(['mine','quarry'].includes(s.map_icon)?'mountain':s.map_icon==='farm'?'wheat-awn':'city')}/><span>{s.name}</span></button>)}
       {!mapSites.length&&<div className="supply-map-empty">There are no mapped settlements in this zone. Add locations in World Administration.</div>}
       <div className="supply-map-legend"><span><b className="legend-stable"/> Supplied / no alerts</span><span><b className="legend-alert"/> Needs attention</span><span><b className="legend-lost"/> Destroyed or abandoned</span><span><b className="legend-route"/> Active freight</span><span><b className="legend-rail"/> Internal rail service</span></div>
