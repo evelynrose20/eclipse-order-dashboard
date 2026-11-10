@@ -185,6 +185,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
   const [depotLinks]=await pool.execute("SELECT l.*,f.name AS facility_name,s.name AS hub_name FROM world_logistics_depot_links l JOIN world_industry_facilities f ON f.id=l.facility_id JOIN world_settlements s ON s.id=l.hub_settlement_id ORDER BY l.facility_id");
   const [insulationNeeds]=await pool.execute("SELECT n.*,p.settlement_id,p.status AS project_status,u.name AS project_name,s.name AS settlement_name FROM world_logistics_insulation_needs n JOIN world_civic_building_projects p ON p.id=n.project_id JOIN world_settlement_upgrades u ON u.id=p.upgrade_id JOIN world_settlements s ON s.id=p.settlement_id WHERE p.status='active' ORDER BY n.project_id DESC");
+  const [npcTrades]=await pool.execute('SELECT t.*,a.name AS origin_name,b.name AS destination_name FROM world_npc_trade_shipments t JOIN world_settlements a ON a.id=t.source_settlement_id JOIN world_settlements b ON b.id=t.destination_settlement_id ORDER BY t.id DESC LIMIT 120');
   const [allSettlements]=await pool.execute('SELECT id,name,region_id,zone_id,controlling_faction_id FROM world_settlements ORDER BY name');
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
@@ -193,7 +194,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
   const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -516,4 +517,66 @@ export async function runLogisticsAutomation(pool){
   if(output.status===200&&output.body.shipment_id&&!output.body.already_submitted)dispatched++;
  }
  return {arrived,disrupted,dispatched};
+}
+
+/** Independent NPC food relief is bounded by actual reserves, workers, mapped routes and diplomatic access.
+ * Food is removed on departure and credited only after arrival, once per source/day.
+ * A failed destination holds cargo, never creates replacement inventory.
+ */
+export async function runNpcTradeAutomation(pool){
+ if(!pool)return {dispatched:0,delivered:0,held:0};
+ let delivered=0,held=0,dispatched=0;
+ const [due]=await pool.execute("SELECT id FROM world_npc_trade_shipments WHERE status='in_transit' AND due_at<=UTC_TIMESTAMP() ORDER BY due_at,id LIMIT 20");
+ for(const row of due){
+  const output=await tx(pool,async db=>{
+   const [[t]]=await db.execute('SELECT * FROM world_npc_trade_shipments WHERE id=? FOR UPDATE',[row.id]);
+   if(!t||t.status!=='in_transit')return ok({skipped:true});
+   const [[target]]=await db.execute("SELECT s.id,s.population,s.controlling_faction_id,s.strategic_state,a.food_units FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE s.id=? FOR UPDATE",[t.destination_settlement_id]);
+   const [[origin]]=await db.execute('SELECT controlling_faction_id FROM world_settlements WHERE id=?',[t.source_settlement_id]);
+   if(!target||!origin||origin.controlling_faction_id!==t.origin_faction_id||target.controlling_faction_id!==t.destination_faction_id||['destroyed','abandoned'].includes(target.strategic_state)){
+    await db.execute("UPDATE world_npc_trade_shipments SET status='held' WHERE id=?",[t.id]);return ok({held:true});
+   }
+   const [buildings]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[target.id]);
+   const cap=civilianStorageCapacity(target,buildings).food;
+   if(Number(target.food_units)+Number(t.amount)>cap){
+    await db.execute("UPDATE world_npc_trade_shipments SET status='held' WHERE id=?",[t.id]);return ok({held:true});
+   }
+   await db.execute('UPDATE world_settlement_autosim SET food_units=food_units+? WHERE settlement_id=?',[t.amount,target.id]);
+   await db.execute("UPDATE world_npc_trade_shipments SET status='delivered',delivered_at=UTC_TIMESTAMP() WHERE id=?",[t.id]);
+   return ok({delivered:true});
+  });
+  if(output.body.delivered)delivered++;if(output.body.held)held++;
+ }
+ const [sources]=await pool.execute("SELECT s.id,s.region_id,s.controlling_faction_id,s.population,s.workforce,a.food_units FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order' AND s.workforce>0 AND a.mode='automatic' AND a.paused=0 AND a.food_units>GREATEST(20,s.population*4) ORDER BY a.food_units DESC LIMIT 25");
+ const [targets]=await pool.execute("SELECT s.id,s.region_id,s.controlling_faction_id,s.population,a.food_units FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE s.controlling_faction_id IS NOT NULL AND s.controlling_faction_id<>'eclipse-order' AND s.population>0 AND a.mode='automatic' AND a.paused=0 AND a.food_units<s.population*2 ORDER BY a.food_units ASC LIMIT 25");
+ for(const source of sources){
+  const destination=targets.find(t=>Number(t.id)!==Number(source.id));
+  if(!destination)continue;
+  const output=await tx(pool,async db=>{
+   const [[origin]]=await db.execute("SELECT s.id,s.population,s.workforce,s.controlling_faction_id,s.strategic_state,a.food_units FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE s.id=? FOR UPDATE",[source.id]);
+   const [[dest]]=await db.execute("SELECT s.id,s.population,s.controlling_faction_id,s.strategic_state,a.food_units FROM world_settlements s JOIN world_settlement_autosim a ON a.settlement_id=s.id WHERE s.id=? FOR UPDATE",[destination.id]);
+   if(!origin||!dest||!origin.controlling_faction_id||!dest.controlling_faction_id||['destroyed','abandoned'].includes(origin.strategic_state)||['destroyed','abandoned'].includes(dest.strategic_state))return ok({skipped:true});
+   if(origin.controlling_faction_id!==dest.controlling_faction_id){
+    const pair=[origin.controlling_faction_id,dest.controlling_faction_id].sort();
+    const [treaty]=await db.execute("SELECT id FROM world_logistics_trade_treaties WHERE faction_a=? AND faction_b=? AND status='active' AND purpose IN ('trade','relief') LIMIT 1",pair);
+    if(!treaty.length)return ok({skipped:true});
+   }
+   const [earlier]=await db.execute('SELECT id FROM world_npc_trade_shipments WHERE source_settlement_id=? AND departed_on=UTC_DATE() LIMIT 1',[origin.id]);
+   if(earlier.length)return ok({skipped:true});
+   const available=Math.max(0,Number(origin.food_units)-Math.max(20,Number(origin.population)*4));
+   const needed=Math.max(0,Number(dest.population)*4-Number(dest.food_units));
+   const carrying=Math.max(0,Math.min(80,Math.floor(Number(origin.workforce)*2)));
+   const amount=Math.floor(Math.min(available,needed,carrying));
+   if(amount<=0)return ok({skipped:true});
+   const link=await route(db,origin.id,dest.id,'pack');
+   if(!link)return ok({skipped:true});
+   const eta=link.duration_minutes??link.legs*120;
+   const [[clock]]=await db.execute("SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at",[eta]);
+   await db.execute('UPDATE world_settlement_autosim SET food_units=food_units-? WHERE settlement_id=? AND food_units>=?',[amount,origin.id,amount]);
+   await db.execute('INSERT INTO world_npc_trade_shipments(source_settlement_id,destination_settlement_id,amount,origin_faction_id,destination_faction_id,route_json,departed_on,due_at) VALUES(?,?,?,?,?,?,UTC_DATE(),?)',[origin.id,dest.id,amount,origin.controlling_faction_id,dest.controlling_faction_id,JSON.stringify(link.segment_ids),clock.due_at]);
+   return ok({dispatched:true});
+  });
+  if(output.body.dispatched)dispatched++;
+ }
+ return {dispatched,delivered,held};
 }
