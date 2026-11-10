@@ -32,6 +32,7 @@ import {senatePoliticsRoute} from './senate-politics.js';
 import {governanceRoute} from './governance-live.js';
 import {commerceRoute} from './commerce.js';
 import {frontsRoute,runFrontDailyExpenses} from './fronts.js';
+import {runFrontCargoAutomation} from './world-front-cargo.js';
 import {treasuryRoute,runDailyPayroll} from './treasury.js';
 
 const host='127.0.0.1'; // Deliberately localhost-only. Never bind 0.0.0.0.
@@ -197,6 +198,8 @@ const settlementTick=async()=>{
   if(residential.arrivals)console.log('[Order cities] New residents:',residential.arrivals);
   const industry=await runIndustryAutomation(pool,new Date());
   const freight=await runLogisticsAutomation(pool);
+  const frontCargo=await runFrontCargoAutomation(pool);
+  if(frontCargo.arrived||frontCargo.held)console.log('[Front freight] Arrived:',frontCargo.arrived,'held:',frontCargo.held);
   const npcRelief=await runNpcTradeAutomation(pool);
   if(npcRelief.dispatched||npcRelief.delivered||npcRelief.held)console.log('[NPC relief] Dispatched:',npcRelief.dispatched,'delivered:',npcRelief.delivered,'held:',npcRelief.held);
   if(freight.arrived||freight.disrupted||freight.dispatched)console.log('[World freight] Dispatched:',freight.dispatched,'arrived:',freight.arrived,'awaiting review:',freight.disrupted);
