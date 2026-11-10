@@ -2,8 +2,9 @@ import {civilianStorageCapacity} from './world-civic-building-templates.js';
 import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
+import {itineraryRoute,stageItineraryArrival,handleItineraryRecall} from './world-logistics-itineraries.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
-const modes=['road','rail','air','sea','pack'],purposes=['trade','relief','military','industry'];
+const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const qty=x=>typeof x==='number'&&Number.isFinite(x)&&x>0&&x<=1000000&&Math.round(x*1000)===x*1000;
 const round=x=>Math.round(Number(x)*1000)/1000;
@@ -201,6 +202,7 @@ async function dispatch(db,b,actor,contract=null){
 }
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/logistics/itineraries'))return itineraryRoute(pool,req,path,actor,dispatch,ledger);
  if(path==='/world-admin/logistics'&&req.method==='GET'){
   const [templates]=await pool.execute('SELECT * FROM world_logistics_transport_templates ORDER BY name');
   const [contracts]=await pool.execute("SELECT c.*,f.name AS source_name,d.name AS destination_name,t.name AS transport_name,i.name AS item_name FROM world_logistics_contracts c JOIN world_industry_facilities f ON f.id=c.source_facility_id JOIN world_industry_facilities d ON d.id=c.destination_facility_id JOIN world_logistics_transport_templates t ON t.id=c.transport_template_id JOIN world_industry_items i ON i.id=c.item_id ORDER BY c.id DESC LIMIT 200");
@@ -518,10 +520,12 @@ export async function logisticsRoute(pool,req,path,actor){
    const [destination]=await db.execute("SELECT f.status,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[s.destination_facility_id]);
    if(!destination.length||['destroyed','abandoned'].includes(destination[0].strategic_state))return fail(409,'destination_unavailable');
    if(!await ledger(db,s.destination_facility_id,s.item_id,Number(s.quantity),'freight_arrival',id,actor))return fail(409,'delivery_failed');
+    await stageItineraryArrival(db,s,ledger,actor);
    await db.execute("UPDATE world_logistics_shipments SET status='arrived',arrived_at=UTC_TIMESTAMP() WHERE id=?",[id]);
    await record(db,id,'arrival','Cargo received at destination',actor);return ok({status:'arrived'});
   }
   if(!await ledger(db,s.source_facility_id,s.item_id,Number(s.quantity),'freight_refund',id,actor))return fail(409,'refund_failed');
+   await handleItineraryRecall(db,s,ledger,actor);
   await db.execute("UPDATE world_logistics_shipments SET status='cancelled' WHERE id=?",[id]);
   await record(db,id,'cancel',b?.note||'Shipment returned to origin; fuel not refunded',actor);
   return ok({status:'cancelled'});
@@ -558,6 +562,7 @@ export async function runLogisticsAutomation(pool){
     return ok({disrupted:true});
    }
    if(!await ledger(db,shipment.destination_facility_id,shipment.item_id,Number(shipment.quantity),'freight_arrival',shipment.id,{id:null}))return fail(409,'destination_inventory_unavailable');
+    await stageItineraryArrival(db,shipment,ledger,{id:null});
    await db.execute("UPDATE world_logistics_shipments SET status='arrived',arrived_at=UTC_TIMESTAMP() WHERE id=? AND status='in_transit'",[shipment.id]);
    await record(db,shipment.id,'arrival','Scheduled cargo arrival',{id:null});
    return ok({arrived:true});
