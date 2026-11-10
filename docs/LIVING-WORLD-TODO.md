@@ -181,3 +181,11 @@ P4 technical rollout and current limitations: [P4-LOGISTICS.md](P4-LOGISTICS.md)
 - [x] Slow, normal and fast NPC cadence; slow or normal Order cadence. Staff pause and stop options.
 - [x] Dated history records for every committed autonomous cycle; no automatic territory swaps, raids, riots, casualties, or political outcomes.
 - [ ] Live Windows service acceptance after running migration 053 and restarting API; CI test database is not the live server.
+
+### P4 visual integration — Supply Command (2026-11-09)
+- [x] Make Logistics & Freight open to a strategy-game supply command overview rather than a blank shipment register. Preserve shipment/contract/transport/history tooling under dedicated tabs.
+- [x] Pull read-only signals from the existing territorial map, industrial facilities and actual stocks, NPC farm routes/cargo/warehouses, operational Internal Rail Logistics stations and trains, Merchant Exchange demand, Order fronts, and castrum/military installation records.
+- [x] Match the region's existing map background, stored road and junction bends, user-placed settlements, and map rail services; show active freight and NPC route overlays without reviving removed track/station editing.
+- [x] Selecting a mapped settlement exposes local needs, warehouses, garrisons and industry with a targeted freight-dispatch entry where a destination facility exists.
+- [ ] Finish *mechanical* integration still outstanding: production-to-contract planning, NPC political trade permissions, front-authorized reservations, escorts, weather interruptions, cross-region multimodal routing, rail train cargo linkage, and industrial insulation construction. This overview reads pre-existing systems; it does not claim all of them share one transaction engine.
+- [ ] Verify map and command layout on the live frontend with actual populated world data; automated tests do not constitute a browser screenshot review.
