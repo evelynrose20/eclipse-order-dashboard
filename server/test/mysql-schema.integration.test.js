@@ -1429,7 +1429,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   // and may hand delivered ceruleum to a settlement's actual heating inventory.
   const [assignedFreightLots]=await admin.execute("SELECT id FROM world_magitek_equipment_inventory WHERE origin_facility_id=? AND status='assigned' AND stationed_settlement_id=?",[magitekFactoryId,mineId]);
   assert.ok(assignedFreightLots.length>0,'a commissioned and assigned transporter is required');
-  const freightTransport=await logisticsRoute(admin,request('POST',{name:'CI Garlean Supply Carrier',mode:'road',capacity:4,minutes_per_leg:10,fuel_item_id:'ceruleum-fuel',fuel_per_leg:1}),'/world-admin/logistics/templates',staff);
+  const freightTransport=await logisticsRoute(admin,request('POST',{fleet_kind:'lot',fleet_id:assignedFreightLots[0].id}),'/world-admin/logistics/templates',staff);
   assert.equal(freightTransport.status,200,JSON.stringify(freightTransport.body));
   const freightStockBefore=await admin.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel'",[magitekFactoryId]);
   const fuelBefore=Number(freightStockBefore[0][0].quantity);
@@ -1543,7 +1543,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(physicalJourney.train_name,'New Cassia Expedition Supply Train');
   assert.equal(Number(physicalJourney.cargo_capacity_snapshot),madeTrain.body.cargo_capacity,'rail capacity comes from commissioned carriages');
   assert.equal(equippedList.body.trains.find(t=>Number(t.id)===Number(madeTrain.body.id)).wagon_count,4);
-  const railFreightType=await logisticsRoute(admin,request('POST',{name:'CI Assembled Train Freight',mode:'rail',capacity:10,minutes_per_leg:30,fuel_item_id:null,fuel_per_leg:0}),'/world-admin/logistics/templates',staff);
+  const railFreightType=await logisticsRoute(admin,request('POST',{fleet_kind:'train',fleet_id:madeTrain.body.id}),'/world-admin/logistics/templates',staff);
   assert.equal(railFreightType.status,200,JSON.stringify(railFreightType.body));
   const freightOnTrain=await logisticsRoute(admin,request('POST',{request_key:'ci-assembled-train-001',source_facility_id:mineFacilityId,destination_facility_id:depot.body.id,
     transport_template_id:railFreightType.body.id,train_journey_id:equippedRun.body.id,item_id:'ceruleum-fuel',quantity:2}),
