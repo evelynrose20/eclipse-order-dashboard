@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './logistics-command-overview.css';
+import LogisticsTerrain from './LogisticsTerrain.jsx';
 
 const num=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:1});
 const kind=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -95,6 +96,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
    <section className="supply-theater">
     <div className="supply-bar"><div><span className="supply-kicker">STRATEGIC THEATER</span><h3>Territorial supply network</h3></div><div className="supply-toolbar"><label>Region <select value={region?.id||''} onChange={e=>{setSelectedRegion(e.target.value);setSelectedZone('');setSelectedSite('')}}>{regions.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label><label>Zone <select value={zone?.id||''} onChange={e=>{setSelectedZone(e.target.value);setSelectedSite('')}}>{regionZones.map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select></label><button type="button" onClick={openWorld}>Open territory map <i className="fa-solid fa-arrow-up-right-from-square"/></button></div></div>
     {region&&zone?<div className="supply-map" role="group" aria-label={'Supply network for '+zone.name} style={region.map_background_url?{backgroundImage:'linear-gradient(#091a24a8,#091a24a8),url("'+region.map_background_url+'")',backgroundSize:'cover',backgroundPosition:'center'}:{}}>
+      <LogisticsTerrain/>
       <div className="supply-map-grid" aria-hidden="true"/>
       <svg className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
        {[...oldLines,...lines].map(l=><polyline key={l.id} points={linePoints(l.from,l.to,l.waypoints).map(p=>p.x+','+p.y).join(' ')} className={'supply-link mode-'+l.type}/>)}
