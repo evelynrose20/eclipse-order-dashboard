@@ -35,6 +35,6 @@ CREATE TABLE IF NOT EXISTS world_logistics_incidents (
  FOREIGN KEY(shipment_id) REFERENCES world_logistics_shipments(id),
  FOREIGN KEY(resolved_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-ALTER TABLE world_industry_ledger MODIFY COLUMN action ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply','freight_dispatch','freight_arrival','freight_refund','freight_fuel','civic_delivery','corridor_build') NOT NULL;
+ALTER TABLE world_industry_ledger MODIFY COLUMN action ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply','freight_dispatch','freight_arrival','freight_refund','freight_fuel','civic_delivery','corridor_build','military_delivery') NOT NULL;
 INSERT INTO schema_migrations(version) VALUES('091_logistics_corridors_incidents')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
