@@ -1,5 +1,6 @@
 import {trainSummary} from './world-magitek-trains.js';
 import {resolveSession} from './auth.js';
+import {addJourneyStops,journeyStops,trainLocation} from './world-rail-stops.js';
 
 const ok=body=>({status:200,body});
 const fail=(status,error)=>({status,body:{error}});
@@ -34,7 +35,9 @@ export async function internalRailRoute(pool,req,path){
   const [routes]=await pool.execute('SELECT * FROM order_internal_rail_routes ORDER BY status,id DESC');
   const [journeys]=await pool.execute("SELECT j.id,j.route_id,j.train_consist_id,j.cargo_capacity_snapshot,j.passenger_capacity_snapshot,j.crew_required_snapshot,c.name AS train_name,DATE_FORMAT(j.departed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS departed_at,DATE_FORMAT(j.expected_arrival_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS expected_arrival_at,j.status,j.notes,j.dispatched_by,DATE_FORMAT(j.completed_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS completed_at FROM order_internal_rail_journeys j LEFT JOIN world_magitek_train_consists c ON c.id=j.train_consist_id ORDER BY j.id DESC LIMIT 150");
   const [stations]=await pool.execute('SELECT * FROM order_internal_rail_stations ORDER BY id');
-  return ok({server_now:new Date().toISOString(),stops:await stops(pool),stations,routes,trains:(await trainSummary(pool)).filter(t=>t.status==='assembled'),journeys:journeys.map(j=>journeyProgress(j))});
+  const stopRows=await journeyStops(pool,journeys.map(j=>j.id));
+  const enhanced=journeys.map(j=>{const stopList=stopRows.filter(s=>Number(s.journey_id)===Number(j.id));const route=routes.find(r=>Number(r.id)===Number(j.route_id));return {...journeyProgress(j),stops:stopList,location:trainLocation({...j,from_id:route?.from_id,to_id:route?.to_id},stopList)};});
+  return ok({server_now:new Date().toISOString(),stops:await stops(pool),stations,routes,trains:(await trainSummary(pool)).filter(t=>t.status==='assembled'),journeys:enhanced});
  }
  const station=/^\/internal-rail\/stations(?:\/(\d+))?$/.exec(path);
  if(station&&['POST','PUT','DELETE'].includes(req.method)){
@@ -116,6 +119,8 @@ export async function internalRailRoute(pool,req,path){
    if(active.length)return fail(409,'rail_journey_already_running');
    const body=await read(req);
    const trainId=body?.train_consist_id?Number(body.train_consist_id):null;
+   const stopIds=body?.intermediate_station_ids||[];
+   if(!Array.isArray(stopIds)||stopIds.length>8||stopIds.some(x=>!Number.isSafeInteger(x)||x<1))return fail(400,'invalid_rail_timetable');
    let train=null;
    if(trainId){
     if(!Number.isSafeInteger(trainId)||trainId<1)return fail(400,'invalid_rail_train_id');
@@ -141,6 +146,7 @@ export async function internalRailRoute(pool,req,path){
     (route_id,train_consist_id,cargo_capacity_snapshot,passenger_capacity_snapshot,crew_required_snapshot,departed_at,expected_arrival_at,dispatched_by)
     VALUES(?,?,?,?,?,UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL ? MINUTE),?)`,[
      routeId,trainId,train?.cargo_capacity||0,train?.transport_capacity||0,train?.crew_required||0,Number(route.duration_minutes),actor.id]);
+   if(!await addJourneyStops(db,{journeyId:created.insertId,route,stationIds:stopIds}))return fail(409,'invalid_intermediate_stations_or_timetable');
    return ok({id:created.insertId,dispatched:true,train_consist_id:trainId,
     cargo_capacity:train?.cargo_capacity||0,passenger_capacity:train?.transport_capacity||0});
   });
