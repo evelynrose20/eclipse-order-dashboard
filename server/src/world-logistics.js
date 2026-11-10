@@ -429,6 +429,17 @@ export async function logisticsRoute(pool,req,path,actor){
    if(s.status!=='in_transit')return fail(409,'shipment_disrupted');
    const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
    if(new Date(clock.now)<new Date(s.due_at))return fail(409,'transport_not_arrived_yet');
+   const [[weatherChecked]]=await db.execute('SELECT id FROM world_logistics_incidents WHERE shipment_id=?',[id]);
+   if(!weatherChecked){
+    const currentWeather=await weatherForShipment(db,s);
+    const event=shouldInterruptForWeather(currentWeather,id);
+    if(event){
+     await db.execute('INSERT INTO world_logistics_incidents(shipment_id,incident_type,severity,weather_snapshot) VALUES(?,?,?,?)',[id,event,event==='blizzard'?3:1,String(currentWeather)]);
+     await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes=? WHERE id=?",[event==='blizzard'?'Blizzard blocks the convoy':'Snowstorm delays delivery',id]);
+     await record(db,id,'disrupt','Weather interruption requires convoy orders',actor);
+     return ok({status:'disrupted',incident:event});
+    }
+   }
    const [destination]=await db.execute("SELECT f.status,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[s.destination_facility_id]);
    if(!destination.length||['destroyed','abandoned'].includes(destination[0].strategic_state))return fail(409,'destination_unavailable');
    if(!await ledger(db,s.destination_facility_id,s.item_id,Number(s.quantity),'freight_arrival',id,actor))return fail(409,'delivery_failed');
