@@ -105,6 +105,14 @@ async function weatherForShipment(db,shipment){
  const [weather]=await climateForRegions(db,[region]);
  return weather?.effective_weather?.weather||region.weather;
 }
+async function railJourneyHold(db,shipment,actor){
+ if(!shipment.train_journey_id)return false;
+ const [[journey]]=await db.execute('SELECT status FROM order_internal_rail_journeys WHERE id=?',[shipment.train_journey_id]);
+ if(journey&&journey.status!=='cancelled')return false;
+ await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes='Rail journey stopped; cargo awaiting command review' WHERE id=? AND status='in_transit'",[shipment.id]);
+ await record(db,shipment.id,'disrupt','Train journey unavailable; cargo held without loss',actor);
+ return true;
+}
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
 }
@@ -466,6 +474,7 @@ export async function logisticsRoute(pool,req,path,actor){
    if(s.status!=='in_transit')return fail(409,'shipment_disrupted');
    const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
    if(new Date(clock.now)<new Date(s.due_at))return fail(409,'transport_not_arrived_yet');
+   if(await railJourneyHold(db,s,actor))return ok({status:'disrupted',reason:'rail_journey_stopped'});
    const [[weatherChecked]]=await db.execute('SELECT id FROM world_logistics_incidents WHERE shipment_id=?',[id]);
    if(!weatherChecked){
     const currentWeather=await weatherForShipment(db,s);
@@ -501,6 +510,7 @@ export async function runLogisticsAutomation(pool){
   const result=await tx(pool,async db=>{
    const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[row.id]);
    if(!shipment||shipment.status!=='in_transit')return ok({skipped:true});
+   if(await railJourneyHold(db,shipment,{id:null}))return ok({disrupted:true});
    const [[priorIncident]]=await db.execute('SELECT id FROM world_logistics_incidents WHERE shipment_id=?',[shipment.id]);
    if(!priorIncident){
     const currentWeather=await weatherForShipment(db,shipment);
