@@ -1,6 +1,7 @@
 import SearchPicker from './SearchPicker';
 import React,{useEffect,useMemo,useState} from 'react';
 import './fronts.css';
+import FrontCargoPanel from './FrontCargoPanel.jsx';
 
 const CATEGORIES={tavern:'Tavern & Hospitality',apothecary:'Apothecary',workshop:'Artisan Workshop',merchant:'Merchant House',hospitality:'Guesthouse & Services',other:'Other Front'};
 const SYMBOLS={tavern:'mug-hot',apothecary:'flask',workshop:'hammer',merchant:'store',hospitality:'hotel',other:'building'};
@@ -121,8 +122,9 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
      {manage&&<div><span>ORDER TRADE SHARE</span><strong>{chosen.order_share_percent}%</strong></div>}
     </div>
     <nav className="eo-fronts-tabs" aria-label="Front sections">
-     {[['storefront','Storefront'],...(manage?[['stock','Goods & Stock'],['staff','Employees'],['accounts','Front Accounts'],['license','License & Approvals']]:[])].map(([id,label])=><button key={id} type="button" className={tab===id?'selected':''} onClick={()=>setTab(id)}>{label}</button>)}
+     {[['storefront','Storefront'],...(!readOnly?[['cargo','Front Cargo']]:[]),...(manage?[['stock','Goods & Stock'],['staff','Employees'],['accounts','Front Accounts'],['license','License & Approvals']]:[])].map(([id,label])=><button key={id} type="button" className={tab===id?'selected':''} onClick={()=>setTab(id)}>{label}</button>)}
     </nav>
+    {tab==='cargo'&&!readOnly&&<FrontCargoPanel request={request} command={command}/>}
     {tab==='storefront'&&<div className="eo-fronts-section">
      <div className="eo-fronts-section-head"><div><span>PUBLIC CATALOG</span><h4>Goods & Services</h4></div>{manage&&active&&<button type="button" onClick={()=>setOffering(newOffer())}>+ Add offering</button>}</div>
      <div className="eo-fronts-offers">{(detail.offers||[]).filter(o=>o.is_active||manage).map(o=><article key={o.id}><span className="eo-fronts-offer-icon">{o.offer_type==='service'?'✧':'▣'}</span><div><small>{o.offer_type==='service'?'IN-CHARACTER SERVICE':'STOREFRONT GOODS'}</small><strong>{o.name}</strong><p>{o.description}</p>{o.restricted&&<small>Restricted service · approved</small>}{o.offer_type==='goods'&&manage&&<small>{localStock(o.material_id)} allocated · {materialName(o.material_id)}</small>}</div><div className="eo-fronts-offer-right"><strong>{gil(o.posted_price)}</strong>{manage&&o.is_active&&<button type="button" disabled={busy} onClick={()=>act('/fronts/'+selected+'/offerings/'+o.id,null,'Offering retired.','DELETE')}>Retire</button>}</div></article>)}
