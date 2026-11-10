@@ -1536,8 +1536,27 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(physicalJourney.train_name,'New Cassia Expedition Supply Train');
   assert.equal(Number(physicalJourney.cargo_capacity_snapshot),madeTrain.body.cargo_capacity,'rail capacity comes from commissioned carriages');
   assert.equal(equippedList.body.trains.find(t=>Number(t.id)===Number(madeTrain.body.id)).wagon_count,4);
+  const railFreightType=await logisticsRoute(admin,request('POST',{name:'CI Assembled Train Freight',mode:'rail',capacity:10,minutes_per_leg:30,fuel_item_id:null,fuel_per_leg:0}),'/world-admin/logistics/templates',staff);
+  assert.equal(railFreightType.status,200,JSON.stringify(railFreightType.body));
+  const freightOnTrain=await logisticsRoute(admin,request('POST',{request_key:'ci-assembled-train-001',source_facility_id:mineFacilityId,destination_facility_id:depot.body.id,
+    transport_template_id:railFreightType.body.id,train_journey_id:equippedRun.body.id,item_id:'ceruleum-fuel',quantity:2}),
+    '/world-admin/logistics/dispatch',staff);
+  assert.equal(freightOnTrain.status,200,JSON.stringify(freightOnTrain.body));
+  const [[linkedManifest]]=await admin.execute('SELECT train_journey_id,vehicle_lot_id,quantity FROM world_logistics_shipments WHERE id=?',[freightOnTrain.body.shipment_id]);
+  assert.equal(Number(linkedManifest.train_journey_id),Number(equippedRun.body.id));
+  assert.equal(linkedManifest.vehicle_lot_id,null,'rail freight uses assembled train rather than an independent locomotive vehicle');
+  const oversizedTrainCargo=await logisticsRoute(admin,request('POST',{request_key:'ci-assembled-train-002',source_facility_id:mineFacilityId,destination_facility_id:depot.body.id,
+    transport_template_id:railFreightType.body.id,train_journey_id:equippedRun.body.id,item_id:'ceruleum-fuel',quantity:100}),
+    '/world-admin/logistics/dispatch',staff);
+  assert.equal(oversizedTrainCargo.status,409,'train cargo cannot exceed published transport capacity');
+
   const cancelPhysical=await internalRailRoute(admin,request('POST',{}),'/internal-rail/journeys/'+equippedRun.body.id+'/cancel');
   assert.equal(cancelPhysical.status,200,'cancelled trip releases the physical train for another route');
+  await admin.execute('UPDATE world_logistics_shipments SET due_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 MINUTE) WHERE id=?',[freightOnTrain.body.shipment_id]);
+  await runLogisticsAutomation(admin);
+  const [[heldCargo]]=await admin.execute('SELECT status FROM world_logistics_shipments WHERE id=?',[freightOnTrain.body.shipment_id]);
+  assert.equal(heldCargo.status,'disrupted','cancelled assembled train cannot credit cargo to destination');
+
   const oppositeService=await internalRailRoute(admin,request('POST',{...service,name:'CI Wrong-Origin Magitek Train Service',from_station_id:service.to_station_id,to_station_id:service.from_station_id}),'/internal-rail/routes');
   assert.equal(oppositeService.status,200);
   const teleportedTrain=await internalRailRoute(admin,request('POST',{train_consist_id:madeTrain.body.id}),'/internal-rail/routes/'+oppositeService.body.id+'/dispatch');
