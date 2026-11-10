@@ -1,4 +1,5 @@
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
+import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -226,7 +227,8 @@ export async function logisticsRoute(pool,req,path,actor){
   const [factions]=await pool.execute('SELECT id,name FROM order_factions ORDER BY name');
   const [relations]=await pool.execute('SELECT faction_a,faction_b,trust,tension FROM world_faction_relations ORDER BY faction_a,faction_b');
   const [militaryReceipts]=await pool.execute('SELECT shipment_id,installation_id,item_id,quantity FROM world_logistics_military_receipts');
-  const [installations]=await pool.execute('SELECT id,name,settlement_id,state FROM world_military_installations ORDER BY name');
+  const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
+  const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
   return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
