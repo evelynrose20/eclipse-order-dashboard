@@ -19,10 +19,26 @@ export function cargoProgress(start,end,now){
  const a=Date.parse(String(start||'')),b=Date.parse(String(end||''));
  return Number.isFinite(a)&&Number.isFinite(b)&&b>a?Math.max(0,Math.min(1,(now-a)/(b-a))):0;
 }
-export function cargoTrack(start,end,ids,segments=[],routeNodes=[]){
+const decodePoints=v=>{if(Array.isArray(v))return v;try{const p=JSON.parse(v);return Array.isArray(p)?p:[]}catch{return []}};
+export function cargoTrack(start,end,ids,segments=[],routeNodes=[],legacyRoutes=[],allSites=[]){
  if(!valid(start)||!valid(end))return [];
  const track=[start];
  for(const id of ids||[]){
+  const legacyId=String(id).startsWith('legacy:')?String(id).slice(7):null;
+  if(legacyId){
+   const legacy=legacyRoutes.find(r=>String(r.id)===legacyId);
+   if(legacy){
+    const from=allSites.find(p=>Number(p.id)===Number(legacy.from_settlement_id));
+    const to=allSites.find(p=>Number(p.id)===Number(legacy.to_settlement_id));
+    if(from&&to&&from.map_x!=null&&to.map_x!=null){
+     const a={x:Number(from.map_x),y:Number(from.map_y)},b={x:Number(to.map_x),y:Number(to.map_y)};
+     const forward=distance(track[track.length-1],a)<=distance(track[track.length-1],b);
+     const bend=decodePoints(legacy.waypoints).filter(valid);
+     track.push(forward?a:b,...(forward?bend:bend.reverse()),forward?b:a);
+    }
+   }
+   continue;
+  }
   const seg=segments.find(s=>String(s.id)===String(id));
   if(!seg)continue;
   const nodeA=routeNodes.find(n=>Number(n.id)===Number(seg.from_node_id));
@@ -31,13 +47,13 @@ export function cargoTrack(start,end,ids,segments=[],routeNodes=[]){
   const a={x:Number(nodeA.map_x),y:Number(nodeA.map_y)},b={x:Number(nodeB.map_x),y:Number(nodeB.map_y)};
   const near=distance(track[track.length-1],a)<=distance(track[track.length-1],b);
   const first=near?a:b,second=near?b:a;
-  track.push(first,...(Array.isArray(seg.waypoints)?seg.waypoints.filter(valid):[]),second);
+  track.push(first,...decodePoints(seg.waypoints).filter(valid),second);
  }
  track.push(end);
  return track;
 }
 const displayIcon=mode=>mode==='rail'?'fa-train':mode==='air'?'fa-plane':mode==='sea'?'fa-ship':mode==='pack'?'fa-horse':'fa-truck-fast';
-export default function LogisticsMovingCargo({freight,sites,segments=[],routeNodes=[],zone,railJourneys=[],railRoutes=[],showNpc=true}){
+export default function LogisticsMovingCargo({freight,sites,segments=[],routeNodes=[],legacyRoutes=[],zone,railJourneys=[],railRoutes=[],showNpc=true}){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const interval=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(interval)},[]);
  const settlements=useMemo(()=>new Map((sites||[]).map(s=>[Number(s.id),s])),[sites]);
@@ -54,7 +70,7 @@ export default function LogisticsMovingCargo({freight,sites,segments=[],routeNod
   if(!a||!b)continue;
   const portion=cargoProgress(s.departed_at,s.due_at,s.status==='disrupted'?Date.parse(s.due_at)-1:now);
   const segmentsUsed=Array.isArray(s.route_segments)?s.route_segments:[];
-  const at=pointAt(cargoTrack(a,b,segmentsUsed,segments,routeNodes),portion);
+  const at=pointAt(cargoTrack(a,b,segmentsUsed,segments,routeNodes,legacyRoutes,sites),portion);
   if(at)pips.push({key:'freight-'+s.id,at,mode:s.mode,name:s.item_name+' × '+s.quantity,status:s.status,detail:source?.name+' → '+dest?.name});
  }
  if(showNpc)for(const s of freight?.npc_shipments||[]){
@@ -70,7 +86,7 @@ export default function LogisticsMovingCargo({freight,sites,segments=[],routeNod
   if(!['in_transit','held'].includes(s.status))continue;
   const a=point(s.source_settlement_id),b=point(s.destination_settlement_id);
   if(!a||!b)continue;
-  const at=pointAt(cargoTrack(a,b,typeof s.route_json==='string'?JSON.parse(s.route_json):s.route_json,segments,routeNodes),cargoProgress(s.departed_at,s.due_at,s.status==='held'?Date.parse(s.due_at)-1:now));
+  const at=pointAt(cargoTrack(a,b,typeof s.route_json==='string'?decodePoints(s.route_json):s.route_json,segments,routeNodes,legacyRoutes,sites),cargoProgress(s.departed_at,s.due_at,s.status==='held'?Date.parse(s.due_at)-1:now));
   if(at)pips.push({key:'npc-'+s.id,at,mode:'pack',name:s.amount+' food units',status:s.status==='held'?'held':'in_transit',detail:s.origin_name+' → '+s.destination_name,npc:true});
  }
  for(const j of railJourneys){
