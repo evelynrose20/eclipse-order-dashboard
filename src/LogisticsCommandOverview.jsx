@@ -52,6 +52,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const focusNpcStock=npcWarehouses.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const npcActive=npcShipments.filter(s=>s.status==='in_transit');
  const npcRelief=(freight.npc_trades||[]).filter(s=>['in_transit','held'].includes(s.status));
+ const blockedCaravans=(freight.npc_trades||[]).filter(s=>s.status==='held'||s.status==='returned'||Number(s.reroute_count)>0);
  const railJourneys=(rails?.journeys||[]).filter(j=>j.status==='running');
  const railServices=rails?.routes||[];
  const marketContracts=(exchange?.contracts||[]).filter(c=>c.status==='open');
@@ -126,6 +127,8 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     {npcActive.slice(0,3).map(s=><div className="supply-movement" key={'npc-'+s.id}><i className="fa-solid fa-tractor"/><span><strong>NPC farm cargo · {s.item_name} × {num(s.quantity)}</strong><small>{npcRoutes.find(r=>Number(r.id)===Number(s.route_id))?.source_name||'Mapped farm'} → {sites.find(x=>Number(x.id)===Number(s.settlement_id))?.name||'NPC settlement'}</small><small>Arriving {new Date(s.arrival_at).toLocaleString()}</small></span></div>)}
     {railJourneys.slice(0,3).map(j=><div className="supply-movement" key={'rail-'+j.id}><i className="fa-solid fa-train"/><span><strong>Rail journey #{j.id}</strong><small>{kind(j.display_status||j.status)} · {duration(j.expected_arrival_at)} remaining</small></span></div>)}
     {!activeFreight.length&&!railJourneys.length&&!npcActive.length&&!npcRelief.length&&<p className="supply-muted">No convoys, farm deliveries or trains currently recorded as moving.</p>}
+    {blockedCaravans.length>0&&<div className="supply-intel-heading"><h3>Caravan outcomes</h3><span>{blockedCaravans.length} recorded</span></div>}
+    {blockedCaravans.slice(0,3).map(s=><div className="supply-movement" key={'caravan-outcome-'+s.id}><i className="fa-solid fa-route"/><span><strong>{s.status==='returned'?'Cargo returned to origin':s.status==='held'?'Caravan waiting for access':'Relief redirected'}</strong><small>{s.original_destination_name&&s.original_destination_name!==s.destination_name?s.original_destination_name+' → '+s.destination_name:s.origin_name+' → '+s.destination_name}</small><small>{num(s.amount)} food units · {s.status==='returned'?'Returned to existing reserves':s.status==='held'?'Delivery paused':'Continuing toward alternative settlement'}</small></span></div>)}
     {militaryAlerts.length>0&&<div className="supply-alert-note"><i className="fa-solid fa-shield-halved"/> {militaryAlerts.length} military installations need attention.</div>}
     <div className="supply-intel-heading"><h3>Foreign demand</h3><button onClick={()=>go('trade')}>Market</button></div>
     {marketContracts.slice(0,4).map(c=><button key={c.id} className="supply-priority" onClick={()=>go('trade')}><i className="fa-solid fa-coins"/><span><strong>{c.faction_name||'Foreign market'} · {c.material_name||c.equipment_name||'Trade order'}</strong><small>{num(Math.max(0,Number(c.required_quantity||0)-Number(c.delivered_quantity||0)))} units remaining</small></span><i className="fa-solid fa-chevron-right"/></button>)}
