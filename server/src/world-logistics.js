@@ -175,8 +175,8 @@ async function dispatch(db,b,actor,contract=null){
    JOIN world_magitek_train_consists c ON c.id=j.train_consist_id WHERE j.id=? FOR UPDATE`,[Number(b.train_journey_id)]);
   if(!train||train.status!=='running'||train.consist_status!=='assembled'||train.owner_faction_id!=='eclipse-order'||train.from_type!=='settlement'||train.to_type!=='settlement')return fail(409,'rail_journey_not_at_route');
   const stopRecords=await journeyStops(db,[train.id]);
-  const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
-  const loading=railCargoWindow(train,stopRecords,source.settlement_id,dest.settlement_id,new Date(clock.now));
+  const loading=railCargoWindow(train,stopRecords,source.settlement_id,dest.settlement_id,new Date());
+  const clock={now:new Date()};
   if(!loading)return fail(409,'rail_loading_window_closed_or_stop_not_served');
   const [[loaded]]=await db.execute("SELECT (SELECT COALESCE(SUM(quantity),0) FROM world_logistics_shipments WHERE train_journey_id=? AND status IN ('in_transit','disrupted'))+(SELECT COALESCE(SUM(quantity),0) FROM world_logistics_front_cargo WHERE train_journey_id=? AND status IN ('in_transit','held')) AS used",[train.id,train.id]);
   if(Number(loaded.used)+amount>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
