@@ -1257,6 +1257,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const [[retainedCycles]]=await admin.execute('SELECT COUNT(*) AS n FROM world_settlement_sim_history WHERE settlement_id=?',[npcId]);
   assert.ok(Number(retainedCycles.n)>0,'repeated setup retains simulation history');
 
+  // Keep the production acceptance deterministic; separate hazard tests cover winter penalties.
+  await admin.execute("UPDATE world_regions SET weather_mode='manual',weather='clear',temperature_c=20 WHERE id=?",[wrid]);
   // P3 acceptance: liberated voidsent mine -> rebuilt -> staffed -> ore production.
   const staff={id,account_role:'domina'};
   const deniedIndustry=await industryRoute(admin,request('GET'),'/world-admin/industry',{id,account_role:'member'});
