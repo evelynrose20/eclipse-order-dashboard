@@ -12,6 +12,7 @@ import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
 import InternalRail from './InternalRail.jsx';
+import FreightLogistics from './FreightLogistics.jsx';
 import Treasury from './Treasury.jsx';
 import Fronts from './Fronts.jsx';
 import ThrallChamber from './ThrallChamber.jsx';
@@ -96,7 +97,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['lore','Order Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
-  ...(!playerPreview&&canManage(profile.role)?[['internal-rail','Internal Rail Logistics','🚆']]:[]),
+  ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣'],['internal-rail','Internal Rail Logistics','🚆']]:[]),
   ['fronts','Order Fronts','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ['treasury','Order Treasury','◈'],
@@ -168,6 +169,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
+    {tab==='freight'&&admin&&<FreightLogistics request={request}/>}
     {tab==='internal-rail'&&admin&&<InternalRail request={request}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
