@@ -45,7 +45,11 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const focusMilitary=(military?.installations||[]).filter(i=>Number(i.settlement_id)===Number(focus?.id));
  const focusRail=(rails?.stations||[]).filter(st=>st.stop_type==='settlement'&&Number(st.stop_id)===Number(focus?.id));
  const focusNeeds=warn(focus);
+ const focusNpcRoutes=npcRoutes.filter(r=>Number(r.settlement_id)===Number(focus?.id));
+ const focusNpcStock=npcWarehouses.filter(r=>Number(r.settlement_id)===Number(focus?.id));
  const activeFreight=(freight.shipments||[]).filter(s=>['in_transit','disrupted'].includes(s.status));
+ const npcRoutes=freight.npc_routes||[],npcShipments=freight.npc_shipments||[],npcWarehouses=freight.npc_warehouse||[];
+ const npcActive=npcShipments.filter(s=>s.status==='in_transit');
  const railJourneys=(rails?.journeys||[]).filter(j=>j.status==='running');
  const railServices=rails?.routes||[];
  const externalContracts=(exchange?.contracts||[]).filter(c=>c.status==='open').length;
@@ -70,6 +74,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
   return from&&to?{id:s.id,from,to,status:s.status,name:s.item_name,quantity:s.quantity}:null;
  }).filter(Boolean);
  const railAt=focusRail.length?focusRail.map(st=>st.name).join(' · '):'No station recorded';
+ const npcLineLabels=npcRoutes.filter(r=>Number(r.settlement_id)===Number(focus?.id)).map(r=>r.source_name).join(' · ');
  const openWorld=()=>onNavigate?.('world');
  const go=(page)=>onNavigate?.(page);
  return <div className="supply-command">
@@ -90,13 +95,14 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
        {[...oldLines,...lines].map(l=><line key={l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link mode-'+l.type}/>)}
        {freightLines.map(l=><line key={'freight-'+l.id} x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y} className={'supply-link cargo-'+l.status}/>)}
       </svg>
+      {npcRoutes.filter(r=>r.map_settlement_id).map(r=>{const from=position(r.map_settlement_id),to=position(r.settlement_id);return from&&to?<svg key={'npc-route-'+r.id} className="supply-map-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1={from.x} y1={from.y} x2={to.x} y2={to.y} className="supply-link cargo-npc"/></svg>:null})}
       {mapSites.map(s=><button key={s.id} type="button" style={{left:s.map_x+'%',top:s.map_y+'%'}} className={'supply-map-site is-'+risk(s)+(Number(focus?.id)===Number(s.id)?' selected':'')} onClick={()=>setSelectedSite(String(s.id))} title={s.name+' · '+kind(s.strategic_state)} aria-label={'Inspect '+s.name}><i className={'fa-solid fa-'+(['mine','quarry'].includes(s.map_icon)?'mountain':s.map_icon==='farm'?'wheat-awn':'city')}/><span>{s.name}</span></button>)}
       {!mapSites.length&&<div className="supply-map-empty">There are no mapped settlements in this zone. Add locations in World Administration.</div>}
       <div className="supply-map-legend"><span><b className="legend-stable"/> Supplied / no alerts</span><span><b className="legend-alert"/> Needs attention</span><span><b className="legend-lost"/> Destroyed or abandoned</span><span><b className="legend-route"/> Active freight</span></div>
     </div>:<div className="supply-map-empty">Select a mapped region to view the transport network.</div>}
     <div className="supply-inspector">
      {focus?<><div className="supply-inspector-head"><div><small>SELECTED LOCATION · {kind(focus.strategic_state)}</small><h4>{focus.name}</h4><span>{focus.controlling_faction_id==='eclipse-order'?'Eclipse Order controlled':focus.controlling_faction_id?'Controlled by another faction':'Unclaimed'} · {num(focus.population)} residents</span></div><button type="button" onClick={openWorld}>Manage location</button></div>
-      <div className="supply-location-facts"><div><small>INDUSTRY</small><strong>{focusFacilities.length} facilities</strong><span>{focusStocks.length} material lines</span></div><div><small>CIVILIAN SUPPLIES</small><strong>{focusNeeds.length?focusNeeds.length+' alerts':'No active alerts'}</strong><span>{focus.civic_summary?.food_days!=null?num(focus.civic_summary.food_days)+' food days':'Food reserve unreported'} · {focus.civic_summary?.heat_days!=null?num(focus.civic_summary.heat_days)+' heat days':'Heat reserve unreported'}</span></div><div><small>TRANSPORT</small><strong>{focusShipments.length} freight records</strong><span>{railAt}</span></div><div><small>DEFENSE</small><strong>{focusMilitary.length} installations</strong><span>{focusMilitary.some(i=>i.state!=='operational')?'Repairs required':'No damaged installations recorded'}</span></div></div>
+      <div className="supply-location-facts"><div><small>INDUSTRY</small><strong>{focusFacilities.length} facilities</strong><span>{focusStocks.length} material lines</span></div><div><small>CIVILIAN SUPPLIES</small><strong>{focusNeeds.length?focusNeeds.length+' alerts':'No active alerts'}</strong><span>{focus.civic_summary?.food_days!=null?num(focus.civic_summary.food_days)+' food days':'Food reserve unreported'} · {focus.civic_summary?.heat_days!=null?num(focus.civic_summary.heat_days)+' heat days':'Heat reserve unreported'}</span></div><div><small>TRANSPORT</small><strong>{focusShipments.length} freight records · {focusNpcRoutes.length} farm routes</strong><span>{railAt}{npcLineLabels?' · Farm: '+npcLineLabels:''}</span></div><div><small>DEFENSE & STORES</small><strong>{focusMilitary.length} installations</strong><span>{focusNpcStock.length?focusNpcStock.length+' NPC cargo warehouse lines':focusMilitary.some(i=>i.state!=='operational')?'Repairs required':'No local warehouse stock recorded'}</span></div></div>
       <div className="supply-inspector-actions"><button onClick={()=>{onTab?.('shipments');openShipment?.()}}>Supply this theater</button><button onClick={openWorld}>Industry & settlements</button><button onClick={()=>go('internal-rail')}>Rail services</button></div>
      </>:<div className="supply-map-empty">Select a settlement to review its industrial stores, needs and transport operations.</div>}
     </div>
@@ -107,8 +113,9 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     {!shortageSites.length&&<p className="supply-muted">No civilian shortages flagged by the current settlement records.</p>}
     <div className="supply-intel-heading"><h3>Active movements</h3><button onClick={()=>onTab?.('shipments')}>All cargo</button></div>
     {activeFreight.slice(0,5).map(s=><div className="supply-movement" key={s.id}><i className={'fa-solid fa-'+(s.mode==='rail'?'train':s.mode==='air'?'plane':'truck')}/><span><strong>{s.item_name} × {num(s.quantity)}</strong><small>{s.source_name} → {s.destination_name}</small><small>{s.status==='disrupted'?'Movement interrupted':'ETA '+duration(s.due_at)}</small></span></div>)}
+    {npcActive.slice(0,3).map(s=><div className="supply-movement" key={'npc-'+s.id}><i className="fa-solid fa-tractor"/><span><strong>NPC farm cargo · {s.item_name} × {num(s.quantity)}</strong><small>{npcRoutes.find(r=>Number(r.id)===Number(s.route_id))?.source_name||'Mapped farm'} → {sites.find(x=>Number(x.id)===Number(s.settlement_id))?.name||'NPC settlement'}</small><small>Arriving {new Date(s.arrival_at).toLocaleString()}</small></span></div>)}
     {railJourneys.slice(0,3).map(j=><div className="supply-movement" key={'rail-'+j.id}><i className="fa-solid fa-train"/><span><strong>Rail journey #{j.id}</strong><small>{kind(j.display_status||j.status)} · {duration(j.expected_arrival_at)} remaining</small></span></div>)}
-    {!activeFreight.length&&!railJourneys.length&&<p className="supply-muted">No convoys or trains currently recorded as moving.</p>}
+    {!activeFreight.length&&!railJourneys.length&&!npcActive.length&&<p className="supply-muted">No convoys, farm deliveries or trains currently recorded as moving.</p>}
     {militaryAlerts.length>0&&<div className="supply-alert-note"><i className="fa-solid fa-shield-halved"/> {militaryAlerts.length} military installations need attention.</div>}
    </aside>
   </div>
@@ -118,7 +125,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     <button onClick={()=>go('world')}><i className="fa-solid fa-industry"/><strong>Industry & restoration</strong><span>{freight.facilities?.length||0} registered facilities · actual production and construction</span><small>Open World Administration</small></button>
     <button onClick={()=>go('internal-rail')}><i className="fa-solid fa-train"/><strong>Internal rail logistics</strong><span>{rails?railServices.length+' services · '+(rails.stations?.length||0)+' stations':'Rail data unavailable'} · train operations</span><small>Open railway command</small></button>
     <button onClick={()=>go('trade')}><i className="fa-solid fa-scale-balanced"/><strong>Merchant Exchange</strong><span>{exchange?(exchange.contracts?.length||0)+' contracts · '+(exchange.deliveries?.length||0)+' deliveries':'Market data unavailable'} · diplomacy and trade</span><small>Open the market</small></button>
-    <button onClick={()=>go('world')}><i className="fa-solid fa-seedling"/><strong>NPC settlements & farms</strong><span>{sites.filter(s=>s.controlling_faction_id&&s.controlling_faction_id!=='eclipse-order').length} NPC-controlled locations · autonomous agriculture</span><small>Open settlement management</small></button>
+    <button onClick={()=>go('world')}><i className="fa-solid fa-seedling"/><strong>NPC settlements & farms</strong><span>{npcRoutes.length} mapped farm supply routes · {npcActive.length} cargo journeys</span><small>Open settlement management</small></button>
     <button onClick={()=>go('world')}><i className="fa-solid fa-shield-halved"/><strong>Castrums & military supply</strong><span>{military?(military.installations?.length||0)+' installations':'Military records unavailable'} · garrisons and war stores</span><small>Open military installations</small></button>
     <button onClick={()=>go('fronts')}><i className="fa-solid fa-store"/><strong>Order fronts</strong><span>Existing businesses, reserved stock and commercial operations</span><small>Open Order fronts</small></button>
    </div>
