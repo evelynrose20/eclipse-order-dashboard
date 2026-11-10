@@ -136,6 +136,7 @@ async function dispatch(db,b,actor,contract=null){
  if(!goodId(sourceId)||!goodId(destId)||sourceId===destId||!goodId(templateId)||typeof itemId!=='string'||!qty(amount)||amount<0.001)return fail(400,'invalid_freight_manifest');
  const [[transport]]=await db.execute('SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1',[templateId]);
  if(!transport)return fail(404,'transport_template_not_found');
+ if(!modes.includes(transport.mode))return fail(409,'transport_mode_unavailable');
  if(amount>Number(transport.capacity))return fail(409,'cargo_capacity_exceeded');
  const [points]=await db.execute("SELECT f.id,COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) AS settlement_id,f.site_id,f.owner_faction_id,f.status,s.controlling_faction_id,s.strategic_state,COALESCE(site.controlling_faction_id,z.controlling_faction_id) AS site_faction_id,CASE WHEN f.site_id IS NOT NULL THEN l.travel_minutes ELSE 0 END AS access_minutes FROM world_industry_facilities f LEFT JOIN world_logistics_depot_links l ON l.facility_id=f.id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id LEFT JOIN world_settlements s ON s.id=COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) WHERE f.id IN (?,?) ORDER BY f.id FOR UPDATE",[sourceId,destId]);
  const source=points.find(p=>Number(p.id)===sourceId),dest=points.find(p=>Number(p.id)===destId);
@@ -343,11 +344,12 @@ export async function logisticsRoute(pool,req,path,actor){
    }
    if(!Number.isFinite(capacity)||capacity<=0||capacity>1000000||!Number.isFinite(fuelPer)||fuelPer<0||fuelPer>100000)return fail(409,'transport_has_no_usable_cargo_capacity');
    if(fuelPer&&!fuelId)return fail(409,'fleet_fuel_type_unavailable');
+   if(mode==='air'&&(!fuelId||fuelPer<3))return fail(409,'airship_fuel_requirement');
    const column=b.fleet_kind==='lot'?'source_equipment_lot_id':'source_train_consist_id';
    const [[existing]]=await db.execute('SELECT id FROM world_logistics_transport_templates WHERE '+column+'=?',[fleetId]);
    if(existing)return ok({id:existing.id,already_registered:true});
    const [saved]=await db.execute('INSERT INTO world_logistics_transport_templates(name,mode,capacity,minutes_per_leg,fuel_item_id,fuel_per_leg,source_equipment_lot_id,source_train_consist_id,created_by) VALUES(?,?,?,?,?,?,?,?,?)',
-    [name,mode,capacity,60,fuelId,fuelPer,b.fleet_kind==='lot'?fleetId:null,b.fleet_kind==='train'?fleetId:null,actor.id]);
+    [name,mode,capacity,mode==='air'?15:mode==='road'?60:90,fuelId,fuelPer,b.fleet_kind==='lot'?fleetId:null,b.fleet_kind==='train'?fleetId:null,actor.id]);
    return ok({id:saved.insertId,name,mode,capacity});
   });
  }
