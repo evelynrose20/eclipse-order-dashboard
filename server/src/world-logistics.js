@@ -337,6 +337,8 @@ export async function logisticsRoute(pool,req,path,actor){
   }
   if(action==='resume'){
    if(s.status!=='disrupted')return fail(409,'shipment_not_disrupted');
+   const [[incident]]=await db.execute("SELECT id FROM world_logistics_incidents WHERE shipment_id=? AND disposition='pending'",[id]);
+   if(incident)return fail(409,'convoy_requires_command_decision');
    await db.execute("UPDATE world_logistics_shipments SET status='in_transit' WHERE id=?",[id]);
    await record(db,id,'resume',b?.note||'Journey resumed',actor);return ok({status:'in_transit'});
   }
