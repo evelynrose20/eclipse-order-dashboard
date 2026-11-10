@@ -19,7 +19,7 @@ async function ledger(db,id,item,delta,action,shipment,actor){
  return true;
 }
 async function facilities(db){
- const [rows]=await db.execute("SELECT f.id,f.name,COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) AS settlement_id,f.site_id,f.status,f.owner_faction_id,s.name AS settlement_name,s.controlling_faction_id,s.region_id,s.zone_id,s.strategic_state,site.name AS site_name,l.state AS access_state FROM world_industry_facilities f LEFT JOIN world_logistics_depot_links l ON l.facility_id=f.id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_settlements s ON s.id=COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) ORDER BY f.name");
+ const [rows]=await db.execute("SELECT f.id,f.name,COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) AS settlement_id,f.site_id,f.status,f.owner_faction_id,s.name AS settlement_name,s.controlling_faction_id,s.region_id,s.zone_id,s.strategic_state,site.name AS site_name,site.zone_id AS site_zone_id,site.controlling_faction_id AS site_faction_id,l.state AS access_state FROM world_industry_facilities f LEFT JOIN world_logistics_depot_links l ON l.facility_id=f.id LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_settlements s ON s.id=COALESCE(f.settlement_id,CASE WHEN l.state='operational' THEN l.hub_settlement_id END) ORDER BY f.name");
  return rows;
 }
 export function freightPath(nodes,segments,originId,destinationId,mode){
