@@ -77,6 +77,7 @@ test('rail shipments must use an actual assembled train journey with checked fre
  assert.match(src,/cargo_capacity_snapshot/);
  assert.match(src,/train_journey_id/);
  assert.match(src,/railJourneyHold/);
+ assert.match(src,/cancelled_train_requires_cargo_recall/);
  assert.match(sql,/fk_freight_train_journey/);
  assert.doesNotMatch(sql,/DROP TABLE|DELETE FROM order_internal_rail_journeys/i);
 });
