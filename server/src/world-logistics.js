@@ -120,7 +120,7 @@ async function dispatch(db,b,actor,contract=null){
  const due=time.due_at;
  if(!due)return fail(409,'invalid_travel_time');
  const [created]=await db.execute('INSERT INTO world_logistics_shipments(request_key,contract_id,source_facility_id,destination_facility_id,transport_template_id,vehicle_lot_id,item_id,quantity,fuel_item_id,fuel_used,route_segments,route_nodes,mode,due_at,escort_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
- [b.request_key,contract?.id??null,sourceId,destId,templateId,vehicle.id,itemId,amount,transport.fuel_item_id||null,fuel,JSON.stringify(path.segment_ids),JSON.stringify(path.node_ids),transport.mode,due,b.escort_notes||'',actor.id]);
+ [b.request_key,contract?.id??null,sourceId,destId,templateId,vehicle.id,itemId,amount,transport.fuel_item_id||null,fuel,JSON.stringify(path.segment_ids),JSON.stringify(path.node_ids),transport.mode,due,b.escort_notes||'',contract?.created_by||actor.id]);
  if(!await ledger(db,sourceId,itemId,-amount,'freight_dispatch',created.insertId,actor))return fail(409,'freight_stock_insufficient');
  if(fuel>0&&!await ledger(db,sourceId,transport.fuel_item_id,-fuel,'freight_fuel',created.insertId,actor))return fail(409,'freight_fuel_insufficient');
  await record(db,created.insertId,'dispatch','Cargo loaded; '+path.legs+' route legs',actor);
@@ -183,11 +183,24 @@ export async function logisticsRoute(pool,req,path,actor){
   return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)):null});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
- let match=/^\/world-admin\/logistics\/contracts\/(\d+)\/(dispatch|pause|resume|retire)$/.exec(path);
+ let match=/^\/world-admin\/logistics\/contracts\/(\d+)\/(dispatch|pause|resume|retire|automation)$/.exec(path);
  if(match&&req.method==='POST')return tx(pool,async db=>{
   const [[contract]]=await db.execute('SELECT * FROM world_logistics_contracts WHERE id=? FOR UPDATE',[Number(match[1])]);
   if(!contract)return fail(404,'contract_not_found');
   const action=match[2];
+  if(action==='automation'){
+   const b=await body(req);
+   if(typeof b?.enabled!=='boolean'||(b.enabled&&!goodId(b.vehicle_lot_id)))return fail(400,'invalid_freight_automation');
+   if(b.enabled){
+    const [[t]]=await db.execute('SELECT mode FROM world_logistics_transport_templates WHERE id=?',[contract.transport_template_id]);
+    const [[place]]=await db.execute('SELECT settlement_id,controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?',[contract.source_facility_id]);
+    if(!t||!place)return fail(409,'auto_dispatch_source_unavailable');
+    const vehicle=await availableVehicle(db,b.vehicle_lot_id,t.mode,place.settlement_id);
+    if(!vehicle||vehicle.owner_faction_id!==place.controlling_faction_id)return fail(409,'auto_dispatch_vehicle_unavailable');
+   }
+   await db.execute('UPDATE world_logistics_contracts SET auto_dispatch=?,preferred_vehicle_lot_id=? WHERE id=?',[b.enabled?1:0,b.enabled?Number(b.vehicle_lot_id):null,contract.id]);
+   return ok({auto_dispatch:b.enabled});
+  }
   if(action==='dispatch'){
    if(contract.status!=='active')return fail(409,'contract_inactive');
    const [[clock]]=await db.execute('SELECT UTC_TIMESTAMP() AS now');
@@ -265,7 +278,7 @@ export async function logisticsRoute(pool,req,path,actor){
 export async function runLogisticsAutomation(pool){
  if(!pool)return {arrived:0,disrupted:0};
  const [due]=await pool.execute("SELECT id FROM world_logistics_shipments WHERE status='in_transit' AND due_at<=UTC_TIMESTAMP() ORDER BY due_at,id LIMIT 30");
- let arrived=0,disrupted=0;
+ let arrived=0,disrupted=0,dispatched=0;
  for(const row of due){
   const result=await tx(pool,async db=>{
    const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[row.id]);
@@ -284,5 +297,17 @@ export async function runLogisticsAutomation(pool){
   if(result.body.arrived)arrived++;
   if(result.body.disrupted)disrupted++;
  }
- return {arrived,disrupted};
+ const [scheduled]=await pool.execute("SELECT id FROM world_logistics_contracts WHERE auto_dispatch=1 AND status='active' AND preferred_vehicle_lot_id IS NOT NULL AND (last_dispatched_at IS NULL OR last_dispatched_at<=DATE_SUB(UTC_TIMESTAMP(),INTERVAL cadence_days DAY)) ORDER BY id LIMIT 15");
+ for(const scheduledContract of scheduled){
+  const output=await tx(pool,async db=>{
+   const [[contract]]=await db.execute('SELECT * FROM world_logistics_contracts WHERE id=? FOR UPDATE',[scheduledContract.id]);
+   if(!contract||!contract.auto_dispatch||contract.status!=='active'||!contract.preferred_vehicle_lot_id)return ok({skipped:true});
+   const [[due]]=await db.execute('SELECT IF(? IS NULL OR ?<=DATE_SUB(UTC_TIMESTAMP(),INTERVAL ? DAY),1,0) AS due',[contract.last_dispatched_at,contract.last_dispatched_at,contract.cadence_days]);
+   if(!due.due)return ok({skipped:true});
+   const [[clock]]=await db.execute("SELECT DATE_FORMAT(UTC_TIMESTAMP(),'%Y%m%d') AS day");
+   return dispatch(db,{request_key:'auto-'+contract.id+'-'+clock.day,vehicle_lot_id:contract.preferred_vehicle_lot_id,escort_notes:'Scheduled trade convoy'}, {id:null},contract);
+  });
+  if(output.status===200&&output.body.shipment_id&&!output.body.already_submitted)dispatched++;
+ }
+ return {arrived,disrupted,dispatched};
 }
