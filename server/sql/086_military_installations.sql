@@ -44,6 +44,6 @@ CREATE TABLE IF NOT EXISTS world_military_activity (
  INDEX ix_military_activity(installation_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ALTER TABLE world_industry_ledger MODIFY COLUMN action
- ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply','freight_dispatch','freight_arrival','freight_refund','freight_fuel','civic_delivery') NOT NULL;
+ ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply','freight_dispatch','freight_arrival','freight_refund','freight_fuel','civic_delivery','corridor_build') NOT NULL;
 INSERT INTO schema_migrations(version) VALUES('086_military_installations')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
