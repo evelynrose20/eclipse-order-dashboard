@@ -19,12 +19,12 @@ const duration=t=>{
  return n>=60?Math.floor(n/60)+'h '+n%60+'m':n+'m';
 };
 const fetchOptional=async request=>{
- const endpoints=[['world','/world-admin'],['rail','/internal-rail'],['exchange','/commerce'],['military','/world-admin/military']];
+ const endpoints=[['world','/world-admin'],['rail','/internal-rail'],['exchange','/commerce'],['military','/world-admin/military'],['fronts','/fronts']];
  const results=await Promise.allSettled(endpoints.map(async ([,url])=>request(url)));
  return Object.fromEntries(endpoints.map(([name],i)=>[name,results[i].status==='fulfilled'?results[i].value:null]));
 };
 
-export default function LogisticsCommandOverview({request,freight,onNavigate,onTab,openShipment}){
+export default function LogisticsCommandOverview({request,freight,onNavigate,onTab,openShipment,onPlanSupply}){
  const [sources,setSources]=useState({}),[selectedRegion,setSelectedRegion]=useState(''),[selectedZone,setSelectedZone]=useState(''),[selectedSite,setSelectedSite]=useState(''),[view,setView]=useState('network'),[error,setError]=useState('');
  async function reload(){
   const result=await fetchOptional(request);
@@ -32,7 +32,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
   setError(!result.world?'Territory network is temporarily unavailable. Cargo operations remain accessible.':'');
  }
  useEffect(()=>{let live=true;fetchOptional(request).then(result=>{if(live){setSources(result);setError(!result.world?'Territory network unavailable.':'')}});const timer=setInterval(()=>{if(live)fetchOptional(request).then(result=>{if(live)setSources(result)}).catch(()=>{})},60000);return()=>{live=false;clearInterval(timer)}},[request]);
- const world=sources.world,rails=sources.rail,exchange=sources.exchange,military=sources.military;
+ const world=sources.world,rails=sources.rail,exchange=sources.exchange,military=sources.military,fronts=sources.fronts;
  const regions=world?.regions||[],zones=world?.zones||[],sites=world?.settlements||[];
  const region=regions.find(x=>String(x.id)===selectedRegion)||regions[0];
  const regionZones=zones.filter(x=>Number(x.region_id)===Number(region?.id));
@@ -52,7 +52,8 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
  const npcActive=npcShipments.filter(s=>s.status==='in_transit');
  const railJourneys=(rails?.journeys||[]).filter(j=>j.status==='running');
  const railServices=rails?.routes||[];
- const externalContracts=(exchange?.contracts||[]).filter(c=>c.status==='open').length;
+ const marketContracts=(exchange?.contracts||[]).filter(c=>c.status==='open');
+ const externalContracts=marketContracts.length;
  const orderStock=freight.stocks||[];
  const shortageSites=sites.filter(s=>risk(s)==='alert').sort((a,b)=>warn(b).length-warn(a).length);
  const militaryAlerts=(military?.installations||[]).filter(i=>i.state!=='operational');
@@ -103,7 +104,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     <div className="supply-inspector">
      {focus?<><div className="supply-inspector-head"><div><small>SELECTED LOCATION · {kind(focus.strategic_state)}</small><h4>{focus.name}</h4><span>{focus.controlling_faction_id==='eclipse-order'?'Eclipse Order controlled':focus.controlling_faction_id?'Controlled by another faction':'Unclaimed'} · {num(focus.population)} residents</span></div><button type="button" onClick={openWorld}>Manage location</button></div>
       <div className="supply-location-facts"><div><small>INDUSTRY</small><strong>{focusFacilities.length} facilities</strong><span>{focusStocks.length} material lines</span></div><div><small>CIVILIAN SUPPLIES</small><strong>{focusNeeds.length?focusNeeds.length+' alerts':'No active alerts'}</strong><span>{focus.civic_summary?.food_days!=null?num(focus.civic_summary.food_days)+' food days':'Food reserve unreported'} · {focus.civic_summary?.heat_days!=null?num(focus.civic_summary.heat_days)+' heat days':'Heat reserve unreported'}</span></div><div><small>TRANSPORT</small><strong>{focusShipments.length} freight records · {focusNpcRoutes.length} farm routes</strong><span>{railAt}{npcLineLabels?' · Farm: '+npcLineLabels:''}</span></div><div><small>DEFENSE & STORES</small><strong>{focusMilitary.length} installations</strong><span>{focusNpcStock.length?focusNpcStock.length+' NPC cargo warehouse lines':focusMilitary.some(i=>i.state!=='operational')?'Repairs required':'No local warehouse stock recorded'}</span></div></div>
-      <div className="supply-inspector-actions"><button onClick={()=>{onTab?.('shipments');openShipment?.()}}>Supply this theater</button><button onClick={openWorld}>Industry & settlements</button><button onClick={()=>go('internal-rail')}>Rail services</button></div>
+      <div className="supply-inspector-actions"><button disabled={!focusFacilities.length} title={!focusFacilities.length?'Attach a facility at this settlement before receiving freight':'Plan a delivery to this settlement'} onClick={()=>onPlanSupply?.(focusFacilities[0].id)}>Send supplies here</button><button onClick={openWorld}>Industry & settlements</button><button onClick={()=>go('internal-rail')}>Rail services</button></div>
      </>:<div className="supply-map-empty">Select a settlement to review its industrial stores, needs and transport operations.</div>}
     </div>
    </section>
@@ -117,6 +118,9 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     {railJourneys.slice(0,3).map(j=><div className="supply-movement" key={'rail-'+j.id}><i className="fa-solid fa-train"/><span><strong>Rail journey #{j.id}</strong><small>{kind(j.display_status||j.status)} · {duration(j.expected_arrival_at)} remaining</small></span></div>)}
     {!activeFreight.length&&!railJourneys.length&&!npcActive.length&&<p className="supply-muted">No convoys, farm deliveries or trains currently recorded as moving.</p>}
     {militaryAlerts.length>0&&<div className="supply-alert-note"><i className="fa-solid fa-shield-halved"/> {militaryAlerts.length} military installations need attention.</div>}
+    <div className="supply-intel-heading"><h3>Foreign demand</h3><button onClick={()=>go('trade')}>Market</button></div>
+    {marketContracts.slice(0,4).map(c=><button key={c.id} className="supply-priority" onClick={()=>go('trade')}><i className="fa-solid fa-coins"/><span><strong>{c.faction_name||'Foreign market'} · {c.material_name||c.equipment_name||'Trade order'}</strong><small>{num(Math.max(0,Number(c.required_quantity||0)-Number(c.delivered_quantity||0)))} units remaining</small></span><i className="fa-solid fa-chevron-right"/></button>)}
+    {exchange&&!marketContracts.length&&<p className="supply-muted">No open external exchange contracts.</p>}
    </aside>
   </div>
   <div className="supply-systems">
@@ -127,7 +131,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
     <button onClick={()=>go('trade')}><i className="fa-solid fa-scale-balanced"/><strong>Merchant Exchange</strong><span>{exchange?(exchange.contracts?.length||0)+' contracts · '+(exchange.deliveries?.length||0)+' deliveries':'Market data unavailable'} · diplomacy and trade</span><small>Open the market</small></button>
     <button onClick={()=>go('world')}><i className="fa-solid fa-seedling"/><strong>NPC settlements & farms</strong><span>{npcRoutes.length} mapped farm supply routes · {npcActive.length} cargo journeys</span><small>Open settlement management</small></button>
     <button onClick={()=>go('world')}><i className="fa-solid fa-shield-halved"/><strong>Castrums & military supply</strong><span>{military?(military.installations?.length||0)+' installations':'Military records unavailable'} · garrisons and war stores</span><small>Open military installations</small></button>
-    <button onClick={()=>go('fronts')}><i className="fa-solid fa-store"/><strong>Order fronts</strong><span>Existing businesses, reserved stock and commercial operations</span><small>Open Order fronts</small></button>
+    <button onClick={()=>go('fronts')}><i className="fa-solid fa-store"/><strong>Order fronts</strong><span>{fronts?(fronts.fronts?.length||0)+' registered fronts · ':'Existing businesses · '}reserved stock and commercial operations</span><small>Open Order fronts</small></button>
    </div>
   </div>
  </div>;
