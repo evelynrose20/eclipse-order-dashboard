@@ -21,7 +21,7 @@ import {factionRoute} from './factions.js';
 import {worldAdministrationRoute} from './world-administration.js';
 import {runSettlementSimulation} from './world-settlement-simulation.js';
 import {runIndustryAutomation} from './world-industry-engine.js';
-import {runLogisticsAutomation} from './world-logistics.js';
+import {runLogisticsAutomation,runNpcTradeAutomation} from './world-logistics.js';
 import {internalRailRoute} from './internal-rail.js';
 import {craftingRoute} from './crafting.js';
 import {constructionRoute} from './construction.js';
@@ -188,6 +188,8 @@ const settlementTick=async()=>{
   const result=await runSettlementSimulation(pool,new Date());
   const industry=await runIndustryAutomation(pool,new Date());
   const freight=await runLogisticsAutomation(pool);
+  const npcRelief=await runNpcTradeAutomation(pool);
+  if(npcRelief.dispatched||npcRelief.delivered||npcRelief.held)console.log('[NPC relief] Dispatched:',npcRelief.dispatched,'delivered:',npcRelief.delivered,'held:',npcRelief.held);
   if(freight.arrived||freight.disrupted||freight.dispatched)console.log('[World freight] Dispatched:',freight.dispatched,'arrived:',freight.arrived,'awaiting review:',freight.disrupted);
   if(industry.production||industry.construction)console.log('[P3 Industry] Production cycles:',industry.production,'construction:',industry.construction);
   if(result.processed)console.log('[World simulation] Processed',result.processed,'autonomous settlement cycles');
