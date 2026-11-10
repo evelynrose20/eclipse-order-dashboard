@@ -37,7 +37,7 @@ export function cargoTrack(start,end,ids,segments=[],routeNodes=[]){
  return track;
 }
 const displayIcon=mode=>mode==='rail'?'fa-train':mode==='air'?'fa-plane':mode==='sea'?'fa-ship':mode==='pack'?'fa-horse':'fa-truck-fast';
-export default function LogisticsMovingCargo({freight,sites,segments=[],routeNodes=[],zone,showNpc=true}){
+export default function LogisticsMovingCargo({freight,sites,segments=[],routeNodes=[],zone,railJourneys=[],railRoutes=[],showNpc=true}){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const interval=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(interval)},[]);
  const settlements=useMemo(()=>new Map((sites||[]).map(s=>[Number(s.id),s])),[sites]);
@@ -57,12 +57,30 @@ export default function LogisticsMovingCargo({freight,sites,segments=[],routeNod
   const at=pointAt(cargoTrack(a,b,segmentsUsed,segments,routeNodes),portion);
   if(at)pips.push({key:'freight-'+s.id,at,mode:s.mode,name:s.item_name+' × '+s.quantity,status:s.status,detail:source?.name+' → '+dest?.name});
  }
+ if(showNpc)for(const s of freight?.npc_shipments||[]){
+  if(s.status!=='in_transit')continue;
+  const route=(freight?.npc_routes||[]).find(r=>Number(r.id)===Number(s.route_id));
+  if(!route?.map_settlement_id)continue;
+  const origin=point(route.map_settlement_id),end=point(s.settlement_id);
+  if(!origin||!end)continue;
+  const at=pointAt([origin,end],cargoProgress(s.dispatched_at,s.arrival_at,now));
+  if(at)pips.push({key:'farm-'+s.id,at,mode:'pack',name:s.item_name+' × '+s.quantity,detail:(route.source_name||'Mapped farm')+' → '+(route.destination_name||'NPC settlement'),status:'in_transit',npc:true});
+ }
  if(showNpc)for(const s of freight?.npc_trades||[]){
   if(!['in_transit','held'].includes(s.status))continue;
   const a=point(s.source_settlement_id),b=point(s.destination_settlement_id);
   if(!a||!b)continue;
   const at=pointAt(cargoTrack(a,b,typeof s.route_json==='string'?JSON.parse(s.route_json):s.route_json,segments,routeNodes),cargoProgress(s.departed_at,s.due_at,s.status==='held'?Date.parse(s.due_at)-1:now));
   if(at)pips.push({key:'npc-'+s.id,at,mode:'pack',name:s.amount+' food units',status:s.status==='held'?'held':'in_transit',detail:s.origin_name+' → '+s.destination_name,npc:true});
+ }
+ for(const j of railJourneys){
+  if(j.status!=='running'||(freight?.shipments||[]).some(s=>Number(s.train_journey_id)===Number(j.id)&&s.status==='in_transit'))continue;
+  const route=railRoutes.find(r=>Number(r.id)===Number(j.route_id));
+  if(!route||route.from_type!=='settlement'||route.to_type!=='settlement')continue;
+  const origin=point(route.from_id),end=point(route.to_id);
+  if(!origin||!end)continue;
+  const at=pointAt([origin,end],cargoProgress(j.departed_at,j.expected_arrival_at,now));
+  if(at)pips.push({key:'train-'+j.id,at,mode:'rail',name:j.train_name||'Order train',detail:route.name||'Internal railway',status:'in_transit'});
  }
  return <>{pips.map(p=><span key={p.key} className={'supply-map-cargo is-'+p.mode+(p.npc?' is-npc':'')+(p.status==='held'||p.status==='disrupted'?' is-held':'')} style={{left:p.at.x+'%',top:p.at.y+'%'}} title={p.name+' · '+p.detail+' · '+(p.status==='in_transit'?'Moving':'Held')} aria-label={p.name+' moving along '+p.detail}><i className={'fa-solid '+displayIcon(p.mode)}/></span>)}</>;
 }
