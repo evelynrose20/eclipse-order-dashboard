@@ -93,6 +93,18 @@ async function route(db,from,to,mode){
  const [corridors]=await db.execute("SELECT id,origin_settlement_id,destination_settlement_id,travel_minutes FROM world_logistics_corridors WHERE mode=? AND state='operational'",[mode]);
  return corridorPath(corridors,from,to);
 }
+export function shouldInterruptForWeather(weather,shipmentId){
+ const type=String(weather||'').toLowerCase();
+ if(type==='blizzard')return 'blizzard';
+ if(type==='snow'&&Number(shipmentId)%4===0)return 'snowstorm';
+ return null;
+}
+async function weatherForShipment(db,shipment){
+ const [[region]]=await db.execute("SELECT r.* FROM world_regions r JOIN world_settlements s ON s.region_id=r.id JOIN world_industry_facilities f ON f.settlement_id=s.id WHERE f.id=?",[shipment.destination_facility_id]);
+ if(!region)return null;
+ const [weather]=await climateForRegions(db,[region]);
+ return weather?.effective_weather?.weather||region.weather;
+}
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
 }
@@ -292,6 +304,26 @@ export async function logisticsRoute(pool,req,path,actor){
   await db.execute('INSERT INTO world_logistics_civic_receipts(shipment_id,settlement_id,item_id,quantity,actor_id) VALUES(?,?,?,?,?)',[id,settlement.id,shipment.item_id,shipment.quantity,actor.id]);
   return ok({saved:true,settlement_id:settlement.id,resource_kind:kind.resource_kind});
  });
+ match=/^\/world-admin\/logistics\/incidents\/(\d+)\/resolve$/.exec(path);
+ if(match&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!['wait','escort'].includes(b?.decision))return fail(400,'invalid_convoy_decision');
+  const [[incident]]=await db.execute('SELECT * FROM world_logistics_incidents WHERE id=? FOR UPDATE',[Number(match[1])]);
+  if(!incident)return fail(404,'convoy_incident_not_found');
+  if(incident.disposition!=='pending')return fail(409,'incident_already_resolved');
+  const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[incident.shipment_id]);
+  if(!shipment||shipment.status!=='disrupted')return fail(409,'convoy_not_waiting');
+  let delay=180;
+  if(b.decision==='escort'){
+   const [[guard]]=await db.execute("SELECT COALESCE(SUM(g.quantity),0) AS troops FROM world_military_installations i JOIN world_military_garrisons g ON g.installation_id=i.id JOIN world_industry_facilities f ON f.settlement_id=i.settlement_id WHERE f.id IN (?,?) AND i.state IN ('operational','damaged') AND i.condition_pct>=25",[shipment.source_facility_id,shipment.destination_facility_id]);
+   if(!guard||Number(guard.troops)<1)return fail(409,'escort_garrison_unavailable');
+   delay=30;
+  }
+  await db.execute("UPDATE world_logistics_incidents SET disposition=?,resolved_at=UTC_TIMESTAMP(),resolved_by=? WHERE id=?",[b.decision,actor.id,incident.id]);
+  await db.execute("UPDATE world_logistics_shipments SET status='in_transit',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE),incident_notes='' WHERE id=?",[delay,shipment.id]);
+  await record(db,shipment.id,'resume',b.decision==='escort'?'Military escorts assigned; cautious transit':'Convoy sheltering until weather improves',actor);
+  return ok({status:'in_transit',delay_minutes:delay});
+ });
  match=/^\/world-admin\/logistics\/shipments\/(\d+)\/(arrive|cancel|disrupt|resume)$/.exec(path);
  if(match&&req.method==='POST')return tx(pool,async db=>{
   const id=Number(match[1]),action=match[2],[[s]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[id]);
@@ -336,6 +368,17 @@ export async function runLogisticsAutomation(pool){
   const result=await tx(pool,async db=>{
    const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[row.id]);
    if(!shipment||shipment.status!=='in_transit')return ok({skipped:true});
+   const [[priorIncident]]=await db.execute('SELECT id FROM world_logistics_incidents WHERE shipment_id=?',[shipment.id]);
+   if(!priorIncident){
+    const currentWeather=await weatherForShipment(db,shipment);
+    const incidentType=shouldInterruptForWeather(currentWeather,shipment.id);
+    if(incidentType){
+     await db.execute("INSERT INTO world_logistics_incidents(shipment_id,incident_type,severity,weather_snapshot) VALUES(?,?,?,?)",[shipment.id,incidentType,incidentType==='blizzard'?3:1,String(currentWeather)]);
+     await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes=? WHERE id=?",[incidentType==='blizzard'?'Blizzard has blocked the convoy':'Heavy snowfall has slowed the convoy',shipment.id]);
+     await record(db,shipment.id,'disrupt','Weather interruption requiring a convoy order',{id:null});
+     return ok({disrupted:true});
+    }
+   }
    const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
    if(!place||!place.controlling_faction_id||place.controlling_faction_id!==place.owner_faction_id||['destroyed','abandoned'].includes(place.strategic_state)||['ruined','captured'].includes(place.status)){
     await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes='Destination inaccessible; awaiting command review' WHERE id=?",[shipment.id]);
