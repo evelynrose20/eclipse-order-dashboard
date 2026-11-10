@@ -170,11 +170,12 @@ export async function logisticsRoute(pool,req,path,actor){
  }
  if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
   const b=await body(req);
-  if(!b||!name(b.name,140)||!modes.includes(b.mode)||!goodId(b.origin_settlement_id)||!goodId(b.destination_settlement_id)||Number(b.origin_settlement_id)===Number(b.destination_settlement_id)||!Number.isInteger(b.travel_minutes)||b.travel_minutes<1||b.travel_minutes>10080)return fail(400,'invalid_corridor');
+  if(!b||!name(b.name,140)||!modes.includes(b.mode)||!goodId(b.origin_settlement_id)||!goodId(b.destination_settlement_id)||Number(b.origin_settlement_id)===Number(b.destination_settlement_id)||!Number.isInteger(b.travel_minutes)||b.travel_minutes<1||b.travel_minutes>10080||typeof b.construction_item_id!=='string'||!qty(b.construction_quantity))return fail(400,'invalid_corridor');
   return tx(pool,async db=>{
    const [locations]=await db.execute('SELECT id FROM world_settlements WHERE id IN (?,?)',[b.origin_settlement_id,b.destination_settlement_id]);
    if(locations.length!==2)return fail(404,'location_not_found');
-   const [saved]=await db.execute("INSERT INTO world_logistics_corridors(name,origin_settlement_id,destination_settlement_id,mode,state,travel_minutes,created_by) VALUES(?,?,?,?,?,?,?)",[b.name.trim(),b.origin_settlement_id,b.destination_settlement_id,b.mode,'planned',b.travel_minutes,actor.id]);
+   const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.construction_item_id]);if(!item)return fail(404,'construction_material_not_found');
+   const [saved]=await db.execute("INSERT INTO world_logistics_corridors(name,origin_settlement_id,destination_settlement_id,mode,state,travel_minutes,construction_item_id,construction_quantity,created_by) VALUES(?,?,?,?,?,?,?,?,?)",[b.name.trim(),b.origin_settlement_id,b.destination_settlement_id,b.mode,'planned',b.travel_minutes,b.construction_item_id,b.construction_quantity,actor.id]);
    return ok({id:saved.insertId,state:'planned'});
   });
  }
@@ -184,7 +185,12 @@ export async function logisticsRoute(pool,req,path,actor){
   if(!['planned','operational','damaged','closed'].includes(b?.state))return fail(400,'invalid_corridor_state');
   const [[corridor]]=await db.execute('SELECT * FROM world_logistics_corridors WHERE id=? FOR UPDATE',[Number(corridorMatch[1])]);
   if(!corridor)return fail(404,'corridor_not_found');
-  if(b.state==='operational'&&corridor.state==='planned')return fail(409,'corridor_requires_construction');
+  if(b.state==='operational'&&corridor.state!=='operational'){
+   if(!goodId(b.facility_id))return fail(400,'construction_supply_facility_required');
+   const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.settlement_id,s.controlling_faction_id FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?',[b.facility_id]);
+   if(!facility||facility.owner_faction_id!==facility.controlling_faction_id||![Number(corridor.origin_settlement_id),Number(corridor.destination_settlement_id)].includes(Number(facility.settlement_id)))return fail(409,'construction_supplies_must_be_at_corridor_endpoint');
+   if(!await ledger(db,facility.id,corridor.construction_item_id,-Number(corridor.construction_quantity),'corridor_build',corridor.id,actor))return fail(409,'corridor_construction_materials_insufficient');
+  }
   await db.execute('UPDATE world_logistics_corridors SET state=? WHERE id=?',[b.state,corridor.id]);
   return ok({state:b.state});
  });
