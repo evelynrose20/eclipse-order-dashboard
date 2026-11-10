@@ -259,3 +259,30 @@ export async function logisticsRoute(pool,req,path,actor){
  });
  return fail(404,'logistics_route_not_found');
 }
+
+/** Clock-driven delivery. Every manifest is locked and credited at most once.
+ * Disrupted journeys wait for staff review; no automated loss, harm, or territory change. */
+export async function runLogisticsAutomation(pool){
+ if(!pool)return {arrived:0,disrupted:0};
+ const [due]=await pool.execute("SELECT id FROM world_logistics_shipments WHERE status='in_transit' AND due_at<=UTC_TIMESTAMP() ORDER BY due_at,id LIMIT 30");
+ let arrived=0,disrupted=0;
+ for(const row of due){
+  const result=await tx(pool,async db=>{
+   const [[shipment]]=await db.execute('SELECT * FROM world_logistics_shipments WHERE id=? FOR UPDATE',[row.id]);
+   if(!shipment||shipment.status!=='in_transit')return ok({skipped:true});
+   const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
+   if(!place||!place.controlling_faction_id||place.controlling_faction_id!==place.owner_faction_id||['destroyed','abandoned'].includes(place.strategic_state)||['ruined','captured'].includes(place.status)){
+    await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes='Destination inaccessible; awaiting command review' WHERE id=?",[shipment.id]);
+    await record(db,shipment.id,'disrupt','Destination inaccessible; no cargo lost', {id:null});
+    return ok({disrupted:true});
+   }
+   if(!await ledger(db,shipment.destination_facility_id,shipment.item_id,Number(shipment.quantity),'freight_arrival',shipment.id,{id:null}))return fail(409,'destination_inventory_unavailable');
+   await db.execute("UPDATE world_logistics_shipments SET status='arrived',arrived_at=UTC_TIMESTAMP() WHERE id=? AND status='in_transit'",[shipment.id]);
+   await record(db,shipment.id,'arrival','Scheduled cargo arrival',{id:null});
+   return ok({arrived:true});
+  });
+  if(result.body.arrived)arrived++;
+  if(result.body.disrupted)disrupted++;
+ }
+ return {arrived,disrupted};
+}
