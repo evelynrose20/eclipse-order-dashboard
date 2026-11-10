@@ -1,4 +1,5 @@
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
+import {climateForRegions} from './world-region-climate.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air','sea','pack'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -47,6 +48,20 @@ export function freightPath(nodes,segments,originId,destinationId,mode){
  }
  return {node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length};
 }
+export function corridorPath(corridors,from,to){
+ const edges=new Map();
+ for(const link of corridors)for(const [a,b] of [[Number(link.origin_settlement_id),Number(link.destination_settlement_id)],[Number(link.destination_settlement_id),Number(link.origin_settlement_id)]]){
+  if(!edges.has(a))edges.set(a,[]);edges.get(a).push({to:b,id:link.id,minutes:Number(link.travel_minutes)});
+ }
+ const queue=[Number(from)],seen=new Set(queue),steps=new Map();
+ while(queue.length){const current=queue.shift();if(current===Number(to))break;
+  for(const next of edges.get(current)||[])if(!seen.has(next.to)){seen.add(next.to);steps.set(next.to,{from:current,...next});queue.push(next.to)}
+ }
+ if(!seen.has(Number(to)))return null;
+ const settlements=[Number(to)],segments=[];let minutes=0;
+ while(settlements[0]!==Number(from)){const step=steps.get(settlements[0]);if(!step)return null;segments.unshift('corridor:'+step.id);minutes+=step.minutes;settlements.unshift(step.from)}
+ return {node_ids:settlements.map(n=>'settlement:'+n),segment_ids:segments,legs:segments.length,duration_minutes:minutes};
+}
 async function route(db,from,to,mode){
  if(Number(from)===Number(to))return {node_ids:['settlement:'+from],segment_ids:['local'],legs:1,duration_minutes:10};
  if(mode==='rail'){
@@ -60,7 +75,10 @@ async function route(db,from,to,mode){
  ]);
  if(!a.length||!b.length)return null;
  // Current route graph is region-scoped: a cross-region itinerary needs explicit future network links.
- if(Number(a[0].region_id)!==Number(b[0].region_id))return null;
+ if(Number(a[0].region_id)!==Number(b[0].region_id)){
+  const [corridors]=await db.execute("SELECT id,origin_settlement_id,destination_settlement_id,travel_minutes FROM world_logistics_corridors WHERE mode=? AND state='operational'",[mode]);
+  return corridorPath(corridors,from,to);
+ }
  const [nodes]=await db.execute('SELECT id,settlement_id FROM world_route_nodes WHERE region_id=?',[a[0].region_id]);
  const [segments]=await db.execute('SELECT id,from_node_id,to_node_id,route_type FROM world_route_segments WHERE region_id=?',[a[0].region_id]);
  const graph=freightPath(nodes,segments,from,to,mode);
@@ -70,7 +88,10 @@ async function route(db,from,to,mode){
  const links=legacy.filter(r=>allowed[mode].includes(r.route_type));
  const oldNodes=[...new Set(links.flatMap(r=>[r.from_settlement_id,r.to_settlement_id]))].map(id=>({id:Number(id),settlement_id:Number(id)}));
  const oldEdges=links.map(e=>({id:'legacy:'+e.id,from_node_id:Number(e.from_settlement_id),to_node_id:Number(e.to_settlement_id),route_type:e.route_type}));
- return freightPath(oldNodes,oldEdges,from,to,mode);
+ const old=freightPath(oldNodes,oldEdges,from,to,mode);
+ if(old)return old;
+ const [corridors]=await db.execute("SELECT id,origin_settlement_id,destination_settlement_id,travel_minutes FROM world_logistics_corridors WHERE mode=? AND state='operational'",[mode]);
+ return corridorPath(corridors,from,to);
 }
 async function record(db,shipment,action,note,actor){
  await db.execute('INSERT INTO world_logistics_events(shipment_id,action,note,actor_id) VALUES(?,?,?,?)',[shipment,action,String(note||'').slice(0,500),actor.id]);
@@ -142,9 +163,31 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcRoutes]=await pool.execute("SELECT r.id,r.settlement_id,r.facility_id,r.site_id,r.map_settlement_id,r.travel_hours,r.cargo_capacity,r.enabled,settlement.name AS destination_name,COALESCE(site.name,marker.name) AS source_name FROM world_npc_cargo_routes r JOIN world_settlements settlement ON settlement.id=r.settlement_id LEFT JOIN world_industry_sites site ON site.id=r.site_id LEFT JOIN world_settlements marker ON marker.id=r.map_settlement_id ORDER BY r.id");
   const [npcShipments]=await pool.execute("SELECT s.id,s.route_id,s.settlement_id,s.item_id,s.quantity,s.status,s.arrival_at,s.delivered_at,i.name AS item_name FROM world_npc_cargo_shipments s JOIN world_industry_items i ON i.id=s.item_id ORDER BY s.id DESC LIMIT 120");
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
+  const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
+  const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
 
-  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse});
+  return ok({templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,civic_types:civicTypes,civic_receipts:civicReceipts,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,corridors,incidents});
  }
+ if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
+  const b=await body(req);
+  if(!b||!name(b.name,140)||!modes.includes(b.mode)||!goodId(b.origin_settlement_id)||!goodId(b.destination_settlement_id)||Number(b.origin_settlement_id)===Number(b.destination_settlement_id)||!Number.isInteger(b.travel_minutes)||b.travel_minutes<1||b.travel_minutes>10080)return fail(400,'invalid_corridor');
+  return tx(pool,async db=>{
+   const [locations]=await db.execute('SELECT id FROM world_settlements WHERE id IN (?,?)',[b.origin_settlement_id,b.destination_settlement_id]);
+   if(locations.length!==2)return fail(404,'location_not_found');
+   const [saved]=await db.execute("INSERT INTO world_logistics_corridors(name,origin_settlement_id,destination_settlement_id,mode,state,travel_minutes,created_by) VALUES(?,?,?,?,?,?,?)",[b.name.trim(),b.origin_settlement_id,b.destination_settlement_id,b.mode,'planned',b.travel_minutes,actor.id]);
+   return ok({id:saved.insertId,state:'planned'});
+  });
+ }
+ const corridorMatch=/^\/world-admin\/logistics\/corridors\/(\d+)\/state$/.exec(path);
+ if(corridorMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!['planned','operational','damaged','closed'].includes(b?.state))return fail(400,'invalid_corridor_state');
+  const [[corridor]]=await db.execute('SELECT * FROM world_logistics_corridors WHERE id=? FOR UPDATE',[Number(corridorMatch[1])]);
+  if(!corridor)return fail(404,'corridor_not_found');
+  if(b.state==='operational'&&corridor.state==='planned')return fail(409,'corridor_requires_construction');
+  await db.execute('UPDATE world_logistics_corridors SET state=? WHERE id=?',[b.state,corridor.id]);
+  return ok({state:b.state});
+ });
  if(path==='/world-admin/logistics/templates'&&req.method==='POST'){
   const b=await body(req);
   if(!name(b?.name,120)||!modes.includes(b.mode)||!qty(b.capacity)||!Number.isInteger(b.minutes_per_leg)||b.minutes_per_leg<1||b.minutes_per_leg>10080||typeof b.fuel_per_leg!=='number'||b.fuel_per_leg<0||b.fuel_per_leg>100000||Math.round(b.fuel_per_leg*1000)!==b.fuel_per_leg*1000||b.fuel_per_leg>0&&!b.fuel_item_id)return fail(400,'invalid_transport_template');
