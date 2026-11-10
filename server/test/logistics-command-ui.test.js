@@ -36,3 +36,10 @@ test('integrated screen matches imperial palette without oversized duplicated he
  assert.doesNotMatch(css,/#69527e|#9984ae|#26202d|#211d28/i);
  assert.match(command,/Supply priorities/);
 });
+
+test('supply view keeps mapped road geometry and background images',()=>{
+ assert.match(command,/region\.map_background_url/);
+ assert.match(command,/linePoints\(l\.from,l\.to,l\.waypoints\)/);
+ assert.match(command,/mode-rail-service/);
+ assert.match(command,/cargo-npc/);
+});
