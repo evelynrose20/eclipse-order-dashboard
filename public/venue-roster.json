@@ -1,0 +1,68 @@
+{
+  "staff": [
+    {
+      "id": "elira-sakurai",
+      "name": "Elira Sakurai",
+      "title": "The Domina",
+      "description": "Founder of The Midnight Eclipse. Once Garlean, now untethered from empire or mercy, Elira turned to crime, control, and experimentation after watching her homeland rot. Discovery is her doctrine; dominance, her method. Her use of thralls serves many purposes—most of which she does not explain, and never justifies.",
+      "image": "elira-sakurai.jpg"
+    },
+    {
+      "id": "staff-vacancy-1",
+      "vacancy": true,
+      "name": "Looking for staff",
+      "title": "Now recruiting",
+      "description": "Interested in helping at the venue? Open a ticket in our Discord to discuss joining the staff.",
+      "image": ""
+    },
+    {
+      "id": "staff-vacancy-2",
+      "vacancy": true,
+      "name": "Looking for staff",
+      "title": "Now recruiting",
+      "description": "Interested in helping at the venue? Open a ticket in our Discord to discuss joining the staff.",
+      "image": ""
+    },
+    {
+      "id": "kaede-akazaya",
+      "name": "Kaede Akazaya",
+      "title": "High Penumbra",
+      "description": "A member of the venue's staff. Speak with the Order through Discord for venue inquiries.",
+      "image": "kaede-akazaya.jpg"
+    }
+  ],
+  "thralls": [
+    {
+      "id": "thrall-vacancy-1",
+      "vacancy": true,
+      "name": "Looking for thralls",
+      "title": "Now recruiting",
+      "description": "Interested in joining the venue in a thrall role? Open a ticket in our Discord to discuss the process and expectations.",
+      "image": ""
+    },
+    {
+      "id": "thrall-vacancy-2",
+      "vacancy": true,
+      "name": "Looking for thralls",
+      "title": "Now recruiting",
+      "description": "Interested in joining the venue in a thrall role? Open a ticket in our Discord to discuss the process and expectations.",
+      "image": ""
+    },
+    {
+      "id": "thrall-vacancy-3",
+      "vacancy": true,
+      "name": "Looking for thralls",
+      "title": "Now recruiting",
+      "description": "Interested in joining the venue in a thrall role? Open a ticket in our Discord to discuss the process and expectations.",
+      "image": ""
+    },
+    {
+      "id": "thrall-vacancy-4",
+      "vacancy": true,
+      "name": "Looking for thralls",
+      "title": "Now recruiting",
+      "description": "Interested in joining the venue in a thrall role? Open a ticket in our Discord to discuss the process and expectations.",
+      "image": ""
+    }
+  ]
+}

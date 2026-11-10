@@ -34,9 +34,10 @@ jobs:
         run: npm run build
       - name: Add GitHub Pages routes for direct navigation
         run: |
-          mkdir -p dist/venue/menu dist/venue dist/portal dist/app
+          mkdir -p dist/venue/menu dist/venue/people dist/venue dist/portal dist/app
           cp dist/index.html dist/venue/index.html
           cp dist/index.html dist/venue/menu/index.html
+          cp dist/index.html dist/venue/people/index.html
           cp dist/index.html dist/portal/index.html
           cp dist/index.html dist/app/index.html
           cp dist/index.html dist/404.html

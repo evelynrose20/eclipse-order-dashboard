@@ -1,0 +1,28 @@
+/* The Midnight Eclipse public household roster */
+.venue-roster-intro{background:radial-gradient(ellipse at 75% 32%,#932b353f,transparent 50%),linear-gradient(145deg,#151e28,#0a0d12);padding:80px 0 68px;border-bottom:1px solid #71323c}
+.venue-roster-intro h1{font:700 clamp(55px,7.6vw,110px)/.9 var(--imperial-heading,'Arial Narrow',sans-serif);letter-spacing:-.02em;margin:22px 0}
+.venue-roster-intro h1 em{font-style:normal;color:#df545e}
+.venue-roster-intro p{color:#c2cbd0;max-width:670px;font-size:17px;line-height:1.75;margin-bottom:28px}
+.venue-roster-section{background:#10161d}
+.venue-roster-section> .venue-inner >p{max-width:800px;margin:-4px 0 30px}
+.venue-thrall-section{background:#17151b}
+.venue-roster-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:21px}
+.venue-roster-card{min-width:0;border:1px solid #69464d;background:linear-gradient(140deg,#222831,#171d25);overflow:hidden}
+.venue-roster-card.is-vacancy{border-color:#53606b}
+.venue-roster-portrait{height:265px;position:relative;overflow:hidden;background:radial-gradient(ellipse at center,#5c152355,#15171d 66%)}
+.venue-roster-portrait>img{height:100%;width:100%;display:block;object-fit:cover}
+.venue-roster-fallback{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:radial-gradient(circle,#78152545,#11141a 70%)}
+.venue-roster-fallback .venue-mark{width:118px;height:118px;border-color:#9e323e}
+.venue-roster-fallback .venue-order-emblem{width:88px;height:88px}
+.venue-roster-fallback>span:last-child{color:#bd9a9e;letter-spacing:.2em;font-size:10px}
+.venue-roster-copy{padding:23px 27px 29px}
+.venue-roster-label{display:block;font-size:10px;color:#ea8e95;letter-spacing:.16em;font-weight:700;margin-bottom:8px}
+.venue-roster-copy h3{font:500 clamp(29px,3vw,39px)/1.12 var(--imperial-heading,'Arial Narrow',sans-serif);margin:0 0 5px;color:#f1e7e6}
+.venue-roster-copy>strong{font-size:12px;font-weight:700;color:#dfabb0}
+.venue-roster-copy p{font-size:13px;color:#bdc6ca;line-height:1.8;margin:15px 0 0}
+.venue-roster-copy>a{display:inline-flex;gap:11px;align-items:center;margin-top:18px;padding:9px 13px;border:1px solid #bb636d;color:#f5d3d5;font-size:11px;font-weight:700}
+.venue-roster-copy>a:hover{background:#842d3b}
+.venue-roster-message{padding-top:50px;padding-bottom:65px;color:#e5d3d5}
+.venue-roster-message a{color:#ffa5ae;text-decoration:underline}
+.venue-service-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+@media(max-width:760px){.venue-roster-grid{grid-template-columns:1fr}.venue-roster-portrait{height:225px}.venue-roster-intro{padding:52px 0}.venue-roster-copy{padding:22px}}
