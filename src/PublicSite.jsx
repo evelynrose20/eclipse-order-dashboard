@@ -4,6 +4,13 @@ import './imperial-theme.css';
 import PublicChronicles from './PublicChronicles.jsx';
 import OrderEmblem from './OrderEmblem.jsx';
 
+const DISCORD_INVITE='https://discord.gg/ksqTw4SHYn';
+const FC_ACTIVITIES=[
+ {icon:'fa-flag',title:'War campaigns',subtitle:'Campaigns with lasting stakes',description:'Take part in unfolding military campaigns, territorial struggles, and the decisions that shape the Order’s future.'},
+ {icon:'fa-chess-knight',title:'Political intrigue',subtitle:'Influence is its own battlefield',description:'Navigate negotiations, rival factions, shifting alliances, and schemes whose consequences reach beyond a single event.'},
+ {icon:'fa-shield-halved',title:'Combat events',subtitle:'Fight for what matters',description:'Enter story-driven confrontations, tactical encounters, and dangerous missions where the outcome is not guaranteed.'},
+ {icon:'fa-martini-glass',title:'Venue nights',subtitle:'The Order beyond the battlefield',description:'Spend time with characters in a more social setting, build connections, and create opportunities for new stories.'}
+];
 const RECRUITMENT_LABELS={open:'RECRUITMENT OPEN',limited:'LIMITED RECRUITMENT',closed:'RECRUITMENT CLOSED'};
 const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const NAV=[
@@ -13,6 +20,7 @@ const NAV=[
 
  ['ranks','Hierarchy'],
  ['roleplay','Roleplay'],
+ ['activities','FC Activities'],
  ['bad-end','Bad End RP'],
  ['visit','Visit Us'],
  ['membership','Membership'],
@@ -87,8 +95,8 @@ export default function PublicSite(){
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
    <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>THE ECLIPSE ORDER</strong><small>NEW CASSIA · ILSABARD</small></span></a>
-   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
-   <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
+   <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>Join Discord</a><a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
+   <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-header-discord" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-discord" aria-hidden="true"/> Join Discord</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
   </header>
   <main id="content">
@@ -101,7 +109,7 @@ export default function PublicSite(){
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
      <h1>AN ORDER<br/><span className="imperial-headline-line">WITHOUT <em>EMPIRE.</em></span></h1>
      <p className="public-hero-subtitle">A Garlean-born syndicate of intelligence, criminal enterprise and hard-won loyalties. From the shadows of the Empire to the streets of New Cassia, the Eclipse Order builds its own power.</p>
-     <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
+     <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className="public-button-ghost"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our Discord <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
      <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · THE UNDERWORLD</span><span>03 · NEW CASSIA</span></div>
      <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership" className={'public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a></div>
@@ -161,6 +169,14 @@ export default function PublicSite(){
       <article><span>02</span><h3>Event chapters</h3><p>Join story events, including FC MSQ arcs that move the Order’s main narrative forward.</p></article>
       <article><span>03</span><h3>Dice & encounters</h3><p>Settle uncertain outcomes with custom dice rules, initiative, and a tactical battle map.</p></article>
      </div>
+    </div>
+   </section>
+   <section className="public-section public-activities" id="activities" aria-labelledby="public-activities-heading">
+    <div className="public-section-inner">
+     <SectionTag number="05 / FIELD OPERATIONS">LIFE WITHIN THE ORDER</SectionTag>
+     <div className="public-section-heading"><div><h2 id="public-activities-heading">More than a title.<br/><em>A world to take part in.</em></h2></div><p>From campaigns in the field to quiet deals behind closed doors, Eclipse Order events give members different ways to shape our shared story.</p></div>
+     <div className="public-activities-grid">{FC_ACTIVITIES.map(activity=><article className="public-activity-card" key={activity.title}><div className="public-activity-top"><span className="public-activity-symbol" aria-hidden="true"><i className={'fa-solid '+activity.icon}/></span><span className="public-activity-category">FC EVENTS</span></div><h3>{activity.title}</h3><strong>{activity.subtitle}</strong><p>{activity.description}</p></article>)}</div>
+     <div className="public-activities-after"><div><h3>Your character matters beyond events.</h3><p>Character-led roleplay, expeditions, intrigue, trade, crafting, and the Order’s ongoing story connect what happens between major events. Not every member needs to be a fighter to have a place here.</p><small>Event dates and participation details are shared through our community channels; no fixed schedule is promised here.</small></div><a className="public-button-primary" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our community <span aria-hidden="true">↗</span></a></div>
     </div>
    </section>
    <section className="public-section public-bad-end" id="bad-end">
@@ -240,7 +256,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="10">{recruitment==='closed'?'THE DOOR IS CLOSED':recruitment==='limited'?'AN INVITATION BY CONSIDERATION':'THE DOOR IS OPEN'}</SectionTag>
      <div className="public-membership-grid"><div><h2>Every oath begins<br/><em>with a choice.</em></h2><p>Whether you arrive as an ambitious operative, a quiet specialist, or someone with nowhere else left to go, the story begins when you decide to knock.</p>{applicationsAccepted?<a className="public-button-primary" href="?portal">Request membership <span aria-hidden="true">↗</span></a>:<span className="public-membership-closed">{recruitment==='closed'?'The Order is not accepting new members at present.':'Recruitment status is temporarily unavailable.'}</span>}{recruitment==='closed'&&<div className="public-recruitment-announcement" role="status"><strong>Notice from the Order</strong><p>{recruitmentReason||'Recruitment is presently closed.'}</p>{reopeningNote&&<p className="public-reopening-date">{reopeningNote}</p>}{recruitmentReopens&&<p className="public-reopening-date"><span>Anticipated reopening</span> <time dateTime={recruitmentReopens}>{new Date(recruitmentReopens+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}</time></p>}</div>}<span className="public-membership-note">{recruitment==='closed'?'Existing members may continue to enter through the member portal.':recruitment==='limited'?'The Order is considering applications selectively. Discord membership and approval by Order command are required.':'Discord server membership and approval by Order command are both required before portal access is granted.'}</span></div>
-      <div className="public-membership-steps">{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
+      <div className="public-membership-steps"><a className="public-membership-discord" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-discord" aria-hidden="true"/> Join the community Discord <span aria-hidden="true">↗</span></a>{[{title:'Introduce yourself',text:'Authorize Discord and, if needed, request to join the server.'},{title:'Meet the Order',text:'Order command reviews your Discord-linked membership and the Bad End RP expectations.'},{title:'Begin your story',text:'Once approved, build your character dossier and explore the Order’s events.'}].map((step,i)=><div className="public-membership-step" key={step.title}><span>0{i+1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></div>)}</div>
      </div>
     </div>
    </section>
@@ -256,7 +272,7 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#activities">FC Activities</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Join Discord</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
