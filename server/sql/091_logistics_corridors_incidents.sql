@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS world_logistics_corridors (
  mode ENUM('road','rail','air','sea','pack') NOT NULL,
  state ENUM('planned','operational','damaged','closed') NOT NULL DEFAULT 'planned',
  travel_minutes INT UNSIGNED NOT NULL DEFAULT 120,
+ construction_item_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ construction_quantity DECIMAL(15,3) NOT NULL,
+ FOREIGN KEY(construction_item_id) REFERENCES world_industry_items(id),
+ CONSTRAINT ck_freight_corridor_materials CHECK(construction_quantity>0),
  created_by CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -31,5 +35,6 @@ CREATE TABLE IF NOT EXISTS world_logistics_incidents (
  FOREIGN KEY(shipment_id) REFERENCES world_logistics_shipments(id),
  FOREIGN KEY(resolved_by) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ALTER TABLE world_industry_ledger MODIFY COLUMN action ENUM('produce','consume','byproduct','transfer_in','transfer_out','shared_in','project_commit','campaign_commit','military_supply','freight_dispatch','freight_arrival','freight_refund','freight_fuel','civic_delivery','corridor_build') NOT NULL;
 INSERT INTO schema_migrations(version) VALUES('091_logistics_corridors_incidents')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
