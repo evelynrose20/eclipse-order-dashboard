@@ -77,6 +77,22 @@ export async function supplyLineRoute(pool,req,path,actor,env){
    return ok({id:saved.insertId,status:b.activate?'active':'paused'});
   });
  }
+ const shipmentMatch=/^\/world-admin\/logistics\/supply-lines\/shipments\/(\d+)\/(resume|recall)$/.exec(path);
+ if(shipmentMatch&&req.method==='POST')return tx(pool,async db=>{
+  const [[cargo]]=await db.execute('SELECT * FROM world_logistics_supply_line_shipments WHERE id=? FOR UPDATE',[Number(shipmentMatch[1])]);
+  if(!cargo||!['in_transit','disrupted'].includes(cargo.status))return fail(409,'supply_shipment_not_recoverable');
+  if(shipmentMatch[2]==='resume'){
+   if(cargo.status!=='disrupted')return fail(409,'supply_shipment_not_disrupted');
+   const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
+   if(!safeLocation(cargo.destination_kind,dest))return fail(409,'supply_destination_still_unavailable');
+   await db.execute("UPDATE world_logistics_supply_line_shipments SET status='in_transit',incident_notes='',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 MINUTE) WHERE id=?",[cargo.id]);
+   return ok({status:'in_transit'});
+  }
+  const [[line]]=await db.execute('SELECT created_by FROM world_logistics_supply_lines WHERE id=?',[cargo.supply_line_id]);
+  if(!await shift(db,cargo.source_kind,cargo.source_id,cargo.item_id,Number(cargo.quantity),{id:line.created_by},'recall-'+cargo.id,env.ledger))return fail(409,'supply_recall_could_not_refund');
+  await db.execute("UPDATE world_logistics_supply_line_shipments SET status='cancelled',incident_notes='Cargo recalled to source; fuel not refunded' WHERE id=?",[cargo.id]);
+  return ok({status:'cancelled'});
+ });
  const statusMatch=/^\/world-admin\/logistics\/supply-lines\/(\d+)\/status$/.exec(path);
  if(statusMatch&&req.method==='POST'){
   const b=await parse(req);
