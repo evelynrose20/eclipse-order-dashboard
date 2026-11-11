@@ -56,7 +56,7 @@ export function freightPath(nodes,segments,originId,destinationId,mode){
  }
  const usedCrossings=pathSegments.filter(id=>String(id).startsWith('crossing:'));
  const crossingMinutes=usedCrossings.reduce((total,id)=>total+Number(segments.find(s=>String(s.id)===String(id))?.travel_minutes||30),0);
- return {node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length,crossing_legs:usedCrossings.length,crossing_minutes:crossingMinutes};
+ return usedCrossings.length?{node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length,crossing_legs:usedCrossings.length,crossing_minutes:crossingMinutes}:{node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length};
 }
 export function freightDuration(path,minutesPerLeg){return path.duration_minutes??((path.legs-(path.crossing_legs||0))*Number(minutesPerLeg)+(path.crossing_minutes||0))}
 export function corridorPath(corridors,from,to){
