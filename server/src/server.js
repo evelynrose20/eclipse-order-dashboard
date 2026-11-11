@@ -146,7 +146,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/ready'&&req.method==='GET')result=await readiness();
   else result=buildResponse(pathname,req.method,()=>({status:503,body:{status:'not_ready'}}));
  }catch(error){
-  if(error?.status===400||error?.status===413)result={status:error.status,body:{error:error.message}};
+  if([400,403,413,503].includes(error?.status))result={status:error.status,body:{error:error.message}};
   else{
    console.error('[Eclipse Order API] Request failed:',req.method,pathname,error?.code||error?.name||'internal_error');
    result={status:500,body:{error:'internal_error'}};
