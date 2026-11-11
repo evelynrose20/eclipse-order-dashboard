@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {resolveSession} from './auth.js';
+import {DEFAULT_UNBOUND_RANK,displayUnboundRank,validUnboundRank} from '../../src/characterRanks.js';
 
 const command=role=>role==='domina'||role==='high_command';
 const response=(status,body)=>({status,body});
@@ -63,7 +64,9 @@ export async function transitionRoute(pool,req,path){
    if(!ch||ch.player_account_id!==r.player_account_id||Boolean(ch.collar_bound)===Boolean(r.target_bound))return failRollback(connection,409,'character_changed_since_approval');
    const data=typeof ch.sheet_json==='string'?JSON.parse(ch.sheet_json):ch.sheet_json;
    data.collar_bound=Boolean(r.target_bound);
-   data.rank=r.target_bound?'Rank I: Fresh Intake / Unbroken':'Unbound: Free';
+   // Keep pre-binding standing on the complete sheet so unbinding restores it.
+   if(!validUnboundRank(data.unbound_rank))data.unbound_rank=DEFAULT_UNBOUND_RANK;
+   data.rank=r.target_bound?'Rank I: Fresh Intake / Unbroken':displayUnboundRank(data.unbound_rank);
    await connection.execute('UPDATE characters SET collar_bound=?,bound_rank=?,sheet_json=? WHERE id=?',
     [r.target_bound?1:0,r.target_bound?'rank_i':null,JSON.stringify(data),ch.id]);
    newState='applied';
