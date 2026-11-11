@@ -138,7 +138,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
   const p=coords(e);if(!p)return;
   dragRef.current={id:s.id,old:{x:Number(s.map_x),y:Number(s.map_y)},moved:false};
   e.currentTarget.setPointerCapture(e.pointerId);
-  onSelect(String(s.id));
+  onSelect(String(s.id),{open:false});
  }
  function pointerMove(e){
   const drag=dragRef.current;if(!drag)return;
@@ -210,7 +210,8 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  }
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
-  onSelect(String(s.id));
+  // Moving a marker selects it for editing without opening the settlement dossier.
+  onSelect(String(s.id),{open:mode!=='move'});
   if(canEdit&&drawing){
    chooseEndpoint(Number(s.id));
   }
