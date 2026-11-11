@@ -1,3 +1,4 @@
+import {runTreatyNegotiations,validTreatySchedule,sqlDate} from './world-treaty-negotiations.js';
 import {supplyLineRoute,runStandingSupplyAutomation} from './world-standing-supply-lines.js';
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
 import {installationReadiness} from './world-military-readiness.js';
@@ -300,12 +301,12 @@ export async function logisticsRoute(pool,req,path,actor){
  });
  if(path==='/world-admin/logistics/treaties'&&req.method==='POST'){
   const b=await body(req);
-  if(!b||typeof b.faction_a!=='string'||typeof b.faction_b!=='string'||b.faction_a===b.faction_b||!purposes.includes(b.purpose)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_trade_treaty');
+  if(!b||typeof b.faction_a!=='string'||typeof b.faction_b!=='string'||b.faction_a===b.faction_b||!purposes.includes(b.purpose)||typeof b.notes!=='string'||b.notes.length>600||!validTreatySchedule(b))return fail(400,'invalid_trade_treaty');
   return tx(pool,async db=>{
    const [factions]=await db.execute('SELECT id FROM order_factions WHERE id IN (?,?)',[b.faction_a,b.faction_b]);
    if(factions.length!==2)return fail(404,'faction_not_found');
    const [a,z]=[b.faction_a,b.faction_b].sort();
-   const [saved]=await db.execute("INSERT INTO world_logistics_trade_treaties(faction_a,faction_b,purpose,notes,created_by) VALUES(?,?,?,?,?)",[a,z,b.purpose,b.notes,actor.id]);
+   const [saved]=await db.execute("INSERT INTO world_logistics_trade_treaties(faction_a,faction_b,purpose,notes,created_by,starts_at,ends_at,response_due_at) VALUES(?,?,?,?,?,?,?,?)",[a,z,b.purpose,b.notes,actor.id,sqlDate(b.starts_at),sqlDate(b.ends_at),sqlDate(b.response_due_at)]);
    return ok({id:saved.insertId,status:'proposed'});
   });
  }
@@ -317,11 +318,23 @@ export async function logisticsRoute(pool,req,path,actor){
   if(!t)return fail(404,'treaty_not_found');
   if(t.status==='retired')return fail(409,'treaty_retired');
   if(b.status==='active'){
+   if(t.response_due_at&&t.status!=='approved'&&t.status!=='suspended')return fail(409,'waiting_for_npc_treaty_response');
+   if(t.starts_at&&new Date(t.starts_at)>new Date())return fail(409,'treaty_term_not_started');
+   if(t.ends_at&&new Date(t.ends_at)<=new Date())return fail(409,'treaty_term_expired');
    const [[relation]]=await db.execute('SELECT trust,tension FROM world_faction_relations WHERE faction_a=? AND faction_b=?',[t.faction_a,t.faction_b]);
    if(!relation||Number(relation.trust)<40||Number(relation.tension)>65)return fail(409,'faction_relations_do_not_support_trade');
   }
   await db.execute("UPDATE world_logistics_trade_treaties SET status=?,approved_by=IF(?='active',?,approved_by),approved_at=IF(?='active',UTC_TIMESTAMP(),approved_at) WHERE id=?",[b.status,b.status,actor.id,b.status,t.id]);
   return ok({status:b.status});
+ });
+ const renewMatch=/^\/world-admin\/logistics\/treaties\/(\d+)\/renegotiate$/.exec(path);
+ if(renewMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!validTreatySchedule(b)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_treaty_terms');
+  const [[existing]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(renewMatch[1])]);
+  if(!existing||!['countered','rejected','expired','suspended'].includes(existing.status))return fail(409,'treaty_not_open_for_renegotiation');
+  await db.execute("UPDATE world_logistics_trade_treaties SET status='proposed',notes=?,starts_at=?,ends_at=?,response_due_at=?,responded_at=NULL,response_reason='' WHERE id=?",[b.notes,sqlDate(b.starts_at),sqlDate(b.ends_at),sqlDate(b.response_due_at),existing.id]);
+  return ok({status:'proposed'});
  });
  if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
   const b=await body(req);
@@ -680,7 +693,8 @@ export async function runLogisticsAutomation(pool){
  }
  const warehouse=await runWarehouseAutomation(pool);
  const standing=await runStandingSupplyAutomation(pool,{route,facilities,ledger,availableVehicle,operationalAirDocks});
- return {arrived,disrupted,dispatched,warehouse,standing};
+ const negotiations=await runTreatyNegotiations(pool);
+ return {arrived,disrupted,dispatched,warehouse,standing,negotiations};
 }
 
 /** Independent NPC food relief is bounded by actual reserves, workers, mapped routes and diplomatic access.
