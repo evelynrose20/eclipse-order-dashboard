@@ -383,19 +383,41 @@ export async function logisticsRoute(pool,req,path,actor){
    return ok({id:created.insertId,status:'planned'});
   });
  }
+ const dockEdit=/^\/world-admin\/logistics\/air-docks\/(\d+)\/edit$/.exec(path);
+ if(dockEdit&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!name(b?.name,120)||typeof b?.material_item_id!=='string'||!qty(Number(b.material_quantity)))return fail(400,'invalid_air_dock_edit');
+  const [[dock]]=await db.execute('SELECT * FROM world_logistics_air_docks WHERE id=? FOR UPDATE',[Number(dockEdit[1])]);
+  if(!dock)return fail(404,'air_dock_not_found');
+  if(dock.commissioned_at!=null&&(b.material_item_id!==dock.material_item_id||Number(b.material_quantity)!==Number(dock.material_quantity)))
+   return fail(409,'commissioned_dock_construction_locked');
+  const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.material_item_id]);
+  if(!item)return fail(404,'construction_item_not_found');
+  await db.execute('UPDATE world_logistics_air_docks SET name=?,material_item_id=?,material_quantity=? WHERE id=?',
+   [b.name.trim(),b.material_item_id,Number(b.material_quantity),dock.id]);
+  return ok({saved:true});
+ });
  const dockMatch=/^\/world-admin\/logistics\/air-docks\/(\d+)\/status$/.exec(path);
  if(dockMatch&&req.method==='POST')return tx(pool,async db=>{
   const b=await body(req);
   if(!['operational','damaged','closed'].includes(b?.status))return fail(400,'invalid_air_dock_status');
   const [[dock]]=await db.execute('SELECT * FROM world_logistics_air_docks WHERE id=? FOR UPDATE',[Number(dockMatch[1])]);
   if(!dock)return fail(404,'air_dock_not_found');
-  if(b.status==='operational'&&dock.status!=='operational'){
+  if(b.status===dock.status)return ok({status:dock.status,unchanged:true});
+  // Reopen a commissioned closed facility without charging reconstruction materials.
+  // Damaged facilities and never-commissioned sites still require real supplies.
+  const reopening=b.status==='operational'&&dock.status==='closed'&&dock.commissioned_at!=null;
+  if(b.status==='operational'&&dock.status!=='operational'&&!reopening){
    if(!goodId(b.facility_id))return fail(400,'air_dock_supply_depot_required');
    const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.settlement_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[Number(b.facility_id)]);
    if(!facility||Number(facility.settlement_id)!==Number(dock.settlement_id)||facility.owner_faction_id!=='eclipse-order'||facility.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(facility.strategic_state))return fail(409,'air_dock_supply_must_be_local');
    if(!await ledger(db,facility.id,dock.material_item_id,-Number(dock.material_quantity),'corridor_build',dock.id,actor))return fail(409,'air_dock_materials_insufficient');
   }
-  await db.execute('UPDATE world_logistics_air_docks SET status=?,commissioned_at=IF(?="operational",UTC_TIMESTAMP(),commissioned_at) WHERE id=?',[b.status,b.status,dock.id]);
+  if(b.status==='operational'){
+   const [[location]]=await db.execute('SELECT controlling_faction_id,strategic_state FROM world_settlements WHERE id=?',[dock.settlement_id]);
+   if(!location||location.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(location.strategic_state))return fail(409,'air_dock_requires_order_settlement');
+  }
+  await db.execute('UPDATE world_logistics_air_docks SET status=?,commissioned_at=IF(?="operational",COALESCE(commissioned_at,UTC_TIMESTAMP()),commissioned_at) WHERE id=?',[b.status,b.status,dock.id]);
   return ok({status:b.status});
  });
  if(path==='/world-admin/logistics/itineraries'&&req.method==='POST'){
