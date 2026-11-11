@@ -141,6 +141,8 @@ export async function runStandingSupplyAutomation(pool,env){
   const result=await tx(pool,async db=>{
    const [[line]]=await db.execute('SELECT * FROM world_logistics_supply_lines WHERE id=? FOR UPDATE',[entry.id]);
    if(!line||!['active','waiting'].includes(line.status))return ok({skipped:true});
+   const [[clock]]=await db.execute('SELECT ?<=UTC_TIMESTAMP() AS due',[line.next_due_at]);
+   if(!clock.due)return ok({skipped:true}); // concurrent scheduler already advanced this departure
    const [src,dest]=await Promise.all([location(db,line.source_kind,line.source_id,env.facilities,true),location(db,line.destination_kind,line.destination_id,env.facilities,true)]);
    if(!safeLocation(line.source_kind,src)||!safeLocation(line.destination_kind,dest))return markWaiting(db,line,'Supply endpoint unavailable');
    const [[vehicleTemplate]]=await db.execute("SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1",[line.transport_template_id]);
