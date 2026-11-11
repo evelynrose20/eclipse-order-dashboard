@@ -39,7 +39,8 @@ test('nearness is advisory, not permission to load an unconnected train',async()
 
 test('persistent railway freight requires actual train, service, and return journey',()=>{
  assert.match(lines,/mode.mode==='rail'/);
- assert.match(lines,/rail_train_and_service_required/);
+ assert.match(lines,/rail_train_required/);
+ assert.match(lines,/ensureMappedRailService/);
  assert.match(lines,/availableConsist\(db,line.train_consist_id/);
  assert.match(lines,/Number\(train.cargo_capacity\)/);
  assert.match(lines,/startRailJourney\(db,rail.forward/);
@@ -57,7 +58,8 @@ test('persistent railway freight requires actual train, service, and return jour
 
 test('UI exposes assembled train, station service, track proximity and repair destinations',()=>{
  assert.match(ui,/Assembled freight train/);
- assert.match(ui,/Railway service between stations/);
+ assert.doesNotMatch(ui,/Railway service between stations/);
+ assert.match(ui,/Railway access/);
  assert.match(ui,/Inspect track near source/);
  assert.match(ui,/Repair \/ industry depot/);
  assert.match(ui,/draft.mode!=='rail'/);

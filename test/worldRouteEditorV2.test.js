@@ -43,7 +43,7 @@ test('railway construction and facilities no longer appear in territory map',asy
  assert.doesNotMatch(map,/RailInfrastructurePanel|\['track','Lay track'\]|\['rail','Railway'\]/);
  assert.match(admin,/routes=\{routes\.filter\(r=>String\(r\.region_id\)===region/);
  assert.match(admin,/networkSegments=\{networkSegments\.filter\(e=>String\(e\.region_id\)===region/);
- assert.match(nav,/'internal-rail':'train'/);
+ assert.doesNotMatch(nav,/'internal-rail':'train'/);
  assert.match(map,/\['rail','Railway \(map only\)'\]/);
  assert.match(map,/wtm-rail-ties/);
  assert.doesNotMatch(admin,/Windows railway API needs updating/);

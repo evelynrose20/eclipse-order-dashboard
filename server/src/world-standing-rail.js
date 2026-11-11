@@ -44,6 +44,38 @@ export async function railService(db,from,to,preferredId=null){
  if(!reverse)return {available:false,reason:'An operational return service is required for repeating trains'};
  return {available:true,forward:selected,reverse,tracks};
 }
+/**
+ * Map-first compatibility layer: only real connected tracks can create operational
+ * station/service records. Historic journeys and existing rail schedules remain intact.
+ */
+export async function ensureMappedRailService(db,from,to,actorId,preferredId=null){
+ const tracks=await mappedRailTrack(db,from,to);
+ if(!tracks)return {available:false,reason:'Mapped rail tracks do not connect these locations'};
+ const [places]=await db.execute("SELECT id,name,controlling_faction_id,strategic_state FROM world_settlements WHERE id IN (?,?) ORDER BY id FOR UPDATE",[from,to]);
+ if(places.length!==2||places.some(p=>p.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(p.strategic_state)))return {available:false,reason:'Both railway locations must be Order-controlled and accessible'};
+ const stopIds=new Map();
+ for(const settlement of places){
+  const [existing]=await db.execute("SELECT id,status FROM order_internal_rail_stations WHERE stop_type='settlement' AND stop_id=? ORDER BY CASE WHEN status='operational' THEN 0 ELSE 1 END,id LIMIT 1 FOR UPDATE",[settlement.id]);
+  if(existing.length){
+   if(existing[0].status!=='operational')return {available:false,reason:settlement.name+' railway terminal is not operational'};
+   stopIds.set(Number(settlement.id),existing[0].id);
+  }else{
+   const [created]=await db.execute("INSERT INTO order_internal_rail_stations(name,stop_type,stop_id,status,platforms,notes,created_by) VALUES(?,'settlement',?,'operational',1,?,?)",[settlement.name+' Rail Terminal',settlement.id,'Managed by mapped railway supply network',actorId]);
+   stopIds.set(Number(settlement.id),created.insertId);
+  }
+ }
+ for(const [a,b] of [[Number(from),Number(to)],[Number(to),Number(from)]]){
+  const [existing]=await db.execute("SELECT id,status FROM order_internal_rail_routes WHERE from_type='settlement' AND from_id=? AND to_type='settlement' AND to_id=? ORDER BY CASE WHEN status='active' THEN 0 ELSE 1 END,id LIMIT 1 FOR UPDATE",[a,b]);
+  if(existing.length&&existing[0].status==='paused')return {available:false,reason:'Rail service is paused; resume it in Supply Lines → Railway access'};
+  if(!existing.length||existing[0].status==='retired'){
+   const origin=places.find(p=>Number(p.id)===a),dest=places.find(p=>Number(p.id)===b);
+   // Initial travel time is a conservative simulation estimate, based on mapped segments.
+   const minutes=Math.min(10080,Math.max(15,tracks.length*20));
+   await db.execute("INSERT INTO order_internal_rail_routes(name,from_station_id,to_station_id,from_type,from_id,to_type,to_id,duration_minutes,status,cargo_notes,created_by) VALUES(?,? ,?,'settlement',?,'settlement',?,?,'active',?,?)",[origin.name+' to '+dest.name+' Freight',stopIds.get(a),stopIds.get(b),a,b,minutes,'Automatically registered from connected railway map',actorId]);
+  }
+ }
+ return railService(db,from,to,preferredId);
+}
 export async function availableConsist(db,id,sourceStation){
  const list=await trainSummary(db);
  const train=list.find(t=>Number(t.id)===Number(id)&&t.status==='assembled'&&t.owner_faction_id==='eclipse-order'&&t.wagon_count>0&&t.cargo_capacity>0);

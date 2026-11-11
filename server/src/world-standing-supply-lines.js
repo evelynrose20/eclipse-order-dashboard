@@ -1,4 +1,4 @@
-import {railService,availableConsist,startRailJourney,nearbyMappedRail} from './world-standing-rail.js';
+import {railService,ensureMappedRailService,availableConsist,startRailJourney,nearbyMappedRail} from './world-standing-rail.js';
 import {trainSummary} from './world-magitek-trains.js';
 // Persistent, opt-in supply network. No implicit freight, stock or vehicle generation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -83,13 +83,15 @@ export async function supplyLineRoute(pool,req,path,actor,env){
    if(mode.mode==='air'&&!await env.operationalAirDocks(db,src.settlement_id,dst.settlement_id))return fail(409,'supply_line_air_docks_required');
    let rail=null;
    if(mode.mode==='rail'){
-    if(!positive(b.train_consist_id)||!positive(b.rail_route_id))return fail(400,'rail_train_and_service_required');
-    rail=await railService(db,src.settlement_id,dst.settlement_id,b.rail_route_id);
-    if(!rail.available)return fail(409,'supply_rail_not_connected');
+    if(!positive(b.train_consist_id))return fail(400,'rail_train_required');
+    // Creating a standing supply line registers a two-way service only when
+    // the authored map tracks form a real connected path.
+    rail=await ensureMappedRailService(db,src.settlement_id,dst.settlement_id,actor.id,positive(b.rail_route_id)?b.rail_route_id:null);
+    if(!rail.available)return fail(409,rail.reason||'supply_rail_not_connected');
     const train=await availableConsist(db,b.train_consist_id,rail.forward.from_station_id);
     if(!train||Number(train.locomotive_lot_id)!==Number(b.vehicle_lot_id))return fail(409,'supply_rail_train_unavailable');
    }else if(!await env.route(db,src.settlement_id,dst.settlement_id,mode.mode))return fail(409,'supply_line_route_unavailable');
-   const [saved]=await db.execute('INSERT INTO world_logistics_supply_lines(name,source_kind,source_id,destination_kind,destination_id,item_id,quantity,keep_at_least,destination_target,transport_template_id,vehicle_lot_id,interval_minutes,status,created_by,train_consist_id,rail_route_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.name.trim(),b.source_kind,b.source_id,b.destination_kind,b.destination_id,b.item_id,b.quantity,Number(b.keep_at_least||0),b.destination_target??null,b.transport_template_id,b.vehicle_lot_id,b.interval_minutes,b.activate?'active':'paused',actor.id,mode.mode==='rail'?b.train_consist_id:null,mode.mode==='rail'?b.rail_route_id:null]);
+   const [saved]=await db.execute('INSERT INTO world_logistics_supply_lines(name,source_kind,source_id,destination_kind,destination_id,item_id,quantity,keep_at_least,destination_target,transport_template_id,vehicle_lot_id,interval_minutes,status,created_by,train_consist_id,rail_route_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.name.trim(),b.source_kind,b.source_id,b.destination_kind,b.destination_id,b.item_id,b.quantity,Number(b.keep_at_least||0),b.destination_target??null,b.transport_template_id,b.vehicle_lot_id,b.interval_minutes,b.activate?'active':'paused',actor.id,mode.mode==='rail'?b.train_consist_id:null,mode.mode==='rail'?rail.forward.id:null]);
    return ok({id:saved.insertId,status:b.activate?'active':'paused'});
   });
  }
