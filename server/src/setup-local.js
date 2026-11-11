@@ -225,6 +225,8 @@ async function main(){
   await pool.query(settlementWarehouses);
   const warehouseBlueprints=await readFile(new URL('../sql/104_warehouse_blueprints_levels.sql',import.meta.url),'utf8');
   await pool.query(warehouseBlueprints);
+  const supplyLines=await readFile(new URL('../sql/105_standing_supply_lines.sql',import.meta.url),'utf8');
+  await pool.query(supplyLines);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
