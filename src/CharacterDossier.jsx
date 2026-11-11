@@ -4,6 +4,7 @@ import CharacterProgression from './CharacterProgression.jsx';
 import ClassSpellbook from './ClassSpellbook.jsx';
 import CharacterEquipment from './CharacterEquipment.jsx';
 import ContributionPreferences from './ContributionPreferences.jsx';
+import CharacterReproduction from './CharacterReproduction.jsx';
 import {DOSSIER_TABS,dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab,canViewCharacterChamber} from './characterDossierRules.js';
 import './character-dossier.css';
 
@@ -23,9 +24,11 @@ export default function CharacterDossier({
  const restricted=isDossierRestricted(character,playerPreview);
  const summary=dossierSummary(character,playerPreview);
  const canViewChamber=canViewCharacterChamber(character,userId,{staff:canViewChamberStaff,playerPreview});
- const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[])];
+ const personalRecord=!playerPreview&&character?.player_user_id===userId;
+ const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[]),...(personalRecord?[{id:'reproduction',label:'Pregnancy & cycles',icon:'◌'}]:[])];
  const [section,setSection]=useState(()=>defaultDossierTab(character,playerPreview));
  const [rankBusy,setRankBusy]=useState(false),[rankError,setRankError]=useState('');
+ const [privateCycle,setPrivateCycle]=useState(null);
  async function changeBoundRank(code){
   setRankBusy(true);setRankError('');
   try{await request('/characters/'+character.id+'/rank',{method:'POST',body:{rank:code}});await onRefresh?.()}
@@ -33,6 +36,12 @@ export default function CharacterDossier({
   finally{setRankBusy(false)}
  }
  useEffect(()=>setSection(defaultDossierTab(character,playerPreview)),[character?.id,restricted]);
+ useEffect(()=>{
+  if(!personalRecord){setPrivateCycle(null);return}
+  let live=true;
+  request('/characters/'+character.id+'/reproduction').then(r=>{if(live)setPrivateCycle(r.cycle)}).catch(()=>{if(live)setPrivateCycle(null)});
+  return()=>{live=false};
+ },[character?.id,personalRecord,request]);
  useEffect(()=>{if(!allowed.some(x=>x.id===section))setSection(defaultDossierTab(character,playerPreview))},[section,restricted]);
  if(!summary)return null;
  const active=allowed.some(x=>x.id===section)?section:defaultDossierTab(character,playerPreview);
@@ -50,6 +59,7 @@ export default function CharacterDossier({
   </header>
 
   {canChangeBoundRank&&character.collar_bound&&<div className="dossier-rank-control"><label>Bound standing <select value={character.servitude_rank||''} onChange={e=>changeBoundRank(e.target.value)} disabled={rankBusy||!servitudeRanks.length}><option value="" disabled>{character.servitude_rank?'Select rank':'Select official bound rank'}</option>{servitudeRanks.map(rank=><option key={rank.code} value={rank.code}>{rank.title}</option>)}</select></label>{rankError&&<p role="alert">{rankError}</p>}</div>}
+  {personalRecord&&privateCycle?.active&&privateCycle?.alert&&<div className="dossier-cycle-notice" role="status"><i className="fa-solid fa-bell" aria-hidden="true"/>{privateCycle.alert}<button type="button" onClick={()=>setSection('reproduction')}>View cycle</button></div>}
   {restricted&&<div className="dossier-seal" role="note"><strong>Arcane binding · Limited character knowledge</strong><p>This in-character view intentionally hides sealed mechanical and private fields. Your OOC account preferences remain under your control.</p></div>}
   <div className="dossier-frame">
    <nav className="dossier-tabs" aria-label="Character dossier sections">
@@ -64,6 +74,7 @@ export default function CharacterDossier({
     {active==='spells'&&!restricted&&<Chapter eyebrow="04 / ARCANUM" title="Spellbook & abilities" description="Job abilities and spells unlock as characters gain levels through Order events."><div className="dossier-integrated"><ClassSpellbook key={character.id} character={character} klass={klass} request={request} onRefresh={onRefresh} userId={userId} readOnly={playerPreview}/></div><div className="dossier-fields"><ReadField title="Additional spell notes" wide>{summary.spells}</ReadField></div></Chapter>}
     {active==='possessions'&&!restricted&&<Chapter eyebrow="05 / BELONGINGS" title="Equipment & personal effects" description="Character-owned crafted equipment, equipped slots, and descriptive RP belongings."><div className="dossier-integrated"><CharacterEquipment character={character} request={request} canEquip={!playerPreview&&character.player_user_id===userId}/></div><div className="dossier-fields"><ReadField title="Personal effects (RP only)" wide>{summary.equipment}</ReadField><ReadField title="Proficiencies & languages" wide>{summary.proficiencies}</ReadField></div></Chapter>}
     {active==='progression'&&!restricted&&<Chapter eyebrow="06 / JOURNEY" title="Progression" description="Levels and event-earned experience remain on the current system until the original RPG design replaces it."><div className="dossier-stats"><div><span>Current level</span><strong>{summary.level}</strong></div><div><span>Event XP</span><strong>{Number(summary.experience||0).toLocaleString()}</strong></div><div><span>Ability points</span><strong>{character.ability_points??0}</strong></div></div><div className="dossier-integrated"><CharacterProgression key={character.id} character={character} canCommand={canCommand} readOnly={playerPreview} request={request} onRefresh={onRefresh}/></div></Chapter>}
+    {active==='reproduction'&&personalRecord&&<CharacterReproduction key={character.id} character={character} request={request} onPhaseChange={setPrivateCycle}/>}
     {active==='contributions'&&canViewChamber&&<ContributionPreferences key={character.id} character={character} request={request} userId={userId} readOnly={playerPreview}/>}
     {active==='legacy'&&!restricted&&<Chapter eyebrow="PRIMARY / CHARACTER SHEET" title="Classic character sheet" description="Your complete character sheet, with all existing details and mechanics. Explore the other dossier tabs whenever you like."><FullDndSheet character={character}/><div className="dossier-integrated"><CharacterEquipment character={character} request={request} canEquip={!playerPreview&&character.player_user_id===userId}/></div></Chapter>}
    </div>
