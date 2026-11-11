@@ -54,7 +54,7 @@ function failedIP(key){
  ipFailures.set(key,!row||now-row.since>WINDOW_MS?{since:now,count:1}:{...row,count:row.count+1});
  if(ipFailures.size>4000)for(const [k,v] of ipFailures){if(now-v.since>WINDOW_MS||ipFailures.size>4000)ipFailures.delete(k)}
 }
-export async function resolveSession(pool,request,{allowUnlinked=false}={}){
+export async function resolveSession(pool,request,{allowUnlinked=false,checkMembership=checkGuildMember,configuration=guildConfiguration}={}){
  const token=authHeader(request);
  if(!token)return null;
  const [rows]=await pool.execute(
@@ -64,15 +64,15 @@ export async function resolveSession(pool,request,{allowUnlinked=false}={}){
  const account=rows[0];
  if(!account)return null;
  if(allowUnlinked)return account;
- if((guildConfiguration(process.env)||process.env.API_PUBLIC_ENABLED==='true')&&account.auth_method!=='discord')return null;
+ if((configuration(process.env)||process.env.API_PUBLIC_ENABLED==='true')&&account.auth_method!=='discord')return null;
  // Every authenticated API request is gated by Discord membership, with a short bot lookup cache.
  // Production fails closed when guild verification is not configured.
- if(!guildConfiguration(process.env)){
+ if(!configuration(process.env)){
   if(process.env.API_PUBLIC_ENABLED==='true')throw Object.assign(new Error('discord_guild_configuration_error'),{status:503});
   return account;
  }
  if(!account.discord_user_id)return null;
- const membership=await checkGuildMember(account.discord_user_id);
+ const membership=await checkMembership(account.discord_user_id);
  if(membership==='member')return account;
  if(membership==='not_member')return null;
  if(membership==='screening')throw Object.assign(new Error('discord_membership_screening'),{status:403});
