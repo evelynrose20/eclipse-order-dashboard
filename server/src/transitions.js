@@ -63,7 +63,7 @@ export async function transitionRoute(pool,req,path){
    if(!ch||ch.player_account_id!==r.player_account_id||Boolean(ch.collar_bound)===Boolean(r.target_bound))return failRollback(connection,409,'character_changed_since_approval');
    const data=typeof ch.sheet_json==='string'?JSON.parse(ch.sheet_json):ch.sheet_json;
    data.collar_bound=Boolean(r.target_bound);
-   data.rank=r.target_bound?'Rank I: Fresh Intake / Unbroken':'Unbound: Free';
+   data.rank=r.target_bound?'Unmarked':'Unbound: Free';
    await connection.execute('UPDATE characters SET collar_bound=?,bound_rank=?,sheet_json=? WHERE id=?',
     [r.target_bound?1:0,r.target_bound?'rank_i':null,JSON.stringify(data),ch.id]);
    newState='applied';
