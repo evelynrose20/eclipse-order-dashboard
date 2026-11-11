@@ -9,5 +9,7 @@ SET @stmt := IF(@has_color=0,"ALTER TABLE order_factions ADD COLUMN map_color CH
 PREPARE stmt FROM @stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- Existing hostile factions start closed on first installation, but later manual overrides survive setup reruns.
 UPDATE order_factions SET trade_enabled=0 WHERE relationship='hostile' AND @faction_trade_first_install=1;
+UPDATE fc_trade_contracts c JOIN order_factions f ON f.id=c.faction_id SET c.status='paused'
+ WHERE f.trade_enabled=0 AND c.status='open' AND @faction_trade_first_install=1;
 INSERT INTO schema_migrations(version) VALUES('109_faction_trade_map_colors')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
