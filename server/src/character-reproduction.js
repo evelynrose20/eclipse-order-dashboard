@@ -67,7 +67,8 @@ export async function reproductionRoute(pool,req,path){
  const cycle=cycleStatus(profile,Boolean(character.collar_bound),character.rank_code);
  if(!action&&req.method==='GET'){
   const [rolls]=await pool.execute('SELECT id,event_key,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase,created_at FROM character_conception_rolls WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]);
-  return ok({profile,cycle,pregnancy:pregnancyProgress(profile),rolls,can_edit:owner,character_bound:Boolean(character.collar_bound)});
+  const [history]=await pool.execute('SELECT action,summary,created_at FROM character_reproductive_events WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]);
+  return ok({profile,cycle,pregnancy:pregnancyProgress(profile),rolls,history,can_edit:owner,character_bound:Boolean(character.collar_bound)});
  }
  if(!owner)return fail(403,'character_owner_required');
  const b=await readBody(req);
