@@ -1,4 +1,5 @@
 import {runOrderCityResidents} from './world-order-city.js';
+import {syncWorkshopBuyOrders} from './workshop-exchange.js';
 import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
@@ -218,11 +219,23 @@ const payrollTick=async()=>{
  catch(e){console.warn('[Eclipse Order API] Payroll check unavailable:',e?.code||'database_unavailable')}
  finally{payrollTickRunning=false}
 };
+let exchangeTickRunning=false;
+const exchangeTick=async()=>{
+ if(!pool||exchangeTickRunning)return;
+ exchangeTickRunning=true;
+ try{
+  const posted=await syncWorkshopBuyOrders(pool);
+  if(posted)console.log('[Merchant Exchange] Posted workshop buy orders:',posted);
+ }catch(error){console.warn('[Merchant Exchange] Demand check unavailable:',error?.code||error?.name||'database_unavailable')}
+ finally{exchangeTickRunning=false}
+};
+const exchangeTimer=setInterval(()=>void exchangeTick(),15*60*1000);
+exchangeTimer.unref();
 const payrollTimer=setInterval(()=>void payrollTick(),60000);
 const settlementTimer=setInterval(()=>void settlementTick(),60000);
 settlementTimer.unref();
 payrollTimer.unref();
-if(pool){void payrollTick();void settlementTick()}
+if(pool){void payrollTick();void settlementTick();void exchangeTick()}
 const close=async()=>{
   clearInterval(payrollTimer);
   clearInterval(settlementTimer);
