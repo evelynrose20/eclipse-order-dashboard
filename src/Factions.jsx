@@ -20,6 +20,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
  const [accounts,setAccounts]=useState([]);
  const [encounters,setEncounters]=useState([]);
  const [editing,setEditing]=useState(null);
+ const [removing,setRemoving]=useState(null);
  const [newFaction,setNewFaction]=useState(false);
  const [eventDraft,setEventDraft]=useState(null);
  const [query,setQuery]=useState('');
@@ -54,6 +55,17 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
    await request('/factions/'+id,{method:newFaction?'POST':'PUT',body:data});
    setEditing(null);setNewFaction(false);await reload();setCurrent(id);setNotice('Faction record saved.');
   }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+ async function removeFaction(){
+  if(!removing||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/factions/'+removing.id,{method:'DELETE'});
+   setRemoving(null);
+   await reload();
+   setNotice('Faction removed from the directory. Existing world and trade history was preserved.');
+  }catch(e){setError(e.message||'Could not remove faction')}
+  finally{setBusy(false)}
  }
  async function logEvent(){
   if(!chosen||!eventDraft)return;
@@ -117,7 +129,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
       {editable&&<button type="button" className="btn secondary" onClick={()=>setRepDraft({target:chosen.faction_scope==='world'?'player':'order_view',account_id:'',delta:5,event_title:'',event_details:'',source_event_id:''})}>Record reputation change</button>}
      </section>
      {chosen.image_reference_url&&<a className="faction-reference" href={chosen.image_reference_url} target="_blank" rel="noreferrer noopener">View portrait reference</a>}
-     {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen,map_color:chosen.map_color||factionColor(chosen.id)});setNewFaction(false)}}>Edit dossier</button>{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
+     {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen,map_color:chosen.map_color||factionColor(chosen.id)});setNewFaction(false)}}>Edit dossier</button>{chosen.id!=='eclipse-order'&&<button type="button" className="btn secondary faction-remove-action" onClick={()=>{setError('');setRemoving({id:chosen.id,name:chosen.name})}}>Remove faction</button>}{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
      {editable&&chosen.notes&&<section className="faction-command-notes"><h4>Order command notes</h4><p>{chosen.notes}</p></section>}
      {tradeContracts.some(c=>c.faction_id===chosen.id)&&<section className="faction-trade-section"><span className="faction-eyebrow">THE MERCHANT NETWORK</span><h4>Trade agreements</h4><p>Completed deliveries improve this faction's standing toward the Order.</p>{tradeContracts.filter(c=>c.faction_id===chosen.id).map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{c.item_kind==='material'?c.material_name:c.equipment_name} · {c.status}</small></div><div><span>{c.delivered_quantity} / {c.required_quantity}</span><small>+{c.rep_per_unit} standing per item</small></div></article>)}</section>}
      <div className="faction-history-head"><div><span className="faction-eyebrow">THE CHANGING WORLD</span><h4>Faction history</h4></div>{editable&&<button type="button" className="btn secondary" onClick={()=>setEventDraft({title:'',details:'',occurred_on:''})}>+ Record development</button>}</div>
@@ -126,6 +138,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
     </>}
    </div>
   </div>
+  {editable&&removing&&<div className="faction-modal-backdrop" role="presentation"><div className="faction-modal faction-remove-modal" role="dialog" aria-modal="true" aria-label="Confirm faction removal"><div className="faction-modal-head"><h3>Remove faction</h3><button type="button" onClick={()=>setRemoving(null)} aria-label="Cancel removal">×</button></div><div className="faction-removal-copy"><p>Remove <strong>{removing.name}</strong> from the active faction directory?</p><p>Open merchant orders will be paused and new trade blocked. Previous events, trade history, reputation and territory ownership will be preserved.</p>{error&&<p className="alert" role="alert">{error}</p>}</div><div className="faction-modal-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setRemoving(null)}>Cancel</button><button type="button" className="btn faction-remove-action" disabled={busy} onClick={removeFaction}>{busy?'Removing…':'Confirm removal'}</button></div></div></div>}
   {editable&&editing&&<div className="faction-modal-backdrop" role="presentation"><div className="faction-modal" role="dialog" aria-modal="true" aria-label="Edit faction dossier">
    <div className="faction-modal-head"><h3>{newFaction?'New faction':'Edit faction dossier'}</h3><button type="button" onClick={()=>setEditing(null)} aria-label="Close editor">×</button></div>
    <div className="faction-fields">

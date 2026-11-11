@@ -235,6 +235,8 @@ async function main(){
   await pool.query(workshopExchange);
   const factionTradeColors=await readFile(new URL('../sql/109_faction_trade_map_colors.sql',import.meta.url),'utf8');
   await pool.query(factionTradeColors);
+  const factionArchives=await readFile(new URL('../sql/110_faction_archives.sql',import.meta.url),'utf8');
+  await pool.query(factionArchives);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');

@@ -75,3 +75,35 @@ test('faction editor rejects malformed hex colors and bad trade flags',async()=>
  assert.equal((await factionRoute(pool,request('PUT',{...data,map_color:'red'}),'/factions/house-kurogane')).status,400);
  assert.equal((await factionRoute(pool,request('PUT',{...data,trade_enabled:'yes'}),'/factions/house-kurogane')).status,400);
 });
+
+test('faction deletion is staff-only, protects Order, and archives without losing history',async()=>{
+ const f='test-faction';const history=[];let archived=false;
+ const conn={beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},execute:async(sql,args)=>{
+  history.push({sql,args});
+  if(sql.startsWith('SELECT id,archived_at FROM order_factions'))return [[{id:f,archived_at:archived?new Date():null}]];
+  if(sql.startsWith('UPDATE order_factions SET archived_at')){archived=true;return [{affectedRows:1}]}
+  if(sql.startsWith('UPDATE fc_trade_contracts'))return [{affectedRows:2}];
+  if(sql.startsWith('INSERT INTO audit_log'))return [{affectedRows:1}];
+  throw Error('Unexpected SQL: '+sql)
+ }};
+ const pool={execute:async(sql)=>sql.startsWith('SELECT a.id,a.email')?[[{id:'11111111-1111-4111-8111-111111111111',account_role:'domina',auth_method:'discord',discord_user_id:'123456789012345678'}]]:[[]],getConnection:async()=>conn};
+ const first=await factionRoute(pool,request('DELETE'),'/factions/'+f);
+ assert.equal(first.status,200);
+ assert.equal(first.body.status,'removed');
+ assert.ok(history.some(x=>x.sql.includes('archived_at=UTC_TIMESTAMP()')));
+ assert.ok(history.some(x=>x.sql.includes("status='paused'")));
+ assert.ok(history.some(x=>x.sql.includes('INSERT INTO audit_log')));
+ assert.ok(!history.some(x=>x.sql.startsWith('DELETE FROM')),'prior records must not be physically deleted');
+ assert.equal((await factionRoute(pool,request('DELETE'),'/factions/'+f)).status,409);
+ assert.equal((await factionRoute(pool,request('DELETE'),'/factions/eclipse-order')).status,403);
+ assert.equal((await factionRoute(setup('member').pool,request('DELETE'),'/factions/'+f)).status,403);
+});
+test('directory exclusion and seeded faction retirement survive repeat schema runs',()=>{
+ const fs=readFileSync(new URL('../src/factions.js',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/110_faction_archives.sql',import.meta.url),'utf8');
+ const exchange=readFileSync(new URL('../src/workshop-exchange.js',import.meta.url),'utf8');
+ assert.match(fs,/WHERE f.archived_at IS NULL/);
+ assert.match(exchange,/archived_at IS NULL/);
+ assert.match(sql,/ADD COLUMN archived_at/);
+ assert.doesNotMatch(sql,/DROP TABLE|TRUNCATE|DELETE FROM/i);
+});
