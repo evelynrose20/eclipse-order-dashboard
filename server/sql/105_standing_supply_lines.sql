@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS world_logistics_supply_line_shipments (
  fuel_item_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
  fuel_used DECIMAL(15,3) NOT NULL DEFAULT 0,
  route_segments JSON NOT NULL,
- status ENUM('in_transit','arrived','disrupted') NOT NULL DEFAULT 'in_transit',
+ status ENUM('in_transit','arrived','disrupted','cancelled') NOT NULL DEFAULT 'in_transit',
  departure_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
  due_at DATETIME NOT NULL,
  arrived_at DATETIME NULL,
