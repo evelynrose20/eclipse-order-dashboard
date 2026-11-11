@@ -14,7 +14,7 @@ function setup(role='member'){
    if(sql.startsWith('SELECT public_visible FROM order_factions'))return [[{public_visible:1}]];
    if(sql.startsWith('SELECT id,title,details'))return [[{id:1,title:'A renewed pact',details:'Terms discussed.',occurred_on:null,created_at:'2026-11-06'}]];
    if(sql.startsWith('SELECT id FROM order_factions'))return [[{id:'house-kurogane'}]];
-   if(sql.startsWith('UPDATE order_factions')){updates.push({sql,args});return [{affectedRows:1}]}
+   if(sql.startsWith('UPDATE order_factions')||sql.startsWith('UPDATE fc_trade_contracts')){updates.push({sql,args});return [{affectedRows:1}]}
    if(sql.startsWith('INSERT INTO order_faction_events')){updates.push({sql,args});return [{insertId:4}]}
    throw Error('Unexpected SQL: '+sql);
   },
