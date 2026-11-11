@@ -60,3 +60,18 @@ test('invalid faction relationships and unsafe portrait URLs are rejected',async
  body.relationship='all-powerful';
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,400);
 });
+
+test('trade closure is command-only and automatically pauses pending orders',async()=>{
+ const {pool,updates}=setup('domina');
+ const body={name:'The Iron Remnant',leader:'Commander',relationship:'hostile',description:'No exchange',notes:'',image_reference_url:'',public_visible:true,trade_enabled:false,map_color:'#b03441',sort_order:15,faction_scope:'world'};
+ const r=await factionRoute(pool,request('PUT',body),'/factions/iron-remnant');
+ assert.equal(r.status,200);
+ assert.ok(updates.some(x=>x.sql.includes("status='paused'")),'closing trade pauses open agreements');
+ assert.ok(updates.some(x=>x.sql.includes('map_color=?')),'color must persist in faction row');
+});
+test('faction editor rejects malformed hex colors and bad trade flags',async()=>{
+ const {pool}=setup('domina');
+ const data={name:'Faction',leader:'Leader',relationship:'neutral',description:'Details',notes:'',image_reference_url:'',public_visible:true,trade_enabled:true,map_color:'#123456',sort_order:10,faction_scope:'world'};
+ assert.equal((await factionRoute(pool,request('PUT',{...data,map_color:'red'}),'/factions/house-kurogane')).status,400);
+ assert.equal((await factionRoute(pool,request('PUT',{...data,trade_enabled:'yes'}),'/factions/house-kurogane')).status,400);
+});
