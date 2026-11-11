@@ -111,11 +111,18 @@ export async function escortCommandRoute(pool,req,path,actor){
    if(!engagement||engagement.status!=='pending')return fail(409,'engagement_not_pending');
    const cargo=await shipment(db,engagement.shipment_kind,engagement.shipment_id);
    if(!cargo||cargo.status!=='disrupted')return fail(409,'engagement_cargo_not_held');
-   if(b.decision==='secured'){
-    await db.execute("UPDATE "+active(engagement.shipment_kind)+" SET status='in_transit',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 MINUTE) WHERE id=?",[engagement.shipment_id]);
+   if(b.decision==='held'){
+    await db.execute('UPDATE world_convoy_engagements SET detail=? WHERE id=?',[b.detail.trim(),engagement.id]);
+    return ok({status:'pending',held:true});
    }
-   await db.execute('UPDATE world_convoy_engagements SET status=?,detail=?,reviewed_by=?,reviewed_at=UTC_TIMESTAMP() WHERE id=?',[b.decision,b.detail.trim(),actor.id,engagement.id]);
-   return ok({status:b.decision});
+   // Avoid overriding an unrelated unresolved snowstorm or convoy incident.
+   if(engagement.shipment_kind==='freight'){
+    const [[other]]=await db.execute("SELECT id FROM world_logistics_incidents WHERE shipment_id=? AND disposition='pending' LIMIT 1",[engagement.shipment_id]);
+    if(other)return fail(409,'weather_incident_still_pending');
+   }
+   await db.execute("UPDATE "+active(engagement.shipment_kind)+" SET status='in_transit',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 30 MINUTE) WHERE id=?",[engagement.shipment_id]);
+   await db.execute("UPDATE world_convoy_engagements SET status='secured',detail=?,reviewed_by=?,reviewed_at=UTC_TIMESTAMP() WHERE id=?",[b.detail.trim(),actor.id,engagement.id]);
+   return ok({status:'secured'});
   });
  }
  return fail(404,'escort_action_not_found');
