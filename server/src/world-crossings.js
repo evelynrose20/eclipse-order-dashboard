@@ -31,7 +31,7 @@ export async function handleWorldCrossings(pool,req,path,actor){
    return ok({id:c.insertId,from_node_id:a.insertId,to_node_id:z.insertId});
   });
  }
- if(id&&req.method==='PATCH'){
+ if(id&&req.method==='POST'){
   const b=await read(req);
   if(!states.includes(b?.status))return fail(400,'invalid_crossing_status');
   return transaction(pool,async db=>{
