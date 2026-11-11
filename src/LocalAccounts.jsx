@@ -8,6 +8,7 @@ import DiscordAccessPage from './DiscordAccessPage.jsx';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
+ not_authenticated:'Your session has expired. Sign in again.',
  chair_must_be_offline:'The apparatus must be Offline before a character can be seated.',
  chair_occupied:'The chamber chair is already occupied. Release the current character first.',
  chair_empty:'The chamber chair is empty.',
@@ -63,7 +64,7 @@ async function request(path,{method='GET',token,body}={}){
  try{response=await fetch(API+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'})}
  catch{throw new Error('The Order ledger is temporarily unavailable. Try again later.')}
  const data=response.status===204?{}:await response.json().catch(()=>({}));
- if(!response.ok)throw new Error(ERROR_MESSAGES[data.error]||data.message||data.error||'Request failed ('+response.status+')');
+ if(!response.ok){const error=new Error(ERROR_MESSAGES[data.error]||data.message||data.error||'Request failed ('+response.status+')');error.status=response.status;error.code=data.error;throw error;}
  return data;
 }
 export default function LocalAccounts(){
@@ -72,6 +73,7 @@ export default function LocalAccounts(){
  const [message,setMessage]=useState('');
  const [reason,setReason]=useState(()=>new URLSearchParams(window.location.search).get('access')||'');
  const [busy,setBusy]=useState(false);
+ const [sessionRetry,setSessionRetry]=useState(0);
  const [adult,setAdult]=useState(false);
  const [recruitment,setRecruitment]=useState(null);
  useEffect(()=>{
@@ -107,21 +109,25 @@ export default function LocalAccounts(){
  useEffect(()=>{
   if(!token)return;
   let active=true;
-  request('/auth/me',{token}).then(result=>{if(active)setProfile(result.user)}).catch(()=>{
-   if(active){sessionStorage.removeItem(storageKey);setToken('');setProfile(null)}
+  request('/auth/me',{token}).then(result=>{if(active){setProfile(result.user);setMessage('')}}).catch(error=>{
+   if(!active)return;
+   setProfile(null);
+   if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setMessage(ERROR_MESSAGES.not_authenticated)}
+   else setMessage(error.message||'The Order ledger is temporarily unavailable. Try again later.');
   });
   return()=>{active=false};
- },[token]);
+ },[token,sessionRetry]);
  async function logout(){
   try{await request('/auth/logout',{method:'POST',token})}catch{}
   sessionStorage.removeItem(storageKey);setProfile(null);setToken('');
  }
  const accessIssue=['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable','discord_guild_configuration_error','pending'].includes(reason);
  if(!profile&&accessIssue)return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('');const u=new URL(window.location.href);u.searchParams.delete('access');window.history.replaceState(null,'',u.pathname+u.search)}}/>;
- if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
+ if(profile)return <LocalWorkspace profile={profile} request={async(path,options={})=>{try{return await request(path,{...options,token})}catch(error){if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setProfile(null);setMessage(ERROR_MESSAGES.not_authenticated)}throw error}}} onLogout={logout}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
+    {token&&<button type="button" className="eo-primary" onClick={()=>{setMessage('');setSessionRetry(n=>n+1)}}>Retry connection</button>}
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
    <h1>Enter the Order</h1>
    <p>Sign in with Discord to enter the Order. Your existing membership and characters will be here once your accounts are connected.</p>

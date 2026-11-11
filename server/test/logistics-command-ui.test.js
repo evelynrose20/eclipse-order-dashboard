@@ -16,8 +16,11 @@ test('gameplay supply command is the default with existing specialist freight ta
  assert.match(freight,/tab==='history'/);
 });
 test('existing world and player economic systems remain accessible instead of being replaced',()=>{
- for(const route of ['/world-admin','/internal-rail','/commerce','/world-admin/military','/fronts'])assert.ok(command.includes(route),route);
- for(const target of ['world','internal-rail','trade','fronts'])assert.match(command,new RegExp("go\\('"+target+"'\\)"));
+ for(const route of ['/world-admin','/commerce','/world-admin/military','/fronts'])assert.ok(command.includes(route),route);
+ assert.doesNotMatch(command,/['"]\/internal-rail['"]/,'The command overview must not request the retired rail endpoint');
+ for(const target of ['world','trade','fronts'])assert.match(command,new RegExp("go\\('"+target+"'\\)"));
+ assert.match(command,/onTab\?\.\('supply-lines'\)/);
+ for(const field of ['freight.rail_terminals','freight.rail_journeys','freight.rail_service_records'])assert.ok(command.includes(field),field);
 });
 test('network shows original roads, menu rail services, industrial freight and NPC mapped-farm cargo',()=>{
  for(const data of ['network_segments','world?.routes','railServices','freightLines','npcRoutes','npcShipments'])assert.ok(command.includes(data),data);
