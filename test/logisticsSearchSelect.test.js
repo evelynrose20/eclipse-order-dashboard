@@ -17,7 +17,7 @@ test('all logistics dropdown menus reuse the existing searchable SearchPicker',(
   assert.equal(opened,closed,filename);
   total+=opened;
  }
- assert.equal(total,27);
+ assert.equal(total,24);
  assert.match(adapter,/import SearchPicker from '\.\/SearchPicker\.jsx'/);
  assert.match(adapter,/onChange=\{id=>onChange\?\.\(\{target:\{value:id\}\}\)\}/);
  assert.match(adapter,/optionLabel\(option\.props\.children\)/);

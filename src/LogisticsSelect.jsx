@@ -22,7 +22,7 @@ export default function LogisticsSelect({children,value='',onChange,disabled=fal
  const prompt=placeholder||options.find(item=>item.id==='')?.name||'Choose an item';
  const choices=options.filter(item=>item.id!==''&&!item.disabled);
  return <div className="lp-search-select">
-  <SearchPicker value={value??''} options={choices} placeholder={prompt}
+  <SearchPicker portal value={value??''} options={choices} placeholder={prompt}
    ariaLabel={ariaLabel||prompt} disabled={disabled} required={required} groupByCategory={false}
    onChange={id=>onChange?.({target:{value:id}})}/>
  </div>;
