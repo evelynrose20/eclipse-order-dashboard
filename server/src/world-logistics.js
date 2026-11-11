@@ -175,7 +175,8 @@ async function dispatch(db,b,actor,contract=null){
   const [[window]]=await db.execute('SELECT TIMESTAMPDIFF(MINUTE,?,UTC_TIMESTAMP()) AS elapsed,? > UTC_TIMESTAMP() AS still_running',[train.departed_at,train.expected_arrival_at]);
   if(!window.still_running||Number(window.elapsed)>30)return fail(409,'rail_loading_window_closed');
   const [[loaded]]=await db.execute("SELECT COALESCE(SUM(quantity),0) AS used FROM world_logistics_shipments WHERE train_journey_id=? AND status<>'cancelled'",[train.id]);
-  if(Number(loaded.used)+amount>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
+  const [[warehouseLoaded]]=await db.execute("SELECT COALESCE(SUM(quantity),0) AS used FROM world_logistics_warehouse_shipments WHERE train_journey_id=? AND status<>'cancelled'",[train.id]);
+  if(Number(loaded.used)+Number(warehouseLoaded.used)+amount>Number(train.cargo_capacity_snapshot))return fail(409,'train_cargo_capacity_exceeded');
   trainJourney=train;
   path={node_ids:['settlement:'+source.settlement_id,'settlement:'+dest.settlement_id],
    segment_ids:['internal-rail:'+train.service_id],legs:1,duration_minutes:Number(train.duration_minutes)};
