@@ -257,6 +257,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [allSettlements]=await pool.execute('SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,r.name AS region_name,z.name AS zone_name FROM world_settlements s LEFT JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_zones z ON z.id=s.zone_id ORDER BY s.name');
   const [airDocks]=await pool.execute("SELECT d.*,s.name AS settlement_name,s.controlling_faction_id FROM world_logistics_air_docks d JOIN world_settlements s ON s.id=d.settlement_id ORDER BY s.name");
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
+  const escortCommand=await wartimeEscortSnapshot(pool);
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
   const [treaties]=await pool.execute("SELECT t.*,a.name AS faction_a_name,b.name AS faction_b_name FROM world_logistics_trade_treaties t JOIN order_factions a ON a.id=t.faction_a JOIN order_factions b ON b.id=t.faction_b ORDER BY t.id DESC");
   const [factions]=await pool.execute('SELECT id,name FROM order_factions ORDER BY name');
@@ -635,6 +636,7 @@ export async function logisticsRoute(pool,req,path,actor){
      return ok({status:'disrupted',incident:event});
     }
    }
+   if(await warThreatAtArrival(db,'freight',s))return ok({status:'disrupted',reason:'wartime_ambush'});
    const [destination]=await db.execute("SELECT f.status,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[s.destination_facility_id]);
    if(!destination.length||['destroyed','abandoned'].includes(destination[0].strategic_state))return fail(409,'destination_unavailable');
    if(!await ledger(db,s.destination_facility_id,s.item_id,Number(s.quantity),'freight_arrival',id,actor))return fail(409,'delivery_failed');
@@ -671,7 +673,8 @@ export async function runLogisticsAutomation(pool){
      return ok({disrupted:true});
     }
    }
-   const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
+   if(await warThreatAtArrival(db,'freight',shipment))return ok({disrupted:true});
+    const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
    if(!place||!place.controlling_faction_id||place.controlling_faction_id!==place.owner_faction_id||['destroyed','abandoned'].includes(place.strategic_state)||['ruined','captured'].includes(place.status)){
     await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes='Destination inaccessible; awaiting command review' WHERE id=?",[shipment.id]);
     await record(db,shipment.id,'disrupt','Destination inaccessible; no cargo lost', {id:null});
