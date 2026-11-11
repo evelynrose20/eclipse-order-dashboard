@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS world_zone_crossings (
  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
  name VARCHAR(120) NOT NULL,
  route_type ENUM('road','trail','rail') NOT NULL,
+ crossing_kind ENUM('road','rail','mountain_pass','border_checkpoint','footpath') NOT NULL DEFAULT 'road',
  status ENUM('operational','damaged','closed') NOT NULL DEFAULT 'operational',
  from_region_id BIGINT UNSIGNED NOT NULL,
  from_zone_id BIGINT UNSIGNED NOT NULL,
