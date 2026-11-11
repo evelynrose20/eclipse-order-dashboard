@@ -17,7 +17,7 @@ export async function syncWorkshopBuyOrders(pool){
  const [[materials],[equipment],[factions],[authors]]=await Promise.all([
   pool.query('SELECT id,name,category FROM fc_materials ORDER BY id'),
   pool.query('SELECT id,name,slot FROM fc_equipment_templates WHERE enabled=1 ORDER BY id'),
-  pool.query('SELECT id,name FROM order_factions WHERE public_visible=1 AND trade_enabled=1 AND id<>'eclipse-order' ORDER BY id'),
+  pool.query("SELECT id,name FROM order_factions WHERE public_visible=1 AND trade_enabled=1 AND id<>'eclipse-order' ORDER BY id"),
   pool.query("SELECT id FROM accounts WHERE account_role='domina' AND is_active=1 AND approval_status='approved' ORDER BY created_at LIMIT 1")
  ]);
  // Without a genuine public buyer and an approved Order issuer, do not fabricate participants.
