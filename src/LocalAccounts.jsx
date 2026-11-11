@@ -109,8 +109,11 @@ export default function LocalAccounts(){
  useEffect(()=>{
   if(!token)return;
   let active=true;
-  request('/auth/me',{token}).then(result=>{if(active)setProfile(result.user)}).catch(()=>{
-   if(active){sessionStorage.removeItem(storageKey);setToken('');setProfile(null)}
+  request('/auth/me',{token}).then(result=>{if(active){setProfile(result.user);setMessage('')}}).catch(error=>{
+   if(!active)return;
+   setProfile(null);
+   if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setMessage(ERROR_MESSAGES.not_authenticated)}
+   else setMessage(error.message||'The Order ledger is temporarily unavailable. Try again later.');
   });
   return()=>{active=false};
  },[token,sessionRetry]);
