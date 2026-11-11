@@ -10,7 +10,7 @@ async function transaction(pool,fn){const db=await pool.getConnection();try{awai
 async function log(db,actor,id,action){await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor.id,action,'network',id,'Zone crossing edited'])}
 export function crossingEdges(crossings,mode){
  const accepted=mode==='rail'?['rail']:mode==='road'||mode==='pack'?['road','trail']:[];
- return (crossings||[]).filter(c=>c.status==='operational'&&accepted.includes(c.route_type)).map(c=>({id:'crossing:'+c.id,from_node_id:c.from_node_id,to_node_id:c.to_node_id,route_type:c.route_type}));
+ return (crossings||[]).filter(c=>c.status==='operational'&&accepted.includes(c.route_type)).map(c=>({id:'crossing:'+c.id,from_node_id:c.from_node_id,to_node_id:c.to_node_id,route_type:c.route_type,travel_minutes:Number(c.travel_minutes)||30}));
 }
 export async function handleWorldCrossings(pool,req,path,actor){
  const match=/^\/world-admin\/crossings(?:\/(\d+))?$/.exec(path);
