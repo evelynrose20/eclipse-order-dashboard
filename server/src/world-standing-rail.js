@@ -1,3 +1,4 @@
+import {nearestSmoothRoutePoint} from './route-geometry.js';
 import {trainSummary} from './world-magitek-trains.js';
 
 const pathQuery='SELECT r.*,a.status AS from_status,z.status AS to_status FROM order_internal_rail_routes r JOIN order_internal_rail_stations a ON a.id=r.from_station_id JOIN order_internal_rail_stations z ON z.id=r.to_station_id WHERE r.from_type=\'settlement\' AND r.to_type=\'settlement\' AND r.from_id=? AND r.to_id=? AND r.status=\'active\' AND a.status=\'operational\' AND z.status=\'operational\' ORDER BY r.id';
@@ -57,4 +58,31 @@ export async function availableConsist(db,id,sourceStation){
 export async function startRailJourney(db,route,train,actorId){
  const [created]=await db.execute('INSERT INTO order_internal_rail_journeys(route_id,train_consist_id,cargo_capacity_snapshot,passenger_capacity_snapshot,crew_required_snapshot,departed_at,expected_arrival_at,dispatched_by) VALUES(?,?,?,?,?,UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL ? MINUTE),?)',[route.id,train.id,train.cargo_capacity,train.transport_capacity,train.crew_required,Number(route.duration_minutes),actorId]);
  return created.insertId;
+}
+
+/** Visual proximity is advisory. A nearby line is NOT a loading platform or connected siding. */
+export async function nearbyMappedRail(db,kind,id){
+ let origin;
+ if(kind==='facility'){
+  const [[row]]=await db.execute('SELECT COALESCE(site.map_x,settlement.map_x) AS x,COALESCE(site.map_y,settlement.map_y) AS y,COALESCE(site.zone_id,settlement.zone_id) AS zone_id,COALESCE(z.region_id,settlement.region_id) AS region_id FROM world_industry_facilities f LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_zones z ON z.id=site.zone_id LEFT JOIN world_settlements settlement ON settlement.id=f.settlement_id WHERE f.id=?',[id]);origin=row;
+ }else if(kind==='warehouse'||kind==='installation'){
+  const table=kind==='warehouse'?'world_logistics_warehouses':'world_military_installations';
+  const [[row]]=await db.execute('SELECT s.map_x AS x,s.map_y AS y,s.zone_id,s.region_id FROM '+table+' obj JOIN world_settlements s ON s.id=obj.settlement_id WHERE obj.id=?',[id]);origin=row;
+ }
+ if(!origin||origin.x==null||origin.y==null||origin.region_id==null||origin.zone_id==null)return {available:false,reason:'Location has no mapped coordinates'};
+ const [nodes]=await db.execute('SELECT id,map_x,map_y FROM world_route_nodes WHERE region_id=? AND zone_id=?',[origin.region_id,origin.zone_id]);
+ const [tracks]=await db.execute("SELECT id,from_node_id,to_node_id,waypoints FROM world_route_segments WHERE region_id=? AND zone_id=? AND route_type='rail'",[origin.region_id,origin.zone_id]);
+ const locations=new Map(nodes.map(n=>[Number(n.id),{x:Number(n.map_x),y:Number(n.map_y)}]));
+ const target={x:Number(origin.x),y:Number(origin.y)};
+ let nearest=null;
+ for(const segment of tracks){
+  const a=locations.get(Number(segment.from_node_id)),b=locations.get(Number(segment.to_node_id));
+  if(!a||!b)continue;
+  let bends=segment.waypoints;
+  try{if(typeof bends==='string')bends=JSON.parse(bends)}catch{bends=[]}
+  const line=[a,...(Array.isArray(bends)?bends:[]),b];
+  const projection=nearestSmoothRoutePoint(line,target,20);
+  if(projection&&(!nearest||projection.d<nearest.distance))nearest={track_id:segment.id,distance:Math.round(projection.d*100)/100,point:{x:projection.x,y:projection.y}};
+ }
+ return nearest?{available:true,nearby:nearest.distance<=3,distance_map_percent:nearest.distance,track_id:nearest.track_id,point:nearest.point,connected:false,reason:nearest.distance<=3?'Track nearby; a siding and operational station connection are still required':'Nearest mapped rail track is too far away for a nearby siding'}:{available:false,reason:'No mapped railway track in this zone'};
 }
