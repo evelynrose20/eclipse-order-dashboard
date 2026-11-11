@@ -35,3 +35,5 @@
 .faction-trade-section article small{color:#b1bdc1;font-size:11px}
 
 .faction-color-field{display:flex;align-items:center;gap:10px}.faction-color-field input[type=color]{width:54px;height:38px;padding:3px;border:1px solid #405462;border-radius:2px;background:#202a33}.faction-color-field input[type=text],.faction-color-field input:not([type]){flex:1;min-width:0}.faction-map-swatch{display:inline-block;width:15px;height:15px;margin-right:10px;vertical-align:middle;border:1px solid #acbdc9;border-radius:2px}.faction-trade-status{display:flex;align-items:center;gap:8px;color:#acbdc9;font-size:12px}
+
+.faction-remove-action{border:1px solid #a8313d!important;color:#f4c3c5!important;background:#24252b!important}.faction-remove-action:hover{background:#4a222b!important}.faction-remove-modal{max-width:480px}.faction-removal-copy{padding:16px 20px;color:#d5dde0;font-size:13px;line-height:1.6}.faction-removal-copy p{margin:0 0 12px}.faction-removal-copy strong{color:#f1dabc}
