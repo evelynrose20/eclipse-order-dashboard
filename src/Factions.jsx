@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import './factions.css';
+import {factionColor} from './territory-ownership.js';
 
 const RELATIONS={
  friendly:['Allied','friendly'],rival:['Rival','rival'],watchful_rival:['Watchful rival','watchful'],
@@ -7,7 +8,7 @@ const RELATIONS={
 };
 const SCORE_LABEL=value=>value<=-75?'Nemesis':value<=-40?'Hostile':value<=-10?'Unfriendly':value<10?'Neutral':value<40?'Cordial':value<75?'Friendly':'Exalted';
 const repBar=(label,score)=> <div className="faction-rep-entry" key={label}><div className="faction-rep-head"><strong>{label}</strong><span>{SCORE_LABEL(score)} · {score>0?'+':''}{score}/100</span></div><div className="faction-rep-track" role="meter" aria-label={label} aria-valuemin={-100} aria-valuemax={100} aria-valuenow={Number(score)||0}><span className="faction-rep-zero"/><span className={'faction-rep-fill '+(score<0?'negative':'positive')} style={{left:(score<0?50+score/2:50)+'%',width:Math.abs(score)/2+'%'}}/></div></div>;
-const empty={faction_scope:'world',name:'',leader:'',relationship:'neutral',description:'',notes:'',image_reference_url:'',public_visible:true,sort_order:100};
+const empty={faction_scope:'world',name:'',leader:'',relationship:'neutral',description:'',notes:'',image_reference_url:'',public_visible:true,trade_enabled:true,map_color:'#688398',sort_order:100};
 const slug=name=>name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 -]/g,'').trim().replace(/\s+/g,'-').slice(0,45);
 export default function Factions({request,canEdit=false,previewOnly=false}){
  const [factions,setFactions]=useState([]);
@@ -107,16 +108,16 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
       <span className="faction-eyebrow">{chosen.faction_scope==='settlement'?'SETTLEMENT':chosen.faction_scope==='world'?'OTHER FACTION':'ORDER-CONNECTED FACTION'} · {String(chosen.sort_order).padStart(2,'0')}</span>
       <span className={'faction-relation '+relation(chosen.relationship)[1]}>{relation(chosen.relationship)[0]}</span>
      </div>
-     <h3>{chosen.name}</h3><p className="faction-leader"><span>Led by</span> {chosen.leader}</p>
+     <h3><span className="faction-map-swatch" style={{background:chosen.map_color||factionColor(chosen.id)}} aria-hidden="true"/>{chosen.name}</h3><p className="faction-leader"><span>Led by</span> {chosen.leader}</p>
      <div className="faction-rule"/>
-     <p className="faction-description">{chosen.description}</p>
+     <p className="faction-description">{chosen.description}</p><p className="faction-trade-status"><i className={'fa-solid fa-'+(chosen.trade_enabled?'handshake':'ban')} aria-hidden="true"/> {chosen.trade_enabled?'Trade agreements permitted':'Trade with the Order closed'}</p>
      <section className="faction-reputations"><div className="faction-reputations-title"><span className="faction-eyebrow">RELATIONSHIPS</span><h4>Reputation & standing</h4></div>
       {repBar('The Order’s view of this faction',Number(chosen.order_view)||0)}{repBar('This faction’s view of the Order',Number(chosen.faction_view)||0)}
       {repBar('Your personal reputation',Number(chosen.personal_reputation)||0)}
       {editable&&<button type="button" className="btn secondary" onClick={()=>setRepDraft({target:chosen.faction_scope==='world'?'player':'order_view',account_id:'',delta:5,event_title:'',event_details:'',source_event_id:''})}>Record reputation change</button>}
      </section>
      {chosen.image_reference_url&&<a className="faction-reference" href={chosen.image_reference_url} target="_blank" rel="noreferrer noopener">View portrait reference</a>}
-     {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen});setNewFaction(false)}}>Edit dossier</button>{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
+     {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen,map_color:chosen.map_color||factionColor(chosen.id)});setNewFaction(false)}}>Edit dossier</button>{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
      {editable&&chosen.notes&&<section className="faction-command-notes"><h4>Order command notes</h4><p>{chosen.notes}</p></section>}
      {tradeContracts.some(c=>c.faction_id===chosen.id)&&<section className="faction-trade-section"><span className="faction-eyebrow">THE MERCHANT NETWORK</span><h4>Trade agreements</h4><p>Completed deliveries improve this faction's standing toward the Order.</p>{tradeContracts.filter(c=>c.faction_id===chosen.id).map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{c.item_kind==='material'?c.material_name:c.equipment_name} · {c.status}</small></div><div><span>{c.delivered_quantity} / {c.required_quantity}</span><small>+{c.rep_per_unit} standing per item</small></div></article>)}</section>}
      <div className="faction-history-head"><div><span className="faction-eyebrow">THE CHANGING WORLD</span><h4>Faction history</h4></div>{editable&&<button type="button" className="btn secondary" onClick={()=>setEventDraft({title:'',details:'',occurred_on:''})}>+ Record development</button>}</div>
@@ -131,12 +132,14 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
     <label>Name<input value={editing.name} maxLength={100} onChange={e=>setEditing({...editing,name:e.target.value})}/></label>
     <label>Leader<input value={editing.leader} maxLength={100} onChange={e=>setEditing({...editing,leader:e.target.value})}/></label>
     <label>Faction category<select value={editing.faction_scope||'order_story'} onChange={e=>setEditing({...editing,faction_scope:e.target.value})}><option value="order_story">Connected to the Order</option><option value="world">Other faction</option><option value="settlement">Settlement</option></select></label>
-    <label>Relationship<select value={editing.relationship} onChange={e=>setEditing({...editing,relationship:e.target.value})}>{Object.entries(RELATIONS).map(([id,[name]])=><option key={id} value={id}>{name}</option>)}</select></label>
-    <label>Display order<input type="number" min="0" max="999" value={editing.sort_order} onChange={e=>setEditing({...editing,sort_order:e.target.value})}/></label>
+    <label>Relationship<select value={editing.relationship} onChange={e=>setEditing({...editing,relationship:e.target.value,trade_enabled:e.target.value==='hostile'?false:editing.trade_enabled})}>{Object.entries(RELATIONS).map(([id,[name]])=><option key={id} value={id}>{name}</option>)}</select></label>
+    <label>Territory map color<div className="faction-color-field"><input type="color" value={editing.map_color||'#688398'} aria-label="Pick faction color" onChange={e=>setEditing({...editing,map_color:e.target.value})}/><input aria-label="Faction color hex" maxLength={7} value={editing.map_color||''} onChange={e=>setEditing({...editing,map_color:e.target.value})}/></div></label>
+     <label>Display order<input type="number" min="0" max="999" value={editing.sort_order} onChange={e=>setEditing({...editing,sort_order:e.target.value})}/></label>
     <label className="wide">Faction description<textarea rows="4" maxLength={4500} value={editing.description} onChange={e=>setEditing({...editing,description:e.target.value})}/></label>
     <label className="wide">Portrait reference link<input type="url" value={editing.image_reference_url} maxLength={1500} onChange={e=>setEditing({...editing,image_reference_url:e.target.value})}/></label>
     <label className="wide">Private Order command notes<textarea rows="3" maxLength={6000} value={editing.notes} onChange={e=>setEditing({...editing,notes:e.target.value})}/></label>
-    <label className="wide faction-visibility"><input type="checkbox" checked={!!editing.public_visible} onChange={e=>setEditing({...editing,public_visible:e.target.checked})}/> Visible to Order members</label>
+    <label className="wide faction-visibility"><input type="checkbox" checked={!!editing.trade_enabled} onChange={e=>setEditing({...editing,trade_enabled:e.target.checked})}/> Allow Merchant Exchange orders and deliveries</label>
+     <label className="wide faction-visibility"><input type="checkbox" checked={!!editing.public_visible} onChange={e=>setEditing({...editing,public_visible:e.target.checked})}/> Visible to Order members</label>
    </div>
    <div className="faction-modal-actions"><button type="button" className="btn secondary" onClick={()=>setEditing(null)}>Cancel</button><button type="button" className="btn primary" disabled={busy} onClick={save}>Save faction</button></div>
   </div></div>}

@@ -14,13 +14,13 @@ function setup(role='member'){
    if(sql.startsWith('SELECT public_visible FROM order_factions'))return [[{public_visible:1}]];
    if(sql.startsWith('SELECT id,title,details'))return [[{id:1,title:'A renewed pact',details:'Terms discussed.',occurred_on:null,created_at:'2026-11-06'}]];
    if(sql.startsWith('SELECT id FROM order_factions'))return [[{id:'house-kurogane'}]];
-   if(sql.startsWith('UPDATE order_factions')){updates.push({sql,args});return [{affectedRows:1}]}
+   if(sql.startsWith('UPDATE order_factions')||sql.startsWith('UPDATE fc_trade_contracts')){updates.push({sql,args});return [{affectedRows:1}]}
    if(sql.startsWith('INSERT INTO order_faction_events')){updates.push({sql,args});return [{insertId:4}]}
    throw Error('Unexpected SQL: '+sql);
   },
   query:async(sql)=>{
    queries.push(sql);
-   if(sql.startsWith('SELECT f.id,f.name'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10,faction_scope:'order_story',order_view:45,faction_view:40,personal_reputation:0}]];
+   if(sql.startsWith('SELECT f.id,f.name'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10,faction_scope:'order_story',trade_enabled:1,map_color:'#688398',order_view:45,faction_view:40,personal_reputation:0}]];
    throw Error('Unexpected query: '+sql);
   }
  };
@@ -40,13 +40,13 @@ test('public member directory omits private command notes',async()=>{
 });
 test('ordinary members cannot edit faction diplomacy or post history',async()=>{
  const {pool}=setup();
- const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story'};
+ const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story',trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,403);
  assert.equal((await factionRoute(pool,request('POST',{title:'Test',details:'Test',occurred_on:null}),'/factions/house-kurogane/events')).status,403);
 });
 test('command can update relationships and append recorded history',async()=>{
  const {pool,updates}=setup('domina');
- const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'rival',description:'Agreements under strain',notes:'Private',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story'};
+ const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'rival',description:'Agreements under strain',notes:'Private',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story',trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,200);
  assert.equal((await factionRoute(pool,request('POST',{title:'Negotiations',details:'New trade terms',occurred_on:'2026-11-06'}),'/factions/house-kurogane/events')).status,201);
  assert.equal(updates.length,2);
@@ -54,9 +54,24 @@ test('command can update relationships and append recorded history',async()=>{
 });
 test('invalid faction relationships and unsafe portrait URLs are rejected',async()=>{
  const {pool}=setup('domina');
- const body={name:'Test',leader:'Leader',relationship:'friendly',description:'Description',notes:'',image_reference_url:'javascript:alert(1)',public_visible:true,sort_order:10};
+ const body={name:'Test',leader:'Leader',relationship:'friendly',description:'Description',notes:'',image_reference_url:'javascript:alert(1)',public_visible:true,sort_order:10,trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,400);
  body.image_reference_url='';
  body.relationship='all-powerful';
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,400);
+});
+
+test('trade closure is command-only and automatically pauses pending orders',async()=>{
+ const {pool,updates}=setup('domina');
+ const body={name:'The Iron Remnant',leader:'Commander',relationship:'hostile',description:'No exchange',notes:'',image_reference_url:'',public_visible:true,trade_enabled:false,map_color:'#b03441',sort_order:15,faction_scope:'world'};
+ const r=await factionRoute(pool,request('PUT',body),'/factions/iron-remnant');
+ assert.equal(r.status,200);
+ assert.ok(updates.some(x=>x.sql.includes("status='paused'")),'closing trade pauses open agreements');
+ assert.ok(updates.some(x=>x.sql.includes('map_color=?')),'color must persist in faction row');
+});
+test('faction editor rejects malformed hex colors and bad trade flags',async()=>{
+ const {pool}=setup('domina');
+ const data={name:'Faction',leader:'Leader',relationship:'neutral',description:'Details',notes:'',image_reference_url:'',public_visible:true,trade_enabled:true,map_color:'#123456',sort_order:10,faction_scope:'world'};
+ assert.equal((await factionRoute(pool,request('PUT',{...data,map_color:'red'}),'/factions/house-kurogane')).status,400);
+ assert.equal((await factionRoute(pool,request('PUT',{...data,trade_enabled:'yes'}),'/factions/house-kurogane')).status,400);
 });

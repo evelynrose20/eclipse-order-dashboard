@@ -48,6 +48,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
  const [menuOpen,setMenuOpen]=useState(false);
  const [members,setMembers]=useState([]);
  const [rankCatalog,setRankCatalog]=useState([]);
+ const [servitudeRanks,setServitudeRanks]=useState([]);
  const [characters,setCharacters]=useState([]);
  const [selected,setSelected]=useState('');
  const [draft,setDraft]=useState(null);

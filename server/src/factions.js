@@ -24,10 +24,11 @@ const editFields=(body)=>{
  if(!body||!validText(body.name,100)||!validText(body.leader,100)||
  !relationships.has(body.relationship)||!factionScopes.has(body.faction_scope)||!validText(body.description,4500)||
  !validText(body.notes,6000,true)||typeof body.public_visible!=='boolean'||
+ typeof body.trade_enabled!=='boolean'||typeof body.map_color!=='string'||!/^#[0-9a-fA-F]{6}$/.test(body.map_color)||
  !Number.isInteger(body.sort_order)||body.sort_order<0||body.sort_order>999||
  !validText(body.image_reference_url,1500,true)||!allowedUrl(body.image_reference_url))return null;
  return [body.name.trim(),body.leader.trim(),body.relationship,body.description.trim(),
-  body.notes.trim(),body.image_reference_url.trim(),body.public_visible?1:0,body.sort_order,body.faction_scope];
+  body.notes.trim(),body.image_reference_url.trim(),body.public_visible?1:0,body.sort_order,body.faction_scope,body.trade_enabled?1:0,body.map_color.toLowerCase()];
 };
 export async function factionRoute(pool,req,path){
  if(!pool)return fail(503,'database_unavailable');
@@ -41,9 +42,9 @@ export async function factionRoute(pool,req,path){
  }
  if(path==='/factions'&&req.method==='GET'){
   const [rows]=await pool.query(
-   'SELECT f.id,f.name,f.leader,f.relationship,f.description,f.notes,f.image_reference_url,f.public_visible,f.sort_order,f.faction_scope,f.updated_at,COALESCE(r.order_view,0) AS order_view,COALESCE(r.faction_view,0) AS faction_view,COALESCE(p.reputation,0) AS personal_reputation FROM order_factions f LEFT JOIN order_faction_reputation r ON r.faction_id=f.id LEFT JOIN player_faction_reputation p ON p.faction_id=f.id AND p.account_id=? '+
+   'SELECT f.id,f.name,f.leader,f.relationship,f.description,f.notes,f.image_reference_url,f.public_visible,f.sort_order,f.faction_scope,f.trade_enabled,f.map_color,f.updated_at,COALESCE(r.order_view,0) AS order_view,COALESCE(r.faction_view,0) AS faction_view,COALESCE(p.reputation,0) AS personal_reputation FROM order_factions f LEFT JOIN order_faction_reputation r ON r.faction_id=f.id LEFT JOIN player_faction_reputation p ON p.faction_id=f.id AND p.account_id=? '+
    (command?'':'WHERE f.public_visible=1 ')+'ORDER BY f.faction_scope,f.sort_order,f.name',[user.id]);
-  return result(200,{factions:rows.map(row=>({...row,notes:command?row.notes:'',public_visible:!!row.public_visible}))});
+  return result(200,{factions:rows.map(row=>({...row,notes:command?row.notes:'',public_visible:!!row.public_visible,trade_enabled:!!row.trade_enabled}))});
  }
  const match=/^\/factions\/([a-z0-9-]+)(?:\/(events|reputation|history))?$/.exec(path);
  if(!match)return fail(404,'not_found');
@@ -107,13 +108,14 @@ export async function factionRoute(pool,req,path){
  if(path==='/factions/'+id&&req.method==='PUT'){
   const body=await read(req),data=editFields(body);
   if(!data)return fail(400,'invalid_faction');
-  const [updated]=await pool.execute('UPDATE order_factions SET name=?,leader=?,relationship=?,description=?,notes=?,image_reference_url=?,public_visible=?,sort_order=?,faction_scope=? WHERE id=?',[...data,id]);
+  const [updated]=await pool.execute('UPDATE order_factions SET name=?,leader=?,relationship=?,description=?,notes=?,image_reference_url=?,public_visible=?,sort_order=?,faction_scope=?,trade_enabled=?,map_color=? WHERE id=?',[...data,id]);
+  if(updated.affectedRows&&!body.trade_enabled)await pool.execute("UPDATE fc_trade_contracts SET status='paused' WHERE faction_id=? AND status='open'",[id]);
   return updated.affectedRows?result(200,{status:'saved'}):fail(404,'faction_not_found');
  }
  if(path==='/factions/'+id&&req.method==='POST'){
   const body=await read(req),data=editFields(body);
   if(!data)return fail(400,'invalid_faction');
-  try{await pool.execute('INSERT INTO order_factions(id,name,leader,relationship,description,notes,image_reference_url,public_visible,sort_order,faction_scope) VALUES(?,?,?,?,?,?,?,?,?,?)',[id,...data])}
+  try{await pool.execute('INSERT INTO order_factions(id,name,leader,relationship,description,notes,image_reference_url,public_visible,sort_order,faction_scope,trade_enabled,map_color) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',[id,...data])}
   catch(error){if(error.code==='ER_DUP_ENTRY')return fail(409,'faction_exists');throw error}
   await pool.execute('INSERT IGNORE INTO order_faction_reputation(faction_id,order_view,faction_view) VALUES(?,0,0)',[id]);
   return result(201,{id});

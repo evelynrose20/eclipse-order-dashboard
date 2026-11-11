@@ -33,3 +33,5 @@
 .faction-trade-section article strong{color:#e0e5e5;font-size:12px}
 .faction-trade-section article span{color:#c9e2c9;font-size:12px;font-variant-numeric:tabular-nums}
 .faction-trade-section article small{color:#b1bdc1;font-size:11px}
+
+.faction-color-field{display:flex;align-items:center;gap:10px}.faction-color-field input[type=color]{width:54px;height:38px;padding:3px;border:1px solid #405462;border-radius:2px;background:#202a33}.faction-color-field input[type=text],.faction-color-field input:not([type]){flex:1;min-width:0}.faction-map-swatch{display:inline-block;width:15px;height:15px;margin-right:10px;vertical-align:middle;border:1px solid #acbdc9;border-radius:2px}.faction-trade-status{display:flex;align-items:center;gap:8px;color:#acbdc9;font-size:12px}

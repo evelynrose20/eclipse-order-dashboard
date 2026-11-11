@@ -55,7 +55,7 @@ export async function commerceRoute(pool,req,path){
    pool.query('SELECT template_id,material_id,quantity FROM fc_equipment_ingredients ORDER BY template_id,material_id'),
    pool.query('SELECT c.*,CASE WHEN ad.last_contract_id=c.id THEN 1 ELSE 0 END AS auto_created,f.name AS faction_name,f.faction_scope,m.name AS material_name,t.name AS equipment_name FROM fc_trade_contracts c JOIN order_factions f ON f.id=c.faction_id LEFT JOIN fc_materials m ON m.id=c.material_id LEFT JOIN fc_equipment_templates t ON t.id=c.equipment_template_id LEFT JOIN fc_trade_auto_demand ad ON ad.last_contract_id=c.id '+(command?'':'WHERE c.status<>"paused" ')+'ORDER BY c.status,c.created_at DESC,c.id DESC'),
    pool.query('SELECT d.id,d.contract_id,d.account_id,a.display_name,d.quantity,d.reputation_change,d.front_id,d.created_at FROM fc_trade_deliveries d JOIN accounts a ON a.id=d.account_id ORDER BY d.id DESC LIMIT 60'),
-   pool.query('SELECT id,name,faction_scope,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name')
+   pool.query('SELECT id,name,faction_scope,public_visible,trade_enabled FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name')
   ]);
   const allowedIds=new Set(contracts.map(x=>Number(x.id)));
   return ok({templates:templates.filter(t=>command||t.enabled).map(t=>({...t,enabled:!!t.enabled,ingredients:ingredients.filter(i=>i.template_id===t.id)})),
@@ -135,8 +135,9 @@ export async function commerceRoute(pool,req,path){
    !positive(b.rep_per_unit,20)||!Number.isInteger(b.sale_value_per_unit??0)||(b.sale_value_per_unit??0)<0||(b.sale_value_per_unit??0)>100000||!key(b.item_id))return fail(400,'invalid_trade_contract');
   const itemColumn=b.item_kind==='material'?'material_id':'equipment_template_id';
   return transaction(pool,async conn=>{
-   const [faction]=await conn.execute('SELECT id FROM order_factions WHERE id=?',[b.faction_id]);
+   const [faction]=await conn.execute('SELECT id,trade_enabled FROM order_factions WHERE id=?',[b.faction_id]);
    if(!faction.length)return fail(404,'faction_not_found');
+    if(!faction[0].trade_enabled)return fail(409,'faction_trade_closed');
    const itemTable=b.item_kind==='material'?'fc_materials':'fc_equipment_templates';
    const [item]=await conn.execute('SELECT id FROM '+itemTable+' WHERE id=?',[b.item_id]);
    if(!item.length)return fail(400,'unknown_trade_item');
@@ -158,7 +159,12 @@ export async function commerceRoute(pool,req,path){
   if(!command)return fail(403,'command_required');
   const b=await body(req);
   if(!['open','paused'].includes(b?.status))return fail(400,'invalid_contract_status');
-  const [changed]=await pool.execute('UPDATE fc_trade_contracts SET status=? WHERE id=? AND status<>"complete"',[b.status,Number(setStatus[1])]);
+  if(b.status==='open'){
+    const [buyers]=await pool.execute('SELECT f.trade_enabled FROM fc_trade_contracts c JOIN order_factions f ON f.id=c.faction_id WHERE c.id=?',[Number(setStatus[1])]);
+    if(!buyers.length)return fail(404,'contract_not_found');
+    if(!buyers[0].trade_enabled)return fail(409,'faction_trade_closed');
+   }
+   const [changed]=await pool.execute('UPDATE fc_trade_contracts SET status=? WHERE id=? AND status<>"complete"',[b.status,Number(setStatus[1])]);
   return changed.affectedRows?ok({status:'updated'}):fail(409,'contract_not_editable');
  }
  const deliver=/^\/commerce\/contracts\/(\d+)\/deliver$/.exec(path);
@@ -173,6 +179,8 @@ export async function commerceRoute(pool,req,path){
    const contract=rows[0];
    if(!contract)return fail(404,'contract_not_found');
    if(contract.status!=='open')return fail(409,'contract_closed');
+    const [[buyer]]=await conn.execute('SELECT trade_enabled FROM order_factions WHERE id=?',[contract.faction_id]);
+    if(!buyer?.trade_enabled)return fail(409,'faction_trade_closed');
    const remaining=Number(contract.required_quantity)-Number(contract.delivered_quantity);
    if(b.quantity>remaining)return fail(409,'delivery_exceeds_contract');
    let equipmentItemId=null;

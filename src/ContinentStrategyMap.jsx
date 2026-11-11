@@ -1,3 +1,4 @@
+import {factionColor} from './territory-ownership.js';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import './continent-strategy-map.css';
 import {simplifyFreehand,insertVertex} from './continent-trace.js';
@@ -188,7 +189,7 @@ export default function ContinentStrategyMap({continent={},zones=[],regions=[],s
      {(artworkGround||referenceOpen&&reference.visible)&&overlayImage&&<image href={overlayImage} x={Number(reference.offset_x)} y={Number(reference.offset_y)} width={W*Number(reference.width_pct)/100} height={H*Number(reference.width_pct)/100} preserveAspectRatio="none" opacity={artworkGround?1:Number(reference.opacity_pct)/100} pointerEvents="none"/>}
      {!artworkGround&&!showTerrain&&<rect width={W} height={H} fill="url(#csm-grid)" pointerEvents="none"/>}
      {geometry.map(({zone,points})=>{
-      const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id==='eclipse-order'?'#a58b62':zone.controlling_faction_id?'#688398':'#6e7980';
+      const isSelected=selected===String(zone.id),fill=layer==='status'?palette[zone.strategic_state]||'#62727c':zone.controlling_faction_id?(factions.find(f=>f.id===zone.controlling_faction_id)?.map_color||factionColor(zone.controlling_faction_id)):'#6e7980';
       const center=pointCenter(points);
       return <g key={zone.id} className={'csm-territory '+(isSelected?'selected':'')} onClick={e=>{if(tool!=='inspect')return;e.stopPropagation();if(!ignoreClick.current)selectZone(zone.id);else ignoreClick.current=false}}>
        <polygon points={vector(points)} fill={fill} fillOpacity={isSelected ? 0.36 : 0.15} stroke={isSelected?'#f5d69d':'#c5d1d2'} strokeWidth={isSelected?3:1.7} vectorEffect="non-scaling-stroke"/>
