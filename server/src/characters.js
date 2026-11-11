@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {resolveSession} from './auth.js';
 import {createProgression,classArmor,skillProficiencyCount,MAX_SKILL_PROFICIENCIES} from './progression.js';
 import {loadClassCatalog,schoolSlots} from './class-catalog.js';
+import {DEFAULT_UNBOUND_RANK,displayUnboundRank,validUnboundRank} from '../../src/characterRanks.js';
 
 const commands=new Set(['domina','high_command']);
 const limit=(s,max)=>typeof s==='string'?s.trim().slice(0,max):'';
@@ -24,7 +25,8 @@ function view(row,account){
  const data=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
  const record={...data,id:row.id,name:row.character_name,player_user_id:row.player_account_id,
   handler_user_id:row.handler_account_id,collar_bound:Boolean(row.collar_bound),
-  rank:row.collar_bound?(labels[row.bound_rank]||labels.rank_i):'Unbound: Free'};
+  rank:row.collar_bound?(labels[row.bound_rank]||labels.rank_i):displayUnboundRank(data.unbound_rank),
+  unbound_rank:row.collar_bound?null:(validUnboundRank(data.unbound_rank)?data.unbound_rank:DEFAULT_UNBOUND_RANK)};
  const full=commands.has(account.account_role)||(account.account_role==='handler'&&row.handler_account_id===account.id)||!row.collar_bound;
  if(full){const {gil,...visible}=record;return {...visible,view_mode:'full'};}
  return {id:record.id,name:record.name,player:record.player||'',owner:record.owner||'',specialty:record.specialty||'',
@@ -60,7 +62,7 @@ export async function characterRoute(pool,req,path){
   const initial=createProgression(data,catalog[data.class_id]);
   if(initial.error)return err(400,initial.error);
   const {gil:discardedGil,player_user_id:ignoredOwner,handler_user_id:ignoredHandler,...cleanInitial}=initial;
-  const saved={...cleanInitial,id,name,collar_bound:bound,rank:bound?labels[rank]:'Unbound: Free'};
+  const saved={...cleanInitial,id,name,collar_bound:bound,unbound_rank:DEFAULT_UNBOUND_RANK,rank:displayUnboundRank(DEFAULT_UNBOUND_RANK)};
   await pool.execute(
    'INSERT INTO characters(id,character_name,player_account_id,handler_account_id,collar_bound,bound_rank,sheet_json) VALUES(?,?,?,?,?,?,?)',
    [id,name,owner,handler,bound?1:0,rank,JSON.stringify(saved)]);
@@ -134,6 +136,26 @@ export async function characterRoute(pool,req,path){
    await cn.commit();return {status:200,body:{ability,score:sheet[ability],remaining:sheet.ability_points}};
   }catch(error){await cn.rollback().catch(()=>{});throw error}finally{cn.release()}
  }
+ const unboundPromotion=/^\/characters\/([a-f0-9-]{36})\/unbound-rank$/.exec(path);
+ if(unboundPromotion&&req.method==='POST'){
+  if(!commands.has(actor.account_role))return err(403,'command_required');
+  const body=await payload(req);
+  if(!validUnboundRank(body?.rank))return err(400,'invalid_unbound_rank');
+  const cn=await pool.getConnection();
+  try{
+   await cn.beginTransaction();
+   const [rows]=await cn.execute('SELECT collar_bound,sheet_json FROM characters WHERE id=? FOR UPDATE',[unboundPromotion[1]]);
+   if(!rows.length){await cn.rollback();return err(404,'character_not_found')}
+   if(rows[0].collar_bound){await cn.rollback();return err(409,'rank_requires_unbound_character')}
+   const sheet=typeof rows[0].sheet_json==='string'?JSON.parse(rows[0].sheet_json):rows[0].sheet_json;
+   sheet.unbound_rank=body.rank;
+   sheet.rank=displayUnboundRank(body.rank);
+   await cn.execute('UPDATE characters SET sheet_json=? WHERE id=?',[JSON.stringify(sheet),unboundPromotion[1]]);
+   await cn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
+    [actor.id,'change_unbound_rank','character',unboundPromotion[1],JSON.stringify({rank:body.rank})]);
+   await cn.commit();return {status:200,body:{rank:sheet.rank,unbound_rank:body.rank}};
+  }catch(error){await cn.rollback().catch(()=>{});throw error}finally{cn.release()}
+ }
  const promotion=/^\/characters\/([a-f0-9-]{36})\/rank$/.exec(path);
  if(promotion&&req.method==='POST'){
   if(!commands.has(actor.account_role))return err(403,'command_required');
@@ -182,7 +204,7 @@ export async function characterRoute(pool,req,path){
   if(!body||typeof body!=='object'||Array.isArray(body))return err(400,'invalid_character');
   const old=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
   // Never accept ownership, handler assignment, collar or bound-rank changes through normal sheet save.
-  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','view_mode','gil','hp','max_hp','armor_class','class_id','class_name']);
+  const blocked=new Set(['id','player_user_id','handler_user_id','collar_bound','rank','unbound_rank','view_mode','gil','hp','max_hp','armor_class','class_id','class_name']);
   if(old.progression_version===1){
    for(const key of ['progression_version','class_features','ability_points','level','experience','class_id','class_name','proficiency_bonus','hit_dice','max_hp','gil','saving_throws','spell_points','max_spell_points'])blocked.add(key);
    // Levelled ability growth must be granted by server rules, not arbitrary sheet edits.
