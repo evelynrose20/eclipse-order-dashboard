@@ -300,3 +300,36 @@
 .wh-upgrade-box small{color:#c7d5d5;font-size:11px}
 .wh-upgrade-box select,.wh-upgrade-box button{min-width:0}
 @media(max-width:820px){.wh-blueprint-grid{grid-template-columns:1fr}.wh-recipe-row{flex-wrap:wrap}.wh-recipe-row>.eo-material-picker{flex-basis:65%}}
+
+/* Autonomous industrial, warehouse and garrison freight control */
+.supply-network-grid,.treaty-negotiations-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.supply-network-card,.treaty-negotiation-card{border:1px solid #586b76;background:linear-gradient(135deg,#263946,#172832);min-width:0}
+.supply-network-card>header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px;border-bottom:1px solid #526672}
+.supply-network-card>header>i{font-size:29px;color:#d6ae7b}
+.supply-network-card h4,.treaty-negotiation-card h4{font:800 22px/1.15 var(--imperial-heading,'Barlow Condensed',sans-serif);margin:8px 0;color:#f2e8d7}
+.supply-network-card small,.treaty-negotiation-card small{color:#b3c3cb;font-size:11px}
+.supply-network-chain{padding:17px;display:flex;align-items:center;flex-wrap:wrap;gap:12px;color:#eee0c9;font-size:13px;font-weight:700}
+.supply-network-chain i{color:#d6b889}
+.supply-network-metrics{display:flex;flex-wrap:wrap;gap:12px;padding:0 17px 16px}
+.supply-network-metrics span{font-size:11px;color:#c3d0d2}
+.supply-network-metrics i{color:#caa574;margin-right:5px}
+.supply-network-controls{padding:12px 17px;border-top:1px solid #425563;display:flex;gap:9px;flex-wrap:wrap}
+.supply-network-controls button,.treaty-negotiation-card button{cursor:pointer;border:1px solid #a98b66;background:#3f4c54;padding:9px 13px;color:#eee0c8}
+.supply-network-wait{padding:12px 17px;color:#efc78f;background:#403c30;font-size:12px}
+.supply-network-wait i{margin-right:8px}
+.supply-network-opt{display:flex;align-items:center;gap:9px;color:#eee2d1;font-size:12px}
+.supply-network-opt input{accent-color:#c2a16d}
+.supply-network-history{margin-top:18px;border:1px solid #566a77;background:#1a2e3b;padding:17px}
+.supply-network-history>div{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid #344c58;padding:9px 0;font-size:12px;color:#dedbd5}
+.supply-network-history small{margin-left:auto;color:#aebec5}
+.treaty-negotiation-card{padding:18px}
+.treaty-negotiation-card header{border-bottom:1px solid #4f6471;padding-bottom:14px}
+.treaty-negotiation-card h4 i{color:#cda77c;font-size:14px;margin:0 8px}
+.treaty-negotiation-dates{display:grid;gap:7px;padding:14px 0}
+.treaty-negotiation-dates span{font-size:11px;color:#c4d1d6}
+.treaty-negotiation-dates i{margin-right:8px;color:#ccae7d}
+.treaty-negotiation-response{background:#354251;border-left:3px solid #d9a977;padding:10px;color:#e5d6c3;font-size:12px;line-height:1.5}
+.treaty-negotiation-note{font-size:11px;color:#dbc49e}
+.treaty-term-field{display:grid;gap:8px;color:#e6dacb;font-size:12px}
+.treaty-term-field textarea{background:#10222e;color:#e7e9e6;border:1px solid #607482;padding:11px;min-height:90px;width:100%;resize:vertical}
+@media(max-width:800px){.supply-network-grid,.treaty-negotiations-grid{grid-template-columns:1fr}}
