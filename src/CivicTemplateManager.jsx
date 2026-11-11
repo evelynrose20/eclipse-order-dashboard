@@ -1,3 +1,4 @@
+import MaterialPicker from './MaterialPicker.jsx';
 import React,{useState} from 'react';
 import './world-industry.css';
 
@@ -40,7 +41,7 @@ export default function CivicTemplateManager({templates=[],materials=[],request,
     <label>{defs[draft.category]?.[1]}<input type="number" required min="1" max="100000" step="1" value={draft.effect_per_level} onChange={e=>setDraft({...draft,effect_per_level:e.target.value})}/></label>
     <div className="wide wa-civic-multimaterials"><div className="wa-upgrade-section-heading"><strong>Construction materials per level</strong><button type="button" disabled={(draft.materials||[]).length>=12} onClick={()=>setDraft({...draft,materials:[...(draft.materials||[]),{material_id:'',units_per_level:5}]})}>+ Add material</button></div>
      {(draft.materials||[]).map((line,i)=><div className="wa-civic-material-line" key={i}>
-      <label>Material<select required value={line.material_id} onChange={e=>setDraft({...draft,materials:draft.materials.map((m,j)=>j===i?{...m,material_id:e.target.value}:m)})}><option value="">Choose material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+      <label>Material<MaterialPicker catalog={materials} required value={line.material_id} onChange={e=>setDraft({...draft,materials:draft.materials.map((m,j)=>j===i?{...m,material_id:e.target.value}:m)})}><option value="">Choose material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</MaterialPicker></label>
       <label>Units per level<input required type="number" min="1" max="10000" step="1" value={line.units_per_level} onChange={e=>setDraft({...draft,materials:draft.materials.map((m,j)=>j===i?{...m,units_per_level:e.target.value}:m)})}/></label>
       <button type="button" disabled={draft.materials.length===1} onClick={()=>setDraft({...draft,materials:draft.materials.filter((_,j)=>j!==i)})}>Remove</button>
      </div>)}
