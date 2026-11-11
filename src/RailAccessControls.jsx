@@ -9,11 +9,19 @@ import './rail-access-controls.css';
 export default function RailAccessControls({data,request,onRefresh,onClose}){
  const terminals=data.rail_terminals||[],services=data.rail_service_records||[];
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [editing,setEditing]=useState(null);
+ const editStation=st=>{setEditing({id:st.id,name:st.name,stop_type:st.stop_type,stop_id:st.stop_id,status:st.status,platforms:Number(st.platforms),notes:st.notes||''});setError('');setNotice('')};
  const stationName=id=>terminals.find(s=>Number(s.id)===Number(id))?.name||'Terminal '+id;
  async function update(path,body,label){
   setBusy(true);setError('');setNotice('');
-  try{await request(path,{method:'PUT',body});await onRefresh();setNotice(label)}
-  catch(err){setError(err.message||'Railway status could not be changed')}finally{setBusy(false)}
+  try{await request(path,{method:'PUT',body});await onRefresh();setNotice(label);return true}
+  catch(err){setError(err.message||'Railway status could not be changed');return false}finally{setBusy(false)}
+ }
+ async function saveStation(event){
+  event.preventDefault();
+  if(!editing||busy)return;
+  const saved=await update('/internal-rail/stations/'+editing.id,{...editing,platforms:Number(editing.platforms)},editing.name+' updated.');
+  if(saved)setEditing(null);
  }
  function stationStatus(st,status){
   return update('/internal-rail/stations/'+st.id,{name:st.name,stop_type:st.stop_type,stop_id:st.stop_id,status,platforms:Number(st.platforms),notes:st.notes||''},st.name+' set to '+status);
@@ -23,12 +31,25 @@ export default function RailAccessControls({data,request,onRefresh,onClose}){
  }
  return <div className="rail-access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
   <section className="rail-access-dialog" role="dialog" aria-modal="true" aria-label="Railway network condition">
-   <header><div><span>SUPPLY COMMAND · NETWORK READINESS</span><h3><i className="fa-solid fa-train"/> Railway access</h3><p>Railway paths and stations are registered automatically from connected map tracks. Review inherited damaged or paused infrastructure here without recreating routes.</p></div><button type="button" aria-label="Close railway access" onClick={onClose}><i className="fa-solid fa-xmark"/></button></header>
+   <header><div><span>SUPPLY COMMAND · NETWORK READINESS</span><h3><i className="fa-solid fa-train"/> Railway access</h3><p>Railway paths and stations are registered automatically from connected map tracks. Manage existing terminals, record repairs, and review paused services without recreating tracks or routes.</p></div><button type="button" aria-label="Close railway access" onClick={onClose}><i className="fa-solid fa-xmark"/></button></header>
    {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
    <div className="rail-access-scroll">
     <h4>Rail terminals <small>{terminals.length}</small></h4>
-    <div className="rail-access-grid">{terminals.map(st=><article key={st.id}><div><i className="fa-solid fa-location-dot"/><strong>{st.name}</strong><span className={'rail-access-state '+st.status}>{st.status}</span></div><small>{st.stop_type==='settlement'?'Settlement':'Order front'} · {st.platforms} platform(s)</small><div className="rail-access-actions">{st.status==='operational'?<button type="button" disabled={busy} onClick={()=>stationStatus(st,'closed')}>Close terminal</button>:st.status==='damaged'?<p>Damaged terminal — complete restoration before reopening it.</p>:<button type="button" disabled={busy} onClick={()=>stationStatus(st,'operational')}>Open terminal</button>}</div></article>)}</div>
+    <div className="rail-access-grid">{terminals.map(st=><article key={st.id}><div><i className="fa-solid fa-location-dot"/><strong>{st.name}</strong><span className={'rail-access-state '+st.status}>{st.status}</span></div><small>{st.stop_type==='settlement'?'Settlement':'Order front'} · {st.platforms} platform(s)</small><div className="rail-access-actions"><button type="button" disabled={busy} onClick={()=>editStation(st)}>Manage</button>{st.status==='operational'?<button type="button" disabled={busy} onClick={()=>stationStatus(st,'closed')}>Close terminal</button>:st.status==='damaged'?<p>Damaged terminal — use Manage to record its repair and return it to service.</p>:<button type="button" disabled={busy} onClick={()=>stationStatus(st,'operational')}>Open terminal</button>}</div></article>)}</div>
     {!terminals.length&&<p className="rail-access-empty">No rail terminals registered yet. Create a supply line on a connected railway and its stops will be registered automatically.</p>}
+    {editing&&<section className="rail-access-editor" aria-label={'Manage '+editing.name}>
+     <div className="rail-access-editor-head"><div><span>TERMINAL ADMINISTRATION</span><h4>Manage {editing.name}</h4><p>Update the existing station. Its linked location and railway connections are retained.</p></div><button type="button" onClick={()=>{setEditing(null);setError('')}} disabled={busy} aria-label="Close station editor"><i className="fa-solid fa-xmark"/></button></div>
+     <form onSubmit={saveStation}>
+      <div className="rail-access-editor-fields">
+       <label>Station name<input type="text" required maxLength={140} value={editing.name} onChange={e=>setEditing(v=>({...v,name:e.target.value}))}/></label>
+       <label>Condition / operational status<select value={editing.status} onChange={e=>setEditing(v=>({...v,status:e.target.value}))}><option value="planned">Planned</option><option value="operational">Operational</option><option value="damaged">Damaged</option><option value="closed">Closed</option></select></label>
+       <label>Platforms<input type="number" required min={1} max={100} step={1} value={editing.platforms} onChange={e=>setEditing(v=>({...v,platforms:e.target.value}))}/></label>
+       <div className="rail-access-editor-location"><span>Attached to</span><strong>{editing.stop_type==='settlement'?'Settlement':'Order front'} # {editing.stop_id}</strong><small>Location is preserved when you save.</small></div>
+       <label className="wide">Station notes<textarea rows={3} maxLength={1200} value={editing.notes} onChange={e=>setEditing(v=>({...v,notes:e.target.value}))}/></label>
+      </div>
+      <div className="rail-access-editor-actions"><button type="button" onClick={()=>setEditing(null)} disabled={busy}>Cancel</button><button type="submit" disabled={busy||!editing.name.trim()||!Number.isInteger(Number(editing.platforms))||Number(editing.platforms)<1||Number(editing.platforms)>100}>{busy?'Saving…':'Save station'}</button></div>
+     </form>
+    </section>}
     <h4>Rail services <small>{services.length}</small></h4>
     <div className="rail-access-grid">{services.map(s=><article key={s.id}><div><i className="fa-solid fa-route"/><strong>{s.name}</strong><span className={'rail-access-state '+s.status}>{s.status}</span></div><small>{stationName(s.from_station_id)} → {stationName(s.to_station_id)} · {s.duration_minutes} min</small><div className="rail-access-actions">{s.status==='active'?<button type="button" disabled={busy} onClick={()=>serviceStatus(s,'paused')}>Pause service</button>:<button type="button" disabled={busy} onClick={()=>serviceStatus(s,'active')}>Resume service</button>}</div></article>)}</div>
     {!services.length&&<p className="rail-access-empty">Services are registered automatically when a new freight order uses connected tracks.</p>}
