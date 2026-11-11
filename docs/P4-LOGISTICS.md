@@ -126,3 +126,15 @@ Warehouses have their own item quantities and audit ledger. **Farm-to-warehouse 
 **Planning UI:** Corridor construction and linked freight routes use visual mode cards, searchable locations, a connected-stops preview, and real route assessments. The source warehouses UI offers a first-class convoy planner and storage report; it does not replace city simulations or NPC production.
 
 **Deployment:** Back up production MariaDB, update the Windows API from main, execute `npm run setup:local` in `server/` to apply migration 103, and restart the Windows service. Migrations 101 and 102 must already be present or will also be applied. The public frontend alone cannot activate this server-backed feature.
+
+## Warehouse construction templates and upgrade levels (migration 104)
+
+Under **Supply Command → Warehouses → Warehouse designs**, command staff can create named designs, configure storage capacity and multiple required industrial materials at each level (up to 20 levels), and edit the material bills for future construction. The three older Supply Depot, Regional Storehouse and Grand Imperial Warehouse patterns are retained as editable starting blueprints with three seeded upgrade levels.
+
+A new warehouse chooses a design and starts as a planned **level 1** structure. Its construction recipe is snapshotted when planned. Commissioning consumes *all* materials from a real Order-owned facility in the same controlled zone; if stock is insufficient, the transaction fails without deducting a partial recipe. Upgrading an operational warehouse to its next configured level also consumes all the level's industrial materials before storage capacity changes. No free direct capacity edits, and no silent bypassing upgrades. Existing warehouses retain their identifiers, condition, capacity, and stored cargo and receive a legacy-compatible level-1 blueprint association.
+
+The construction design system is independent of freight routing. **Standing supply agreements presently deliver between industry facilities, not directly into warehouses**. Sending supplies from a farm or mine to a warehouse is currently an explicit dispatch operation. Automatic, waiting farm-to-warehouse routes (with retry-on-stock/fuel/capacity and alternative destinations) remain to be built. A single freight route with two simultaneous destinations is not currently supported.
+
+Settlement route choices now show actual region/zone names rather than exposing raw numeric region IDs.
+
+**Deployment:** Back up live MariaDB; update the Windows service and execute `npm run setup:local` in `server/` (migration 104), then restart the API. The new website UI alone does not create database tables. No existing warehouse or inventory is deleted.
