@@ -12,7 +12,6 @@ import Factions from './Factions.jsx';
 import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
 import TradeWorkspace from './TradeWorkspace.jsx';
-import InternalRail from './InternalRail.jsx';
 import FreightLogistics from './FreightLogistics.jsx';
 import Treasury from './Treasury.jsx';
 import Fronts from './Fronts.jsx';
@@ -78,6 +77,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   return()=>{active=false};
  },[profile.id]);
  useEffect(()=>{if(tab==='chamber'&&!chamberAccess)setTab('overview')},[tab,chamberAccess]);
+ useEffect(()=>{if(tab==='internal-rail')setTab('freight')},[tab]);
  const pending=members.filter(m=>m.approval_status==='pending');
  const active=members.filter(m=>m.approval_status==='approved');
  const visibleCharacters=playerPreview?characters.filter(c=>c.player_user_id===profile.id):characters;
@@ -99,7 +99,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ...(!playerPreview&&canManage(profile.role)?[['venue-management','Venue Management','♧']]:[]),
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
-  ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣'],['internal-rail','Internal Rail Logistics','🚆']]:[]),
+  ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣']]:[]),
   ['fronts','Order Fronts','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ['treasury','Order Treasury','◈'],
@@ -173,7 +173,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='freight'&&admin&&<FreightLogistics request={request} onNavigate={setTab}/>}
-    {tab==='internal-rail'&&admin&&<InternalRail request={request}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='workshop'&&<Workshop request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='factions'&&<Factions request={request} canEdit={canManage(profile.role)} previewOnly={playerPreview}/>}
