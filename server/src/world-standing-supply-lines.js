@@ -1,3 +1,4 @@
+import {railService,availableConsist,startRailJourney} from './world-standing-rail.js';
 // Persistent, opt-in supply network. No implicit freight, stock or vehicle generation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -70,10 +71,17 @@ export async function supplyLineRoute(pool,req,path,actor,env){
    if(!safeLocation(b.source_kind,src)||!safeLocation(b.destination_kind,dst))return fail(409,'supply_line_endpoint_unavailable');
    const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.item_id]);
    const [[mode]]=await db.execute("SELECT id,mode FROM world_logistics_transport_templates WHERE id=? AND active=1",[b.transport_template_id]);
-   if(!item||!mode||!['road','air'].includes(mode.mode))return fail(409,'supply_line_transport_or_item_unavailable');
+   if(!item||!mode||!['road','rail','air'].includes(mode.mode))return fail(409,'supply_line_transport_or_item_unavailable');
    if(mode.mode==='air'&&!await env.operationalAirDocks(db,src.settlement_id,dst.settlement_id))return fail(409,'supply_line_air_docks_required');
-   if(!await env.route(db,src.settlement_id,dst.settlement_id,mode.mode))return fail(409,'supply_line_route_unavailable');
-   const [saved]=await db.execute('INSERT INTO world_logistics_supply_lines(name,source_kind,source_id,destination_kind,destination_id,item_id,quantity,keep_at_least,destination_target,transport_template_id,vehicle_lot_id,interval_minutes,status,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.name.trim(),b.source_kind,b.source_id,b.destination_kind,b.destination_id,b.item_id,b.quantity,Number(b.keep_at_least||0),b.destination_target??null,b.transport_template_id,b.vehicle_lot_id,b.interval_minutes,b.activate?'active':'paused',actor.id]);
+   let rail=null;
+   if(mode.mode==='rail'){
+    if(!positive(b.train_consist_id)||!positive(b.rail_route_id))return fail(400,'rail_train_and_service_required');
+    rail=await railService(db,src.settlement_id,dst.settlement_id,b.rail_route_id);
+    if(!rail.available)return fail(409,'supply_rail_not_connected');
+    const train=await availableConsist(db,b.train_consist_id,rail.forward.from_station_id);
+    if(!train||Number(train.locomotive_lot_id)!==Number(b.vehicle_lot_id))return fail(409,'supply_rail_train_unavailable');
+   }else if(!await env.route(db,src.settlement_id,dst.settlement_id,mode.mode))return fail(409,'supply_line_route_unavailable');
+   const [saved]=await db.execute('INSERT INTO world_logistics_supply_lines(name,source_kind,source_id,destination_kind,destination_id,item_id,quantity,keep_at_least,destination_target,transport_template_id,vehicle_lot_id,interval_minutes,status,created_by,train_consist_id,rail_route_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[b.name.trim(),b.source_kind,b.source_id,b.destination_kind,b.destination_id,b.item_id,b.quantity,Number(b.keep_at_least||0),b.destination_target??null,b.transport_template_id,b.vehicle_lot_id,b.interval_minutes,b.activate?'active':'paused',actor.id,mode.mode==='rail'?b.train_consist_id:null,mode.mode==='rail'?b.rail_route_id:null]);
    return ok({id:saved.insertId,status:b.activate?'active':'paused'});
   });
  }
@@ -146,16 +154,20 @@ export async function runStandingSupplyAutomation(pool,env){
    const [src,dest]=await Promise.all([location(db,line.source_kind,line.source_id,env.facilities,true),location(db,line.destination_kind,line.destination_id,env.facilities,true)]);
    if(!safeLocation(line.source_kind,src)||!safeLocation(line.destination_kind,dest))return markWaiting(db,line,'Supply endpoint unavailable');
    const [[vehicleTemplate]]=await db.execute("SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1",[line.transport_template_id]);
-   if(!vehicleTemplate||!['road','air'].includes(vehicleTemplate.mode))return markWaiting(db,line,'Transport service unavailable');
-   const link=await env.route(db,src.settlement_id,dest.settlement_id,vehicleTemplate.mode);
+   if(!vehicleTemplate||!['road','rail','air'].includes(vehicleTemplate.mode))return markWaiting(db,line,'Transport service unavailable');
+   const rail=vehicleTemplate.mode==='rail'?await railService(db,src.settlement_id,dest.settlement_id,line.rail_route_id):null;
+   if(rail&&!rail.available)return markWaiting(db,line,rail.reason);
+   const link=rail?{segment_ids:rail.tracks,legs:rail.tracks.length,duration_minutes:Number(rail.forward.duration_minutes)}:await env.route(db,src.settlement_id,dest.settlement_id,vehicleTemplate.mode);
    if(!link)return markWaiting(db,line,'No operational transport corridor');
    if(vehicleTemplate.mode==='air'&&!await env.operationalAirDocks(db,src.settlement_id,dest.settlement_id))return markWaiting(db,line,'Airship landing site unavailable');
-   const vehicle=await env.availableVehicle(db,line.vehicle_lot_id,vehicleTemplate.mode,src.settlement_id);
-   if(!vehicle)return markWaiting(db,line,'Transport vehicle busy or not stationed at source');
-   const [[inUse]]=await db.execute("SELECT id FROM world_logistics_supply_line_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[line.vehicle_lot_id]);
-   if(inUse)return markWaiting(db,line,'Vehicle already carrying another supply load');
-   const specifications=typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
-   const capacity=Math.min(Number(vehicleTemplate.capacity),Number(specifications?.cargo_capacity||0)*Number(vehicle.quantity||1));
+   const train=rail?await availableConsist(db,line.train_consist_id,rail.forward.from_station_id):null;
+   const vehicle=rail?null:await env.availableVehicle(db,line.vehicle_lot_id,vehicleTemplate.mode,src.settlement_id);
+   if(rail&&(!train||Number(train.locomotive_lot_id)!==Number(line.vehicle_lot_id)))return markWaiting(db,line,'Manufactured train is in use or is not at the origin station');
+   if(!rail&&!vehicle)return markWaiting(db,line,'Transport vehicle busy or not stationed at source');
+   const [[inUse]]=await db.execute("SELECT id FROM world_logistics_supply_line_shipments WHERE vehicle_lot_id=? AND (status IN ('in_transit','disrupted') OR return_due_at>UTC_TIMESTAMP()) LIMIT 1",[line.vehicle_lot_id]);
+   if(inUse)return markWaiting(db,line,'Vehicle already carrying another supply load or returning to depot');
+   const specifications=rail?null:typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
+   const capacity=rail?Math.min(Number(vehicleTemplate.capacity),Number(train.cargo_capacity)):Math.min(Number(vehicleTemplate.capacity),Number(specifications?.cargo_capacity||0)*Number(vehicle.quantity||1));
    if(capacity<=0)return markWaiting(db,line,'Vehicle has no registered freight capacity');
    const available=await stock(db,line.source_kind,line.source_id,line.item_id);
    const reserved=Math.max(0,Number(line.keep_at_least||0));
@@ -163,17 +175,19 @@ export async function runStandingSupplyAutomation(pool,env){
    const target=line.destination_target==null?Infinity:Math.max(0,Number(line.destination_target)-await stock(db,line.destination_kind,line.destination_id,line.item_id));
    const load=round(Math.min(Number(line.quantity),capacity,room,target,available-reserved));
    if(load<=0)return markWaiting(db,line,room<=0?'Receiving warehouse full':target<=0?'Destination target already supplied':'Waiting for factory or warehouse stock');
-   const legs=Math.max(1,Number(link.legs||1))*2; // includes return trip to source so vehicle can repeat
-   const fuel=round(legs*Number(vehicleTemplate.fuel_per_leg||0)*(vehicleTemplate.mode==='air'?3:1));
-   if(!vehicleTemplate.fuel_item_id)return markWaiting(db,line,'Freight service has no fuel type');
-   const fuelAvailable=await stock(db,line.source_kind,line.source_id,vehicleTemplate.fuel_item_id);
-   if(fuelAvailable<fuel+(line.item_id===vehicleTemplate.fuel_item_id?load:0))return markWaiting(db,line,'Awaiting transport fuel');
-   const minutes=Math.max(10,2*(Number(link.duration_minutes??(Number(link.legs||1)*Number(vehicleTemplate.minutes_per_leg||60)))+Number(src.access_minutes||0)));
+   const legs=rail?2:Math.max(1,Number(link.legs||1))*2; // rail charges for outbound and return services
+   const fuel=round(rail?2*Number(train.fuel_per_operation||0):legs*Number(vehicleTemplate.fuel_per_leg||0)*(vehicleTemplate.mode==='air'?3:1));
+   const fuelItem=rail?train.fuel_item_id:vehicleTemplate.fuel_item_id;
+   if(!fuelItem)return markWaiting(db,line,'Freight service has no fuel type');
+   const fuelAvailable=await stock(db,line.source_kind,line.source_id,fuelItem);
+   if(fuelAvailable<fuel+(line.item_id===fuelItem?load:0))return markWaiting(db,line,'Awaiting transport fuel');
+   const minutes=rail?Number(rail.forward.duration_minutes):Math.max(10,2*(Number(link.duration_minutes??(Number(link.legs||1)*Number(vehicleTemplate.minutes_per_leg||60)))+Number(src.access_minutes||0)));
    const [[time]]=await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at',[minutes]);
-   const [created]=await db.execute('INSERT INTO world_logistics_supply_line_shipments(supply_line_id,source_kind,source_id,destination_kind,destination_id,item_id,quantity,transport_template_id,vehicle_lot_id,fuel_item_id,fuel_used,route_segments,due_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',[line.id,line.source_kind,line.source_id,line.destination_kind,line.destination_id,line.item_id,load,line.transport_template_id,line.vehicle_lot_id,vehicleTemplate.fuel_item_id,fuel,JSON.stringify(link.segment_ids||[]),time.due_at]);
+   const railJourneyId=rail?await startRailJourney(db,rail.forward,train,line.created_by):null;
+   const [created]=await db.execute('INSERT INTO world_logistics_supply_line_shipments(supply_line_id,source_kind,source_id,destination_kind,destination_id,item_id,quantity,transport_template_id,vehicle_lot_id,fuel_item_id,fuel_used,route_segments,due_at,train_consist_id,rail_journey_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[line.id,line.source_kind,line.source_id,line.destination_kind,line.destination_id,line.item_id,load,line.transport_template_id,line.vehicle_lot_id,fuelItem,fuel,JSON.stringify(link.segment_ids||[]),time.due_at,train?.id||null,railJourneyId]);
    const actor={id:line.created_by};
    if(!await shift(db,line.source_kind,line.source_id,line.item_id,-load,actor,created.insertId,env.ledger))return fail(409,'supply_source_debit_failed');
-   if(fuel>0&&!await shift(db,line.source_kind,line.source_id,vehicleTemplate.fuel_item_id,-fuel,actor,'fuel-'+created.insertId,env.ledger))return fail(409,'supply_fuel_debit_failed');
+   if(fuel>0&&!await shift(db,line.source_kind,line.source_id,fuelItem,-fuel,actor,'fuel-'+created.insertId,env.ledger))return fail(409,'supply_fuel_debit_failed');
    await db.execute("UPDATE world_logistics_supply_lines SET status='active',wait_reason='',last_dispatched_at=UTC_TIMESTAMP(),next_due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) WHERE id=?",[Number(line.interval_minutes),line.id]);
    return ok({dispatched:true});
   });
