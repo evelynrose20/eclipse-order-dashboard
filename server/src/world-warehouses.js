@@ -31,7 +31,7 @@ async function receipt(db,shipment,actor,ledger){
 }
 export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks}){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
- if(path.startsWith('/world-admin/logistics/warehouses/blueprints')||/^\\/world-admin\\/logistics\\/warehouses\\/\\d+\\/upgrade$/.test(path))return blueprintRoute(pool,req,path,actor,{ledger});
+ if(path.startsWith('/world-admin/logistics/warehouses/blueprints')||/^\/world-admin\/logistics\/warehouses\/\d+\/upgrade$/.test(path))return blueprintRoute(pool,req,path,actor,{ledger});
  if(path==='/world-admin/logistics/warehouses'&&req.method==='POST'){
   const b=await parse(req);
   if(!b||!id(b.settlement_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>130)return fail(400,'invalid_warehouse_plan');
