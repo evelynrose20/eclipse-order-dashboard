@@ -20,3 +20,5 @@
 .rail-access-editor-actions button[type=submit]{border-color:#cca673;color:#f1dabc}
 .rail-access-editor-actions button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:650px){.rail-access-editor-fields{grid-template-columns:1fr}.rail-access-editor-fields label.wide{grid-column:1}}
+
+.rail-access-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}.rail-access-section-heading h4{margin:0}.rail-access-section-heading>button{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #b99c78;border-radius:3px;background:#293844;color:#f1dabc;cursor:pointer;font-weight:700;font-size:12px}.rail-access-section-heading>button:disabled{opacity:.5;cursor:not-allowed}
