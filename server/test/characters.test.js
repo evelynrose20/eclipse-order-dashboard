@@ -39,10 +39,20 @@ test('handler sees full assigned sheet; unrelated member sees none',async()=>{
  const unrelated=await characterRoute(mock('member','dddddddd-dddd-4ddd-8ddd-dddddddddddd',[bound]).pool,req('GET'),'/characters');
  assert.deepEqual(unrelated.body,[]);
 });
-test('normal member cannot create a character or edit bound sheet',async()=>{
+test('normal member can create their own unbound character but cannot edit a bound sheet',async()=>{
  const m=mock('member',Alice,[bound]);
- assert.equal((await characterRoute(m.pool,req('POST',{name:'Test'}),'/characters')).status,403);
+ const created=await characterRoute(m.pool,req('POST',{name:'New Wisp',class_id:'warrior',str:10,dex:10,con:10,int:10,wis:10,cha:10,player_user_id:Bob,handler_user_id:Bob,collar_bound:false}),'/characters');
+ assert.equal(created.status,201,JSON.stringify(created.body));
+ const insertion=m.writes.find(w=>w.sql.startsWith('INSERT INTO characters'));
+ assert.equal(insertion.values[2],Alice,'creator owns the new sheet');
+ assert.equal(insertion.values[3],null,'member cannot assign a handler');
+ assert.equal(insertion.values[4],0,'new sheet is not bound');
  assert.equal((await characterRoute(m.pool,req('PUT',{name:'Change',notes:'leak'}),'/characters/'+Char)).status,403);
+});
+test('members cannot directly create bound characters',async()=>{
+ const m=mock('member',Alice,[]);
+ const result=await characterRoute(m.pool,req('POST',{name:'New Wisp',class_id:'warrior',collar_bound:true}),'/characters');
+ assert.equal(result.status,403);
  assert.equal(m.writes.length,0);
 });
 test('command cannot directly bind a linked player without consent',async()=>{

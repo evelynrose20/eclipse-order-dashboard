@@ -51,13 +51,14 @@ export async function characterRoute(pool,req,path){
   return {status:200,body:rows.map(r=>{const rank=byId.get(r.id);return view({...r,servitude_rank:rank?.rank_code,servitude_title:rank?.title},actor)})};
  }
  if(path==='/characters'&&req.method==='POST'){
-  if(!commands.has(actor.account_role))return err(403,'command_required');
+  if(!['member','handler','high_command','domina'].includes(actor.account_role))return err(403,'character_creation_not_allowed');
   const data=await payload(req);
   const name=limit(data?.name,120);
   if(!name||!data||typeof data!=='object'||Array.isArray(data))return err(400,'invalid_character');
   // The account that creates a character owns it. Never trust a submitted owner ID.
   const owner=actor.id;
-  const handler=typeof data.handler_user_id==='string'&&U.test(data.handler_user_id)?data.handler_user_id:null;
+  // Ordinary members may create only their own sheets, never assign handlers.
+  const handler=commands.has(actor.account_role)&&typeof data.handler_user_id==='string'&&U.test(data.handler_user_id)?data.handler_user_id:null;
   // Character creation is always unbound; IC binding requires player approval later.
   if(data.collar_bound)return err(403,'player_approval_required');
   const bound=false;
