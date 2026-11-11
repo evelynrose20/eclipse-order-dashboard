@@ -43,7 +43,7 @@ export async function factionRoute(pool,req,path){
  if(path==='/factions'&&req.method==='GET'){
   const [rows]=await pool.query(
    'SELECT f.id,f.name,f.leader,f.relationship,f.description,f.notes,f.image_reference_url,f.public_visible,f.sort_order,f.faction_scope,f.trade_enabled,f.map_color,f.updated_at,COALESCE(r.order_view,0) AS order_view,COALESCE(r.faction_view,0) AS faction_view,COALESCE(p.reputation,0) AS personal_reputation FROM order_factions f LEFT JOIN order_faction_reputation r ON r.faction_id=f.id LEFT JOIN player_faction_reputation p ON p.faction_id=f.id AND p.account_id=? '+
-   (command?'':'WHERE f.public_visible=1 ')+'ORDER BY f.faction_scope,f.sort_order,f.name',[user.id]);
+   (command?'WHERE f.archived_at IS NULL ':'WHERE f.public_visible=1 AND f.archived_at IS NULL ')+'ORDER BY f.faction_scope,f.sort_order,f.name',[user.id]);
   return result(200,{factions:rows.map(row=>({...row,notes:command?row.notes:'',public_visible:!!row.public_visible,trade_enabled:!!row.trade_enabled}))});
  }
  const match=/^\/factions\/([a-z0-9-]+)(?:\/(events|reputation|history))?$/.exec(path);
@@ -105,10 +105,27 @@ export async function factionRoute(pool,req,path){
   finally{conn.release()}
  }
  if(!command)return fail(403,'forbidden');
+ if(path==='/factions/'+id&&req.method==='DELETE'){
+  if(id==='eclipse-order')return fail(403,'order_faction_protected');
+  const conn=await pool.getConnection();
+  try{
+   await conn.beginTransaction();
+   const [rows]=await conn.execute('SELECT id,archived_at FROM order_factions WHERE id=? FOR UPDATE',[id]);
+   if(!rows.length){await conn.rollback();return fail(404,'faction_not_found')}
+   if(rows[0].archived_at){await conn.rollback();return fail(409,'faction_already_removed')}
+   await conn.execute('UPDATE order_factions SET archived_at=UTC_TIMESTAMP(),trade_enabled=0,public_visible=0 WHERE id=?',[id]);
+   await conn.execute("UPDATE fc_trade_contracts SET status='paused' WHERE faction_id=? AND status='open'",[id]);
+   await conn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
+    [user.id,'faction_removed','faction',id,JSON.stringify({archived:true,trade_closed:true})]);
+   await conn.commit();
+   return result(200,{status:'removed'});
+  }catch(error){await conn.rollback().catch(()=>{});throw error}
+  finally{conn.release()}
+ }
  if(path==='/factions/'+id&&req.method==='PUT'){
   const body=await read(req),data=editFields(body);
   if(!data)return fail(400,'invalid_faction');
-  const [updated]=await pool.execute('UPDATE order_factions SET name=?,leader=?,relationship=?,description=?,notes=?,image_reference_url=?,public_visible=?,sort_order=?,faction_scope=?,trade_enabled=?,map_color=? WHERE id=?',[...data,id]);
+  const [updated]=await pool.execute('UPDATE order_factions SET name=?,leader=?,relationship=?,description=?,notes=?,image_reference_url=?,public_visible=?,sort_order=?,faction_scope=?,trade_enabled=?,map_color=? WHERE id=? AND archived_at IS NULL',[...data,id]);
   if(updated.affectedRows&&!body.trade_enabled)await pool.execute("UPDATE fc_trade_contracts SET status='paused' WHERE faction_id=? AND status='open'",[id]);
   return updated.affectedRows?result(200,{status:'saved'}):fail(404,'faction_not_found');
  }
