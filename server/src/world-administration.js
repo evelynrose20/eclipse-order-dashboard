@@ -77,7 +77,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [routes]=await pool.execute('SELECT id,region_id,zone_id,from_settlement_id,to_settlement_id,route_type,route_name,waypoints FROM world_map_routes ORDER BY id');
   const [networkNodes]=await pool.execute('SELECT id,region_id,zone_id,settlement_id,name,node_kind,map_x,map_y FROM world_route_nodes ORDER BY id');
   const [networkSegments]=await pool.execute('SELECT id,region_id,zone_id,from_node_id,to_node_id,route_type,route_name,waypoints FROM world_route_segments ORDER BY id');
-  const [crossings]=await pool.execute('SELECT id,name,route_type,status,from_region_id,from_zone_id,from_node_id,to_region_id,to_zone_id,to_node_id,travel_minutes FROM world_zone_crossings ORDER BY id');
+  const [crossings]=await pool.execute('SELECT id,name,route_type,crossing_kind,status,from_region_id,from_zone_id,from_node_id,to_region_id,to_zone_id,to_node_id,travel_minutes FROM world_zone_crossings ORDER BY id');
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points,is_closed FROM world_map_mountain_ranges ORDER BY id');
   let rivers=[];
   try{[rivers]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_rivers ORDER BY id')}catch(e){if(e?.code!=='ER_NO_SUCH_TABLE')throw e;}
