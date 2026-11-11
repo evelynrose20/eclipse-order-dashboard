@@ -25,7 +25,7 @@ test('station editing preserves associated stop and uses the authorized internal
  const ui=readFileSync(new URL('../src/RailAccessControls.jsx',import.meta.url),'utf8');
  const api=readFileSync(new URL('../server/src/internal-rail.js',import.meta.url),'utf8');
  assert.match(ui,/stop_type:st\.stop_type,stop_id:st\.stop_id/);
- assert.match(ui,/\/internal-rail\/stations\/'.*editing\.id/);
+ assert.match(ui,/\/internal-rail\/stations'\+\(editing\.id\?/);
  assert.match(ui,/platforms:Number\(editing\.platforms\)/);
  assert.match(ui,/await onRefresh\(\)/);
  assert.match(api,/if\(!\['domina','high_command'\]\.includes\(actor\.account_role\)\)/);
