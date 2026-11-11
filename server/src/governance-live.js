@@ -27,7 +27,7 @@ async function getState(pool,actor){
  const canWrite=isDomina||councilMembers.has(actor.id);
  const [history]=isDomina?await pool.execute('SELECT a.id,a.action,a.subject,a.details,a.created_at,u.display_name AS actor FROM order_governance_audit a JOIN accounts u ON u.id=a.actor_id ORDER BY a.id DESC LIMIT 100'):[[]];
  const [revisions]=await pool.execute('SELECT h.revision,h.changed_at,a.display_name AS editor FROM order_governance_charter_history h JOIN accounts a ON a.id=h.changed_by ORDER BY h.revision DESC LIMIT 30');
- return {charter,characters,offices:offices.map(o=>({...o,account_id:o.code==='domina'?holder?.id||null:o.account_id,holder:o.code==='domina'?o.character_name||holder?.display_name||'Vacant':o.character_name||o.holder||null,locked:Boolean(o.account_id||o.character_id)})),motions:motions.map(m=>{
+ return {charter,characters,offices:offices.map(o=>({...o,account_id:o.code==='domina'?holder?.id||null:o.account_id,holder:o.code==='domina'?o.character_name||holder?.display_name||'Vacant':o.character_name||o.holder||null,locked:Boolean(o.account_id||o.character_id),legacy_unlinked:Boolean(o.code!=='domina'&&o.account_id&&!o.character_id)})),motions:motions.map(m=>{
    const entries=votes.filter(v=>Number(v.motion_id)===Number(m.id));
    const result=calculateCouncilOutcome(m.kind,entries.map(e=>e.vote),m.quorum_required,m.major_yes_required);
    const eligibility=electorate.filter(e=>Number(e.motion_id)===Number(m.id));
@@ -74,15 +74,17 @@ export async function governanceRoute(pool,req,path){
   return transaction(pool,async conn=>{
    const [[office]]=await conn.execute('SELECT code,account_id,character_id FROM order_council_offices WHERE code=? FOR UPDATE',[b.code]);
    if(!office)return fail(404,'council_office_not_found');
-   if(office.account_id||office.character_id)return fail(409,'office_locked_removal_vote_required');
+   if(office.character_id)return fail(409,'office_locked_removal_vote_required');
+   const legacyLink=office.code!=='domina'&&Boolean(office.account_id);
    const [[character]]=await conn.execute('SELECT c.id,c.character_name,c.player_account_id,a.account_role FROM characters c JOIN accounts a ON a.id=c.player_account_id WHERE c.id=? AND a.is_active=1 AND a.approval_status="approved" FOR UPDATE',[b.character_id]);
    if(!character||!character.player_account_id)return fail(404,'character_not_eligible');
+   if(legacyLink&&office.account_id!==character.player_account_id)return fail(409,'legacy_officer_account_cannot_change');
    if(b.code==='domina'&&(character.account_role!=='domina'||character.player_account_id!==actor.id))return fail(409,'domina_character_required');
    if(b.code!=='domina'&&character.account_role==='domina')return fail(409,'domina_holds_reserved_seat');
    const [assigned]=await conn.execute('SELECT code FROM order_council_offices WHERE code<>? AND (character_id=? OR account_id=?)',[b.code,b.character_id,character.player_account_id]);
    if(assigned.length)return fail(409,'character_or_owner_already_holds_seat');
-   await conn.execute('UPDATE order_council_offices SET character_id=?,account_id=?,appointed_at=UTC_TIMESTAMP() WHERE code=?',[character.id,b.code==='domina'?null:character.player_account_id,b.code]);
-   await audit(conn,actor.id,'lock_appointment','office:'+b.code,character.character_name+' ['+character.id+']');
+   await conn.execute('UPDATE order_council_offices SET character_id=?,account_id=?,appointed_at=COALESCE(appointed_at,UTC_TIMESTAMP()) WHERE code=?',[character.id,b.code==='domina'?null:character.player_account_id,b.code]);
+   await audit(conn,actor.id,legacyLink?'link_character':'lock_appointment','office:'+b.code,character.character_name+' ['+character.id+']');
    return ok({locked:true});
   });
  }
