@@ -66,9 +66,8 @@ export async function ensureMappedRailService(db,from,to,actorId,preferredId=nul
  }
  for(const [a,b] of [[Number(from),Number(to)],[Number(to),Number(from)]]){
   const [existing]=await db.execute("SELECT id,status FROM order_internal_rail_routes WHERE from_type='settlement' AND from_id=? AND to_type='settlement' AND to_id=? ORDER BY CASE WHEN status='active' THEN 0 ELSE 1 END,id LIMIT 1 FOR UPDATE",[a,b]);
-  if(existing.length){
-   if(existing[0].status!=='active')return {available:false,reason:'Rail service is paused or retired; existing service records are preserved'};
-  }else{
+  if(existing.length&&existing[0].status==='paused')return {available:false,reason:'Rail service is paused; resume it in Supply Lines → Railway access'};
+  if(!existing.length||existing[0].status==='retired'){
    const origin=places.find(p=>Number(p.id)===a),dest=places.find(p=>Number(p.id)===b);
    // Initial travel time is a conservative simulation estimate, based on mapped segments.
    const minutes=Math.min(10080,Math.max(15,tracks.length*20));
