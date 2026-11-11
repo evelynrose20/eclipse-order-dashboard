@@ -36,12 +36,12 @@ test('continuous logistics cannot invent ammunition, fuel, vehicles or warehouse
  assert.match(app,/standingRunning/);
  assert.match(read('server/src/world-warehouses.js'),/world_logistics_supply_line_shipments/);
 });
-test('NPC factions accept, reject and counter based on existing relations',()=>{
+test('NPC factions accept, reject and counter based on existing relations',async()=>{
  assert.equal(npcTreatyDecision(70,20).status,'approved');
  assert.equal(npcTreatyDecision(18,20).status,'rejected');
  assert.equal(npcTreatyDecision(70,90).status,'rejected');
  assert.equal(npcTreatyDecision(42,45).status,'countered');
- assert.deepEqual(runTreatyNegotiations(null),Promise.resolve({approved:0,rejected:0,countered:0,activated:0,expired:0}));
+ assert.deepEqual(await runTreatyNegotiations(null),{approved:0,rejected:0,countered:0,activated:0,expired:0});
 });
 test('date validation prevents invalid and reversed time windows',()=>{
  const iso=ms=>new Date(Date.now()+ms).toISOString();
