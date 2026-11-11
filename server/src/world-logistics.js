@@ -406,7 +406,7 @@ export async function logisticsRoute(pool,req,path,actor){
   if(b.status===dock.status)return ok({status:dock.status,unchanged:true});
   // Reopen a commissioned closed facility without charging reconstruction materials.
   // Damaged facilities and never-commissioned sites still require real supplies.
-  const reopening=b.status==='operational'&&dock.status==='closed'&&dock.commissioned_at!=null;
+  const reopening=b.status==='operational'&&dock.status==='closed'&&dock.commissioned_at!=null&&!Number(dock.repair_required);
   if(b.status==='operational'&&dock.status!=='operational'&&!reopening){
    if(!goodId(b.facility_id))return fail(400,'air_dock_supply_depot_required');
    const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.settlement_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[Number(b.facility_id)]);
@@ -417,7 +417,7 @@ export async function logisticsRoute(pool,req,path,actor){
    const [[location]]=await db.execute('SELECT controlling_faction_id,strategic_state FROM world_settlements WHERE id=?',[dock.settlement_id]);
    if(!location||location.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(location.strategic_state))return fail(409,'air_dock_requires_order_settlement');
   }
-  await db.execute('UPDATE world_logistics_air_docks SET status=?,commissioned_at=IF(?="operational",COALESCE(commissioned_at,UTC_TIMESTAMP()),commissioned_at) WHERE id=?',[b.status,b.status,dock.id]);
+  await db.execute('UPDATE world_logistics_air_docks SET status=?,repair_required=CASE WHEN ?='damaged' THEN 1 WHEN ?='operational' THEN 0 ELSE repair_required END,commissioned_at=IF(?="operational",COALESCE(commissioned_at,UTC_TIMESTAMP()),commissioned_at) WHERE id=?',[b.status,b.status,b.status,b.status,dock.id]);
   return ok({status:b.status});
  });
  if(path==='/world-admin/logistics/itineraries'&&req.method==='POST'){
