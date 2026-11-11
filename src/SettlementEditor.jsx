@@ -50,7 +50,7 @@ export default function SettlementEditor({editing,setEditing,onSave,onClose,busy
  const playerCity=Boolean(editing.id)&&editing.controlling_faction_id==='eclipse-order';
  const isNpc=Boolean(editing.controlling_faction_id&&editing.controlling_faction_id!=='eclipse-order');
  const coordOK=validCoord(editing.map_x)&&validCoord(editing.map_y);
- const marginOK=!isNpc||(Number(editing.map_x)>=10&&Number(editing.map_x)<=90&&Number(editing.map_y)>=10&&Number(editing.map_y)<=90);
+ const marginOK=!isNpc||(Number(editing.map_x)>=3&&Number(editing.map_x)<=97&&Number(editing.map_y)>=3&&Number(editing.map_y)<=97);
  const nameOK=Boolean(editing.name?.trim());
  const zoneOK=Boolean(editing.zone_id||activeZoneId);
  const valid=nameOK&&zoneOK&&coordOK&&marginOK;
@@ -104,7 +104,7 @@ export default function SettlementEditor({editing,setEditing,onSave,onClose,busy
        <div className="se-coordinate-fields"><label>Map X (%)<input type="number" min="0" max="100" step=".1" value={editing.map_x} onChange={e=>set('map_x',e.target.value)}/></label><label>Map Y (%)<input type="number" min="0" max="100" step=".1" value={editing.map_y} onChange={e=>set('map_y',e.target.value)}/></label><small>X and Y determine marker position within the selected zone.</small></div>
       </div>
       <MapIconPicker options={ICON_OPTIONS} label="Map marker icon" value={editing.map_icon||'settlement'} onChange={v=>set('map_icon',v)}/>
-      <div className={'se-help '+(!coordOK||!marginOK?'se-help-alert':'')}><i className="fa-solid fa-mountain" aria-hidden="true"/><span>Mountains are not buildable terrain. {isNpc?'NPC-controlled locations also require a 10% safety margin on every map edge (X and Y must be 10–90).':'The server checks mountain exclusion when the location is saved.'}{!coordOK?' Enter valid X and Y coordinates.':!marginOK?' Move this NPC location inside the 10% map margin.':''}</span></div>
+      <div className={'se-help '+(!coordOK||!marginOK?'se-help-alert':'')}><i className="fa-solid fa-mountain" aria-hidden="true"/><span>Mountains are not buildable terrain. {isNpc?'NPC-controlled locations also require a 3% safety margin on every map edge (X and Y must be 3–97).':'The server checks mountain exclusion when the location is saved.'}{!coordOK?' Enter valid X and Y coordinates.':!marginOK?' Move this NPC location inside the 10% map margin.':''}</span></div>
      </div>}
      {tab==='civic'&&<div className="se-panel">
       <div className="se-section-heading"><i className="fa-solid fa-heart-pulse" aria-hidden="true"/><div><h4>Civilian conditions</h4><p>View or configure base settlement figures and service conditions.</p></div></div>

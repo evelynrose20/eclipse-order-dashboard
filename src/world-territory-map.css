@@ -332,8 +332,8 @@
 .wtm-mountain-editor button:disabled{opacity:.42}
 .wtm-mountain-editor>span{white-space:nowrap}
 .wtm-npc-edge-buffer{position:absolute;inset:0;z-index:1;pointer-events:none;border:0 solid rgba(207,127,83,.08);border-width:44px 0 0 0}
-.wtm-npc-edge-guide{position:absolute;inset:10%;width:80%;height:80%;border:1px dashed rgba(227,188,130,.32);z-index:1;pointer-events:none}
-.wtm-npc-edge-label{position:absolute;left:11%;top:11%;z-index:1;color:#c6a77b;font-size:10px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px #081019}
+.wtm-npc-edge-guide{position:absolute;inset:3%;border:1px dashed rgba(227,188,130,.32);z-index:1;pointer-events:none}
+.wtm-npc-edge-label{position:absolute;left:4%;top:4%;z-index:1;color:#c6a77b;font-size:10px;font-weight:700;pointer-events:none;text-shadow:0 1px 3px #081019}
 
 
 /* Mountain cartography v2: read as landscape, not repeated icons. The polygon
