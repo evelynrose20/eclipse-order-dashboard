@@ -98,7 +98,7 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
    if(service.mode==='air'&&!await operationalAirDocks(db,source.settlement_id,warehouse.settlement_id))return fail(409,'airship_landing_facilities_required');
    let journey=await route(db,source.settlement_id,warehouse.settlement_id,service.mode);
    if(!journey)return fail(409,'warehouse_route_not_connected');
-   let vehicle=null,train=null;
+   let vehicle=null,train=null,pickupPath=null;
    if(service.mode==='rail'){
     if(!id(b.train_journey_id))return fail(409,'running_train_required');
     const [[running]]=await db.execute(`SELECT j.id,j.status,j.cargo_capacity_snapshot,j.departed_at,j.expected_arrival_at,r.from_type,r.from_id,r.to_type,r.to_id,r.duration_minutes,c.status AS consist_status,c.owner_faction_id
@@ -113,11 +113,15 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
     journey={segment_ids:['internal-rail:'+running.id],legs:1,duration_minutes:Number(running.duration_minutes)};
    }else{
     vehicle=await availableVehicle(db,b.vehicle_lot_id,service.mode,source.settlement_id);
+    if(!vehicle&&Number(source.settlement_id)!==Number(warehouse.settlement_id)){
+     vehicle=await availableVehicle(db,b.vehicle_lot_id,service.mode,warehouse.settlement_id);
+     if(vehicle){pickupPath=await route(db,warehouse.settlement_id,source.settlement_id,service.mode);if(!pickupPath)return fail(409,'pickup_route_not_connected')}
+    }
     if(!vehicle||vehicle.owner_faction_id!=='eclipse-order')return fail(409,'stationed_vehicle_unavailable');
     const specs=typeof vehicle.specifications==='string'?JSON.parse(vehicle.specifications):vehicle.specifications;
     if(Number(specs?.cargo_capacity||0)*Number(vehicle.quantity||1)<b.quantity)return fail(409,'vehicle_cargo_capacity_exceeded');
    }
-   const legs=journey.legs+(source.site_id?1:0);
+   const legs=journey.legs+(pickupPath?.legs||0)+(source.site_id?(pickupPath?2:1):0);
    const fuel=round(legs*Number(service.fuel_per_leg)*(service.mode==='air'?3:1));
    const [[stock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[source.id,b.item_id]);
    if(!stock||Number(stock.quantity)<b.quantity)return fail(409,'farm_stock_insufficient');
@@ -125,9 +129,9 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
     const [[fuelStock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[source.id,service.fuel_item_id]);
     if(!fuelStock||Number(fuelStock.quantity)<fuel+(service.fuel_item_id===b.item_id?b.quantity:0))return fail(409,'transport_fuel_insufficient');
    }
-   const minutes=(journey.duration_minutes??journey.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0);
+   const minutes=(journey.duration_minutes??journey.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0)+(pickupPath?(pickupPath.duration_minutes??pickupPath.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0):0);
    const [[clock]]=train?await db.execute('SELECT DATE_ADD(?,INTERVAL ? MINUTE) AS due_at',[train.expected_arrival_at,Number(source.access_minutes||0)]):await db.execute('SELECT DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE) AS due_at',[minutes]);
-   const [created]=await db.execute('INSERT INTO world_logistics_warehouse_shipments(request_key,source_facility_id,destination_warehouse_id,transport_template_id,vehicle_lot_id,train_journey_id,item_id,quantity,fuel_used,route_segments,due_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',[b.request_key,source.id,warehouse.id,service.id,vehicle?.id||null,train?.id||null,b.item_id,b.quantity,fuel,JSON.stringify(journey.segment_ids),clock.due_at,actor.id]);
+   const [created]=await db.execute('INSERT INTO world_logistics_warehouse_shipments(request_key,source_facility_id,destination_warehouse_id,transport_template_id,vehicle_lot_id,train_journey_id,item_id,quantity,fuel_used,route_segments,due_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',[b.request_key,source.id,warehouse.id,service.id,vehicle?.id||null,train?.id||null,b.item_id,b.quantity,fuel,JSON.stringify([...(pickupPath?.segment_ids||[]),...journey.segment_ids]),clock.due_at,actor.id]);
    if(!await ledger(db,source.id,b.item_id,-b.quantity,'freight_dispatch',created.insertId,actor,'warehouse'))return fail(409,'farm_stock_insufficient');
    if(fuel>0&&!await ledger(db,source.id,service.fuel_item_id,-fuel,'freight_fuel',created.insertId,actor,'warehouse'))return fail(409,'transport_fuel_insufficient');
    return ok({shipment_id:created.insertId,due_at:clock.due_at,status:'in_transit',warehouse_id:warehouse.id});
