@@ -67,10 +67,10 @@ test('filled zone geometry rejects self-crossing, repeated corners and tiny shap
  assert.equal(validMountainShape([{x:20,y:20},{x:20.1,y:20},{x:20,y:20.1}],true),false);
  assert.equal(validMountainShape([{x:20,y:20},{x:70,y:70}],true),false);
 });
-test('NPC settlements must have at least ten percent edge clearance',()=>{
- assert.equal(NPC_MAP_EDGE_PADDING,10);
- for(const p of [{x:9.9,y:50},{x:91,y:50},{x:50,y:9},{x:50,y:91}])assert.equal(npcTooCloseToMapEdge(p),true);
- for(const p of [{x:10,y:10},{x:90,y:90},{x:50,y:50}])assert.equal(npcTooCloseToMapEdge(p),false);
+test('NPC settlements must have at least three percent edge clearance',()=>{
+ assert.equal(NPC_MAP_EDGE_PADDING,3);
+ for(const p of [{x:2.9,y:50},{x:97.1,y:50},{x:50,y:2.9},{x:50,y:97.1}])assert.equal(npcTooCloseToMapEdge(p),true);
+ for(const p of [{x:3,y:3},{x:97,y:97},{x:50,y:50}])assert.equal(npcTooCloseToMapEdge(p),false);
 });
 test('mountain migration is additive and preserves legacy open ranges',()=>{
  const sql=readFileSync(new URL('../sql/080_mountain_areas.sql',import.meta.url),'utf8');
