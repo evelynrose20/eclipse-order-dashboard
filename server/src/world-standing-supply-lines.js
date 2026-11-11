@@ -1,4 +1,5 @@
 import {railService,ensureMappedRailService,availableConsist,startRailJourney,nearbyMappedRail} from './world-standing-rail.js';
+import {warThreatAtArrival} from './world-convoy-escorts.js';
 import {trainSummary} from './world-magitek-trains.js';
 // Persistent, opt-in supply network. No implicit freight, stock or vehicle generation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -102,6 +103,7 @@ export async function supplyLineRoute(pool,req,path,actor,env){
   if(shipmentMatch[2]==='resume'){
    if(cargo.status!=='disrupted')return fail(409,'supply_shipment_not_disrupted');
    const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
+   if(await warThreatAtArrival(db,'supply',cargo))return ok({disrupted:true});
    if(!safeLocation(cargo.destination_kind,dest,true))return fail(409,'supply_destination_still_unavailable');
    await db.execute("UPDATE world_logistics_supply_line_shipments SET status='in_transit',incident_notes='',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 MINUTE) WHERE id=?",[cargo.id]);
    return ok({status:'in_transit'});
