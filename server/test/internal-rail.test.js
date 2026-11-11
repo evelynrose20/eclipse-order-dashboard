@@ -11,10 +11,10 @@ test('train journey progress is derived only from real departure and arrival tim
  assert.equal(journeyProgress(run,new Date('2026-11-08T13:00:00Z')).display_status,'arrived');
  assert.equal(journeyProgress({...run,status:'cancelled'},new Date('2026-11-08T11:00:00Z')).display_status,'cancelled');
 });
-test('Order railway UI is standalone, timed, and never performs inventory transfers',async()=>{
+test('legacy rail journey storage is retained while map-first Supply Lines owns the UI',async()=>{
  const load=path=>readFile(new URL('../../'+path,import.meta.url),'utf8');
  const [page,map,workspace,nav,api,sql,setup]=await Promise.all([
-  load('src/InternalRail.jsx'),load('src/WorldTerritoryMap.jsx'),load('src/LocalWorkspace.jsx'),
+  load('src/LogisticsSupplyLines.jsx'),load('src/WorldTerritoryMap.jsx'),load('src/LocalWorkspace.jsx'),
   load('src/OrderNavigation.jsx'),load('server/src/internal-rail.js'),
   load('server/sql/049_internal_rail_logistics.sql'),load('server/src/setup-local.js')
  ]);
