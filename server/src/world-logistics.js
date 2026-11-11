@@ -75,16 +75,20 @@ export function corridorPath(corridors,from,to){
 }
 async function route(db,from,to,mode){
  if(Number(from)===Number(to))return {node_ids:['settlement:'+from],segment_ids:['local'],legs:1,duration_minutes:10};
- if(mode==='rail'){
-  const [services]=await db.execute("SELECT r.id,r.duration_minutes FROM order_internal_rail_routes r JOIN order_internal_rail_stations a ON a.id=r.from_station_id JOIN order_internal_rail_stations z ON z.id=r.to_station_id WHERE r.status='active' AND a.status='operational' AND z.status='operational' AND r.from_type='settlement' AND r.to_type='settlement' AND r.from_id=? AND r.to_id=? ORDER BY r.id LIMIT 1",[from,to]);
-  if(services.length)return {node_ids:['settlement:'+from,'settlement:'+to],segment_ids:['internal-rail:'+services[0].id],legs:1,duration_minutes:Number(services[0].duration_minutes)};
- }
-
  const [[a],[b]]=await Promise.all([
   db.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[from]),
   db.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[to])
  ]);
  if(!a.length||!b.length)return null;
+ if(mode!=='air'&&Number(a[0].region_id)!==Number(b[0].region_id)){
+  const [locked]=await db.execute("SELECT region_id FROM world_region_access WHERE access_policy='airship_only' AND region_id IN (?,?)",[a[0].region_id,b[0].region_id]);
+  if(locked.length)return null;
+ }
+ if(mode==='rail'){
+  const [services]=await db.execute("SELECT r.id,r.duration_minutes FROM order_internal_rail_routes r JOIN order_internal_rail_stations a ON a.id=r.from_station_id JOIN order_internal_rail_stations z ON z.id=r.to_station_id WHERE r.status='active' AND a.status='operational' AND z.status='operational' AND r.from_type='settlement' AND r.to_type='settlement' AND r.from_id=? AND r.to_id=? ORDER BY r.id LIMIT 1",[from,to]);
+  if(services.length)return {node_ids:['settlement:'+from,'settlement:'+to],segment_ids:['internal-rail:'+services[0].id],legs:1,duration_minutes:Number(services[0].duration_minutes)};
+ }
+
  // Zone and region crossings are real graph edges. Both sides must connect
  // to local routes before freight can travel between the two locations.
  const [nodes]=await db.execute('SELECT id,settlement_id FROM world_route_nodes');
