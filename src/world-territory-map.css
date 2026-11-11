@@ -393,3 +393,9 @@
 .wtm-crossing-row span{flex:1;color:#aebbc1}
 .wtm-crossing-row select{min-width:120px}
 .wtm-crossing-row button{padding:5px 9px}
+
+.wtm-crossing-target{margin:12px 0;display:grid;gap:7px;color:#cdd7d8;font-size:12px}
+.wtm-crossing-target-map{position:relative;display:block;width:min(100%,460px);height:210px;min-height:160px;border:1px solid #6c7d83;background-color:#172b36;background-size:cover;background-position:center;cursor:crosshair;overflow:hidden}
+.wtm-crossing-target-map:focus-visible{outline:2px solid #f5d7a3;outline-offset:2px}
+.wtm-crossing-target-safe{position:absolute;inset:5%;border:1px dashed #d9b88777;pointer-events:none}
+.wtm-crossing-target-point{position:absolute;transform:translate(-50%,-95%);font-size:18px;color:#e6c18a;pointer-events:none;text-shadow:0 1px 5px #101923}
