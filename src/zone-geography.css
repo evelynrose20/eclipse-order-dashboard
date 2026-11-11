@@ -1,0 +1,26 @@
+
+.wa-geography-layout{margin:10px 0;border:1px solid #465965;background:#15212a;color:#ced9dd}
+.wa-geography-layout>summary{padding:11px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:700;font-size:12px;letter-spacing:.04em}
+.wa-geography-layout>summary span{margin-left:auto;color:#a4b7c3;font-weight:400;letter-spacing:normal}
+.wa-geography-layout-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.8fr);gap:20px;padding:15px;border-top:1px solid #344650}
+.wa-geography-layout h3{font-size:13px;margin:0 0 7px;text-transform:uppercase;letter-spacing:.04em;color:#e4cbad}
+.wa-geography-layout p{font-size:12px;line-height:1.55;color:#b1bec5;margin:4px 0 12px}
+.wa-adjacent-layout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(62px,auto));gap:5px}
+.wa-adjacent-layout button,.wa-adjacent-center{border:1px solid #394d59;background:#1d2e38;color:#dbe6e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px;text-align:center;font-size:11px}
+.wa-adjacent-layout button:disabled{opacity:.45;cursor:default}
+.wa-adjacent-layout button.available{border-color:#af966a;cursor:pointer}
+.wa-adjacent-layout button strong{font-size:11px;overflow-wrap:anywhere}
+.wa-adjacent-layout .wa-adjacent-north{grid-column:2;grid-row:1}
+.wa-adjacent-layout .wa-adjacent-west{grid-column:1;grid-row:2}
+.wa-adjacent-layout .wa-adjacent-east{grid-column:3;grid-row:2}
+.wa-adjacent-layout .wa-adjacent-south{grid-column:2;grid-row:3}
+.wa-adjacent-center{grid-column:2;grid-row:2;border-color:#a36b64;background:#252832}
+.wa-adjacent-center small{color:#afb8c2}
+.wa-geography-layout-controls{display:grid;gap:8px;align-content:start}
+.wa-geography-layout-controls h3:not(:first-child){margin-top:9px}
+.wa-geography-layout-controls label{display:grid;gap:4px;font-size:12px}
+.wa-geography-layout-controls select{width:100%;min-width:0;padding:8px;background:#14232d;color:#e8eeee;border:1px solid #53636d}
+.wa-geography-layout-controls button{padding:8px 12px;border:1px solid #b58b6f;background:#402c32;color:#f0dfd8;cursor:pointer;font-weight:600}
+.wa-geography-layout-controls button:disabled{opacity:.45;cursor:default}
+.wa-geography-feedback{padding:0 15px}
+@media(max-width:760px){.wa-geography-layout-body{grid-template-columns:1fr}}
