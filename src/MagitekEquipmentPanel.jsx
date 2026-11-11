@@ -1,3 +1,4 @@
+import MaterialPicker from './MaterialPicker.jsx';
 import React,{useState} from 'react';
 import './magitek-command.css';
 const labels={transport:'Ground transport',locomotive:'Magitek locomotive',railcar:'Rail carriage',armored_vehicle:'Armored vehicle / tank',airship:'Light / assault airship',capital_airship:'Capital military airship / flying fortress',field_equipment:'Field equipment',siege_equipment:'Siege equipment',other:'Other magitek equipment'};
@@ -99,7 +100,7 @@ export default function MagitekEquipmentPanel({data,request,reload,onBuildRecipe
     <label>Passenger / troop capacity<input type="number" min="0" max={classLimits[draft.equipment_kind][0]} value={draft.transport_capacity} onChange={e=>setDraft({...draft,transport_capacity:Number(e.target.value)})}/></label>
     <label>Cargo capacity (units)<input type="number" min="0" max={classLimits[draft.equipment_kind][1]} value={draft.cargo_capacity} onChange={e=>setDraft({...draft,cargo_capacity:Number(e.target.value)})}/></label>
     <label>Required crew<input type="number" min="0" max={classLimits[draft.equipment_kind][2]} value={draft.crew_required} onChange={e=>setDraft({...draft,crew_required:Number(e.target.value)})}/></label>
-    <label>Operating fuel<select value={draft.fuel_item_id||''} onChange={e=>setDraft({...draft,fuel_item_id:e.target.value||null})}><option value="">No operating fuel</option>{items.filter(i=>i.category==='fuel').map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></label>
+    <label>Operating fuel<MaterialPicker catalog={items} value={draft.fuel_item_id||''} onChange={e=>setDraft({...draft,fuel_item_id:e.target.value||null})}><option value="">No operating fuel</option>{items.filter(i=>i.category==='fuel').map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</MaterialPicker></label>
     {draft.equipment_kind==='locomotive'&&<label>Maximum carriages hauled<input type="number" min="1" max="24" value={draft.max_wagons||8} onChange={e=>setDraft({...draft,max_wagons:Number(e.target.value)})}/></label>}
     <label>Fuel per operation<input type="number" min="0" max="10000" step=".001" value={draft.fuel_per_operation} onChange={e=>setDraft({...draft,fuel_per_operation:Number(e.target.value)})}/></label>
     <label className="wide">Description<input value={draft.description} maxLength="500" onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
