@@ -46,7 +46,7 @@ test('ordinary members cannot edit faction diplomacy or post history',async()=>{
 });
 test('command can update relationships and append recorded history',async()=>{
  const {pool,updates}=setup('domina');
- const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'rival',description:'Agreements under strain',notes:'Private',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story'};
+ const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'rival',description:'Agreements under strain',notes:'Private',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story',trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,200);
  assert.equal((await factionRoute(pool,request('POST',{title:'Negotiations',details:'New trade terms',occurred_on:'2026-11-06'}),'/factions/house-kurogane/events')).status,201);
  assert.equal(updates.length,2);
