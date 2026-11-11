@@ -34,7 +34,7 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
  if(path.startsWith('/world-admin/logistics/warehouses/blueprints')||/^\/world-admin\/logistics\/warehouses\/\d+\/upgrade$/.test(path))return blueprintRoute(pool,req,path,actor,{ledger});
  if(path==='/world-admin/logistics/warehouses'&&req.method==='POST'){
   const b=await parse(req);
-  if(!b||!id(b.settlement_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>130)return fail(400,'invalid_warehouse_plan');
+  if(!b||!id(b.settlement_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>130||(!id(b.blueprint_id)&&(!WAREHOUSE_TIERS[b.tier]||typeof b.construction_item_id!=='string'||b.construction_item_id.length>48)))return fail(400,'invalid_warehouse_plan');
   return transaction(pool,async db=>{
    const [[settlement]]=await db.execute('SELECT id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
    if(!settlement||settlement.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(settlement.strategic_state))return fail(409,'warehouse_requires_order_settlement');
