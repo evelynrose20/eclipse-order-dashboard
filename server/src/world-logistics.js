@@ -7,6 +7,7 @@ import {trainSummary} from './world-magitek-trains.js';
 import {climateForRegions} from './world-region-climate.js';
 import {randomUUID} from 'node:crypto';
 import {warehousesRoute,runWarehouseAutomation} from './world-warehouses.js';
+import {crossingEdges} from './world-crossings.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const modes=['road','rail','air'],purposes=['trade','relief','military','industry'];
 const goodId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -81,14 +82,12 @@ async function route(db,from,to,mode){
   db.execute('SELECT region_id,zone_id FROM world_settlements WHERE id=?',[to])
  ]);
  if(!a.length||!b.length)return null;
- // Current route graph is region-scoped: a cross-region itinerary needs explicit future network links.
- if(Number(a[0].region_id)!==Number(b[0].region_id)){
-  const [corridors]=await db.execute("SELECT id,origin_settlement_id,destination_settlement_id,travel_minutes FROM world_logistics_corridors WHERE mode=? AND state='operational'",[mode]);
-  return corridorPath(corridors,from,to);
- }
- const [nodes]=await db.execute('SELECT id,settlement_id FROM world_route_nodes WHERE region_id=?',[a[0].region_id]);
- const [segments]=await db.execute('SELECT id,from_node_id,to_node_id,route_type FROM world_route_segments WHERE region_id=?',[a[0].region_id]);
- const graph=freightPath(nodes,segments,from,to,mode);
+ // Zone and region crossings are real graph edges. Both sides must connect
+ // to local routes before freight can travel between the two locations.
+ const [nodes]=await db.execute('SELECT id,settlement_id FROM world_route_nodes');
+ const [segments]=await db.execute('SELECT id,from_node_id,to_node_id,route_type FROM world_route_segments');
+ const [crossings]=await db.execute('SELECT id,from_node_id,to_node_id,route_type,status,travel_minutes FROM world_zone_crossings');
+ const graph=freightPath(nodes,[...segments,...crossingEdges(crossings,mode)],from,to,mode);
  if(graph)return graph;
  // Older map routes remain valid as complete individual legs, not imagined map links.
  const [legacy]=await db.execute('SELECT id,from_settlement_id,to_settlement_id,route_type FROM world_map_routes WHERE region_id=?',[a[0].region_id]);
