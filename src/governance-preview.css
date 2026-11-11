@@ -14,3 +14,21 @@
 .gov-removal-dialog{width:min(620px,100%);max-height:90vh;overflow:auto;padding:20px;border:1px solid #536674;background:#182733;box-shadow:0 20px 55px #0008}
 .gov-removal-dialog .gov-new{margin-top:14px}
 @media(max-width:620px){.gov-seat-selection{grid-template-columns:1fr}.gov-removal-dialog{padding:14px}}
+
+.gov-character-slot{display:grid;gap:5px;min-width:0;background:#182733;border:1px solid #405462;padding:10px 12px}
+.gov-character-slot>span{color:#f1dabc;font-size:12px;font-weight:700}
+.gov-character-slot>small{color:#acbdc9;font-size:11px;line-height:1.45}
+.gov-character-picker{width:min(750px,100%);display:grid;gap:14px}
+.gov-character-search{display:grid;gap:7px;color:#c6d4dc;font-size:12px}
+.gov-character-search input{width:100%;min-height:39px;padding:9px 11px;color:#e7e9e7;background:#101f2a;border:1px solid #536674;border-radius:2px}
+.gov-character-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px;max-height:min(48vh,520px);overflow:auto}
+.gov-character-option{display:flex;gap:12px;align-items:center;text-align:left;padding:13px;border:1px solid #405462;border-radius:2px;color:#e7e9e7;background:#202a33;cursor:pointer}
+.gov-character-option:hover,.gov-character-option.selected{border-color:#cca673;background:#273944}
+.gov-character-option:focus-visible{outline:2px solid #cca673;outline-offset:2px}
+.gov-character-avatar{display:grid;place-items:center;flex:0 0 42px;height:42px;border:1px solid #8b785d;color:#debf8c;background:#192733;font-size:19px}
+.gov-character-info{display:grid;gap:5px;min-width:0}
+.gov-character-info strong{font-size:13px}
+.gov-character-info small{font-size:11px;color:#a1b0b9}
+.gov-character-picked{margin-left:auto;color:#a9dfc3}
+.gov-character-picker-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #405462;padding-top:14px;color:#acbdc9;font-size:12px}
+@media(max-width:620px){.gov-character-options{grid-template-columns:1fr}.gov-character-picker-actions{align-items:stretch;flex-direction:column}}
