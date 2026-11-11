@@ -83,6 +83,15 @@ test('NPC-controlled destroyed farm is visible and searchable in industry locati
  }finally{await vite.close()}
 });
 
+test('moving a settlement selects its marker without opening the dossier',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const map=await readFile(new URL('../src/WorldTerritoryMap.jsx',import.meta.url),'utf8');
+ const parent=await readFile(new URL('../src/WorldAdministration.jsx',import.meta.url),'utf8');
+ assert.match(map,/onSelect\(String\(s\.id\),\{open:false\}\)/);
+ assert.match(map,/onSelect\(String\(s\.id\),\{open:mode!=='move'\}\)/);
+ assert.match(parent,/const openInspector=\(id,\{open=true\}=\{\}\)=>\{setSelected\(String\(id\)\);setInspectorOpen\(open\)\}/);
+});
+
 test('clicking a map location opens its own production setup directly',async()=>{
  const {readFile}=await import('node:fs/promises');
  const map=await readFile(new URL('../src/WorldAdministration.jsx',import.meta.url),'utf8');
