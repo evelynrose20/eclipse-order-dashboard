@@ -32,6 +32,7 @@ export default function SearchPicker({value='',onChange,options=[],placeholder='
    if(portal){window.removeEventListener('resize',positionPopup);window.removeEventListener('scroll',positionPopup,true)}
   };
  },[open,portal,positionPopup]);
+ useEffect(()=>{if(open&&(!portal||position))search.current?.focus()},[open,portal,position]);
  useEffect(()=>setActive(0),[query,open]);
  const choose=id=>{onChange(id);setOpen(false);setQuery('')};
  const groups=groupByCategory?Object.entries(Object.groupBy?Object.groupBy(filtered,o=>o.category||'Other'):filtered.reduce((acc,o=>{(acc[o.category||'Other']??=[]).push(o);return acc},{}))):[['',filtered]];
