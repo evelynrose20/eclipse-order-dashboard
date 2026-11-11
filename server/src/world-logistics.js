@@ -1,3 +1,4 @@
+import {escortCommandRoute,wartimeEscortSnapshot,warThreatAtArrival} from './world-convoy-escorts.js';
 import {runTreatyNegotiations,validTreatySchedule,sqlDate} from './world-treaty-negotiations.js';
 import {supplyLineRoute,runStandingSupplyAutomation} from './world-standing-supply-lines.js';
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
@@ -214,6 +215,7 @@ async function dispatch(db,b,actor,contract=null){
 }
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/logistics/escorts/'))return escortCommandRoute(pool,req,path,actor);
  if(path.startsWith('/world-admin/logistics/supply-lines'))return supplyLineRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path.startsWith('/world-admin/logistics/warehouses'))return warehousesRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
@@ -255,6 +257,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [allSettlements]=await pool.execute('SELECT s.id,s.name,s.region_id,s.zone_id,s.controlling_faction_id,r.name AS region_name,z.name AS zone_name FROM world_settlements s LEFT JOIN world_regions r ON r.id=s.region_id LEFT JOIN world_zones z ON z.id=s.zone_id ORDER BY s.name');
   const [airDocks]=await pool.execute("SELECT d.*,s.name AS settlement_name,s.controlling_faction_id FROM world_logistics_air_docks d JOIN world_settlements s ON s.id=d.settlement_id ORDER BY s.name");
   const [corridors]=await pool.execute("SELECT c.*,a.name AS origin_name,b.name AS destination_name FROM world_logistics_corridors c JOIN world_settlements a ON a.id=c.origin_settlement_id JOIN world_settlements b ON b.id=c.destination_settlement_id ORDER BY c.id DESC LIMIT 200");
+  const escortCommand=await wartimeEscortSnapshot(pool);
   const [incidents]=await pool.execute("SELECT i.*,s.item_id FROM world_logistics_incidents i JOIN world_logistics_shipments s ON s.id=i.shipment_id ORDER BY i.id DESC LIMIT 120");
   const [treaties]=await pool.execute("SELECT t.*,a.name AS faction_a_name,b.name AS faction_b_name FROM world_logistics_trade_treaties t JOIN order_factions a ON a.id=t.faction_a JOIN order_factions b ON b.id=t.faction_b ORDER BY t.id DESC");
   const [factions]=await pool.execute('SELECT id,name FROM order_factions ORDER BY name');
@@ -263,7 +266,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
-  return ok({supply_lines:supplyLines,supply_line_shipments:supplyLineShipments,military_installations:militaryInstallations,warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_services:railServices,rail_terminals:railTerminals,rail_service_records:railServiceRecords,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({...escortCommand,supply_lines:supplyLines,supply_line_shipments:supplyLineShipments,military_installations:militaryInstallations,warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_services:railServices,rail_terminals:railTerminals,rail_service_records:railServiceRecords,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -614,6 +617,8 @@ export async function logisticsRoute(pool,req,path,actor){
    if(s.train_journey_id){const [[train]]=await db.execute('SELECT status FROM order_internal_rail_journeys WHERE id=?',[s.train_journey_id]);if(!train||train.status==='cancelled')return fail(409,'cancelled_train_requires_cargo_recall')}
    const [[incident]]=await db.execute("SELECT id FROM world_logistics_incidents WHERE shipment_id=? AND disposition='pending'",[id]);
    if(incident)return fail(409,'convoy_requires_command_decision');
+    const [[warPending]]=await db.execute("SELECT id FROM world_convoy_engagements WHERE shipment_kind='freight' AND shipment_id=? AND status='pending' LIMIT 1",[id]);
+    if(warPending)return fail(409,'convoy_requires_dm_outcome');
    await db.execute("UPDATE world_logistics_shipments SET status='in_transit' WHERE id=?",[id]);
    await record(db,id,'resume',b?.note||'Journey resumed',actor);return ok({status:'in_transit'});
   }
@@ -633,6 +638,7 @@ export async function logisticsRoute(pool,req,path,actor){
      return ok({status:'disrupted',incident:event});
     }
    }
+   if(await warThreatAtArrival(db,'freight',s))return ok({status:'disrupted',reason:'wartime_ambush'});
    const [destination]=await db.execute("SELECT f.status,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[s.destination_facility_id]);
    if(!destination.length||['destroyed','abandoned'].includes(destination[0].strategic_state))return fail(409,'destination_unavailable');
    if(!await ledger(db,s.destination_facility_id,s.item_id,Number(s.quantity),'freight_arrival',id,actor))return fail(409,'delivery_failed');
@@ -669,7 +675,8 @@ export async function runLogisticsAutomation(pool){
      return ok({disrupted:true});
     }
    }
-   const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
+   if(await warThreatAtArrival(db,'freight',shipment))return ok({disrupted:true});
+    const [[place]]=await db.execute("SELECT f.status,f.owner_faction_id,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=?",[shipment.destination_facility_id]);
    if(!place||!place.controlling_faction_id||place.controlling_faction_id!==place.owner_faction_id||['destroyed','abandoned'].includes(place.strategic_state)||['ruined','captured'].includes(place.status)){
     await db.execute("UPDATE world_logistics_shipments SET status='disrupted',incident_notes='Destination inaccessible; awaiting command review' WHERE id=?",[shipment.id]);
     await record(db,shipment.id,'disrupt','Destination inaccessible; no cargo lost', {id:null});
