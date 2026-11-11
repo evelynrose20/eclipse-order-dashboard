@@ -23,10 +23,10 @@ const readBody=async req=>{
 };
 export function cycleStatus(profile,bound,rankCode,today=new Date()){
  const rank=RANKS[rankCode]||null;
- const active=Boolean(profile.cycle_opt_in&&bound&&rank&&profile.cycle_anchor);
+ const active=Boolean(bound&&rank);
  if(!active)return {active:false,phase:'inactive',day:null,rank:rank?.[0]||null,resonance:0,multiplier:1,alert:null};
  const days=Math.max(20,Math.min(90,Number(profile.cycle_days)||30));
- const elapsed=dayDiff(profile.cycle_anchor,today);
+ const elapsed=dayDiff(profile.cycle_anchor||'2026-01-01',today);
  const day=((elapsed%days)+days)%days+1;
  const fraction=(day-1)/days;
  const phase=fraction<10/30?'dormant':fraction<14/30?'onset':fraction<20/30?'active':fraction<23/30?'peak':'recovery';
@@ -55,7 +55,7 @@ export async function reproductionRoute(pool,req,path){
  const match=/^\/characters\/([0-9a-f-]{36})\/reproduction(?:\/(settings|pregnancy|complete|roll))?$/.exec(path);
  if(!match||!UUID.test(match[1]))return fail(404,'record_not_found');
  const [,id,action]=match;
- const [rows]=await pool.execute(`SELECT c.id,c.player_account_id,c.collar_bound,cor.rank_code
+ const [rows]=await pool.execute(`SELECT c.id,c.player_account_id,c.collar_bound,c.created_at,cor.rank_code
   FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id WHERE c.id=?`,[id]);
  const character=rows[0];
  if(!character)return fail(404,'character_not_found');
@@ -63,26 +63,34 @@ export async function reproductionRoute(pool,req,path){
  const command=['domina','high_command'].includes(actor.account_role);
  const [records]=await pool.execute('SELECT * FROM character_reproductive_profiles WHERE character_id=?',[id]);
  const profile=safeProfile(records[0]);
- if(!owner&&!(command&&profile.shared_with_command))return fail(403,'private_character_record');
- const cycle=cycleStatus(profile,Boolean(character.collar_bound),character.rank_code);
+ if(!owner&&!command)return fail(403,'private_character_record');
+ // Start legacy bound characters on a stable character date, not today's first visit.
+ const cycleProfile={...profile,cycle_anchor:profile.cycle_anchor||dateKey(character.created_at||'2026-01-01')};
+ const cycle=cycleStatus(cycleProfile,Boolean(character.collar_bound),character.rank_code);
  if(!action&&req.method==='GET'){
-  const [rolls]=await pool.execute('SELECT id,event_key,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase,created_at FROM character_conception_rolls WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]);
-  const [history]=await pool.execute('SELECT action,summary,created_at FROM character_reproductive_events WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]);
-  return ok({profile,cycle,pregnancy:pregnancyProgress(profile),rolls,history,can_edit:owner,character_bound:Boolean(character.collar_bound)});
+  // Command always sees IC status and stage; sealed notes, rolls and private details
+  // require separate affirmative sharing from the character owner.
+  const full=owner||Boolean(command&&profile.shared_with_command);
+  const [rolls]=full?await pool.execute('SELECT id,event_key,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase,created_at FROM character_conception_rolls WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]):[[]];
+  const [history]=full?await pool.execute('SELECT action,summary,created_at FROM character_reproductive_events WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]):[[]];
+  const publicIC={cycle_type:profile.cycle_type,cycle_days:profile.cycle_days,
+   pregnancy_status:profile.pregnancy_status,pregnancy_anchor:profile.pregnancy_anchor,
+   pregnancy_start_day:profile.pregnancy_start_day,pregnancy_total_days:profile.pregnancy_total_days};
+  return ok({profile:full?{...profile,cycle_anchor:cycleProfile.cycle_anchor}:publicIC,cycle,pregnancy:pregnancyProgress(profile),rolls,history,
+   can_edit:owner,command_view:command&&!owner,details_shared:full,character_bound:Boolean(character.collar_bound)});
  }
  if(!owner)return fail(403,'character_owner_required');
  const b=await readBody(req);
  if(action==='settings'&&req.method==='PUT'){
-  if(!asBool(b?.cycle_opt_in)||!asBool(b?.conception_opt_in)||!asBool(b?.shared_with_command)||
+  if(!asBool(b?.conception_opt_in)||!asBool(b?.shared_with_command)||
    !['heat','rut'].includes(b.cycle_type)||!validDate(b.cycle_anchor)||
    !intBetween(b.cycle_days,20,90)||!intBetween(b.base_chance,0,100))return fail(400,'invalid_cycle_settings');
-  if(bool(b.cycle_opt_in)&&!character.collar_bound)return fail(409,'bound_character_required');
   await pool.execute(`INSERT INTO character_reproductive_profiles(character_id,cycle_opt_in,conception_opt_in,cycle_type,cycle_anchor,cycle_days,base_chance,shared_with_command)
-   VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE cycle_opt_in=VALUES(cycle_opt_in),conception_opt_in=VALUES(conception_opt_in),
+   VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE conception_opt_in=VALUES(conception_opt_in),
    cycle_type=VALUES(cycle_type),cycle_anchor=VALUES(cycle_anchor),cycle_days=VALUES(cycle_days),base_chance=VALUES(base_chance),shared_with_command=VALUES(shared_with_command)`,
-   [id,bool(b.cycle_opt_in)?1:0,bool(b.conception_opt_in)?1:0,b.cycle_type,b.cycle_anchor,b.cycle_days,b.base_chance,bool(b.shared_with_command)?1:0]);
+   [id,character.collar_bound?1:0,bool(b.conception_opt_in)?1:0,b.cycle_type,b.cycle_anchor,b.cycle_days,b.base_chance,bool(b.shared_with_command)?1:0]);
   await pool.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
-   [id,actor.id,'cycle_settings',bool(b.cycle_opt_in)?'Monthly binding cycle updated':'Monthly binding cycle disabled']);
+   [id,actor.id,'cycle_settings','Binding calendar and conception preferences updated']);
   return ok({saved:true});
  }
  if(action==='pregnancy'&&req.method==='POST'){
@@ -123,7 +131,7 @@ export async function reproductionRoute(pool,req,path){
    if(sameDay){await db.rollback();return fail(409,'conception_event_already_recorded_today')}
    if(!current?.conception_opt_in){await db.rollback();return fail(403,'conception_roll_not_approved')}
    if(current.pregnancy_status==='active'){await db.rollback();return fail(409,'pregnancy_already_active')}
-   const settings=safeProfile(current),status=cycleStatus(settings,Boolean(character.collar_bound),character.rank_code);
+   const settings=safeProfile(current),status=cycleStatus({...settings,cycle_anchor:settings.cycle_anchor||dateKey(character.created_at)},Boolean(character.collar_bound),character.rank_code);
    const chance=conceptionChance(settings,status),value=randomInt(1,101),success=value<=chance;
    const [insert]=await db.execute(`INSERT INTO character_conception_rolls(character_id,event_key,actor_account_id,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase)
     VALUES(?,?,?,?,?,?,?,?,?)`,[id,b.event_key,actor.id,b.ic_event_date,value,chance,success,character.rank_code||null,status.phase]);

@@ -13,7 +13,7 @@ tags:
 # Pregnancy & Parenthood — Roll-Based Dashboard System
 
 > [!note] First phase implemented in repository; deployment requires migration 114.
-> Character-linked heat/rut cycles, eight-rank resonance, on-dossier notices, manually registered pregnancies, private history, consent-qualified D100 conception events and owner-only editing are implemented. Discord/email push alerts, IC time skips, dependent NPC records, and staff/participant confirmation beyond the owner are not yet implemented.
+> Automatic IC heat/rut status for bound characters (no in-character enable/disable toggle), eight-rank resonance, on-dossier notices, manually registered pregnancies, private history, consent-qualified D100 conception events and owner-only editing are implemented. Discord/email push alerts, IC time skips, dependent NPC records, and staff/participant confirmation beyond the owner are not yet implemented.
 
 ## Goal
 Support darker, consequence-driven adult RP through a clear dice-based pregnancy possibility, persistent character states, and IC consequences within the Domina's collection. Apply to eligible adult characters, including regular members and thralls, without turning it into a separate public-facing service.
@@ -52,3 +52,7 @@ Support darker, consequence-driven adult RP through a clear dice-based pregnancy
 ## Initial deployment
 
 Back up the Windows database, pull latest `main`, run `npm run setup:local` from `server`, restart the API, and redeploy the frontend. The code merge does not apply SQL or send remote notifications. Phase alerts appear privately when the character dossier is opened.
+
+## Bound cycle behavior and command visibility
+
+The collar/brand's IC heat/rut status is derived automatically from the bound state, official servitude rank and stable cycle anchor. Players cannot disable that IC status with an in-dossier switch. Pregnancies and conception rolls remain separate, player-controlled opt-ins; OOC pause and consent withdrawal are independent of in-character status. Domina/High Command can always inspect the IC cycle and pregnancy stage, but do not gain private notes, OOC preferences or conception-roll details without the character owner's separate sharing approval. The dossier uses the existing Garlean steel-and-scarlet design and a compact settings dialog.
