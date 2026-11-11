@@ -103,7 +103,8 @@ export async function supplyLineRoute(pool,req,path,actor,env){
   if(shipmentMatch[2]==='resume'){
    if(cargo.status!=='disrupted')return fail(409,'supply_shipment_not_disrupted');
    const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
-   if(await warThreatAtArrival(db,'supply',cargo))return ok({disrupted:true});
+   const [[warPending]]=await db.execute("SELECT id FROM world_convoy_engagements WHERE shipment_kind='supply' AND shipment_id=? AND status='pending' LIMIT 1",[cargo.id]);
+   if(warPending)return fail(409,'convoy_requires_dm_outcome');
    if(!safeLocation(cargo.destination_kind,dest,true))return fail(409,'supply_destination_still_unavailable');
    await db.execute("UPDATE world_logistics_supply_line_shipments SET status='in_transit',incident_notes='',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 MINUTE) WHERE id=?",[cargo.id]);
    return ok({status:'in_transit'});
@@ -138,6 +139,7 @@ export async function runStandingSupplyAutomation(pool,env){
    const [[cargo]]=await db.execute('SELECT * FROM world_logistics_supply_line_shipments WHERE id=? FOR UPDATE',[row.id]);
    if(!cargo||cargo.status!=='in_transit')return ok({skipped:true});
    const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
+   if(await warThreatAtArrival(db,'supply',cargo))return ok({disrupted:true});
    if(cargo.train_consist_id){
     const [[outbound]]=await db.execute('SELECT status FROM order_internal_rail_journeys WHERE id=? FOR UPDATE',[cargo.rail_journey_id]);
     if(!outbound||outbound.status==='cancelled'){
