@@ -21,13 +21,26 @@ async function getState(pool,actor){
  const [dominas]=await pool.execute('SELECT id,display_name FROM accounts WHERE account_role="domina" AND is_active=1 AND approval_status="approved" ORDER BY display_name');
  const holder=dominas[0]||null;
  const isDomina=actor.account_role==='domina';
- const [characters]=isDomina?await pool.execute('SELECT c.id,c.character_name AS name,c.player_account_id FROM characters c JOIN accounts a ON a.id=c.player_account_id WHERE a.is_active=1 AND a.approval_status="approved" ORDER BY c.character_name,c.id'):[[]];
+ const [characterRows]=isDomina?await pool.execute('SELECT c.id,c.character_name AS name,c.player_account_id,c.sheet_json,a.account_role,a.is_active,a.approval_status FROM characters c LEFT JOIN accounts a ON a.id=c.player_account_id ORDER BY c.character_name,c.id'):[[]];
+ // Only expose in-character, non-sensitive sheet metadata to the appointment picker.
+ // Never return raw sheet_json, RP preferences, sealed notes, account names or OOC identity.
+ const characters=characterRows.map(c=>{
+  let sheet={};
+  try{sheet=typeof c.sheet_json==='string'?JSON.parse(c.sheet_json):c.sheet_json||{}}catch{}
+  return {id:c.id,name:c.name,player_account_id:c.player_account_id||null,
+   eligible:!!(c.player_account_id&&c.is_active&&c.approval_status==='approved'),
+   is_domina:c.account_role==='domina',
+   species:String(sheet.species||sheet.race||'').slice(0,100),
+   class_name:String(sheet.class_name||sheet.className||sheet.class_id||'').slice(0,100),
+   level:Math.max(1,Math.min(20,Number(sheet.level)||1)),
+   specialty:String(sheet.specialty||'').slice(0,100)};
+ });
  const councilMembers=new Set(offices.filter(o=>o.code!=='domina').map(o=>o.account_id).filter(Boolean));
  if(holder)councilMembers.add(holder.id);
  const canWrite=isDomina||councilMembers.has(actor.id);
  const [history]=isDomina?await pool.execute('SELECT a.id,a.action,a.subject,a.details,a.created_at,u.display_name AS actor FROM order_governance_audit a JOIN accounts u ON u.id=a.actor_id ORDER BY a.id DESC LIMIT 100'):[[]];
  const [revisions]=await pool.execute('SELECT h.revision,h.changed_at,a.display_name AS editor FROM order_governance_charter_history h JOIN accounts a ON a.id=h.changed_by ORDER BY h.revision DESC LIMIT 30');
- return {charter,characters,offices:offices.map(o=>({...o,account_id:o.code==='domina'?holder?.id||null:o.account_id,holder:o.code==='domina'?o.character_name||holder?.display_name||'Vacant':o.character_name||o.holder||null,locked:Boolean(o.account_id||o.character_id),legacy_unlinked:Boolean(o.code!=='domina'&&o.account_id&&!o.character_id)})),motions:motions.map(m=>{
+ return {charter,characters,offices:offices.map(o=>({...o,account_id:o.code==='domina'?holder?.id||null:o.account_id,holder:o.character_name||null,locked:Boolean(o.character_id),legacy_unlinked:Boolean(o.code!=='domina'&&o.account_id&&!o.character_id),seat_occupied:Boolean(o.character_id||o.account_id||o.code==='domina'&&holder)})),motions:motions.map(m=>{
    const entries=votes.filter(v=>Number(v.motion_id)===Number(m.id));
    const result=calculateCouncilOutcome(m.kind,entries.map(e=>e.vote),m.quorum_required,m.major_yes_required);
    const eligibility=electorate.filter(e=>Number(e.motion_id)===Number(m.id));
