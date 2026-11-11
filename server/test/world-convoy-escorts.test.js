@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {warThreatAtArrival,escortCommandRoute} from '../src/world-convoy-escorts.js';
 const actor={id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',account_role:'domina'};
-const request=(body)=>({async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify(body))}});
+const request=(body)=>({method:'POST',async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify(body))}});
 function mock(rows){
  const queries=[],db={
   beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},
