@@ -80,6 +80,8 @@ export async function reproductionRoute(pool,req,path){
    VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE cycle_opt_in=VALUES(cycle_opt_in),conception_opt_in=VALUES(conception_opt_in),
    cycle_type=VALUES(cycle_type),cycle_anchor=VALUES(cycle_anchor),cycle_days=VALUES(cycle_days),base_chance=VALUES(base_chance),shared_with_command=VALUES(shared_with_command)`,
    [id,bool(b.cycle_opt_in)?1:0,bool(b.conception_opt_in)?1:0,b.cycle_type,b.cycle_anchor,b.cycle_days,b.base_chance,bool(b.shared_with_command)?1:0]);
+  await pool.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
+   [id,actor.id,'cycle_settings',bool(b.cycle_opt_in)?'Monthly binding cycle updated':'Monthly binding cycle disabled']);
   return ok({saved:true});
  }
  if(action==='pregnancy'&&req.method==='POST'){
@@ -94,12 +96,16 @@ export async function reproductionRoute(pool,req,path){
     VALUES(?,'active',?,?,?,?) ON DUPLICATE KEY UPDATE pregnancy_status='active',pregnancy_anchor=VALUES(pregnancy_anchor),
     pregnancy_start_day=VALUES(pregnancy_start_day),pregnancy_total_days=VALUES(pregnancy_total_days),pregnancy_notes=VALUES(pregnancy_notes)`,
     [id,b.anchor,b.start_day,b.total_days,b.notes.trim()]);
+   await db.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
+    [id,actor.id,'pregnancy_registered','Pregnancy story record started']);
    await db.commit();return ok({registered:true});
   }catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}
  }
  if(action==='complete'&&req.method==='POST'){
   if(!['completed','ended'].includes(b?.status))return fail(400,'invalid_pregnancy_outcome');
   const [changed]=await pool.execute("UPDATE character_reproductive_profiles SET pregnancy_status=? WHERE character_id=? AND pregnancy_status='active'",[b.status,id]);
+  if(changed.affectedRows)await pool.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
+   [id,actor.id,'pregnancy_'+b.status,b.status==='completed'?'Delivery recorded':'Pregnancy record ended']);
   return changed.affectedRows?ok({status:b.status}):fail(409,'no_active_pregnancy');
  }
  if(action==='roll'&&req.method==='POST'){
@@ -112,6 +118,8 @@ export async function reproductionRoute(pool,req,path){
    const [[current]]=await db.execute('SELECT * FROM character_reproductive_profiles WHERE character_id=? FOR UPDATE',[id]);
    const [[afterLock]]=await db.execute('SELECT * FROM character_conception_rolls WHERE character_id=? AND event_key=?',[id,b.event_key]);
    if(afterLock){await db.commit();return ok({roll:afterLock,replayed:true})}
+   const [[sameDay]]=await db.execute('SELECT id FROM character_conception_rolls WHERE character_id=? AND ic_event_date=? LIMIT 1',[id,b.ic_event_date]);
+   if(sameDay){await db.rollback();return fail(409,'conception_event_already_recorded_today')}
    if(!current?.conception_opt_in){await db.rollback();return fail(403,'conception_roll_not_approved')}
    if(current.pregnancy_status==='active'){await db.rollback();return fail(409,'pregnancy_already_active')}
    const settings=safeProfile(current),status=cycleStatus(settings,Boolean(character.collar_bound),character.rank_code);
@@ -119,6 +127,8 @@ export async function reproductionRoute(pool,req,path){
    const [insert]=await db.execute(`INSERT INTO character_conception_rolls(character_id,event_key,actor_account_id,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase)
     VALUES(?,?,?,?,?,?,?,?,?)`,[id,b.event_key,actor.id,b.ic_event_date,value,chance,success,character.rank_code||null,status.phase]);
    if(success)await db.execute(`UPDATE character_reproductive_profiles SET pregnancy_status='active',pregnancy_anchor=?,pregnancy_start_day=0,pregnancy_total_days=280,pregnancy_notes='' WHERE character_id=?`,[b.ic_event_date,id]);
+   await db.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
+    [id,actor.id,'conception_roll',success?'Approved conception event established pregnancy':'Approved conception event recorded']);
    await db.commit();
    return ok({roll:{id:insert.insertId,event_key:b.event_key,roll_d100:value,chance,success,rank_code:character.rank_code||null,cycle_phase:status.phase},replayed:false});
   }catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}
