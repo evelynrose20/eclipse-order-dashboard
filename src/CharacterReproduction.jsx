@@ -75,6 +75,7 @@ export default function CharacterReproduction({character,request,readOnly=false,
       </form>
     </>}
     {profile.pregnancy_status!=='none'&&<p className="repro-hint">Record status: {nice(profile.pregnancy_status)}</p>}
+    <div className="repro-history"><h4>Private story history</h4>{(data.history||[]).length?(data.history||[]).map((h,i)=><div key={i}><span>{String(h.created_at||'').slice(0,10)} · {nice(h.action)}</span><strong>{h.summary}</strong></div>):<p>No previous changes recorded.</p>}</div>
    </section>}
    {page==='rolls'&&<section className="repro-panel"><p className="repro-hint">Each consented event is resolved once with a stored D100 result. This is a fictional story rule, not a medical prediction.</p>
     <div className="repro-fields"><label>IC event date<input type="date" disabled={disable||!!outcome} value={eventDate} onChange={e=>{setEventDate(e.target.value);setEventKey(null)}}/></label><div className="repro-calculation"><small>Current chance</small><strong>{Math.min(100,Math.round(Number(profile.base_chance)*cycle.multiplier))}%</strong><small>{cycle.active?nice(cycle.phase)+' · Rank '+cycle.rank:'Normal cycle'}</small></div></div>
