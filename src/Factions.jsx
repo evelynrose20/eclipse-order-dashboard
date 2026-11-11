@@ -138,6 +138,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
     </>}
    </div>
   </div>
+  {editable&&removing&&<div className="faction-modal-backdrop" role="presentation"><div className="faction-modal faction-remove-modal" role="dialog" aria-modal="true" aria-label="Confirm faction removal"><div className="faction-modal-head"><h3>Remove faction</h3><button type="button" onClick={()=>setRemoving(null)} aria-label="Cancel removal">×</button></div><div className="faction-removal-copy"><p>Remove <strong>{removing.name}</strong> from the active faction directory?</p><p>Open merchant orders will be paused and new trade blocked. Previous events, trade history, reputation and territory ownership will be preserved.</p>{error&&<p className="alert" role="alert">{error}</p>}</div><div className="faction-modal-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setRemoving(null)}>Cancel</button><button type="button" className="btn faction-remove-action" disabled={busy} onClick={removeFaction}>{busy?'Removing…':'Confirm removal'}</button></div></div></div>}
   {editable&&editing&&<div className="faction-modal-backdrop" role="presentation"><div className="faction-modal" role="dialog" aria-modal="true" aria-label="Edit faction dossier">
    <div className="faction-modal-head"><h3>{newFaction?'New faction':'Edit faction dossier'}</h3><button type="button" onClick={()=>setEditing(null)} aria-label="Close editor">×</button></div>
    <div className="faction-fields">
