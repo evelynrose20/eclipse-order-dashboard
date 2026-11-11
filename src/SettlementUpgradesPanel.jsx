@@ -1,3 +1,4 @@
+import MaterialPicker from './MaterialPicker.jsx';
 import React,{useEffect,useState} from 'react';
 import './world-industry.css';
 import CivicTemplateManager from './CivicTemplateManager.jsx';
@@ -167,7 +168,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
          {draft.category==='housing'&&<label>Housing places<input type="number" required min="0" max="10000000" step="1" value={draft.housing_bonus} onChange={e=>setDraft({...draft,housing_bonus:e.target.value})}/></label>}
          {draft.category==='defense'&&<label>Defense improvement<input type="number" required min="0" max="100" step="1" value={draft.defense_bonus} onChange={e=>setDraft({...draft,defense_bonus:e.target.value})}/></label>}
          {['clinic','water','food_storage','insulation','public_works'].includes(draft.category)&&<label>Service improvement<input type="number" required min="0" max="100" step="1" value={draft.service_bonus} onChange={e=>setDraft({...draft,service_bonus:e.target.value})}/></label>}
-         {['planned','building'].includes(draft.status)&&<><label>Construction material<select value={draft.material_id||''} disabled={Boolean(draft.materials_paid)} onChange={e=>setDraft({...draft,material_id:e.target.value})}><option value="">None required</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name} · {fmt(m.quantity)} available</option>)}</select></label><label>Material units<input type="number" required min="0" max="1000000" step="1" disabled={Boolean(draft.materials_paid)} value={draft.material_cost||0} onChange={e=>setDraft({...draft,material_cost:e.target.value})}/></label></>}
+         {['planned','building'].includes(draft.status)&&<><label>Construction material<MaterialPicker catalog={materials} value={draft.material_id||''} disabled={Boolean(draft.materials_paid)} onChange={e=>setDraft({...draft,material_id:e.target.value})}><option value="">None required</option>{materials.map(m=><option key={m.id} value={m.id}>{m.name} · {fmt(m.quantity)} available</option>)}</MaterialPicker></label><label>Material units<input type="number" required min="0" max="1000000" step="1" disabled={Boolean(draft.materials_paid)} value={draft.material_cost||0} onChange={e=>setDraft({...draft,material_cost:e.target.value})}/></label></>}
          <label className="wide">Notes<input maxLength="500" value={draft.notes} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label>
         </div>
        </div>
