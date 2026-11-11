@@ -32,6 +32,7 @@ test('escorts reserve real garrison members only if stationed at the source',asy
  const {pool,queries}=mock(sql=>{
   if(sql.startsWith('SELECT * FROM world_logistics_shipments'))return [[{id:3,status:'in_transit',source_facility_id:5}]];
   if(sql.includes('SELECT id FROM world_convoy_escorts'))return [[]];
+  if(sql.includes('COALESCE(SUM(e.troops)'))return [[{total:12}]];
   if(sql.includes('FROM world_military_garrisons'))return [[{quantity:30,settlement_id:7,state:'operational',condition_pct:100,strategic_state:'secure',controlling_faction_id:'eclipse-order'}]];
   if(sql.includes('SELECT settlement_id FROM world_industry_facilities'))return [[{settlement_id:7}]];
   if(sql.includes('COALESCE(SUM(e.troops)'))return [[{total:12}]];
