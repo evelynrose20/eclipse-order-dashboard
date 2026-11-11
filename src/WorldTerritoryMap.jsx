@@ -150,7 +150,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
   const drag=dragRef.current;if(!drag)return;
   dragRef.current=null;suppressRef.current=drag.moved;
   const p=coords(e);
-  if(p&&drag.moved){const old=settlements.find(s=>s.id===drag.id);if(old?.controlling_faction_id&&old.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge(p)){setPositions({});setError('NPC settlements need at least 10% clearance from all map edges.');return}if(mountainNearby(p)){setPositions({});setError('Settlement cannot be placed on mountains. Choose clear terrain.');return}const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
+  if(p&&drag.moved){const old=settlements.find(s=>s.id===drag.id);if(old?.controlling_faction_id&&old.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge(p)){setPositions({});setError('NPC settlements need at least 3% clearance from all map edges.');return}if(mountainNearby(p)){setPositions({});setError('Settlement cannot be placed on mountains. Choose clear terrain.');return}const original=settlements.find(s=>s.id===drag.id);if(original)void persistMarker(original,p)}
  }
  async function changeIcon(value){
   const s=displayed.find(s=>String(s.id)===String(selected));if(!s||!canEdit||busy)return;
@@ -458,7 +458,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
     <rect width="900" height="560" fill="url(#wtm-map-vignette)"/>
     <path d="M20 18h55 M20 18v55 M880 18h-55 M880 18v55 M20 542h55 M20 542v-55 M880 542h-55 M880 542v-55" stroke="#d1bd96" opacity=".45" strokeWidth="2" fill="none"/>
    </svg>
-   {mode==='move'&&displayed.some(x=>String(x.id)===String(selected)&&x.controlling_faction_id&&x.controlling_faction_id!=='eclipse-order')&&<><div className="wtm-npc-edge-guide"/><div className="wtm-npc-edge-label">NPC SAFE PLACEMENT · 10% EDGE CLEARANCE</div></>}
+   {mode==='move'&&displayed.some(x=>String(x.id)===String(selected)&&x.controlling_faction_id&&x.controlling_faction_id!=='eclipse-order')&&<><div className="wtm-npc-edge-guide"/><div className="wtm-npc-edge-label">NPC SAFE PLACEMENT · 3% EDGE CLEARANCE</div></>}
    <svg className="wtm-mountains" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Named mountain ranges">
     <defs>
      <linearGradient id="wtm-highland-ground" x1="0" y1="0" x2=".8" y2="1">
