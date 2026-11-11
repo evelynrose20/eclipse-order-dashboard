@@ -42,9 +42,9 @@ test('unknown railway API paths return 404 without touching the database',async(
  const result=await handleRailInfrastructure(null,{method:'POST'},'/world-admin/rail/missing',null);
  assert.equal(result.status,404);
 });
-test('old graphical train facility system is archived behind the internal logistics menu',async()=>{
+test('rail service UI is consolidated into map-first Supply Lines',async()=>{
  const load=path=>readFile(new URL('../../'+path,import.meta.url),'utf8');
- const [map,menu,setup]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/InternalRail.jsx'),load('server/src/setup-local.js')]);
+ const [map,menu,setup]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/LogisticsSupplyLines.jsx'),load('server/src/setup-local.js')]);
  assert.doesNotMatch(map,/RailInfrastructurePanel|wtm-rail-symbol/);
  assert.match(menu,/Internal Rail Logistics/);
  assert.match(menu,/fa-solid fa-train/);
