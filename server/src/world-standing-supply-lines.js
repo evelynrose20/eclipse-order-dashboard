@@ -1,4 +1,5 @@
 import {railService,availableConsist,startRailJourney} from './world-standing-rail.js';
+import {trainSummary} from './world-magitek-trains.js';
 // Persistent, opt-in supply network. No implicit freight, stock or vehicle generation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -118,12 +119,32 @@ export async function supplyLineRoute(pool,req,path,actor,env){
 export async function runStandingSupplyAutomation(pool,env){
  if(!pool)return {dispatched:0,arrived:0,waiting:0,disrupted:0};
  let dispatched=0,arrived=0,waiting=0,disrupted=0;
+ // A returned consist becomes available again only after its recorded return trip.
+ await pool.execute("UPDATE order_internal_rail_journeys j JOIN world_logistics_supply_line_shipments s ON s.return_journey_id=j.id SET j.status='arrived',j.completed_at=j.expected_arrival_at WHERE s.return_due_at<=UTC_TIMESTAMP() AND j.status='running'");
  const [due]=await pool.execute("SELECT id FROM world_logistics_supply_line_shipments WHERE status='in_transit' AND due_at<=UTC_TIMESTAMP() ORDER BY due_at,id LIMIT 40");
  for(const row of due){
   const outcome=await tx(pool,async db=>{
    const [[cargo]]=await db.execute('SELECT * FROM world_logistics_supply_line_shipments WHERE id=? FOR UPDATE',[row.id]);
    if(!cargo||cargo.status!=='in_transit')return ok({skipped:true});
    const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
+   if(cargo.train_consist_id){
+    const [[outbound]]=await db.execute('SELECT status FROM order_internal_rail_journeys WHERE id=? FOR UPDATE',[cargo.rail_journey_id]);
+    if(!outbound||outbound.status==='cancelled'){
+     await db.execute("UPDATE world_logistics_supply_line_shipments SET status='disrupted',incident_notes='Train journey cancelled; cargo awaiting command review' WHERE id=?",[cargo.id]);
+     return ok({disrupted:true});
+    }
+    const origin=await location(db,cargo.source_kind,cargo.source_id,env.facilities);
+    const services=origin?await railService(db,origin.settlement_id,dest?.settlement_id):null;
+    if(!services?.available){
+     await db.execute("UPDATE world_logistics_supply_line_shipments SET status='disrupted',incident_notes='Return railway unavailable; train held with cargo' WHERE id=?",[cargo.id]);
+     return ok({disrupted:true});
+    }
+    const [busyReturn]=await db.execute("SELECT id FROM order_internal_rail_journeys WHERE route_id=? AND status='running' AND expected_arrival_at>UTC_TIMESTAMP(3) LIMIT 1",[services.reverse.id]);
+    if(busyReturn.length){
+     await db.execute("UPDATE world_logistics_supply_line_shipments SET status='disrupted',incident_notes='Return track service busy; awaiting command review' WHERE id=?",[cargo.id]);
+     return ok({disrupted:true});
+    }
+   }
    if(!safeLocation(cargo.destination_kind,dest)){
     await db.execute("UPDATE world_logistics_supply_line_shipments SET status='disrupted',incident_notes='Receiving location unavailable; cargo held' WHERE id=?",[cargo.id]);
     return ok({disrupted:true});
@@ -138,6 +159,15 @@ export async function runStandingSupplyAutomation(pool,env){
    }
    const [[line]]=await db.execute('SELECT created_by FROM world_logistics_supply_lines WHERE id=?',[cargo.supply_line_id]);
    if(!await shift(db,cargo.destination_kind,cargo.destination_id,cargo.item_id,Number(cargo.quantity),{id:line.created_by},cargo.id,env.ledger))return fail(409,'arrival_ledger_unavailable');
+   if(cargo.train_consist_id){
+    const origin=await location(db,cargo.source_kind,cargo.source_id,env.facilities);
+    const service=await railService(db,origin.settlement_id,dest.settlement_id);
+    const train=(await trainSummary(db)).find(t=>Number(t.id)===Number(cargo.train_consist_id));
+    if(!train)return fail(409,'rail_consist_missing_at_arrival');
+    await db.execute("UPDATE order_internal_rail_journeys SET status='arrived',completed_at=UTC_TIMESTAMP(3) WHERE id=? AND status='running'",[cargo.rail_journey_id]);
+    const returnJourneyId=await startRailJourney(db,service.reverse,train,line.created_by);
+    await db.execute('UPDATE world_logistics_supply_line_shipments SET return_journey_id=?,return_due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) WHERE id=?',[returnJourneyId,Number(service.reverse.duration_minutes),cargo.id]);
+   }
    await db.execute("UPDATE world_logistics_supply_line_shipments SET status='arrived',arrived_at=UTC_TIMESTAMP() WHERE id=?",[cargo.id]);
    return ok({arrived:true});
   });
