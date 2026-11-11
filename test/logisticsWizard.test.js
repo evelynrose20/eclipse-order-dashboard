@@ -25,7 +25,7 @@ test('each numbered logistics section is an independent screen, not a stacked fo
 
 test('corridor and warehouse planners block Next until the current stage is ready',()=>{
  assert.match(corridors,/stepValidations=\{\[true,!!draft\.origin_settlement_id/);
- assert.match(stores,/stepValidations=\{\[true,!!draft\.settlement_id/);
+ assert.match(stores,/stepValidations=\{\[!!firstLevel,!!draft\.settlement_id/);
  assert.match(stores,/number\(draft\.quantity\)<=number\(selectedStock\?\.quantity\)/);
  assert.match(stores,/mode==='rail'\?!!draft\.train_journey_id:!!draft\.vehicle_lot_id/);
  assert.match(shared,/disabled=\{!allowed\}/);
