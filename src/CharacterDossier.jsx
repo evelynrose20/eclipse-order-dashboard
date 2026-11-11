@@ -41,7 +41,7 @@ export default function CharacterDossier({
   let live=true;
   request('/characters/'+character.id+'/reproduction').then(r=>{if(live)setPrivateCycle(r.cycle)}).catch(()=>{if(live)setPrivateCycle(null)});
   return()=>{live=false};
- },[character?.id,personalRecord,request]);
+ },[character?.id,personalRecord]);
  useEffect(()=>{if(!allowed.some(x=>x.id===section))setSection(defaultDossierTab(character,playerPreview))},[section,restricted]);
  if(!summary)return null;
  const active=allowed.some(x=>x.id===section)?section:defaultDossierTab(character,playerPreview);
