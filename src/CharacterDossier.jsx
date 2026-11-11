@@ -18,13 +18,20 @@ function TextCard({title,body}){
 }
 export default function CharacterDossier({
  character,playerPreview=false,canEdit=false,onEdit,onOpenPreferences,
- canCommand=false,canViewChamberStaff=false,request,onRefresh,classCatalog={},userId
+ canCommand=false,canChangeBoundRank=false,canViewChamberStaff=false,servitudeRanks=[],request,onRefresh,classCatalog={},userId
 }){
  const restricted=isDossierRestricted(character,playerPreview);
  const summary=dossierSummary(character,playerPreview);
  const canViewChamber=canViewCharacterChamber(character,userId,{staff:canViewChamberStaff,playerPreview});
  const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[])];
  const [section,setSection]=useState(()=>defaultDossierTab(character,playerPreview));
+ const [rankBusy,setRankBusy]=useState(false),[rankError,setRankError]=useState('');
+ async function changeBoundRank(code){
+  setRankBusy(true);setRankError('');
+  try{await request('/characters/'+character.id+'/rank',{method:'POST',body:{rank:code}});await onRefresh?.()}
+  catch(error){setRankError(error.message||'Unable to update bound standing')}
+  finally{setRankBusy(false)}
+ }
  useEffect(()=>setSection(defaultDossierTab(character,playerPreview)),[character?.id,restricted]);
  useEffect(()=>{if(!allowed.some(x=>x.id===section))setSection(defaultDossierTab(character,playerPreview))},[section,restricted]);
  if(!summary)return null;
@@ -42,6 +49,7 @@ export default function CharacterDossier({
    {canEdit&&!restricted&&<button type="button" className="btn primary dossier-edit" onClick={onEdit}>Edit character</button>}
   </header>
 
+  {canChangeBoundRank&&character.collar_bound&&<div className="dossier-rank-control"><label>Bound standing <select value={character.servitude_rank||''} onChange={e=>changeBoundRank(e.target.value)} disabled={rankBusy||!servitudeRanks.length}><option value="" disabled>{character.servitude_rank?'Select rank':'Select official bound rank'}</option>{servitudeRanks.map(rank=><option key={rank.code} value={rank.code}>{rank.title}</option>)}</select></label>{rankError&&<p role="alert">{rankError}</p>}</div>}
   {restricted&&<div className="dossier-seal" role="note"><strong>Arcane binding · Limited character knowledge</strong><p>This in-character view intentionally hides sealed mechanical and private fields. Your OOC account preferences remain under your control.</p></div>}
   <div className="dossier-frame">
    <nav className="dossier-tabs" aria-label="Character dossier sections">

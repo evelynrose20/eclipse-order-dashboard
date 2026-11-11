@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {SERVITUDE_RANKS} from '../src/servitudeRanks.js';
 
 const get=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=get('App.jsx'),site=get('src/PublicSite.jsx'),style=get('src/public-site.css');
@@ -17,9 +18,12 @@ test('public website includes original Order identity, sections, and accessible 
  for(const section of ['about','history','ranks','roleplay','conduct','visit','membership','questions']){
   assert.match(site,new RegExp('id="'+section+'"'));
  }
- for(const rank of ['Domina','Grand Viper','Inner Council','The Snakes','The Fangs','The Golden Claws','The Household','Freshscales','Voidscales','Eclipsed Consort']){
+ for(const rank of ['Domina','Grand Viper','Inner Council','The Snakes','The Fangs','The Golden Claws','The Household','Freshscales','Voidscales']){
   assert.ok(site.includes(rank),rank);
  }
+ assert.equal(SERVITUDE_RANKS.length,8);
+ assert.ok(SERVITUDE_RANKS.includes('Eclipsed Consort'));
+ assert.match(site,/SERVITUDE_RANKS/);
  assert.match(site,/aria-modal="true"/);
  assert.match(site,/aria-expanded=\{expandedFAQ===entry.id\}/);
  assert.match(site,/fetch\(RECRUITMENT_API\+'\/faq\/public'/);

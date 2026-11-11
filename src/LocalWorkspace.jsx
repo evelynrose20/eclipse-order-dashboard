@@ -69,7 +69,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
    setMembers(accounts);setRankCatalog(catalog.ranks||[]);
   }
  };
- useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message))},[profile.id]);
+ useEffect(()=>{load().catch(err=>setMessage(err.message));reloadClasses().catch(err=>setMessage(err.message));request('/characters/servitude-ranks').then(data=>setServitudeRanks(data.ranks||[])).catch(err=>setMessage(err.message))},[profile.id]);
  useEffect(()=>{
   let active=true;
   setChamberAccess(false);
@@ -163,7 +163,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
      <div className="eo-toolbar"><h2>Character sheets</h2>{admin&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>+ New sheet</button>}</div>
      {visibleCharacters.length>0&&<select className="eo-sheet-picker" value={character?.id||''} onChange={e=>{setSelected(e.target.value);setDraft(null)}}>{visibleCharacters.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
      {draft?<InlineSheetEditor key={draft.id||'new'} character={draft} classCatalog={classCatalog} canCommand={admin} members={members} userId={profile.id} onSave={save} onCancel={()=>setDraft(null)} saving={busy}/>:
-     character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} canViewChamberStaff={staff&&!playerPreview} request={request} onRefresh={load} classCatalog={classCatalog} userId={profile.id}/>:
+     character?<CharacterDossier key={character.id} character={character} playerPreview={playerPreview} canEdit={!playerPreview&&character.view_mode==='full'&&(admin||profile.role==='handler'||(!character.collar_bound&&character.player_user_id===profile.id))} onEdit={()=>setDraft({...character})} onOpenPreferences={()=>setTab('profile')} canCommand={admin} canChangeBoundRank={admin} canViewChamberStaff={staff&&!playerPreview} servitudeRanks={servitudeRanks} request={request} onRefresh={load} classCatalog={classCatalog} userId={profile.id}/>:
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p></section>}
     </>}
     {tab==='lore'&&<LoreArchive request={request} admin={!playerPreview}/>}

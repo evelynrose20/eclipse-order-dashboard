@@ -139,7 +139,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  }
  return <section className="eo-exchange">
   <header className="eo-exchange-head">
-   <div className="eo-exchange-brand"><span className="eo-exchange-sigil" aria-hidden="true">✥</span><div><span>THE ECLIPSE ORDER</span><h2>Merchant Exchange</h2><p>Foreign demand · FC supply · diplomatic standing</p></div></div>
+   <div className="eo-exchange-brand"><span className="eo-exchange-sigil" aria-hidden="true">✥</span><div><span>THE ECLIPSE ORDER</span><h2>Merchant Exchange</h2><p>Workshop and garden markets · foreign demand · diplomatic standing</p></div></div>
    <div className="eo-exchange-head-actions"><span className="eo-exchange-live"><span/> ORDER NETWORK</span>{canManage&&!readOnly&&<button type="button" onClick={()=>setCreateDraft(draftNew())}>+ Post buy order</button>}</div>
   </header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
@@ -177,7 +177,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
       <div className="eo-exchange-item-stats"><div><span>AVAILABLE TO SUPPLY</span><strong>{fmt(availableFor(chosen))}</strong></div><div><span>OPEN DEMAND</span><strong>{fmt(chosen.shownOffers.reduce((n,c)=>n+remain(c),0))}</strong></div><div><span>BUYERS</span><strong>{new Set(chosen.shownOffers.map(c=>c.faction_id)).size}</strong></div></div>
       <div className="eo-exchange-order-label"><h4>Buy orders</h4><span>Best standing reward first</span></div>
       <div className="eo-exchange-offers"><div className="eo-exchange-offers-head"><span>BUYER</span><span>REMAINING</span><span>STANDING / UNIT</span></div>
-       {offers.map(c=><button type="button" key={c.id} className={'eo-exchange-offer '+(order?.id===c.id?'current':'')} onClick={()=>selectOrder(c)} aria-pressed={order?.id===c.id}><span><strong>{c.faction_name}</strong><small>{c.title} · {c.faction_scope==='settlement'?'Settlement':'Faction'}</small></span><span>{fmt(remain(c))} / {fmt(c.required_quantity)}</span><b>+{c.rep_per_unit}</b></button>)}
+       {offers.map(c=><button type="button" key={c.id} className={'eo-exchange-offer '+(order?.id===c.id?'current':'')} onClick={()=>selectOrder(c)} aria-pressed={order?.id===c.id}><span><strong>{c.faction_name}</strong><small>{c.title}{c.auto_created?' · Market generated':''} · {c.faction_scope==='settlement'?'Settlement':'Faction'}</small></span><span>{fmt(remain(c))} / {fmt(c.required_quantity)}</span><b>+{c.rep_per_unit}</b></button>)}
       </div>
       {order&&<div className="eo-exchange-ticket"><div className="eo-exchange-ticket-heading"><strong>Sell to this buyer</strong><small>ORDER #{order.id}</small></div>
        <p>{order.description||'Deliver the requested goods to improve this partner’s standing toward the Order.'}</p>

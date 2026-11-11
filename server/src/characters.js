@@ -24,7 +24,8 @@ function view(row,account){
  const data=typeof row.sheet_json==='string'?JSON.parse(row.sheet_json):row.sheet_json;
  const record={...data,id:row.id,name:row.character_name,player_user_id:row.player_account_id,
   handler_user_id:row.handler_account_id,collar_bound:Boolean(row.collar_bound),
-  rank:row.collar_bound?(labels[row.bound_rank]||labels.rank_i):'Unbound: Free'};
+  rank:row.collar_bound?(row.servitude_title||labels[row.bound_rank]||'Bound · Unranked'):'Unbound: Free',
+  servitude_rank:row.collar_bound?(row.servitude_rank||null):null};
  const full=commands.has(account.account_role)||(account.account_role==='handler'&&row.handler_account_id===account.id)||!row.collar_bound;
  if(full){const {gil,...visible}=record;return {...visible,view_mode:'full'};}
  return {id:record.id,name:record.name,player:record.player||'',owner:record.owner||'',specialty:record.specialty||'',
@@ -34,13 +35,20 @@ export async function characterRoute(pool,req,path){
  if(!pool)return err(503,'database_unavailable');
  const actor=await resolveSession(pool,req);
  if(!actor)return err(401,'not_authenticated');
+ if(path==='/characters/servitude-ranks'&&req.method==='GET'){
+  const [rows]=await pool.query("SELECT code,title,sort_order FROM order_rank_catalog WHERE track='servitude' ORDER BY sort_order");
+  return {status:200,body:{ranks:rows}};
+ }
  if(path==='/characters'&&req.method==='GET'){
   let rows;
   if(commands.has(actor.account_role)) [rows]=await pool.execute('SELECT * FROM characters ORDER BY updated_at DESC');
   else if(actor.account_role==='handler') [rows]=await pool.execute(
    'SELECT * FROM characters WHERE player_account_id=? OR handler_account_id=? ORDER BY updated_at DESC',[actor.id,actor.id]);
   else [rows]=await pool.execute('SELECT * FROM characters WHERE player_account_id=? ORDER BY updated_at DESC',[actor.id]);
-  return {status:200,body:rows.map(r=>view(r,actor))};
+  if(!rows.length)return {status:200,body:[]};
+  const [assigned]=await pool.query("SELECT cor.character_id,cor.rank_code,cat.title FROM character_order_ranks cor JOIN order_rank_catalog cat ON cat.code=cor.rank_code WHERE cat.track='servitude'");
+  const byId=new Map(assigned.map(r=>[r.character_id,r]));
+  return {status:200,body:rows.map(r=>{const rank=byId.get(r.id);return view({...r,servitude_rank:rank?.rank_code,servitude_title:rank?.title},actor)})};
  }
  if(path==='/characters'&&req.method==='POST'){
   if(!commands.has(actor.account_role))return err(403,'command_required');
@@ -138,16 +146,19 @@ export async function characterRoute(pool,req,path){
  if(promotion&&req.method==='POST'){
   if(!commands.has(actor.account_role))return err(403,'command_required');
   const data=await payload(req),rankId=data?.rank;
-  if(!['rank_i','rank_ii','rank_iii','rank_iv'].includes(rankId))return err(400,'invalid_rank');
+  if(typeof rankId!=='string'||!rankId||rankId.length>48)return err(400,'invalid_rank');
   const cn=await pool.getConnection();
   try{
    await cn.beginTransaction();
+   const [catalog]=await cn.execute("SELECT code,title FROM order_rank_catalog WHERE code=? AND track='servitude' LIMIT 1",[rankId]);
+   if(!catalog.length){await cn.rollback();return err(400,'invalid_rank')}
    const [rows]=await cn.execute('SELECT collar_bound,sheet_json FROM characters WHERE id=? FOR UPDATE',[promotion[1]]);
    if(!rows.length){await cn.rollback();return err(404,'character_not_found')}
    if(!rows[0].collar_bound){await cn.rollback();return err(409,'rank_requires_bound_character')}
    const sheet=typeof rows[0].sheet_json==='string'?JSON.parse(rows[0].sheet_json):rows[0].sheet_json;
-   const display=labels[rankId];sheet.rank=display;
-   await cn.execute('UPDATE characters SET bound_rank=?,sheet_json=? WHERE id=?',[rankId,JSON.stringify(sheet),promotion[1]]);
+   const display=catalog[0].title;sheet.rank=display;
+   await cn.execute('INSERT INTO character_order_ranks(character_id,rank_code) VALUES(?,?) ON DUPLICATE KEY UPDATE rank_code=VALUES(rank_code),assigned_at=CURRENT_TIMESTAMP',[promotion[1],rankId]);
+   await cn.execute('UPDATE characters SET sheet_json=? WHERE id=?',[JSON.stringify(sheet),promotion[1]]);
    await cn.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',
     [actor.id,'change_bound_rank','character',promotion[1],JSON.stringify({rank:rankId})]);
    await cn.commit();return {status:200,body:{rank:display}};
