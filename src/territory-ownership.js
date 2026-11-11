@@ -15,7 +15,7 @@ export function ownershipOf(settlement,localGovernmentId,factions=[]){
  const color=factions.find(f=>f.id===owner)?.map_color||factionColor(owner);
  if(owner==='eclipse-order')return {kind:government===owner?'local':'order',owner,label:'Eclipse Order',color};
  if(government&&owner===government)return {kind:'local',owner,label:'Local government',color};
- return {kind:government?'foreign':'independent',owner,label:government?'Outside faction':'Independent faction',color:factionColor(owner)};
+ return {kind:government?'foreign':'independent',owner,label:government?'Outside faction':'Independent faction',color};
 }
 export function mapOwnershipLegend(settlements,localGovernmentId,factions){
  const items=new Map();
