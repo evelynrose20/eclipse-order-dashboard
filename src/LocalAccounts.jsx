@@ -123,7 +123,7 @@ export default function LocalAccounts(){
  }
  const accessIssue=['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable','discord_guild_configuration_error','pending'].includes(reason);
  if(!profile&&accessIssue)return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('');const u=new URL(window.location.href);u.searchParams.delete('access');window.history.replaceState(null,'',u.pathname+u.search)}}/>;
- if(profile)return <LocalWorkspace profile={profile} request={(path,options={})=>request(path,{...options,token})} onLogout={logout}/>;
+ if(profile)return <LocalWorkspace profile={profile} request={async(path,options={})=>{try{return await request(path,{...options,token})}catch(error){if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setProfile(null);setMessage(ERROR_MESSAGES.not_authenticated)}throw error}}} onLogout={logout}/>;
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
