@@ -64,7 +64,7 @@ async function request(path,{method='GET',token,body}={}){
  try{response=await fetch(API+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'})}
  catch{throw new Error('The Order ledger is temporarily unavailable. Try again later.')}
  const data=response.status===204?{}:await response.json().catch(()=>({}));
- if(!response.ok)throw new Error(ERROR_MESSAGES[data.error]||data.message||data.error||'Request failed ('+response.status+')');
+ if(!response.ok){const error=new Error(ERROR_MESSAGES[data.error]||data.message||data.error||'Request failed ('+response.status+')');error.status=response.status;error.code=data.error;throw error;}
  return data;
 }
 export default function LocalAccounts(){
@@ -73,6 +73,7 @@ export default function LocalAccounts(){
  const [message,setMessage]=useState('');
  const [reason,setReason]=useState(()=>new URLSearchParams(window.location.search).get('access')||'');
  const [busy,setBusy]=useState(false);
+ const [sessionRetry,setSessionRetry]=useState(0);
  const [adult,setAdult]=useState(false);
  const [recruitment,setRecruitment]=useState(null);
  useEffect(()=>{
@@ -112,7 +113,7 @@ export default function LocalAccounts(){
    if(active){sessionStorage.removeItem(storageKey);setToken('');setProfile(null)}
   });
   return()=>{active=false};
- },[token]);
+ },[token,sessionRetry]);
  async function logout(){
   try{await request('/auth/logout',{method:'POST',token})}catch{}
   sessionStorage.removeItem(storageKey);setProfile(null);setToken('');
