@@ -8,18 +8,19 @@ export function factionColor(id){
  for(const char of String(id)){h^=char.charCodeAt(0);h=Math.imul(h,16777619)}
  return PALETTE[(h>>>0)%PALETTE.length];
 }
-export function ownershipOf(settlement,localGovernmentId){
+export function ownershipOf(settlement,localGovernmentId,factions=[]){
  const owner=settlement?.controlling_faction_id||null;
  const government=localGovernmentId||null;
  if(!owner)return {kind:'unclaimed',owner:null,label:'Unclaimed',color:'#8b949e'};
- if(owner==='eclipse-order')return {kind:government===owner?'local':'order',owner,label:'Eclipse Order',color:factionColor(owner)};
+ const color=factions.find(f=>f.id===owner)?.map_color||factionColor(owner);
+ if(owner==='eclipse-order')return {kind:government===owner?'local':'order',owner,label:'Eclipse Order',color};
  if(government&&owner===government)return {kind:'local',owner,label:'Local government',color:factionColor(owner)};
  return {kind:government?'foreign':'independent',owner,label:government?'Outside faction':'Independent faction',color:factionColor(owner)};
 }
 export function mapOwnershipLegend(settlements,localGovernmentId,factions){
  const items=new Map();
  for(const site of settlements||[]){
-  const o=ownershipOf(site,localGovernmentId);
+  const o=ownershipOf(site,localGovernmentId,factions);
   const id=o.owner||'unclaimed';
   if(!items.has(id))items.set(id,{id,name:factions?.find(f=>f.id===id)?.name||(id==='unclaimed'?'Unclaimed':id==='eclipse-order'?'Eclipse Order':id),color:o.color,kind:o.kind,count:0});
   items.get(id).count++;
