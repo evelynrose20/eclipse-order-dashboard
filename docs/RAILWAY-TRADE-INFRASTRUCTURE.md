@@ -1,34 +1,25 @@
-# Internal Rail Logistics — menu-based Order transport
+# Railway logistics — mapped track supply network
 
-## Current system (migration 049)
+## Current player workflow
 
-The dedicated railway station icons, track-switch controls, crossings, and separate **Lay track** tool have been retired from the map. **Existing railway lines remain visible on the territory map**, with their original railway styling. The regular **Plan a route / Edit routes** tools retain a **Railway (map only)** route type for drawing and shaping decorative rail lines. No drawn map geometry is required for internal train services. Existing map railway tables (migrations 045–048) and previously saved tracks/facilities remain in MySQL; route geometry remains visible on the map; this rollout does **not** delete or migrate them into new services.
+Railway freight belongs in **Supply Command → Supply Lines**. The separate **Internal Rail Logistics** page has been retired; its earlier duplicate station/service creation is no longer part of normal setup.
 
-In the dashboard sidebar, open **Industry & Logistics → Internal Rail Logistics** (train icon), alongside **Trade Routes**. This is a **command-only** workspace available to Domina and High Command, not the public trade-contract system. The map's road, trail, railway, waterway and skyway lines, settlements, and mountains remain available.
+1. Draw or connect railway tracks in the region/zone map. Track endpoints must be attached to actual settlement route nodes or linked through an operational rail corridor.
+2. Assemble an Order-owned freight train with a locomotive and railcars in the existing magitek train assembly system.
+3. In Supply Lines, create a standing order from a factory, mine, farm or warehouse to a warehouse, industry depot or military installation. Select **Rail freight**, a transport template and the train consist.
+4. The backend validates a connected rail map path. In the same transaction, it registers missing operational settlement terminals and both outgoing and return rail services. Existing terminal damage and paused service states are respected: operators can inspect/reopen closed terminals or resume paused services in **Supply Lines → Railway access**. Damaged terminals still need restoration.
+5. Scheduled dispatches require real source inventory and train fuel, use manufactured freight capacity, and create actual rail journey records. The train returns before being available for another supply route. Overcapacity, interrupted journeys, broken connections or unavailable stations cause waiting or disrupted cargo, not free goods.
 
-### Stations tab
+**Important:** a track that is visually near a site is not by itself connected. The **Inspect track near source** control measures proximity (3% zone-map threshold) as a hint only. Railway loading still requires a connected map route. Add a siding/track connection in the map if necessary.
 
-Create a named internal railway station at an **Order-controlled settlement** or an **active Order-owned front** (not a personal front). Set its operating status (Planned, Operational, Closed, Damaged), platform count (1–100), and descriptive notes. Stations are ordinary directory records and never appear as map markers. They have no rails, crossing signals, or geometry to edit. A station used by a service cannot be deleted until the services are dealt with.
+## Data safety and compatibility
 
-### Rail Services tab
+The database tables `order_internal_rail_stations`, `order_internal_rail_routes` and `order_internal_rail_journeys` are deliberately retained. They contain earlier schedules, historic runs, train location and outstanding in-transit cargo. No database tables or route maps were removed; historical journeys and old API links remain valid for compatibility. The old standalone React interface and CSS are removed.
 
-Create services between two stations at **distinct locations**, whether inside one zone, different zones or separate regions. Choose the two stations, a service name, configurable travel duration (1 minute–7 days), status (Active, Paused, Retired), and cargo/RP notes. Cross-zone or cross-region trains require no map joins or coordinate-based links.
+Automatically generated service durations use an initial **20 minutes per mapped rail segment** (at least 15 minutes, max 7 days) if no earlier service exists. This is a game-system estimate, not real-world distance or speed. Existing service times remain unchanged.
 
-Dispatch a train from an Active route only when both stations are Operational and both locations remain Order-controlled/Order-owned. One train at a time may run on each service. The server stores departure and expected-arrival timestamps in UTC; the UI shows a live horizontal progress bar with a **Font Awesome train icon** and estimated time remaining. Trains become Arrived when their scheduled time has elapsed; completed and cancelled journeys remain in history. Cancel a running journey, pause or retire a service, and edit route duration from the menu.
+The map-first setup requires the existing migrations through **107**, which were already introduced. This UI/backend refactor does not require a new schema migration, but changing the Windows API service still requires pulling the latest code and restarting it.
 
-This phase is **operational scheduling and RP tracking only**: it does not automatically transfer, withdraw, reserve or duplicate materials, fuel or player/front stock. Descriptive cargo notes are not a material manifest. Inventory-safe shipment workflows can be added later after agreement on source accounts, reserved resources, delivery confirmations, and idempotent stock transfers.
+## Known bounds
 
-### Data retention / migration
-
-Migration `049_internal_rail_logistics.sql` creates additive tables for stations, services and train journeys. Migration `050_internal_rail_damaged.sql` adds the **Damaged** station status safely to existing installations. It does not remove legacy railway schema or old saved tracks. Run `npm run setup:local` after a database backup and pulling the latest `main` on the Windows host, then restart the Windows API service. All previously applied migrations (including 045–048) remain in place.
-
-### Acceptance checklist
-
-- Two Order-controlled settlements or an Order-owned front are available in the station location dropdown.
-- Create a station at each location, set both to Operational.
-- Create a service joining them, including across different zone or region boundaries.
-- Dispatch; verify that the train badge advances and ETA updates.
-- Attempt a second dispatch before arrival; it should be refused.
-- Cancel the train or allow its ETA to pass; verify journey history persists across reload/restart.
-- Confirm that the territory map still shows railway lines and permits **Railway (map only)** editing through the normal route editor, while station badges, the Lay track tab, switches and crossings editor are absent.
-- Confirm old tracks and facility data were not deleted from MySQL and unrelated roads remain editable.
+Automatic routes are currently point-to-point; multiple destinations require separate standing lines. Existing rail deliveries use the same stock, capacity, fuel, waiting and recovery rules as other standing supply routes. Destruction and damage are not automatically repaired by drawing tracks: restoration consumes actual materials through the relevant construction systems.
