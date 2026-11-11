@@ -12,6 +12,7 @@ import {discordRoute} from './discord-oauth.js';
 import {accountRoute} from './accounts.js';
 import {firstDominaRoute} from './first-domina.js';
 import {characterRoute} from './characters.js';
+import {reproductionRoute} from './character-reproduction.js';
 import {transitionRoute} from './transitions.js';
 import {profileRoute} from './profiles.js';
 import {encounterRoute} from './encounters.js';
@@ -133,6 +134,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/world-admin'||pathname.startsWith('/world-admin/'))result=await worldAdministrationRoute(pool,req,pathname);
   else if(pathname==='/internal-rail'||pathname.startsWith('/internal-rail/'))result=await internalRailRoute(pool,req,pathname);
   else if(pathname==='/factions'||pathname.startsWith('/factions/'))result=await factionRoute(pool,req,pathname);
+  else if(/^\/characters\/[0-9a-f-]{36}\/reproduction(?:\/(?:settings|pregnancy|complete|roll))?$/.test(pathname))result=await reproductionRoute(pool,req,pathname);
   else if(pathname==='/characters'||pathname.startsWith('/characters/'))result=await characterRoute(pool,req,pathname);
   else if(pathname==='/transitions'||pathname.startsWith('/transitions/'))result=await transitionRoute(pool,req,pathname);
   else if(pathname.startsWith('/profile/')||pathname==='/settings')result=await profileRoute(pool,req,pathname);
