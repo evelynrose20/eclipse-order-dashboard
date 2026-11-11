@@ -53,7 +53,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
   window.addEventListener('keydown',dismiss);
   return ()=>{window.removeEventListener('keydown',dismiss);document.body.style.overflow=previousOverflow};
  },[inspectorOpen]);
- const openInspector=id=>{setSelected(String(id));setInspectorOpen(true)};
+ const openInspector=(id,{open=true}={})=>{setSelected(String(id));setInspectorOpen(open)};
 
  const previewOutlook=useMemo(()=>{if(!editing||editType!=='settlement')return null;
   const climate=regions.find(r=>Number(r.id)===Number(editing.region_id))||activeRegion;
