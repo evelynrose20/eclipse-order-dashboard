@@ -4,6 +4,7 @@ import './imperial-theme.css';
 import PublicChronicles from './PublicChronicles.jsx';
 import OrderEmblem from './OrderEmblem.jsx';
 import VenueStatus from './VenueStatus.jsx';
+import {SERVITUDE_RANKS} from './servitudeRanks.js';
 
 const DISCORD_INVITE='https://discord.gg/ksqTw4SHYn';
 const FC_ACTIVITIES=[
@@ -33,7 +34,6 @@ const ORDER_BRANCHES=[
  {name:'The Golden Claws',symbol:'fa-coins',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
  {name:'The Household',symbol:'fa-building-columns',summary:'The people entrusted with the Order’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
 ];
-import {SERVITUDE_RANKS} from './servitudeRanks.js';
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const MODES=[
  {name:'Story',mark:'I',heading:'The Order remembers.',body:'An arrangement made in one scene may change the next. Rivalries, debts, fragile trust, and personal loyalties build an ongoing shared story.'},
