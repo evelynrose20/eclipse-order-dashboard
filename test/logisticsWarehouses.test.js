@@ -69,6 +69,16 @@ test('game-like corridors and connected freight plans use interactive route card
  assert.match(panels,/Warehouses/);
 });
 
+test('capital-stationed road vehicles can collect farm goods with an accounted pickup trip',()=>{
+ assert.match(warehouse,/pickup_route_not_connected/);
+ assert.match(warehouse,/pickupPath=await route\(db,warehouse.settlement_id,source.settlement_id,service.mode\)/);
+ assert.match(warehouse,/pickupPath\?\.legs/);
+ assert.match(warehouse,/pickup_required:!!pickup/);
+ assert.match(warehouse,/vehicle_ready:vehicleReady/);
+ assert.match(frontend,/Pickup from capital/);
+ assert.match(frontend,/pickup_required/);
+});
+
 test('warehouse shipments do not introduce sea fleets or pack-animal production',()=>{
  assert.doesNotMatch(warehouse,/mode==='sea'|mode==='pack'/);
  assert.match(warehouse,/\['road','rail','air'\]/);
