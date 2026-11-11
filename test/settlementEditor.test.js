@@ -22,8 +22,8 @@ test('editor maintains safeguards for NPC terrain margins and simulation-managed
  assert.match(editor,/simulatedIds\?\.has/);
  assert.match(editor,/disabled=\{simulated\|\|\(playerCity/);
  assert.match(editor,/\['population','workforce','housing_capacity'\]/);
- assert.match(editor,/Number\(editing\.map_x\)>=10/);
- assert.match(editor,/Number\(editing\.map_y\)<=90/);
+ assert.match(editor,/Number\(editing\.map_x\)>=3/);
+ assert.match(editor,/Number\(editing\.map_y\)<=97/);
  assert.match(editor,/Mountains are not buildable terrain/);
  assert.match(editor,/Automatic cycles must be configured separately/);
  assert.match(editor,/onSubmit=\{onSave\}/);
