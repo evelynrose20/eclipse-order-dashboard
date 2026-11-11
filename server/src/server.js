@@ -237,6 +237,7 @@ settlementTimer.unref();
 payrollTimer.unref();
 if(pool){void payrollTick();void settlementTick();void exchangeTick()}
 const close=async()=>{
+  clearInterval(exchangeTimer);
   clearInterval(payrollTimer);
   clearInterval(settlementTimer);
   server.close();
