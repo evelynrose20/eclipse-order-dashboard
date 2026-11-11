@@ -217,7 +217,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   return transact(pool,async db=>{
    const [[existing]]=await db.execute('SELECT region_id,zone_id,map_x,map_y,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!existing)return fail(404,'settlement_not_found');
-   if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&existing.controlling_faction_id&&existing.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
+   if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&existing.controlling_faction_id&&existing.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_3_percent_map_edge_padding');
    if((Number(existing.map_x)!==b.map_x||Number(existing.map_y)!==b.map_y)&&await mountainPlacementConflict(db,existing.region_id,existing.zone_id,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    const [changed]=await db.execute('UPDATE world_settlements SET map_x=?,map_y=?,map_icon=? WHERE id=?',[b.map_x,b.map_y,b.map_icon,Number(match[1])]);
    if(!changed.affectedRows)return fail(404,'settlement_not_found');
@@ -272,7 +272,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    if(!await referencesExist(db,b))return fail(400,'invalid_faction_reference');
    const zoneId=await zoneFor(db,b.region_id,b.zone_id);
    if(!zoneId)return fail(400,'zone_not_in_region');
-   if(b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
+   if(b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_3_percent_map_edge_padding');
    if(await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    if(b.housing_capacity!==undefined&&(!Number.isInteger(b.housing_capacity)||b.housing_capacity<0||b.housing_capacity>10000000))return fail(400,'invalid_housing_capacity');
    if(b.housing_capacity!==undefined&&b.population>b.housing_capacity)return fail(409,'insufficient_housing_capacity');
@@ -289,7 +289,7 @@ async function worldAdministrationRouteCore(pool,req,path){
    const [[old]]=await db.execute('SELECT * FROM world_settlements WHERE id=? FOR UPDATE',[Number(match[1])]);
    if(!old)return fail(404,'settlement_not_found');
    if(Number(old.region_id)!==b.region_id)return fail(409,'settlement_cannot_change_region');
-   if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y||old.controlling_faction_id!==b.controlling_faction_id)&&b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_10_percent_map_edge_padding');
+   if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y||old.controlling_faction_id!==b.controlling_faction_id)&&b.controlling_faction_id&&b.controlling_faction_id!=='eclipse-order'&&npcTooCloseToMapEdge({x:b.map_x,y:b.map_y}))return fail(409,'npc_settlement_requires_3_percent_map_edge_padding');
    if((Number(old.zone_id)!==Number(zoneId)||Number(old.map_x)!==b.map_x||Number(old.map_y)!==b.map_y)&&await mountainPlacementConflict(db,b.region_id,zoneId,{x:b.map_x,y:b.map_y}))return fail(409,'settlement_cannot_be_placed_on_mountains');
    // An autonomous population or civic outcome is not a form field.
    // Staff may set starting conditions when creating a settlement, but
