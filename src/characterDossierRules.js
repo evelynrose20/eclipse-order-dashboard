@@ -12,6 +12,11 @@ export const DOSSIER_TABS=Object.freeze([
 export function isDossierRestricted(character,playerPreview=false){
  return Boolean(character?.collar_bound&&(playerPreview||character?.view_mode==='bound'));
 }
+// Chamber visibility follows the server's owner-or-authorized-staff read policy.
+// Bound status alone never grants another player access to private chamber settings.
+export function canViewCharacterChamber(character,userId,{staff=false,playerPreview=false}={}){
+ return Boolean(character&&(character.player_user_id===userId||(staff&&!playerPreview)));
+}
 export function defaultDossierTab(character,playerPreview=false){
  return isDossierRestricted(character,playerPreview)?'identity':'legacy';
 }
