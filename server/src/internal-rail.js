@@ -1,3 +1,4 @@
+import {mappedRailTrack} from './world-standing-rail.js';
 import {trainSummary} from './world-magitek-trains.js';
 import {resolveSession} from './auth.js';
 
@@ -67,6 +68,34 @@ export async function internalRailRoute(pool,req,path){
    return ok({id:created.insertId});
   });
  }
+ // A single map-backed operation provisions both directions; existing stations remain intact.
+ if(path==='/internal-rail/services/pair'&&req.method==='POST'){
+  const b=await read(req);
+  if(!b||!id(b.from_station_id)||!id(b.to_station_id)||Number(b.from_station_id)===Number(b.to_station_id)||!text(b.name,140,true)||!Number.isInteger(Number(b.duration_minutes))||Number(b.duration_minutes)<1||Number(b.duration_minutes)>10080||!text(b.cargo_notes||'',1200))return fail(400,'rail_service_pair_invalid');
+  return tx(pool,async db=>{
+   const [stations]=await db.execute('SELECT * FROM order_internal_rail_stations WHERE id IN (?,?) FOR UPDATE',[b.from_station_id,b.to_station_id]);
+   const origin=stations.find(x=>Number(x.id)===Number(b.from_station_id));
+   const destination=stations.find(x=>Number(x.id)===Number(b.to_station_id));
+   if(!origin||!destination||origin.status!=='operational'||destination.status!=='operational')return fail(409,'rail_operational_stations_required');
+   const eligible=await stops(db);
+   if(!allowedStop(eligible,origin.stop_type,origin.stop_id)||!allowedStop(eligible,destination.stop_type,destination.stop_id))return fail(409,'rail_stop_not_order_controlled');
+   if(origin.stop_type!=='settlement'||destination.stop_type!=='settlement')return fail(409,'rail_freight_requires_settlement_stations');
+   const segments=await mappedRailTrack(db,origin.stop_id,destination.stop_id);
+   if(!segments?.length)return fail(409,'rail_map_tracks_not_connected');
+   const [existing]=await db.execute("SELECT * FROM order_internal_rail_routes WHERE (from_station_id=? AND to_station_id=?) OR (from_station_id=? AND to_station_id=?) AND status<>'retired' FOR UPDATE",[origin.id,destination.id,destination.id,origin.id]);
+   const routes=[];
+   for(const [a,z,suffix] of [[origin,destination,'outbound'],[destination,origin,'return']]){
+    let service=existing.find(r=>Number(r.from_station_id)===Number(a.id)&&Number(r.to_station_id)===Number(z.id)&&r.status!=='retired');
+    if(!service){
+     const completed={name:b.name.trim()+(suffix==='return'?' · Return':''),from_station_id:a.id,to_station_id:z.id,from_type:a.stop_type,from_id:a.stop_id,to_type:z.stop_type,to_id:z.stop_id,duration_minutes:Number(b.duration_minutes),status:'active',cargo_notes:b.cargo_notes||''};
+     const [created]=await db.execute('INSERT INTO order_internal_rail_routes(name,from_station_id,to_station_id,from_type,from_id,to_type,to_id,duration_minutes,status,cargo_notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[...routeValues(completed),actor.id]);
+     service={id:created.insertId,status:'active'};
+    }
+    routes.push({id:service.id,status:service.status,direction:suffix});
+   }
+   return ok({routes,track_segments:segments.length});
+  });
+ }
  const route=/^\/internal-rail\/routes(?:\/(\d+))?$/.exec(path);
  if(route&&['POST','PUT','DELETE'].includes(req.method)){
   const routeId=route[1]?Number(route[1]):null;
@@ -87,6 +116,10 @@ export async function internalRailRoute(pool,req,path){
    if(!origin||!dest||origin.stop_type===dest.stop_type&&Number(origin.stop_id)===Number(dest.stop_id))return fail(400,'rail_route_distinct_stations_required');
    const available=await stops(db);
    if(!allowedStop(available,origin.stop_type,origin.stop_id)||!allowedStop(available,dest.stop_type,dest.stop_id))return fail(400,'rail_route_order_stops_only');
+   if(b.status==='active'&&origin.stop_type==='settlement'&&dest.stop_type==='settlement'){
+    const track=await mappedRailTrack(db,origin.stop_id,dest.stop_id);
+    if(!track?.length)return fail(409,'rail_map_tracks_not_connected');
+   }
    const complete={...b,from_type:origin.stop_type,from_id:origin.stop_id,to_type:dest.stop_type,to_id:dest.stop_id};
    if(req.method==='PUT'){
     const [[current]]=await db.execute('SELECT * FROM order_internal_rail_routes WHERE id=? FOR UPDATE',[routeId]);
