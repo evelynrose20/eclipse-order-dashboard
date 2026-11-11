@@ -1,3 +1,5 @@
+import {runTreatyNegotiations,validTreatySchedule,sqlDate} from './world-treaty-negotiations.js';
+import {supplyLineRoute,runStandingSupplyAutomation} from './world-standing-supply-lines.js';
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
 import {installationReadiness} from './world-military-readiness.js';
 import {trainSummary} from './world-magitek-trains.js';
@@ -131,7 +133,8 @@ async function availableVehicle(db,id,mode,sourceSettlement){
  if(!lot||!classes[mode]||lot.status!=='assigned'||Number(lot.stationed_settlement_id)!==Number(sourceSettlement)||!classes[mode].includes(lot.equipment_kind))return null;
  const [running]=await db.execute("SELECT id FROM world_logistics_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
  const [warehouseRunning]=await db.execute("SELECT id FROM world_logistics_warehouse_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
- return running.length||warehouseRunning.length?null:lot;
+ const [standingRunning]=await db.execute("SELECT id FROM world_logistics_supply_line_shipments WHERE vehicle_lot_id=? AND status IN ('in_transit','disrupted') LIMIT 1",[id]);
+ return running.length||warehouseRunning.length||standingRunning.length?null:lot;
 }
 async function dispatch(db,b,actor,contract=null){
  if(!b||!name(b.request_key,64)||!/^[a-zA-Z0-9_-]{12,64}$/.test(b.request_key))return fail(400,'invalid_dispatch_key');
@@ -211,6 +214,7 @@ async function dispatch(db,b,actor,contract=null){
 }
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/logistics/supply-lines'))return supplyLineRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path.startsWith('/world-admin/logistics/warehouses'))return warehousesRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
   const [templates]=await pool.execute('SELECT * FROM world_logistics_transport_templates ORDER BY name');
@@ -232,6 +236,9 @@ export async function logisticsRoute(pool,req,path,actor){
   const [npcRoutes]=await pool.execute("SELECT r.id,r.settlement_id,r.facility_id,r.site_id,r.map_settlement_id,r.travel_hours,r.cargo_capacity,r.enabled,settlement.name AS destination_name,COALESCE(site.name,marker.name) AS source_name FROM world_npc_cargo_routes r JOIN world_settlements settlement ON settlement.id=r.settlement_id LEFT JOIN world_industry_sites site ON site.id=r.site_id LEFT JOIN world_settlements marker ON marker.id=r.map_settlement_id ORDER BY r.id");
   const [npcShipments]=await pool.execute("SELECT s.id,s.route_id,s.settlement_id,s.item_id,s.quantity,s.status,s.dispatched_at,s.arrival_at,s.delivered_at,i.name AS item_name FROM world_npc_cargo_shipments s JOIN world_industry_items i ON i.id=s.item_id ORDER BY s.id DESC LIMIT 120");
   const [npcWarehouse]=await pool.execute("SELECT settlement_id,item_id,quantity FROM world_npc_cargo_warehouse WHERE quantity>0");
+  const [supplyLines]=await pool.execute("SELECT l.*,i.name AS item_name,s.name AS transport_name,s.mode,src.name AS source_facility_name,wh.name AS source_warehouse_name,dest.name AS target_warehouse_name,m.name AS installation_name FROM world_logistics_supply_lines l JOIN world_industry_items i ON i.id=l.item_id JOIN world_logistics_transport_templates s ON s.id=l.transport_template_id LEFT JOIN world_industry_facilities src ON src.id=l.source_id AND l.source_kind='facility' LEFT JOIN world_logistics_warehouses wh ON wh.id=l.source_id AND l.source_kind='warehouse' LEFT JOIN world_logistics_warehouses dest ON dest.id=l.destination_id AND l.destination_kind='warehouse' LEFT JOIN world_military_installations m ON m.id=l.destination_id AND l.destination_kind='installation' ORDER BY l.id DESC");
+  const [supplyLineShipments]=await pool.execute("SELECT x.*,i.name AS item_name FROM world_logistics_supply_line_shipments x JOIN world_industry_items i ON i.id=x.item_id ORDER BY x.id DESC LIMIT 150");
+  const [militaryInstallations]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,s.controlling_faction_id FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const [warehouseBlueprints]=await pool.execute("SELECT b.*,p.level_number,p.capacity_units,p.requirements FROM world_logistics_warehouse_blueprints b JOIN world_logistics_warehouse_blueprint_levels p ON p.blueprint_id=b.id ORDER BY b.id,p.level_number");
   const [warehouseProgress]=await pool.execute("SELECT p.warehouse_id,p.blueprint_id,p.level_number,b.name AS blueprint_name FROM world_logistics_warehouse_progress p JOIN world_logistics_warehouse_blueprints b ON b.id=p.blueprint_id");
   const [warehouseBuildOrders]=await pool.execute("SELECT warehouse_id,target_level,requirements FROM world_logistics_warehouse_build_orders");
@@ -253,7 +260,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
-  return ok({warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({supply_lines:supplyLines,supply_line_shipments:supplyLineShipments,military_installations:militaryInstallations,warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
@@ -294,12 +301,12 @@ export async function logisticsRoute(pool,req,path,actor){
  });
  if(path==='/world-admin/logistics/treaties'&&req.method==='POST'){
   const b=await body(req);
-  if(!b||typeof b.faction_a!=='string'||typeof b.faction_b!=='string'||b.faction_a===b.faction_b||!purposes.includes(b.purpose)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_trade_treaty');
+  if(!b||typeof b.faction_a!=='string'||typeof b.faction_b!=='string'||b.faction_a===b.faction_b||!purposes.includes(b.purpose)||typeof b.notes!=='string'||b.notes.length>600||!validTreatySchedule(b))return fail(400,'invalid_trade_treaty');
   return tx(pool,async db=>{
    const [factions]=await db.execute('SELECT id FROM order_factions WHERE id IN (?,?)',[b.faction_a,b.faction_b]);
    if(factions.length!==2)return fail(404,'faction_not_found');
    const [a,z]=[b.faction_a,b.faction_b].sort();
-   const [saved]=await db.execute("INSERT INTO world_logistics_trade_treaties(faction_a,faction_b,purpose,notes,created_by) VALUES(?,?,?,?,?)",[a,z,b.purpose,b.notes,actor.id]);
+   const [saved]=await db.execute("INSERT INTO world_logistics_trade_treaties(faction_a,faction_b,purpose,notes,created_by,starts_at,ends_at,response_due_at) VALUES(?,?,?,?,?,?,?,?)",[a,z,b.purpose,b.notes,actor.id,sqlDate(b.starts_at),sqlDate(b.ends_at),sqlDate(b.response_due_at)]);
    return ok({id:saved.insertId,status:'proposed'});
   });
  }
@@ -309,13 +316,26 @@ export async function logisticsRoute(pool,req,path,actor){
   if(!['active','suspended','retired'].includes(b?.status))return fail(400,'invalid_treaty_status');
   const [[t]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(treatyMatch[1])]);
   if(!t)return fail(404,'treaty_not_found');
-  if(t.status==='retired')return fail(409,'treaty_retired');
+  if(['retired','rejected','countered','expired'].includes(t.status))return fail(409,'treaty_not_active_for_status_change');
+  if(b.status==='suspended'&&!['active','approved','suspended'].includes(t.status))return fail(409,'cannot_suspend_unanswered_offer');
   if(b.status==='active'){
+   if(t.response_due_at&&t.status!=='approved'&&t.status!=='suspended')return fail(409,'waiting_for_npc_treaty_response');
+   if(t.starts_at&&new Date(t.starts_at)>new Date())return fail(409,'treaty_term_not_started');
+   if(t.ends_at&&new Date(t.ends_at)<=new Date())return fail(409,'treaty_term_expired');
    const [[relation]]=await db.execute('SELECT trust,tension FROM world_faction_relations WHERE faction_a=? AND faction_b=?',[t.faction_a,t.faction_b]);
    if(!relation||Number(relation.trust)<40||Number(relation.tension)>65)return fail(409,'faction_relations_do_not_support_trade');
   }
   await db.execute("UPDATE world_logistics_trade_treaties SET status=?,approved_by=IF(?='active',?,approved_by),approved_at=IF(?='active',UTC_TIMESTAMP(),approved_at) WHERE id=?",[b.status,b.status,actor.id,b.status,t.id]);
   return ok({status:b.status});
+ });
+ const renewMatch=/^\/world-admin\/logistics\/treaties\/(\d+)\/renegotiate$/.exec(path);
+ if(renewMatch&&req.method==='POST')return tx(pool,async db=>{
+  const b=await body(req);
+  if(!validTreatySchedule(b)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_treaty_terms');
+  const [[existing]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(renewMatch[1])]);
+  if(!existing||!(['countered','rejected','expired','suspended'].includes(existing.status)||(existing.status==='proposed'&&!existing.response_due_at)))return fail(409,'treaty_not_open_for_renegotiation');
+  await db.execute("UPDATE world_logistics_trade_treaties SET status='proposed',notes=?,starts_at=?,ends_at=?,response_due_at=?,responded_at=NULL,response_reason='' WHERE id=?",[b.notes,sqlDate(b.starts_at),sqlDate(b.ends_at),sqlDate(b.response_due_at),existing.id]);
+  return ok({status:'proposed'});
  });
  if(path==='/world-admin/logistics/corridors'&&req.method==='POST'){
   const b=await body(req);
@@ -673,7 +693,9 @@ export async function runLogisticsAutomation(pool){
   if(output.status===200&&output.body.shipment_id&&!output.body.already_submitted)dispatched++;
  }
  const warehouse=await runWarehouseAutomation(pool);
- return {arrived,disrupted,dispatched,warehouse};
+ const standing=await runStandingSupplyAutomation(pool,{route,facilities,ledger,availableVehicle,operationalAirDocks});
+ const negotiations=await runTreatyNegotiations(pool);
+ return {arrived,disrupted,dispatched,warehouse,standing,negotiations};
 }
 
 /** Independent NPC food relief is bounded by actual reserves, workers, mapped routes and diplomatic access.
