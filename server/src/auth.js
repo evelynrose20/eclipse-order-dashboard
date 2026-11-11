@@ -67,9 +67,17 @@ export async function resolveSession(pool,request,{allowUnlinked=false}={}){
  if((guildConfiguration(process.env)||process.env.API_PUBLIC_ENABLED==='true')&&account.auth_method!=='discord')return null;
  // Every authenticated API request is gated by Discord membership, with a short bot lookup cache.
  // Production fails closed when guild verification is not configured.
- if(!guildConfiguration(process.env))return process.env.API_PUBLIC_ENABLED==='true'?null:account;
+ if(!guildConfiguration(process.env)){
+  if(process.env.API_PUBLIC_ENABLED==='true')throw Object.assign(new Error('discord_guild_configuration_error'),{status:503});
+  return account;
+ }
  if(!account.discord_user_id)return null;
- return await checkGuildMember(account.discord_user_id)==='member'?account:null;
+ const membership=await checkGuildMember(account.discord_user_id);
+ if(membership==='member')return account;
+ if(membership==='not_member')return null;
+ if(membership==='screening')throw Object.assign(new Error('discord_membership_screening'),{status:403});
+ // Fail closed without misrepresenting Discord outages or misconfiguration as expired sessions.
+ throw Object.assign(new Error(membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable'),{status:503});
 }
 export async function authRoute(pool,request,path){
  if(!pool)return {status:503,body:{error:'database_not_configured'}};
