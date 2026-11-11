@@ -30,6 +30,7 @@ test('continuous logistics cannot invent ammunition, fuel, vehicles or warehouse
  assert.match(lines,/shift\(db,line.source_kind,line.source_id,line.item_id,-load/);
  assert.match(lines,/shift\(db,cargo.destination_kind,cargo.destination_id,cargo.item_id,Number\(cargo.quantity\)/);
  assert.match(lines,/status='waiting'/);
+ assert.match(lines,/SELECT \?<=UTC_TIMESTAMP\(\) AS due/);
  assert.match(lines,/status='disrupted'/);
  assert.match(lines,/Math\.max\(1,Number\(link.legs\|\|1\)\)\*2/);
  assert.match(app,/runStandingSupplyAutomation\(pool/);
