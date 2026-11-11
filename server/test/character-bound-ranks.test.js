@@ -12,7 +12,7 @@ const codes=['unmarked','marked_thrall','bound_serpent','eclipse_attendant','sil
 
 test('public eight ranks agree with seeded servitude catalog',()=>{
  assert.equal(SERVITUDE_RANKS.length,8);
- for(let i=0;i<codes.length;i++)assert.match(hierarchy,new RegExp("\\('"+codes[i]+"','servitude','"+SERVITUDE_RANKS[i].replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')+"',"+(i+1)+"\\)"));
+ for(let i=0;i<codes.length;i++)assert.ok(hierarchy.includes("('"+codes[i]+"','servitude','"+SERVITUDE_RANKS[i]+"',"+(i+1)+")"),codes[i]);
 });
 test('only command may assign any official bound rank, preserving old enum rank',async()=>{
  const writes=[];
