@@ -46,9 +46,9 @@ test('rail service UI is consolidated into map-first Supply Lines',async()=>{
  const load=path=>readFile(new URL('../../'+path,import.meta.url),'utf8');
  const [map,menu,setup]=await Promise.all([load('src/WorldTerritoryMap.jsx'),load('src/LogisticsSupplyLines.jsx'),load('server/src/setup-local.js')]);
  assert.doesNotMatch(map,/RailInfrastructurePanel|wtm-rail-symbol/);
- assert.match(menu,/Internal Rail Logistics/);
- assert.match(menu,/fa-solid fa-train/);
- assert.match(menu,/ir-progress/);
+ assert.match(menu,/RailAccessControls/);
+ assert.match(menu,/Assembled freight train/);
+ assert.match(menu,/Inspect track near source/);
  assert.match(setup,/049_internal_rail_logistics\.sql/);
 });
 test('cross-zone freight requires an explicitly operational interzone station link',()=>{
