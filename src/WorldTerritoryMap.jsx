@@ -87,7 +87,12 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  const mappedCrossings=crossings.filter(c=>Number(c.from_zone_id)===Number(zoneId)||Number(c.to_zone_id)===Number(zoneId));
  const crossingNodeIds=new Set(mappedCrossings.flatMap(c=>[Number(c.from_node_id),Number(c.to_node_id)]));
  const edgePoint=p=>p&&p.x>=2&&p.x<=98&&p.y>=2&&p.y<=98&&(p.x<=5||p.x>=95||p.y<=5||p.y>=95);
- const destinationZones=allZones.filter(z=>String(z.region_id)===String(crossingToRegion)&&Number(z.id)!==Number(zoneId));
+ const activeMapZone=allZones.find(z=>Number(z.id)===Number(zoneId));
+ const destinationZones=allZones.filter(z=>{
+  if(String(z.region_id)!==String(crossingToRegion)||Number(z.id)===Number(zoneId))return false;
+  if(Number(z.region_id)!==Number(region.id))return true;
+  return activeMapZone?.grid_x!=null&&activeMapZone?.grid_y!=null&&z.grid_x!=null&&z.grid_y!=null&&Math.abs(Number(z.grid_x)-Number(activeMapZone.grid_x))+Math.abs(Number(z.grid_y)-Number(activeMapZone.grid_y))===1;
+ });
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const visibleSegmentNodes=new Set(networkSegments.filter(visibleTransport).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]));
  const internalOnlyNodes=new Set(networkSegments.filter(r=>!visibleTransport(r)).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]).filter(id=>!visibleSegmentNodes.has(id)));
