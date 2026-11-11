@@ -452,7 +452,7 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  };
  const setCrossingStatus=async(c,status)=>{
   if(busy)return;setBusy(true);setError('');
-  try{await request('/world-admin/crossings/'+c.id,{method:'PATCH',body:{status}});await reload();setNotice('Crossing updated.')}
+  try{await request('/world-admin/crossings/'+c.id,{method:'POST',body:{status}});await reload();setNotice('Crossing updated.')}
   catch(e){setError(e.message||'Crossing could not be updated.')}finally{setBusy(false)}
  };
  const removeCrossing=async c=>{
