@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {crossingEdges,handleWorldCrossings} from '../src/world-crossings.js';
+import {freightPath,freightDuration} from '../src/world-logistics.js';
 
 test('crossing graph links are directional-neutral and only operational links are routable',()=>{
  const crossings=[
@@ -27,4 +28,15 @@ test('paired map crossings preserve existing local route nodes after removal',as
  const source=readFileSync(new URL('../src/world-crossings.js',import.meta.url),'utf8');
  assert.match(source,/SELECT id FROM world_route_segments WHERE from_node_id=\? OR to_node_id=\?/);
  assert.match(source,/if\(!used\)await db\.execute\('DELETE FROM world_route_nodes/);
+});
+
+test('paired crossings carry freight across zone boundaries only when connected',()=>{
+ const nodes=[{id:1,settlement_id:101},{id:2,settlement_id:null},{id:3,settlement_id:null},{id:4,settlement_id:202}];
+ const segments=[{id:10,from_node_id:1,to_node_id:2,route_type:'road'},{id:11,from_node_id:3,to_node_id:4,route_type:'road'}];
+ const crossing={id:20,from_node_id:2,to_node_id:3,route_type:'road',status:'operational',travel_minutes:30};
+ const path=freightPath(nodes,[...segments,...crossingEdges([crossing],'road')],101,202,'road');
+ assert.deepEqual(path.segment_ids,[10,'crossing:20',11]);
+ assert.equal(path.crossing_minutes,30);
+ assert.equal(freightDuration(path,25),80);
+ assert.equal(freightPath(nodes,[...segments,...crossingEdges([{...crossing,status:'closed'}],'road')],101,202,'road'),null);
 });
