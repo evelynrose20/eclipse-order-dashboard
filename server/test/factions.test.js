@@ -20,7 +20,7 @@ function setup(role='member'){
   },
   query:async(sql)=>{
    queries.push(sql);
-   if(sql.startsWith('SELECT f.id,f.name'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10,faction_scope:'order_story',order_view:45,faction_view:40,personal_reputation:0}]];
+   if(sql.startsWith('SELECT f.id,f.name'))return [[{id:'house-kurogane',name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'Private negotiations',public_visible:1,sort_order:10,faction_scope:'order_story',trade_enabled:1,map_color:'#688398',order_view:45,faction_view:40,personal_reputation:0}]];
    throw Error('Unexpected query: '+sql);
   }
  };
@@ -40,7 +40,7 @@ test('public member directory omits private command notes',async()=>{
 });
 test('ordinary members cannot edit faction diplomacy or post history',async()=>{
  const {pool}=setup();
- const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story'};
+ const body={name:'House of Kurogane',leader:'Lady Reika Kurogane',relationship:'friendly',description:'Trade allies',notes:'',image_reference_url:'',public_visible:true,sort_order:10,faction_scope:'order_story',trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,403);
  assert.equal((await factionRoute(pool,request('POST',{title:'Test',details:'Test',occurred_on:null}),'/factions/house-kurogane/events')).status,403);
 });
@@ -54,7 +54,7 @@ test('command can update relationships and append recorded history',async()=>{
 });
 test('invalid faction relationships and unsafe portrait URLs are rejected',async()=>{
  const {pool}=setup('domina');
- const body={name:'Test',leader:'Leader',relationship:'friendly',description:'Description',notes:'',image_reference_url:'javascript:alert(1)',public_visible:true,sort_order:10};
+ const body={name:'Test',leader:'Leader',relationship:'friendly',description:'Description',notes:'',image_reference_url:'javascript:alert(1)',public_visible:true,sort_order:10,trade_enabled:true,map_color:'#688398'};
  assert.equal((await factionRoute(pool,request('PUT',body),'/factions/house-kurogane')).status,400);
  body.image_reference_url='';
  body.relationship='all-powerful';
