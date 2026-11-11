@@ -68,18 +68,32 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
   const [[service]]=await pool.execute('SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1',[b.transport_template_id]);
   if(!warehouse||!source||!service)return fail(404,'route_endpoint_unavailable');
   if(!['road','rail','air'].includes(service.mode))return fail(409,'transport_mode_unavailable');
-  const connected=!!(source.settlement_id&&source.owner_faction_id==='eclipse-order'&&source.controlling_faction_id==='eclipse-order'&&warehouse.controlling_faction_id==='eclipse-order'&&warehouse.state==='operational');
+  const connected=!!(source.settlement_id&&source.owner_faction_id==='eclipse-order'&&source.controlling_faction_id==='eclipse-order'&&(!source.site_id||source.site_faction_id===source.controlling_faction_id)&&!['ruined','captured'].includes(source.status)&&!['destroyed','abandoned'].includes(source.strategic_state)&&warehouse.controlling_faction_id==='eclipse-order'&&warehouse.state==='operational');
   const flight=service.mode!=='air'||(connected&&await operationalAirDocks(pool,source.settlement_id,warehouse.settlement_id));
   const result=connected&&flight?await route(pool,source.settlement_id,warehouse.settlement_id,service.mode):null;
+  let pickup=null,vehicleReady=true;
+  if(service.mode==='rail'){vehicleReady=id(b.train_journey_id)}
+  else if(result){
+   vehicleReady=false;
+   if(id(b.vehicle_lot_id)){
+    const [[lot]]=await pool.execute('SELECT status,stationed_settlement_id FROM world_magitek_equipment_inventory WHERE id=?',[b.vehicle_lot_id]);
+    if(lot?.status==='assigned'){
+     const atFarm=Number(lot.stationed_settlement_id)===Number(source.settlement_id);
+     const atCapital=Number(lot.stationed_settlement_id)===Number(warehouse.settlement_id);
+     if(atFarm)vehicleReady=true;
+     else if(atCapital){pickup=await route(pool,warehouse.settlement_id,source.settlement_id,service.mode);vehicleReady=!!pickup}
+    }
+   }
+  }
   const stored=await occupied(pool,warehouse.id);
   const [[stock]]=await pool.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=?',[source.id,b.item_id||'']);
-  const legs=(result?.legs||0)+(source.site_id?1:0);
+  const legs=(result?.legs||0)+(pickup?.legs||0)+(source.site_id?(pickup?2:1):0);
   return ok({connected:!!result,landing_ready:!!flight,warehouse_ready:connected,mode:service.mode,
-   duration_minutes:result?(result.duration_minutes??result.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0):null,
+   duration_minutes:result?(result.duration_minutes??result.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0)+(pickup?(pickup.duration_minutes??pickup.legs*Number(service.minutes_per_leg))+Number(source.access_minutes||0):0):null,
    fuel_required:result?round(Number(service.fuel_per_leg)*legs*(service.mode==='air'?3:1)):null,
-   warehouse_free:Math.max(0,round(Number(warehouse.capacity_units)-stored)),
+   warehouse_free:Math.max(0,round(Number(warehouse.capacity_units)-stored)),pickup_required:!!pickup,vehicle_ready:vehicleReady,
    stock_available:Number(stock?.quantity||0),route:result,
-   can_send:!!result&&flight&&b.quantity<=Number(service.capacity)&&b.quantity<=Number(stock?.quantity||0)&&stored+b.quantity<=Number(warehouse.capacity_units)});
+   can_send:!!result&&flight&&vehicleReady&&b.quantity<=Number(service.capacity)&&b.quantity<=Number(stock?.quantity||0)&&stored+b.quantity<=Number(warehouse.capacity_units)});
  }
  if(path==='/world-admin/logistics/warehouses/dispatch'&&req.method==='POST'){
   const b=await parse(req);
