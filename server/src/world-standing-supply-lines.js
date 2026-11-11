@@ -1,4 +1,4 @@
-import {railService,availableConsist,startRailJourney} from './world-standing-rail.js';
+import {railService,availableConsist,startRailJourney,nearbyMappedRail} from './world-standing-rail.js';
 import {trainSummary} from './world-magitek-trains.js';
 // Persistent, opt-in supply network. No implicit freight, stock or vehicle generation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -64,6 +64,13 @@ async function markWaiting(db,line,reason){
 }
 export async function supplyLineRoute(pool,req,path,actor,env){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path==='/world-admin/logistics/supply-lines/track-inspection'&&req.method==='POST'){
+  const b=await parse(req);
+  if(!b||!sourceKinds.has(b.kind)||!positive(b.location_id))return fail(400,'invalid_track_inspection');
+  const place=await location(pool,b.kind,b.location_id,env.facilities);
+  if(!place||place.owner_faction_id&&place.owner_faction_id!=='eclipse-order')return fail(404,'track_location_unavailable');
+  return ok(await nearbyMappedRail(pool,b.kind,b.location_id));
+ }
  if(path==='/world-admin/logistics/supply-lines'&&req.method==='POST'){
   const b=await parse(req);
   if(!b||typeof b.name!=='string'||!b.name.trim()||b.name.length>140||!sourceKinds.has(b.source_kind)||!targetKinds.has(b.destination_kind)||!positive(b.source_id)||!positive(b.destination_id)||b.source_kind==='warehouse'&&b.destination_kind==='warehouse'&&Number(b.source_id)===Number(b.destination_id)||!positive(b.transport_template_id)||!positive(b.vehicle_lot_id)||typeof b.item_id!=='string'||b.item_id.length>48||!amount(b.quantity)||!Number.isInteger(b.interval_minutes)||b.interval_minutes<15||b.interval_minutes>525600||!Number.isFinite(Number(b.keep_at_least||0))||Number(b.keep_at_least||0)<0||b.destination_target!=null&&(!amount(b.destination_target)))return fail(400,'invalid_supply_line');
