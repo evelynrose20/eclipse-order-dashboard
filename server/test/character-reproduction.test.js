@@ -42,9 +42,14 @@ function mock(owner,profile){
   if(sql.includes('FROM characters c LEFT JOIN'))return [[{id:character,player_account_id:owner,collar_bound:1,rank_code:'eclipsed_consort'}]];
   if(sql.startsWith('SELECT * FROM character_reproductive_profiles'))return [profile?[profile]:[]];
   if(sql.startsWith('SELECT id,event_key'))return [[]];
-  if(sql.startsWith('INSERT INTO character_reproductive_profiles')){writes.push({sql,args});return [{affectedRows:1}]}
+  if(sql.startsWith('INSERT INTO character_reproductive_profiles')||sql.startsWith('INSERT INTO character_reproductive_events')){writes.push({sql,args});return [{affectedRows:1}]}
+  if(sql.startsWith('SELECT * FROM character_conception_rolls')||sql.startsWith('SELECT id FROM character_conception_rolls'))return [[]];
   throw Error('Unexpected SQL: '+sql)
- }};
+ },getConnection:async()=>({beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},execute:async(sql,args)=>{
+  if(sql.startsWith('SELECT * FROM character_reproductive_profiles'))return [profile?[profile]:[]];
+  if(sql.startsWith('SELECT * FROM character_conception_rolls')||sql.startsWith('SELECT id FROM character_conception_rolls'))return [[]];
+  throw Error('Unexpected transaction SQL: '+sql);
+ }})};
  return {pool,writes};
 }
 test('private pregnancy and binding records reject unrelated accounts including rank holders',async()=>{
@@ -56,13 +61,13 @@ test('character owner can revoke all cycle and conception permissions independen
  const {pool,writes}=mock(actor,null);
  const result=await reproductionRoute(pool,request('PUT',{cycle_opt_in:false,conception_opt_in:false,cycle_type:'heat',cycle_anchor:'2026-11-01',cycle_days:30,base_chance:20,shared_with_command:false}),'/characters/'+character+'/reproduction/settings');
  assert.equal(result.status,200);
- assert.equal(writes.length,1);
+ assert.equal(writes.length,2);
  assert.equal(writes[0].args[1],0);
  assert.equal(writes[0].args[2],0);
 });
 test('roll requests are rejected unless the affected owner has opted in',async()=>{
  const {pool}=mock(actor,null);
  const r=await reproductionRoute(pool,request('POST',{event_key:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',ic_event_date:'2026-11-11'}),'/characters/'+character+'/reproduction/roll');
- // This unit double intentionally has no transaction interface; verify protected request path in source separately.
  assert.equal(r.status,403);
+ assert.equal(r.body.error,'conception_roll_not_approved');
 });
