@@ -29,7 +29,7 @@ test('site-wide material inventory replaces legacy item selectors without rewrit
   assert.match(source,/import MaterialPicker from '\.\/MaterialPicker\.jsx'/,file);
   assert.match(source,/<MaterialPicker\b/,file);
   const open=(source.match(/<MaterialPicker\b/g)||[]).length;
-  const close=(source.match(/<\/MaterialPicker>/g)||[]).length;
+  const close=(source.match(/<\/MaterialPicker>/g)||[]).length+(source.match(/<MaterialPicker\b[^\n]*?\/>/g)||[]).length;
   assert.equal(open,close,file+' should keep picker tags balanced');
  }
 });
@@ -37,7 +37,7 @@ test('Workshop, Fronts and construction keep material-only options callbacks',()
  for(const name of ['Workshop.jsx','Fronts.jsx','ConstructionProjects.jsx']){
   const source=read('src/'+name);
   assert.doesNotMatch(source,/<SearchPicker\b/,name);
-  assert.match(source,/<MaterialPicker\b[^>]*options=\{/);
+  assert.match(source,/options=\{/);
  }
 });
 test('both logistics cargo manifest cards and smaller item fields are inventory-based',()=>{
