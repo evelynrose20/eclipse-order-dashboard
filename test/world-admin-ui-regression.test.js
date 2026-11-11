@@ -88,7 +88,8 @@ test('moving a settlement selects its marker without opening the dossier',async(
  const map=await readFile(new URL('../src/WorldTerritoryMap.jsx',import.meta.url),'utf8');
  const parent=await readFile(new URL('../src/WorldAdministration.jsx',import.meta.url),'utf8');
  assert.match(map,/onSelect\(String\(s\.id\),\{open:false\}\)/);
- assert.match(map,/onSelect\(String\(s\.id\),\{open:mode!=='move'\}\)/);
+ assert.match(map,/if\(mode==='view'\)onSelect\(String\(s\.id\),\{open:true\}\)/);
+ assert.match(map,/else if\(mode==='move'\)onSelect\(String\(s\.id\),\{open:false\}\)/);
  assert.match(parent,/const openInspector=\(id,\{open=true\}=\{\}\)=>\{setSelected\(String\(id\)\);setInspectorOpen\(open\)\}/);
 });
 

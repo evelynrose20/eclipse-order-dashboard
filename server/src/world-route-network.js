@@ -141,6 +141,8 @@ export async function handleTransportGraph(pool,req,path,actor){
   });
  }
  if(table==='nodes'&&id&&req.method==='PUT'){
+  const [[crossing]]=await pool.execute('SELECT id FROM world_zone_crossings WHERE from_node_id=? OR to_node_id=? LIMIT 1',[id,id]);
+  if(crossing)return fail(409,'crossing_endpoint_is_fixed');
   if(!point(b)||!kind(b.node_kind)||!name(b.name||''))return fail(400,'invalid_node');
   return tx(pool,async db=>{
    const [r]=await db.execute('UPDATE world_route_nodes SET map_x=?,map_y=?,node_kind=?,name=? WHERE id=? AND settlement_id IS NULL',[b.x,b.y,b.node_kind,(b.name||'').trim(),id]);
@@ -149,6 +151,8 @@ export async function handleTransportGraph(pool,req,path,actor){
   });
  }
  if(table==='nodes'&&id&&split==='remove'&&req.method==='POST'){
+  const [[crossing]]=await pool.execute('SELECT id FROM world_zone_crossings WHERE from_node_id=? OR to_node_id=? LIMIT 1',[id,id]);
+  if(crossing)return fail(409,'crossing_endpoint_in_use');
   if(b?.delete_connected_segments!==true)return fail(400,'explicit_segment_removal_required');
   return tx(pool,async db=>{
    const [[node]]=await db.execute('SELECT id,settlement_id FROM world_route_nodes WHERE id=? FOR UPDATE',[id]);
@@ -164,6 +168,8 @@ export async function handleTransportGraph(pool,req,path,actor){
   });
  }
  if(table==='nodes'&&id&&req.method==='DELETE'){
+  const [[crossing]]=await pool.execute('SELECT id FROM world_zone_crossings WHERE from_node_id=? OR to_node_id=? LIMIT 1',[id,id]);
+  if(crossing)return fail(409,'crossing_endpoint_in_use');
   return tx(pool,async db=>{
    if(await railNodeUsed(db,id))return fail(409,'node_has_rail_infrastructure');
    const [edges]=await db.execute('SELECT id FROM world_route_segments WHERE from_node_id=? OR to_node_id=? LIMIT 1',[id,id]);
