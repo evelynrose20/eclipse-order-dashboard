@@ -21,7 +21,7 @@ const itemIcon=(name,category='')=>{
 const human=value=>String(value||'Other').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 
 /** Site-wide material and cargo selector. Supports both options arrays and existing option children. */
-export default function MaterialPicker({value='',onChange,options,children,placeholder='Choose an item',ariaLabel,disabled=false,required=false,groupByCategory=true,showQuantity=true,'aria-label':ariaLabelAttr}){
+export default function MaterialPicker({value='',onChange,options,children,catalog:referenceCatalog=[],placeholder='Choose an item',ariaLabel,disabled=false,required=false,groupByCategory=true,showQuantity=true,'aria-label':ariaLabelAttr}){
  const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[category,setCategory]=useState('all');
  const catalog=useMemo(()=>{
   const list=Array.isArray(options)?options.map(item=>({
@@ -35,8 +35,9 @@ export default function MaterialPicker({value='',onChange,options,children,place
    id:String(child.props.value??''),name:labelText(child.props.children),category:String(child.props.category??'Other'),
    quantity:child.props.quantity??null,description:'',disabled:!!child.props.disabled
   }));
-  return list.filter(item=>item.id!=='').sort((a,b)=>a.name.localeCompare(b.name));
- },[options,children]);
+  const references=new Map(referenceCatalog.map(item=>[String(item.id??item.material_id??item.item_id??''),item]));
+  return list.filter(item=>item.id!=='').map(item=>{const original=references.get(item.id);return original?{...item,category:item.category==='Other'?String(original.category??'Other'):item.category,quantity:item.quantity??original.quantity??original.stock??null}:item}).sort((a,b)=>a.name.localeCompare(b.name));
+ },[options,children,referenceCatalog]);
  const selected=catalog.find(item=>item.id===String(value));
  const categories=useMemo(()=>[...new Set(catalog.map(item=>item.category))].sort(),[catalog]);
  const matches=catalog.filter(item=>(category==='all'||category===item.category)&&(!query.trim()||[item.name,item.category,item.description,item.id].some(text=>text.toLowerCase().includes(query.trim().toLowerCase()))));
