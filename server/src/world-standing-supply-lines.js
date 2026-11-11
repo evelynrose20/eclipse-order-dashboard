@@ -17,9 +17,9 @@ async function location(db,kind,id,facilities,lock=false){
  const [[i]]=await db.execute('SELECT i.*,s.controlling_faction_id,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE i.id=?'+(lock?' FOR UPDATE':''),[id]);
  return i||null;
 }
-function safeLocation(kind,p){
+function safeLocation(kind,p,receiving=false){
  if(!p||p.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(p.strategic_state))return false;
- if(kind==='facility')return p.owner_faction_id==='eclipse-order'&&!['ruined','captured'].includes(p.status)&&(!p.site_id||p.site_faction_id==='eclipse-order')&&!!p.settlement_id;
+ if(kind==='facility')return p.owner_faction_id==='eclipse-order'&&(receiving?p.status!=='captured':!['ruined','captured'].includes(p.status))&&(!p.site_id||p.site_faction_id==='eclipse-order')&&!!p.settlement_id;
  if(kind==='warehouse')return p.state==='operational';
  return ['operational','damaged'].includes(p.state);
 }
@@ -69,7 +69,7 @@ export async function supplyLineRoute(pool,req,path,actor,env){
   if(!b||typeof b.name!=='string'||!b.name.trim()||b.name.length>140||!sourceKinds.has(b.source_kind)||!targetKinds.has(b.destination_kind)||!positive(b.source_id)||!positive(b.destination_id)||b.source_kind==='warehouse'&&b.destination_kind==='warehouse'&&Number(b.source_id)===Number(b.destination_id)||!positive(b.transport_template_id)||!positive(b.vehicle_lot_id)||typeof b.item_id!=='string'||b.item_id.length>48||!amount(b.quantity)||!Number.isInteger(b.interval_minutes)||b.interval_minutes<15||b.interval_minutes>525600||!Number.isFinite(Number(b.keep_at_least||0))||Number(b.keep_at_least||0)<0||b.destination_target!=null&&(!amount(b.destination_target)))return fail(400,'invalid_supply_line');
   return tx(pool,async db=>{
    const [src,dst]=await Promise.all([location(db,b.source_kind,b.source_id,env.facilities),location(db,b.destination_kind,b.destination_id,env.facilities)]);
-   if(!safeLocation(b.source_kind,src)||!safeLocation(b.destination_kind,dst))return fail(409,'supply_line_endpoint_unavailable');
+   if(!safeLocation(b.source_kind,src)||!safeLocation(b.destination_kind,dst,true))return fail(409,'supply_line_endpoint_unavailable');
    const [[item]]=await db.execute('SELECT id FROM world_industry_items WHERE id=?',[b.item_id]);
    const [[mode]]=await db.execute("SELECT id,mode FROM world_logistics_transport_templates WHERE id=? AND active=1",[b.transport_template_id]);
    if(!item||!mode||!['road','rail','air'].includes(mode.mode))return fail(409,'supply_line_transport_or_item_unavailable');
@@ -93,7 +93,7 @@ export async function supplyLineRoute(pool,req,path,actor,env){
   if(shipmentMatch[2]==='resume'){
    if(cargo.status!=='disrupted')return fail(409,'supply_shipment_not_disrupted');
    const dest=await location(db,cargo.destination_kind,cargo.destination_id,env.facilities,true);
-   if(!safeLocation(cargo.destination_kind,dest))return fail(409,'supply_destination_still_unavailable');
+   if(!safeLocation(cargo.destination_kind,dest,true))return fail(409,'supply_destination_still_unavailable');
    await db.execute("UPDATE world_logistics_supply_line_shipments SET status='in_transit',incident_notes='',due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 MINUTE) WHERE id=?",[cargo.id]);
    return ok({status:'in_transit'});
   }
@@ -182,7 +182,7 @@ export async function runStandingSupplyAutomation(pool,env){
    const [[clock]]=await db.execute('SELECT ?<=UTC_TIMESTAMP() AS due',[line.next_due_at]);
    if(!clock.due)return ok({skipped:true}); // concurrent scheduler already advanced this departure
    const [src,dest]=await Promise.all([location(db,line.source_kind,line.source_id,env.facilities,true),location(db,line.destination_kind,line.destination_id,env.facilities,true)]);
-   if(!safeLocation(line.source_kind,src)||!safeLocation(line.destination_kind,dest))return markWaiting(db,line,'Supply endpoint unavailable');
+   if(!safeLocation(line.source_kind,src)||!safeLocation(line.destination_kind,dest,true))return markWaiting(db,line,'Supply endpoint unavailable');
    const [[vehicleTemplate]]=await db.execute("SELECT * FROM world_logistics_transport_templates WHERE id=? AND active=1",[line.transport_template_id]);
    if(!vehicleTemplate||!['road','rail','air'].includes(vehicleTemplate.mode))return markWaiting(db,line,'Transport service unavailable');
    const rail=vehicleTemplate.mode==='rail'?await railService(db,src.settlement_id,dest.settlement_id,line.rail_route_id):null;
