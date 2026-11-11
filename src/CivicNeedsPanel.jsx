@@ -6,6 +6,7 @@ import OrderCityBuilder from './OrderCityBuilder.jsx';
 const today=()=>new Date().toISOString().slice(0,10);
 const num=v=>Number(v||0);
 const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const newHeater=()=>({name:'',coverage_pct:25,condition_pct:100,status:'operational',notes:''});
 const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grain',quantity_delta:0,reason:''};
 export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -16,10 +17,12 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
  const [profile,setProfile]=useState(null);
  const [aid,setAid]=useState({name:'',material_id:'',resource_kind:'food',food_group:'grain',quantity:1,frequency:'weekly',active:true});
  const [aidEditing,setAidEditing]=useState(null);
- const [heater,setHeater]=useState({name:'',coverage_pct:25,condition_pct:100,status:'operational',notes:''});
+ const [heater,setHeater]=useState(newHeater);
  const [heaterEditing,setHeaterEditing]=useState(null);
+  const [heaterOpen,setHeaterOpen]=useState(false);
+  const openHeater=(record=null)=>{setHeater(record?{...record}:newHeater());setHeaterEditing(record?.id||null);setHeaterOpen(true);setError('')};
  async function load(){const d=await request('/world-admin/civic/'+settlement.id);setData(d);setProfile({...d.profile,paused:!!d.profile.paused})}
- useEffect(()=>{setData(null);setError('');setNotice('');setProposed(null);load().catch(e=>setError(e.message))},[settlement.id]);
+ useEffect(()=>{setData(null);setError('');setNotice('');setProposed(null);setHeaterOpen(false);setHeaterEditing(null);load().catch(e=>setError(e.message))},[settlement.id]);
  async function mutate(path,method,body,success){
   setBusy(true);setError('');setNotice('');
   try{const r=await request('/world-admin/civic/'+settlement.id+path,{method,body});await load();if(onChanged)await onChanged();setNotice(success);return r}
@@ -38,7 +41,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
    <header className="wa-industry-attach-head"><div><span className="wa-kicker">CIVILIAN WELFARE</span><h3>Add to settlement</h3><p>{settlement.name} · Choose what you want to add.</p></div><button type="button" className="wa-industry-close" aria-label="Close welfare actions" onClick={()=>setAddMenu(false)}>×</button></header>
    <div className="wa-industry-steps"><button type="button" className="active"><span>01</span> Choose action</button><button type="button" disabled><span>02</span> Configure</button></div>
    <div className="wa-industry-choice-heading"><strong>What would you like to manage?</strong><span>Five civilian services</span></div>
-   <div className="wa-industry-location-grid wa-civic-type-grid" role="group" aria-label="Civilian welfare actions">{[['upgrades','Construct buildings','Housing, schools, clinics and civic infrastructure','fa-building'],['upgrades','Add heating','Heating and cold-weather infrastructure','fa-fire-flame-simple'],['supplies','Deliver provisions','Transfer civilian food, fuel, water or medicine','fa-truck'],['aid','Plan relief','Set up a recurring delivery service','fa-truck-medical'],['events','Propose civic event','Petitions, relief requests and weather emergencies','fa-scroll']].map(([section,label,help,icon],i)=><button key={i} type="button" className="wa-industry-location-card" onClick={()=>{setTab(section);setCreationAction(['build','heating','transfer','aid','event'][i]);setAddMenu(false)}}><div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className={'fa-solid '+icon} aria-hidden="true"/></span></div><strong>{label}</strong><span className="wa-industry-location-meta">{help}</span></button>)}</div>
+   <div className="wa-industry-location-grid wa-civic-type-grid" role="group" aria-label="Civilian welfare actions">{[['upgrades','Construct buildings','Housing, schools, clinics and civic infrastructure','fa-building'],['upgrades','Add heating','Heating and cold-weather infrastructure','fa-fire-flame-simple'],['supplies','Deliver provisions','Transfer civilian food, fuel, water or medicine','fa-truck'],['aid','Plan relief','Set up a recurring delivery service','fa-truck-medical'],['events','Propose civic event','Petitions, relief requests and weather emergencies','fa-scroll']].map(([section,label,help,icon],i)=><button key={i} type="button" className="wa-industry-location-card" onClick={()=>{setTab(section);setCreationAction(['build','heating','transfer','aid','event'][i]);if(i===1)openHeater();setAddMenu(false)}}><div className="wa-industry-location-top"><span className="wa-industry-location-symbol"><i className={'fa-solid '+icon} aria-hidden="true"/></span></div><strong>{label}</strong><span className="wa-industry-location-meta">{help}</span></button>)}</div>
    <footer className="wa-industry-attach-foot"><span>Select an action to continue to its setup.</span><button type="button" onClick={()=>setAddMenu(false)}>Cancel</button></footer>
   </section></div>}
   <div className="wa-civic-summary">
@@ -66,16 +69,30 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   </form></details>}
   </div>}
   {tab==='upgrades'&&<div className="wa-civic-workspace"><SettlementUpgradesPanel openChooser={creationAction==='build'} settlement={settlement} request={request} onChanged={onChanged} materials={data.shared_materials||[]}/>
-  <h3>Heating infrastructure</h3><p className="wa-hint">Operational facilities determine effective heating coverage; damaged and offline systems reduce the capacity of a settlement to keep homes warm. Fuel is only taken from civilian fuel stores during an authorized cycle.</p>
-  <div className="wa-civic-values"><div><span>Effective heating coverage</span><strong>{p.heating_coverage_effective}%</strong></div>{(data.heating_assets||[]).map(h=><div key={h.id}><span>{h.name} · {h.status} · {h.condition_pct}% condition</span><strong>{h.coverage_pct}% capacity</strong>{canEdit&&<span><button type="button" disabled={busy} onClick={()=>{setHeater({...h});setHeaterEditing(h.id)}}>Edit</button> <button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete this heating facility?'))mutate('/heating/'+h.id,'DELETE',null,'Heating facility removed.')}}>Remove</button></span>}</div>)}</div>
-  {canEdit&&<details className="wa-civic-form" open={creationAction==='heating'?true:undefined}><summary><i className="fa-solid fa-plus" aria-hidden="true"/> Add heating facility</summary><form className="wa-fields" onSubmit={e=>{e.preventDefault();const path=heaterEditing?'/heating/'+heaterEditing:'/heating';const method=heaterEditing?'PUT':'POST';mutate(path,method,{...heater,coverage_pct:Number(heater.coverage_pct),condition_pct:Number(heater.condition_pct)},heaterEditing?'Heating facility updated.':'Heating facility added.');setHeaterEditing(null);}}>
-   <label>Facility name<input required maxLength="120" value={heater.name} onChange={e=>setHeater({...heater,name:e.target.value})}/></label>
-   <label>Heating coverage %<input required type="number" min="0" max="100" step="1" value={heater.coverage_pct} onChange={e=>setHeater({...heater,coverage_pct:e.target.value})}/></label>
-   <label>Condition %<input required type="number" min="0" max="100" step="1" value={heater.condition_pct} onChange={e=>setHeater({...heater,condition_pct:e.target.value})}/></label>
-   <label>Status<select value={heater.status} onChange={e=>setHeater({...heater,status:e.target.value})}>{['operational','damaged','offline'].map(v=><option value={v} key={v}>{v}</option>)}</select></label>
-   <label className="wide">Notes<input maxLength="450" value={heater.notes||''} onChange={e=>setHeater({...heater,notes:e.target.value})}/></label>
-   <button type="submit" disabled={busy}>{heaterEditing?'Save heating facility':'Add heating facility'}</button>{heaterEditing&&<button type="button" onClick={()=>setHeaterEditing(null)}>Cancel edit</button>}
-  </form></details>}
+  <section className="wa-upgrade-section wa-heating-section" aria-label="Heating infrastructure">
+   <div className="wa-upgrade-section-heading"><div className="wa-upgrade-section-title"><i className="fa-solid fa-fire-flame-simple" aria-hidden="true"/><div><h4>Heating infrastructure</h4><p>Heating plants, furnaces and settlement warmth</p></div><span className="wa-upgrade-section-count">{(data.heating_assets||[]).length}</span></div>{canEdit&&<button type="button" onClick={()=>openHeater()}>+ Add</button>}</div>
+   <p className="wa-heating-summary"><strong>Effective heating coverage: {p.heating_coverage_effective}%</strong><span> Damaged or offline facilities reduce warmth. Fuel is only consumed during an authorized civic cycle.</span></p>
+   {(data.heating_assets||[]).length?<div className="wa-upgrade-grid">{data.heating_assets.map(h=><article className="wa-upgrade-card" key={h.id}>
+    <header><span>Heating plant</span><span className={'wa-upgrade-status is-'+(h.status==='offline'?'destroyed':h.status)}>{h.status==='offline'?'Offline':h.status==='damaged'?'Damaged':'Operational'}</span></header>
+    <strong>{h.name}</strong><p>{h.notes||'No notes.'}</p>
+    <div className="wa-upgrade-details"><span>Effective: {Math.round((h.status==='offline'?0:Number(h.coverage_pct)*Number(h.condition_pct)/100)*10)/10}% coverage</span><span>Capacity {h.coverage_pct}%</span><span>Condition {h.condition_pct}%</span></div>
+    {canEdit&&<footer><button type="button" disabled={busy} onClick={()=>openHeater(h)}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Remove '+h.name+'? Heating coverage will be reduced.'))mutate('/heating/'+h.id,'DELETE',null,'Heating facility removed.')}}>Remove</button></footer>}
+   </article>)}</div>:<div className="wa-upgrade-section-empty">No heating facilities recorded. Add a plant to supply warmth.</div>}
+  </section>
+  {canEdit&&heaterOpen&&<div className="wa-industry-overlay" role="presentation"><section className="wa-industry-attach wa-civic-attach wa-heating-modal" role="dialog" aria-modal="true" aria-label={heaterEditing?'Manage heating facility':'Add heating facility'}>
+   <header className="wa-industry-attach-head"><div><span className="wa-kicker">CIVIC INFRASTRUCTURE</span><h3>{heaterEditing?'Manage heating facility':'Add heating facility'}</h3><p>{settlement.name} · Heating infrastructure</p></div><button type="button" className="wa-industry-close" aria-label="Close heating editor" onClick={()=>setHeaterOpen(false)}>×</button></header>
+   {error&&<p className="wa-error wa-civic-modal-error" role="alert">{error}</p>}
+   <form className="wa-heating-form" onSubmit={async e=>{e.preventDefault();const result=await mutate(heaterEditing?'/heating/'+heaterEditing:'/heating',heaterEditing?'PUT':'POST',{...heater,coverage_pct:Number(heater.coverage_pct),condition_pct:Number(heater.condition_pct)},heaterEditing?'Heating facility updated.':'Heating facility added.');if(result){setHeaterOpen(false);setHeaterEditing(null)}}}>
+    <div className="wa-civic-build-fields">
+     <label className="wide">Facility name<input required maxLength="120" value={heater.name} onChange={e=>setHeater({...heater,name:e.target.value})}/></label>
+     <label>Heating coverage %<input required type="number" min="0" max="100" step="1" value={heater.coverage_pct} onChange={e=>setHeater({...heater,coverage_pct:e.target.value})}/></label>
+     <label>Condition %<input required type="number" min="0" max="100" step="1" value={heater.condition_pct} onChange={e=>setHeater({...heater,condition_pct:e.target.value})}/></label>
+     <label>Status<select value={heater.status} onChange={e=>setHeater({...heater,status:e.target.value})}>{['operational','damaged','offline'].map(v=><option value={v} key={v}>{v}</option>)}</select></label>
+     <label className="wide">Notes<input maxLength="450" value={heater.notes||''} onChange={e=>setHeater({...heater,notes:e.target.value})}/></label>
+    </div>
+    <footer className="wa-industry-attach-foot"><span>Operational coverage reflects facility condition.</span><div><button type="button" disabled={busy} onClick={()=>setHeaterOpen(false)}>Cancel</button><button className="wa-accent" type="submit" disabled={busy}>{busy?'Saving…':heaterEditing?'Save facility':'Add facility'}</button></div></footer>
+   </form>
+  </section></div>}
   </div>}
   {tab==='aid'&&<div className="wa-civic-workspace">
   <h3>Scheduled civilian relief</h3><p className="wa-hint">Aid contracts describe recurring delivery obligations. Deliveries are dispatched explicitly by staff, only from available unreserved Order workshop stock. No automatic offline transfers occur.</p>

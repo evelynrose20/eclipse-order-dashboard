@@ -2,19 +2,14 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './logistics-command-overview.css';
 import LogisticsTerrain from './LogisticsTerrain.jsx';
 import LogisticsMovingCargo from './LogisticsMovingCargo.jsx';
+import {supplyAlerts,supplyRisk} from './logisticsInfrastructureAlerts.js';
 
 const num=x=>Number(x||0).toLocaleString(undefined,{maximumFractionDigits:1});
 const kind=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const validPoint=x=>Number.isFinite(Number(x))&&Number(x)>=0&&Number(x)<=100;
 const findById=(items,id)=>items.find(x=>Number(x.id)===Number(id));
-const warn=s=>Array.isArray(s?.civic_summary?.warnings)?s.civic_summary.warnings:[];
-const risk=s=>{
- const c=s?.civic_summary||{};
- if(['destroyed','abandoned'].includes(s?.strategic_state))return 'lost';
- if(warn(s).length||Number(c.unrest_risk||0)>=45)return 'alert';
- if(c.food_days!=null&&Number(c.food_days)<7||c.heat_days!=null&&Number(c.heat_days)<7)return 'alert';
- return 'stable';
-};
+const warn=s=>supplyAlerts(s);
+const risk=s=>supplyRisk(s);
 const duration=t=>{
  if(!t)return '—';
  const n=Math.max(0,Math.floor((new Date(t).getTime()-Date.now())/60000));
@@ -134,7 +129,7 @@ export default function LogisticsCommandOverview({request,freight,onNavigate,onT
    <aside className="supply-intel">
     <div className="supply-intel-heading"><span className="supply-kicker">OPERATIONS DESK</span><h3>Supply priorities</h3></div>
     {shortageSites.slice(0,showAllPriorities?undefined:6).map(s=><button className="supply-priority" key={s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className="fa-solid fa-triangle-exclamation"/></span><span><strong>{s.name}</strong><small>{warn(s).slice(0,2).map(kind).join(' · ')||'Civilian reserves at risk'}</small></span><i className="fa-solid fa-chevron-right"/></button>)}
-    {!shortageSites.length&&<p className="supply-muted">No supply shortages recorded at Order-controlled settlements.</p>}
+    {!shortageSites.length&&<p className="supply-muted">No supply or infrastructure problems recorded at Order-controlled settlements.</p>}
     {shortageSites.length>6&&<button className="supply-priority-more" onClick={()=>setShowAllPriorities(!showAllPriorities)}>{showAllPriorities?'Show fewer alerts':'View all '+shortageSites.length+' Order supply alerts'}</button>}
     <div className="supply-intel-heading"><h3>Order holdings</h3><span>{orderSites.length} locations</span></div>
     {importantSites.slice(0,showAllHoldings?undefined:8).map(s=><button className="supply-priority" key={'holding-'+s.id} onClick={()=>openSettlement(s)}><span className="supply-priority-icon"><i className={'fa-solid '+(militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?'fa-shield-halved':'fa-city')}/></span><span><strong>{s.name}</strong><small>{risk(s)==='alert'?'Supply attention required':kind(s.strategic_state)+' · Order controlled'}{militaryInstallations.some(i=>Number(i.settlement_id)===Number(s.id))?' · Military installation':''}</small></span><i className="fa-solid fa-chevron-right"/></button>)}

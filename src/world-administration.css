@@ -372,3 +372,13 @@
 .wa-inspector-modal .wa-inspector>div:not(.wa-inspector-hero):not(.wa-inspector-actions-top):not(.wa-inspector-actions){min-width:0}
 @media(max-width:750px){.wa-inspector-modal .wa-inspector{grid-template-columns:repeat(2,minmax(0,1fr))}.wa-inspector-modal .wa-inspector-civic{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:530px){.wa-inspector-overlay{padding:7px}.wa-inspector-modal{max-height:95vh}.wa-inspector-modal .wa-inspector,.wa-inspector-modal .wa-inspector-civic{grid-template-columns:1fr}.wa-inspector-modal-heading>div>span{display:none}}
+
+/* Heating uses the same structure cards, header and buttons as the other civic buildings. */
+.wa-heating-section .wa-heating-summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0;color:#aabcc7;font-size:12px;line-height:1.55}
+.wa-heating-summary strong{color:#eddcc4}
+.wa-heating-modal{min-height:0;width:min(640px,95vw)}
+.wa-heating-form{display:grid;gap:16px;padding:18px 0 0;overflow:auto;max-height:calc(90vh - 150px)}
+.wa-heating-form .wa-civic-build-fields{padding:0 22px}
+.wa-heating-form .wa-industry-attach-foot{margin-top:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wa-heating-form .wa-industry-attach-foot>div{display:flex;gap:8px}
+@media(max-width:540px){.wa-heating-form .wa-civic-build-fields{grid-template-columns:1fr;padding:0 12px}.wa-heating-form .wa-industry-attach-foot{flex-direction:column;align-items:stretch}}
