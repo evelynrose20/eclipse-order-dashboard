@@ -6,6 +6,7 @@ const validPoint=p=>p&&typeof p.x==='number'&&typeof p.y==='number'&&Number.isFi
 const types=['road','trail','rail'];
 const crossingKinds=['road','rail','mountain_pass','border_checkpoint','footpath'];
 const states=['operational','damaged','closed'];
+import {validCardinalCrossing} from './world-geography.js';
 async function read(req){const chunks=[];let length=0;for await(const c of req){length+=c.length;if(length>10000)return null;chunks.push(c)}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}}
 async function transaction(pool,fn){const db=await pool.getConnection();try{await db.beginTransaction();const out=await fn(db);if(out.status===200)await db.commit();else await db.rollback();return out}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
 async function log(db,actor,id,action){await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor.id,action,'network',id,'Zone crossing edited'])}
@@ -23,6 +24,14 @@ export async function handleWorldCrossings(pool,req,path,actor){
   return transaction(pool,async db=>{
    const [zones]=await db.execute('SELECT id,region_id FROM world_zones WHERE id IN (?,?) FOR UPDATE',[b.from_zone_id,b.to_zone_id]);
    if(zones.length!==2||!zones.some(z=>Number(z.id)===b.from_zone_id&&Number(z.region_id)===b.from_region_id)||!zones.some(z=>Number(z.id)===b.to_zone_id&&Number(z.region_id)===b.to_region_id))return fail(400,'crossing_zones_not_found');
+   if(Number(b.from_region_id)===Number(b.to_region_id)){
+    const [tilePositions]=await db.execute('SELECT id,grid_x,grid_y FROM world_zones WHERE id IN (?,?)',[b.from_zone_id,b.to_zone_id]);
+    const start=tilePositions.find(z=>Number(z.id)===b.from_zone_id),end=tilePositions.find(z=>Number(z.id)===b.to_zone_id);
+    if(!validCardinalCrossing(b.from,b.to,start,end))return fail(409,'zones_must_be_adjacent_with_opposite_edge_exits');
+   }else{
+    const [restrictions]=await db.execute("SELECT region_id FROM world_region_access WHERE access_policy='airship_only' AND region_id IN (?,?)",[b.from_region_id,b.to_region_id]);
+    if(restrictions.length)return fail(409,'airship_only_region_no_ground_crossing');
+   }
    const kind=b.route_type==='rail'?'rail_switch':'junction';
    const label=b.name.trim();
    const [a]=await db.execute('INSERT INTO world_route_nodes(region_id,zone_id,name,node_kind,map_x,map_y,created_by) VALUES(?,?,?,?,?,?,?)',[b.from_region_id,b.from_zone_id,label,kind,b.from.x,b.from.y,actor.id]);
