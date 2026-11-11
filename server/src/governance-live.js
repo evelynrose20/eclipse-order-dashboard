@@ -77,7 +77,7 @@ export async function governanceRoute(pool,req,path){
    if(office.account_id||office.character_id)return fail(409,'office_locked_removal_vote_required');
    const [[character]]=await conn.execute('SELECT c.id,c.character_name,c.player_account_id,a.account_role FROM characters c JOIN accounts a ON a.id=c.player_account_id WHERE c.id=? AND a.is_active=1 AND a.approval_status="approved" FOR UPDATE',[b.character_id]);
    if(!character||!character.player_account_id)return fail(404,'character_not_eligible');
-   if(b.code==='domina'&&character.account_role!=='domina')return fail(409,'domina_character_required');
+   if(b.code==='domina'&&(character.account_role!=='domina'||character.player_account_id!==actor.id))return fail(409,'domina_character_required');
    if(b.code!=='domina'&&character.account_role==='domina')return fail(409,'domina_holds_reserved_seat');
    const [assigned]=await conn.execute('SELECT code FROM order_council_offices WHERE code<>? AND (character_id=? OR account_id=?)',[b.code,b.character_id,character.player_account_id]);
    if(assigned.length)return fail(409,'character_or_owner_already_holds_seat');
