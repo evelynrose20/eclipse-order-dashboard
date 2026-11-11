@@ -316,7 +316,8 @@ export async function logisticsRoute(pool,req,path,actor){
   if(!['active','suspended','retired'].includes(b?.status))return fail(400,'invalid_treaty_status');
   const [[t]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(treatyMatch[1])]);
   if(!t)return fail(404,'treaty_not_found');
-  if(t.status==='retired')return fail(409,'treaty_retired');
+  if(['retired','rejected','countered','expired'].includes(t.status))return fail(409,'treaty_not_active_for_status_change');
+  if(b.status==='suspended'&&!['active','approved','suspended'].includes(t.status))return fail(409,'cannot_suspend_unanswered_offer');
   if(b.status==='active'){
    if(t.response_due_at&&t.status!=='approved'&&t.status!=='suspended')return fail(409,'waiting_for_npc_treaty_response');
    if(t.starts_at&&new Date(t.starts_at)>new Date())return fail(409,'treaty_term_not_started');
