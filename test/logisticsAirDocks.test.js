@@ -29,7 +29,10 @@ test('airship docks have command UI for construction and repair',()=>{
  assert.match(workspace,/LogisticsAirDocks/);
  assert.match(workspace,/Airship docks/);
  assert.match(panel,/Plan airship landing facility/);
- assert.match(panel,/Commission \/ repair/);
+ assert.match(panel,/Commission site/);
+ assert.match(panel,/Repair dock/);
+ assert.match(panel,/Reopen site/);
+ assert.match(panel,/Manage/);
  assert.match(panel,/Mark damaged/);
  assert.match(panel,/Close site/);
 });
