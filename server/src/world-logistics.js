@@ -54,8 +54,11 @@ export function freightPath(nodes,segments,originId,destinationId,mode){
   const step=prev.get(pathNodes[0]);if(!step)return null;
   pathSegments.unshift(step.segment);pathNodes.unshift(step.from);
  }
- return {node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length};
+ const usedCrossings=pathSegments.filter(id=>String(id).startsWith('crossing:'));
+ const crossingMinutes=usedCrossings.reduce((total,id)=>total+Number(segments.find(s=>String(s.id)===String(id))?.travel_minutes||30),0);
+ return {node_ids:pathNodes,segment_ids:pathSegments,legs:pathSegments.length,crossing_legs:usedCrossings.length,crossing_minutes:crossingMinutes};
 }
+export function freightDuration(path,minutesPerLeg){return path.duration_minutes??((path.legs-(path.crossing_legs||0))*Number(minutesPerLeg)+(path.crossing_minutes||0))}
 export function corridorPath(corridors,from,to){
  const edges=new Map();
  for(const link of corridors)for(const [a,b] of [[Number(link.origin_settlement_id),Number(link.destination_settlement_id)],[Number(link.destination_settlement_id),Number(link.origin_settlement_id)]]){
@@ -192,7 +195,7 @@ async function dispatch(db,b,actor,contract=null){
   if(physicalCapacity<=0||amount>physicalCapacity)return fail(409,'vehicle_cargo_capacity_exceeded');
  }
  const totalLegs=path.legs+(source.site_id?1:0)+(dest.site_id?1:0);
- const totalMinutes=(path.duration_minutes??Number(transport.minutes_per_leg)*path.legs)+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
+ const totalMinutes=freightDuration(path,Number(transport.minutes_per_leg))+Number(source.access_minutes||0)+Number(dest.access_minutes||0);
  const fuel=round(Number(transport.fuel_per_leg)*totalLegs*(transport.mode==='air'?3:1));
  const [[stock]]=await db.execute('SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id=? FOR UPDATE',[sourceId,itemId]);
  if(!stock||Number(stock.quantity)<amount)return fail(409,'freight_stock_insufficient');
@@ -523,7 +526,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const a=rows.find(r=>Number(r.id)===Number(b.source_facility_id)),z=rows.find(r=>Number(r.id)===Number(b.destination_facility_id));
   const hasLanding=t?.mode!=='air'||(a?.settlement_id&&z?.settlement_id&&await operationalAirDocks(pool,a.settlement_id,z.settlement_id));
   const pathResult=a?.settlement_id&&z?.settlement_id&&t&&modes.includes(t.mode)&&hasLanding?await route(pool,a.settlement_id,z.settlement_id,t.mode):null;
-  return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(pathResult.duration_minutes??pathResult.legs*Number(t.minutes_per_leg)):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)*(t.mode==='air'?3:1)):null});
+  return ok({connected:!!pathResult,route:pathResult,duration_minutes:pathResult?(freightDuration(pathResult,Number(t.minutes_per_leg))):null,fuel_required:pathResult?round(pathResult.legs*Number(t.fuel_per_leg)*(t.mode==='air'?3:1)):null});
  }
  if(path==='/world-admin/logistics/dispatch'&&req.method==='POST')return tx(pool,async db=>dispatch(db,await body(req),actor));
  let match=/^\/world-admin\/logistics\/contracts\/(\d+)\/(dispatch|pause|resume|retire|automation)$/.exec(path);
@@ -780,7 +783,7 @@ export async function runNpcTradeAutomation(pool){
      if(Number(target.food_units)+Number(caravan.amount)>civilianStorageCapacity(target,buildings).food)continue;
      const path=await route(db,caravan.destination_settlement_id,target.id,'pack');
      if(!path)continue;
-     const eta=path.duration_minutes??path.legs*120;
+     const eta=freightDuration(path,120);
      await db.execute("UPDATE world_npc_trade_shipments SET original_destination_settlement_id=COALESCE(original_destination_settlement_id,destination_settlement_id),destination_settlement_id=?,destination_faction_id=?,route_json=?,due_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE),status='in_transit',held_at=NULL,reroute_count=reroute_count+1 WHERE id=?",
       [target.id,target.controlling_faction_id,JSON.stringify(path.segment_ids),eta,caravan.id]);
      await db.execute("INSERT INTO world_npc_trade_events(shipment_id,action,notes) VALUES(?,'redirect',?)",[caravan.id,'Caravan redirected to settlement '+target.id+' using mapped roads']);
@@ -825,7 +828,7 @@ export async function runNpcTradeAutomation(pool){
    if(amount<=0)return ok({skipped:true});
    const link=await route(db,origin.id,dest.id,'pack');
    if(!link)return ok({skipped:true});
-   const eta=link.duration_minutes??link.legs*120;
+   const eta=freightDuration(link,120);
    const [[clock]]=await db.execute("SELECT DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? MINUTE) AS due_at",[eta]);
    await db.execute('UPDATE world_settlement_autosim SET food_units=food_units-? WHERE settlement_id=? AND food_units>=?',[amount,origin.id,amount]);
    await db.execute('INSERT INTO world_npc_trade_shipments(source_settlement_id,destination_settlement_id,amount,origin_faction_id,destination_faction_id,route_json,departed_on,due_at) VALUES(?,?,?,?,?,?,UTC_DATE(),?)',[origin.id,dest.id,amount,origin.controlling_faction_id,dest.controlling_faction_id,JSON.stringify(link.segment_ids),clock.due_at]);
