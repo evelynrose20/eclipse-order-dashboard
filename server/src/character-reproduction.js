@@ -65,7 +65,7 @@ export async function reproductionRoute(pool,req,path){
  const profile=safeProfile(records[0]);
  if(!owner&&!command)return fail(403,'private_character_record');
  // Start legacy bound characters on a stable character date, not today's first visit.
- const cycleProfile={...profile,cycle_anchor:profile.cycle_anchor||dateKey(character.created_at)};
+ const cycleProfile={...profile,cycle_anchor:profile.cycle_anchor||dateKey(character.created_at||'2026-01-01')};
  const cycle=cycleStatus(cycleProfile,Boolean(character.collar_bound),character.rank_code);
  if(!action&&req.method==='GET'){
   // Command always sees IC status and stage; sealed notes, rolls and private details
@@ -76,7 +76,7 @@ export async function reproductionRoute(pool,req,path){
   const publicIC={cycle_type:profile.cycle_type,cycle_days:profile.cycle_days,
    pregnancy_status:profile.pregnancy_status,pregnancy_anchor:profile.pregnancy_anchor,
    pregnancy_start_day:profile.pregnancy_start_day,pregnancy_total_days:profile.pregnancy_total_days};
-  return ok({profile:full?profile:publicIC,cycle,pregnancy:pregnancyProgress(profile),rolls,history,
+  return ok({profile:full?{...profile,cycle_anchor:cycleProfile.cycle_anchor}:publicIC,cycle,pregnancy:pregnancyProgress(profile),rolls,history,
    can_edit:owner,command_view:command&&!owner,details_shared:full,character_bound:Boolean(character.collar_bound)});
  }
  if(!owner)return fail(403,'character_owner_required');
