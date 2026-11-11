@@ -1,3 +1,4 @@
+import {escortCommandRoute,wartimeEscortSnapshot,warThreatAtArrival} from './world-convoy-escorts.js';
 import {runTreatyNegotiations,validTreatySchedule,sqlDate} from './world-treaty-negotiations.js';
 import {supplyLineRoute,runStandingSupplyAutomation} from './world-standing-supply-lines.js';
 import {civilianStorageCapacity} from './world-civic-building-templates.js';
@@ -214,6 +215,7 @@ async function dispatch(db,b,actor,contract=null){
 }
 export async function logisticsRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/logistics/escorts/'))return escortCommandRoute(pool,req,path,actor);
  if(path.startsWith('/world-admin/logistics/supply-lines'))return supplyLineRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path.startsWith('/world-admin/logistics/warehouses'))return warehousesRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks});
  if(path==='/world-admin/logistics'&&req.method==='GET'){
@@ -263,7 +265,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const [installationsRaw]=await pool.execute("SELECT i.id,i.name,i.settlement_id,i.state,i.condition_pct,s.strategic_state FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id ORDER BY i.name");
   const installations=installationsRaw.map(i=>({...i,...installationReadiness(i)}));
 
-  return ok({supply_lines:supplyLines,supply_line_shipments:supplyLineShipments,military_installations:militaryInstallations,warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_services:railServices,rail_terminals:railTerminals,rail_service_records:railServiceRecords,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
+  return ok({...escortCommand,supply_lines:supplyLines,supply_line_shipments:supplyLineShipments,military_installations:militaryInstallations,warehouse_blueprints:warehouseBlueprints,warehouse_progress:warehouseProgress,warehouse_build_orders:warehouseBuildOrders,warehouses,warehouse_stocks:warehouseStocks,warehouse_shipments:warehouseShipments,itineraries,templates,contracts,shipments:shipments.map(s=>({...s,route_segments:typeof s.route_segments==='string'?JSON.parse(s.route_segments):s.route_segments,route_nodes:typeof s.route_nodes==='string'?JSON.parse(s.route_nodes):s.route_nodes,events:history.filter(e=>e.shipment_id===s.id)})),facilities:await facilities(pool),stocks,items,vehicles,assembled_trains:assembledTrains,rail_services:railServices,rail_terminals:railTerminals,rail_service_records:railServiceRecords,rail_journeys:railJourneys,civic_types:civicTypes,civic_receipts:civicReceipts,military_receipts:militaryReceipts,installations,npc_routes:npcRoutes,npc_shipments:npcShipments,npc_warehouse:npcWarehouse,air_docks:airDocks,corridors,incidents,treaties,factions,relations,depot_links:depotLinks,settlements:allSettlements,insulation_needs:insulationNeeds,npc_trades:npcTrades.map(t=>({...t,events:npcTradeEvents.filter(e=>Number(e.shipment_id)===Number(t.id))}))});
  }
  const insulationMatch=/^\/world-admin\/logistics\/insulation\/(\d+)\/commit$/.exec(path);
  if(insulationMatch&&req.method==='POST')return tx(pool,async db=>{
