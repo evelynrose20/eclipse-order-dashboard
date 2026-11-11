@@ -35,7 +35,7 @@ export default function SearchPicker({value='',onChange,options=[],placeholder='
  useEffect(()=>{if(open&&(!portal||position))search.current?.focus()},[open,portal,position]);
  useEffect(()=>setActive(0),[query,open]);
  const choose=id=>{onChange(id);setOpen(false);setQuery('')};
- const groups=groupByCategory?Object.entries(Object.groupBy?Object.groupBy(filtered,o=>o.category||'Other'):filtered.reduce((acc,o=>{(acc[o.category||'Other']??=[]).push(o);return acc},{}))):[['',filtered]];
+ const groups=groupByCategory?Object.entries(Object.groupBy?Object.groupBy(filtered,o=>o.category||'Other'):filtered.reduce((acc,o)=>{(acc[o.category||'Other']??=[]).push(o);return acc},{}))):[['',filtered]];
  const popup=<div ref={popover} className={'eo-search-popover'+(portal?' eo-search-popover-portaled':'')} style={portal&&position?position:undefined}>
   <input ref={search} type="search" value={query} aria-label={'Search '+(ariaLabel||placeholder)} placeholder="Type to search…" onChange={e=>setQuery(e.target.value)}
    onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();setOpen(false)}if(e.key==='ArrowDown'){e.preventDefault();setActive(i=>Math.min(filtered.length-1,i+1))}if(e.key==='ArrowUp'){e.preventDefault();setActive(i=>Math.max(0,i-1))}if(e.key==='Enter'&&filtered[active]){e.preventDefault();choose(filtered[active].id)}}}/>
