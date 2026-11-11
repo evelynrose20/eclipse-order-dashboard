@@ -13,7 +13,7 @@ export function sqlDate(input){
 export function validTreatySchedule(body){
  if(!body||!sqlDate(body.starts_at)||!sqlDate(body.ends_at)||!sqlDate(body.response_due_at))return false;
  const now=Date.now(),start=Date.parse(body.starts_at),end=Date.parse(body.ends_at),response=Date.parse(body.response_due_at);
- return start>now+60000&&end>start&&response>=now&&response<end&&end-start<=365*86400000;
+ return start>now+60000&&end>start&&response>=now&&response<start&&end-start<=365*86400000;
 }
 async function tx(pool,run){const db=await pool.getConnection();try{await db.beginTransaction();const result=await run(db);if(result.status===200)await db.commit();else await db.rollback();return result}catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}}
 const ok=body=>({status:200,body});
