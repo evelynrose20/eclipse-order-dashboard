@@ -255,3 +255,13 @@
 .lp-wizard-actions span{font-size:11px;color:#b6c5cc}
 .lp-wizard-primary{margin-left:auto;justify-content:flex-end}
 @media(max-width:650px){.lp-wizard-nav{padding:12px}.lp-wizard-content{padding:12px}.lp-wizard-content .lp-step-body{padding:13px}.lp-wizard-footer{padding:12px}.lp-wizard-stop{max-width:148px}.lp-wizard-stop>small{font-size:10px}}
+
+/* Logistics uses the shared dashboard SearchPicker, not browser-native menus. */
+.freight-root .lp-search-select{width:100%;min-width:0}
+.freight-root .lp-search-select .eo-search-trigger{min-height:40px;background:#172733;color:#f3e6d2;border:1px solid #657781;border-radius:3px;padding:10px 12px;text-align:left}
+.freight-root .lp-search-select .eo-search-trigger:hover:not(:disabled){background:#283c49;border-color:#bf9f73}
+.freight-root .lp-search-select .eo-search-trigger.is-open{border-color:#d8b47e;outline:1px solid #d8b47e}
+.freight-root .lp-search-select .eo-search-popover{background:#1c2c38;border:1px solid #bb9968;box-shadow:0 18px 45px #000b;z-index:1100;min-width:min(340px,85vw)}
+.freight-root .lp-search-select .eo-search-results{max-height:min(250px,35vh)}
+.freight-root .lp-search-select .eo-search-option.focused,.freight-root .lp-search-select .eo-search-option:hover{background:#3b4e5a}
+.freight-root .lp-search-select .eo-search-group{background:#2f414e}
