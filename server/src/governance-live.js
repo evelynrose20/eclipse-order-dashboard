@@ -90,12 +90,15 @@ export async function governanceRoute(pool,req,path){
    if(!office)return fail(404,'council_office_not_found');
    if(office.character_id)return fail(409,'office_locked_removal_vote_required');
    const legacyLink=office.code!=='domina'&&Boolean(office.account_id);
-   const [[character]]=await conn.execute('SELECT c.id,c.character_name,c.player_account_id,a.account_role FROM characters c JOIN accounts a ON a.id=c.player_account_id WHERE c.id=? AND a.is_active=1 AND a.approval_status="approved" FOR UPDATE',[b.character_id]);
-   if(!character||!character.player_account_id)return fail(404,'character_not_eligible');
+   const [[character]]=await conn.execute('SELECT c.id,c.character_name,c.player_account_id,a.account_role,a.is_active,a.approval_status FROM characters c LEFT JOIN accounts a ON a.id=c.player_account_id WHERE c.id=? FOR UPDATE',[b.character_id]);
+   if(!character)return fail(404,'character_not_eligible');
+   if(b.code!=='domina'&&!character.player_account_id)return fail(409,'council_character_requires_owner');
+   if(b.code!=='domina'&&(!character.is_active||character.approval_status!=='approved'))return fail(409,'council_character_requires_approved_owner');
    if(legacyLink&&office.account_id!==character.player_account_id)return fail(409,'legacy_officer_account_cannot_change');
-   if(b.code==='domina'&&(character.account_role!=='domina'||character.player_account_id!==actor.id))return fail(409,'domina_character_required');
+   // The Domina chair is assigned by account role; her chosen IC character can be
+   // an unlinked/imported sheet. Do not tie the character picker to Discord ownership.
    if(b.code!=='domina'&&character.account_role==='domina')return fail(409,'domina_holds_reserved_seat');
-   const [assigned]=await conn.execute('SELECT code FROM order_council_offices WHERE code<>? AND (character_id=? OR account_id=?)',[b.code,b.character_id,character.player_account_id]);
+   const [assigned]=await conn.execute('SELECT code FROM order_council_offices WHERE code<>? AND (character_id=? OR (? IS NOT NULL AND account_id=?))',[b.code,b.character_id,b.code==='domina'?null:character.player_account_id,b.code==='domina'?null:character.player_account_id]);
    if(assigned.length)return fail(409,'character_or_owner_already_holds_seat');
    await conn.execute('UPDATE order_council_offices SET character_id=?,account_id=?,appointed_at=COALESCE(appointed_at,UTC_TIMESTAMP()) WHERE code=?',[character.id,b.code==='domina'?null:character.player_account_id,b.code]);
    await audit(conn,actor.id,legacyLink?'link_character':'lock_appointment','office:'+b.code,character.character_name+' ['+character.id+']');

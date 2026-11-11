@@ -38,3 +38,16 @@ test('Council UI offers a searchable character sheet picker and locked character
  assert.match(backend,/office_locked_removal_vote_required/);
  assert.match(backend,/legacy_officer_account_cannot_change/);
 });
+
+test('Domina character choice is not filtered by account ownership or approval status',()=>{
+ const governance=readFileSync(new URL('../src/governance-live.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../../src/GovernancePreview.jsx',import.meta.url),'utf8');
+ assert.match(governance,/LEFT JOIN accounts a ON a\.id=c\.player_account_id WHERE c\.id=\? FOR UPDATE/);
+ assert.match(governance,/if\(b\.code!=='domina'&&!character\.player_account_id\)/);
+ assert.match(governance,/b\.code!=='domina'&&\(!character\.is_active/);
+ assert.doesNotMatch(governance,/character\.player_account_id!==actor\.id/);
+ assert.match(ui,/pickingOffice\.code==='domina'\|\|c\.eligible/);
+ const unlinked=councilCharacterSummary({id:'a1111111-1111-4111-8111-111111111111',name:'Elira Sakurai',player_account_id:null,sheet_json:{species:'Miqo\u2019te',class_id:'reaper',level:20}});
+ assert.equal(unlinked.eligible,false);
+ assert.equal(unlinked.name,'Elira Sakurai');
+});
