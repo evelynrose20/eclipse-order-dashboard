@@ -13,7 +13,8 @@ export default function ZoneGeography({region,zones=[],activeZone,regionAccess=[
  const placeable=useMemo(()=>zones.filter(z=>!z.is_default),[zones]);
  const placed=placeable.filter(z=>z.grid_x!=null&&z.grid_y!=null);
  const unplaced=placeable.filter(z=>z.grid_x==null||z.grid_y==null);
- useEffect(()=>{setTarget(String(unplaced[0]?.id||''));setAnchor(String(placed[0]?.id||''));setAccess(regionAccess.find(r=>Number(r.region_id)===Number(region?.id))?.access_policy||'ground_and_air');setError('');setNotice('')},[region?.id,regionAccess.map(r=>r.region_id+':'+r.access_policy).join(',')]);
+ useEffect(()=>{setTarget(previous=>unplaced.some(z=>String(z.id)===previous)?previous:String(unplaced[0]?.id||''));setAnchor(previous=>placed.some(z=>String(z.id)===previous)?previous:String(placed[0]?.id||''))},[unplaced.map(z=>z.id).join(','),placed.map(z=>z.id).join(',')]);
+ useEffect(()=>{setAccess(regionAccess.find(r=>Number(r.region_id)===Number(region?.id))?.access_policy||'ground_and_air')},[region?.id,regionAccess.map(r=>r.region_id+':'+r.access_policy).join(',')]);
  const savePosition=async()=>{
   if(busy||!target)return;
   setBusy(true);setError('');setNotice('');
