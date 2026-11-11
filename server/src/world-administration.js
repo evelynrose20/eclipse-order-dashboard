@@ -79,7 +79,7 @@ async function worldAdministrationRouteCore(pool,req,path){
   const [mountains]=await pool.execute('SELECT id,region_id,zone_id,name,points,is_closed FROM world_map_mountain_ranges ORDER BY id');
   let rivers=[];
   try{[rivers]=await pool.execute('SELECT id,region_id,zone_id,name,points FROM world_map_rivers ORDER BY id')}catch(e){if(e?.code!=='ER_NO_SUCH_TABLE')throw e;}
-  const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
+  const [factions]=await pool.execute('SELECT id,name,faction_scope,relationship,public_visible,map_color FROM order_factions '+(command?'':'WHERE public_visible=1 ')+'ORDER BY name');
   // Staff-only civic summary. Return actual civic mode and ledger-based needs
   // instead of the legacy settlement's simulation_enabled flag alone.
   const civicSummaries=new Map();
