@@ -110,6 +110,8 @@ export async function reproductionRoute(pool,req,path){
    const [[existing]]=await db.execute('SELECT * FROM character_conception_rolls WHERE character_id=? AND event_key=?',[id,b.event_key]);
    if(existing){await db.commit();return ok({roll:existing,replayed:true})}
    const [[current]]=await db.execute('SELECT * FROM character_reproductive_profiles WHERE character_id=? FOR UPDATE',[id]);
+   const [[afterLock]]=await db.execute('SELECT * FROM character_conception_rolls WHERE character_id=? AND event_key=?',[id,b.event_key]);
+   if(afterLock){await db.commit();return ok({roll:afterLock,replayed:true})}
    if(!current?.conception_opt_in){await db.rollback();return fail(403,'conception_roll_not_approved')}
    if(current.pregnancy_status==='active'){await db.rollback();return fail(409,'pregnancy_already_active')}
    const settings=safeProfile(current),status=cycleStatus(settings,Boolean(character.collar_bound),character.rank_code);
@@ -119,7 +121,7 @@ export async function reproductionRoute(pool,req,path){
    if(success)await db.execute(`UPDATE character_reproductive_profiles SET pregnancy_status='active',pregnancy_anchor=?,pregnancy_start_day=0,pregnancy_total_days=280,pregnancy_notes='' WHERE character_id=?`,[b.ic_event_date,id]);
    await db.commit();
    return ok({roll:{id:insert.insertId,event_key:b.event_key,roll_d100:value,chance,success,rank_code:character.rank_code||null,cycle_phase:status.phase},replayed:false});
-  }catch(error){await db.rollback().catch(()=>{};throw error}finally{db.release()}
+  }catch(error){await db.rollback().catch(()=>{});throw error}finally{db.release()}
  }
  return fail(404,'action_not_found');
 }
