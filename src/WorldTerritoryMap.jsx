@@ -67,7 +67,7 @@ function polyline(route,byId){
  const convert=p=>({x:Number(p.map_x??p.x),y:Number(p.map_y??p.y)});
  return [convert(start),...normalizeWaypoints(route),convert(end)];
 }
-export default function WorldTerritoryMap({region,zoneId,settlements,factions=[],localGovernmentId=null,sitePins=[],routes=[],networkNodes=[],networkSegments=[],mountains=[],rivers=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],canEdit=false,selected,onSelect,request,onSaved}){
+export default function WorldTerritoryMap({region,zoneId,settlements,factions=[],localGovernmentId=null,sitePins=[],routes=[],networkNodes=[],networkSegments=[],mountains=[],rivers=[],railStations=[],railPlatforms=[],railSwitches=[],railCrossings=[],allRailStations=[],railLinks=[],allZones=[],allRegions=[],crossings=[],onNavigateZone=()=>{},canEdit=false,selected,onSelect,request,onSaved}){
  const [mode,setMode]=useState('view'),[positions,setPositions]=useState({}),[routeStart,setRouteStart]=useState(null);
  const [routeType,setRouteType]=useState('road'),[routeName,setRouteName]=useState(''),[selectedRoute,setSelectedRoute]=useState(null),[draftWaypoints,setDraftWaypoints]=useState([]);
  const [routeEnd,setRouteEnd]=useState(null),[newRoutePoints,setNewRoutePoints]=useState([]),[routeDirty,setRouteDirty]=useState(false);
@@ -78,11 +78,16 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  const [selectedJunction,setSelectedJunction]=useState(null),[junctionDraft,setJunctionDraft]=useState(null);
  const [mountainId,setMountainId]=useState(''),[mountainName,setMountainName]=useState(''),[mountainPoints,setMountainPoints]=useState([]),[mountainClosed,setMountainClosed]=useState(false);
  const [riverId,setRiverId]=useState(''),[riverName,setRiverName]=useState(''),[riverPoints,setRiverPoints]=useState([]);
+ const [crossingFrom,setCrossingFrom]=useState(null),[crossingName,setCrossingName]=useState(''),[crossingType,setCrossingType]=useState('road'),[crossingToRegion,setCrossingToRegion]=useState(''),[crossingToZone,setCrossingToZone]=useState(''),[crossingToX,setCrossingToX]=useState(3),[crossingToY,setCrossingToY]=useState(50),[crossingMinutes,setCrossingMinutes]=useState(30);
 
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mapRef=useRef(null),dragRef=useRef(null),suppressRef=useRef(false);
  useEffect(()=>{setMode('view');setPositions({});setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setRouteDirty(false);setSelectedRoute(null);setDraftWaypoints([]);setMountainId('');setMountainName('');setMountainPoints([]);setMountainClosed(false);setRiverId('');setRiverName('');setRiverPoints([]);setJunctionAction('');setJunctionPositions({});setSelectedJunction(null);setJunctionDraft(null);setTraceTrack(false);setTracePoints([]);traceRef.current=null;setError('');setNotice('')},[region?.id,zoneId]);
  const displayed=useMemo(()=>settlements.map(s=>normalize(s,positions)),[settlements,positions]);
+ const mappedCrossings=crossings.filter(c=>Number(c.from_zone_id)===Number(zoneId)||Number(c.to_zone_id)===Number(zoneId));
+ const crossingNodeIds=new Set(mappedCrossings.flatMap(c=>[Number(c.from_node_id),Number(c.to_node_id)]));
+ const edgePoint=p=>p&&p.x>=2&&p.x<=98&&p.y>=2&&p.y<=98&&(p.x<=5||p.x>=95||p.y<=5||p.y>=95);
+ const destinationZones=allZones.filter(z=>String(z.region_id)===String(crossingToRegion)&&Number(z.id)!==Number(zoneId));
  const byId=useMemo(()=>new Map(displayed.map(s=>[Number(s.id),s])),[displayed]);
  const visibleSegmentNodes=new Set(networkSegments.filter(visibleTransport).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]));
  const internalOnlyNodes=new Set(networkSegments.filter(r=>!visibleTransport(r)).flatMap(r=>[Number(r.from_node_id),Number(r.to_node_id)]).filter(id=>!visibleSegmentNodes.has(id)));
@@ -210,8 +215,9 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  }
  function selectPin(s){
   if(suppressRef.current){suppressRef.current=false;return}
-  // Moving a marker selects it for editing without opening the settlement dossier.
-  onSelect(String(s.id),{open:mode!=='move'});
+  // Only Inspect opens the settlement dossier. Map editing tools never do.
+  if(mode==='view')onSelect(String(s.id),{open:true});
+  else if(mode==='move')onSelect(String(s.id),{open:false});
   if(canEdit&&drawing){
    chooseEndpoint(Number(s.id));
   }
@@ -347,6 +353,10 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
  function mapClick(e){
   if(!canEdit||busy)return;
   const p=coords(e);if(!p)return;
+  if(mode==='crossings'){
+   if(!edgePoint(p)){setError('Choose a map-edge position, inside the frame but within 5% of an edge.');return}
+   setError('');setCrossingFrom(p);setNotice('Crossing entrance placed. Choose the connected zone and save.');return;
+  }
   if(junctionAction==='place'&&(drawing||mode==='bend')){void createJunction(p);return}
   if(ignoreClickRef.current){ignoreClickRef.current=false;return}
   if(drawing&&routeStart!=null&&routeEnd!=null&&!traceTrack)setNewRoutePoints(old=>{
@@ -429,13 +439,34 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
   setDraftWaypoints(w=>w.map((point,i)=>i===index?p:point));setRouteDirty(true);
  }
  function waypointUp(){if(dragRef.current?.waypoint!==undefined)dragRef.current=null}
+ const saveCrossing=async()=>{
+  if(!canEdit||busy||!crossingFrom)return;
+  const target=destinationZones.find(z=>String(z.id)===String(crossingToZone));
+  const to={x:Number(crossingToX),y:Number(crossingToY)};
+  if(!target||!edgePoint(to)){setError('Choose a destination zone and a valid map-edge position (2–5% or 95–98%).');return}
+  setBusy(true);setError('');setNotice('');
+  try{
+   await request('/world-admin/crossings',{method:'POST',body:{name:crossingName.trim(),route_type:crossingType,from_region_id:Number(region.id),from_zone_id:Number(zoneId),from:crossingFrom,to_region_id:Number(crossingToRegion),to_zone_id:Number(crossingToZone),to,travel_minutes:Number(crossingMinutes)}});
+   await reload();setCrossingFrom(null);setCrossingName('');setNotice('Paired crossing created. Connect routes to its junction on both maps.');
+  }catch(e){setError(e.message||'Could not save the crossing.')}finally{setBusy(false)}
+ };
+ const setCrossingStatus=async(c,status)=>{
+  if(busy)return;setBusy(true);setError('');
+  try{await request('/world-admin/crossings/'+c.id,{method:'PATCH',body:{status}});await reload();setNotice('Crossing updated.')}
+  catch(e){setError(e.message||'Crossing could not be updated.')}finally{setBusy(false)}
+ };
+ const removeCrossing=async c=>{
+  if(busy||!window.confirm('Remove '+c.name+' crossing? Existing roads on both sides will remain.'))return;
+  setBusy(true);setError('');try{await request('/world-admin/crossings/'+c.id,{method:'DELETE'});await reload();setNotice('Crossing removed. Local routes remain.')}
+  catch(e){setError(e.message||'Crossing could not be removed.')}finally{setBusy(false)}
+ };
  const ownershipLegend=mapOwnershipLegend(displayed,localGovernmentId,factions);
  const active=displayed.find(s=>String(s.id)===String(selected));
  const segments=routes.filter(r=>visibleTransport(r)&&segmentPts(r).length>=2);
  return <div className="wtm-root">
   {canEdit&&<div className="wtm-toolbar">
    <div role="group" aria-label="Territory map editing tools">
-    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['mountains','Mountains'],['rivers','Rivers']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setJunctionAction('');setNotice('');if(id==='track')setRouteType('rail');if(id==='mountains')selectMountain('');if(id==='rivers')selectRiver('')}}>{name}</button>)}
+    {[['view','Inspect'],['move','Move places'],['link','Plan a route'],['bend','Edit routes'],['crossings','Crossings'],['mountains','Mountains'],['rivers','Rivers']].map(([id,name])=><button type="button" key={id} className={mode===id?'active':''} aria-pressed={mode===id} onClick={()=>{setMode(id);setRouteStart(null);setRouteEnd(null);setNewRoutePoints([]);setJunctionAction('');setNotice('');if(id==='track')setRouteType('rail');if(id==='mountains')selectMountain('');if(id==='rivers')selectRiver('')}}>{name}</button>)}
    </div>
 
   </div>}
@@ -499,11 +530,22 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
    {mode==='bend'&&currentRoute&&draftWaypoints.map((p,i)=><button className="wtm-waypoint" key={i} type="button" aria-label={'Route bend '+(i+1)} style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>waypointDown(e,i)} onPointerMove={waypointMove} onPointerUp={waypointUp} onPointerCancel={waypointUp} onClick={e=>e.stopPropagation()}/>)}
    {drawing&&routeStart!=null&&routeEnd!=null&&newRoutePoints.map((p,i)=><button type="button" className="wtm-waypoint wtm-draft-handle" key={i} aria-label={'Drag draft bend '+(i+1)} title="Drag to reshape, Shift+click to remove" style={{left:p.x+'%',top:p.y+'%'}} onPointerDown={e=>draftWaypointDown(e,i)} onPointerMove={draftWaypointMove} onPointerUp={draftWaypointUp} onPointerCancel={draftWaypointUp} onClick={e=>{e.stopPropagation();if(e.shiftKey)setNewRoutePoints(w=>w.filter((_,j)=>j!==i))}}/>)} 
 
-   {(mode==='view'||drawing||mode==='bend'||mode==='move')&&networkNodes.filter(visibleMapNode).map(n=>{
+   {(mode==='view'||drawing||mode==='bend'||mode==='move')&&networkNodes.filter(n=>visibleMapNode(n)&&!crossingNodeIds.has(Number(n.id))).map(n=>{
     const p=graphPoint(graphNodes.get(Number(n.id)));
     return p?<button key={'junction-'+n.id} type="button" className={'wtm-junction '+(Number(selectedJunction)===Number(n.id)?'selected ':'')+((Number(routeStart)===-Number(n.id)||Number(routeEnd)===-Number(n.id))?'endpoint':'')} style={{left:p.x+'%',top:p.y+'%'}} title={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' #'+n.id} aria-label={(n.node_kind==='rail_switch'?'Rail switch':'Junction')+' '+n.id} onClick={e=>{e.stopPropagation();if(suppressRef.current){suppressRef.current=false;return}selectJunction(n);if(drawing&&junctionAction!=='place')chooseEndpoint(-Number(n.id))}} onPointerDown={e=>junctionPointerDown(e,n)} onPointerMove={junctionPointerMove} onPointerUp={e=>void junctionPointerUp(e,n)} onPointerCancel={()=>{dragRef.current=null;setJunctionPositions({})}}><i className={'fa-solid fa-'+(n.node_kind==='rail_switch'?'train-tram':'circle-nodes')} aria-hidden="true"/></button>:null
    })}
-   {!displayed.length&&!sitePins.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
+   {mappedCrossings.map(c=>{
+    const outbound=Number(c.from_zone_id)===Number(zoneId);
+    const id=outbound?Number(c.from_node_id):Number(c.to_node_id);
+    const node=networkNodes.find(n=>Number(n.id)===id);
+    if(!node)return null;
+    const otherZone=outbound?Number(c.to_zone_id):Number(c.from_zone_id);
+    const otherRegion=outbound?Number(c.to_region_id):Number(c.from_region_id);
+    const destination=allZones.find(z=>Number(z.id)===otherZone);
+    return <button type="button" key={'crossing-'+c.id} className={'wtm-crossing '+(c.status==='operational'?'':'wtm-crossing-closed')} style={{left:Number(node.map_x)+'%',top:Number(node.map_y)+'%'}} title={c.name+' · '+(destination?.name||'Connected zone')+' · '+c.status} aria-label={'Crossing '+c.name+' to '+(destination?.name||'connected zone')} onClick={e=>{e.stopPropagation();if(drawing){chooseEndpoint(-id);return}if(mode==='view')onNavigateZone(otherRegion,otherZone);else if(mode==='crossings')setNotice(c.name+' · '+c.status)}}><i className={'fa-solid '+(c.route_type==='rail'?'fa-train-tram':'fa-right-left')} aria-hidden="true"/><small>{c.name}</small></button>;
+   })}
+   {mode==='crossings'&&crossingFrom&&<span className="wtm-crossing-preview" style={{left:crossingFrom.x+'%',top:crossingFrom.y+'%'}} aria-label="New crossing position"><i className="fa-solid fa-location-dot"/></span>}
+   {!displayed.length&&!sitePins.length&&!mappedCrossings.length&&<div className="wtm-blank"><strong>THE SURVEY IS EMPTY</strong><span>Create your first settlement or map site to begin charting this region.</span></div>}
    <div className="wtm-map-corner"><span>IMPERIAL SURVEY OFFICE</span><small>MAP COORDINATES · RELATIVE</small></div>
   </div>
   </div>
@@ -511,6 +553,22 @@ export default function WorldTerritoryMap({region,zoneId,settlements,factions=[]
    <span>{mode==='mountains'?'Mountain zones: click around the boundary, then close the loop to fill it. Click near the first point to close; click near another mountain vertex to connect. All filled terrain is unbuildable.':mode==='rivers'?'Click to trace a river. Rivers are natural geography, not transport routes.':mode==='move'?'Drag a settlement or junction to move it. Connections follow the shared junction.':drawing?(routeStart!=null&&routeEnd!=null?'Click the map for bends, then save. Nothing is created until you save.':routeStart!=null?'Select the destination location or junction.':'Select a starting location or junction.'):mode==='bend'?'Select a route in the route registry, click the map to insert bends or drag its handles.':'Inspect sites and junctions, or select an existing route to edit it.'}</span>
 
   </div>}
+  {canEdit&&mode==='crossings'&&<section className="wtm-route-editor wtm-crossing-editor" aria-label="Cross-zone crossings">
+   <div className="wtm-route-heading"><strong><i className="fa-solid fa-right-left"/> ZONE & REGION CROSSINGS</strong><span>LINK TWO MAPS</span></div>
+   <p className="wtm-crossing-help">Click near this map's edge to place an entrance. A matching junction is created in the destination zone. Connect existing roads or railways to both junctions using Plan a route.</p>
+   <div className="wtm-route-grid">
+    <label>Crossing name<input maxLength={120} value={crossingName} placeholder="Western Passage" onChange={e=>setCrossingName(e.target.value)}/></label>
+    <label>Transport<select value={crossingType} onChange={e=>setCrossingType(e.target.value)}><option value="road">Road</option><option value="trail">Footpath / trail</option><option value="rail">Railway</option></select></label>
+    <label>Destination region<select value={crossingToRegion} onChange={e=>{setCrossingToRegion(e.target.value);setCrossingToZone('')}}><option value="">Choose region</option>{allRegions.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
+    <label>Destination zone<select value={crossingToZone} onChange={e=>setCrossingToZone(e.target.value)}><option value="">Choose zone</option>{destinationZones.map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select></label>
+    <label>Destination X (%)<input type="number" min="2" max="98" step=".1" value={crossingToX} onChange={e=>setCrossingToX(e.target.value)}/></label>
+    <label>Destination Y (%)<input type="number" min="2" max="98" step=".1" value={crossingToY} onChange={e=>setCrossingToY(e.target.value)}/></label>
+    <label>Travel minutes<input type="number" min="1" max="10080" value={crossingMinutes} onChange={e=>setCrossingMinutes(e.target.value)}/></label>
+    <span className="wtm-crossing-entry">{crossingFrom?'Entrance: '+crossingFrom.x.toFixed(1)+'%, '+crossingFrom.y.toFixed(1)+'%':'Click the current map edge for the entrance.'}</span>
+   </div>
+   <div className="wtm-route-actions"><button type="button" disabled={busy||!crossingFrom||!crossingName.trim()||!crossingToZone||!edgePoint({x:Number(crossingToX),y:Number(crossingToY)})||!Number.isInteger(Number(crossingMinutes))||Number(crossingMinutes)<1||Number(crossingMinutes)>10080} onClick={saveCrossing}><i className="fa-solid fa-link"/> Create paired crossing</button><button type="button" onClick={()=>setCrossingFrom(null)}>Clear entrance</button></div>
+   {mappedCrossings.length>0&&<div className="wtm-crossing-list">{mappedCrossings.map(c=>{const other=Number(c.from_zone_id)===Number(zoneId)?c.to_zone_id:c.from_zone_id;return <div className="wtm-crossing-row" key={c.id}><strong>{c.name}</strong><span>{c.route_type} · {allZones.find(z=>Number(z.id)===Number(other))?.name||'Other zone'}</span><select aria-label={'Status for '+c.name} disabled={busy} value={c.status} onChange={e=>setCrossingStatus(c,e.target.value)}><option value="operational">Operational</option><option value="damaged">Damaged</option><option value="closed">Closed</option></select><button type="button" disabled={busy} onClick={()=>removeCrossing(c)} aria-label={'Delete '+c.name}><i className="fa-solid fa-trash-can"/></button></div>})}</div>}
+  </section>}
   {canEdit&&selectedNode&&(mode==='view'||mode==='move'||mode==='link'||mode==='bend')&&junctionDraft&&<section className="wtm-junction-editor" aria-label="Selected junction editor">
    <div className="wtm-route-heading"><strong><i className="fa-solid fa-circle-nodes"/> JUNCTION #{selectedNode.id}</strong><span>{attachedSegments.length} CONNECTED SEGMENTS</span></div>
    <div className="wtm-junction-fields">
