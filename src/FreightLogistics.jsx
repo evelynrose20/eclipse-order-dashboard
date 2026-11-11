@@ -36,9 +36,9 @@ export default function FreightLogistics({request,onNavigate}){
  const [selectedContract,setSelectedContract]=useState(null),[preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[freightAvailable,setFreightAvailable]=useState(true);
  const load=async()=>{
   try{const next=await request('/world-admin/logistics');if(!next||!Array.isArray(next.shipments))throw new Error('Freight records unavailable');setData(next);setFreightAvailable(true);setError('');return next}
-  catch(e){setFreightAvailable(false);setData(previous=>previous||emptyFreight());setError('Freight dispatch is temporarily unavailable. Territory, rail and trade operations remain accessible.');return null}
+  catch(e){setFreightAvailable(false);setData(previous=>previous||emptyFreight());setError(e?.status===401?'Your session has expired. Sign in again.':e?.status===403?'Your account cannot access freight operations.':e?.status===503?'Freight records are temporarily unavailable. Retry after the service is restored.':'Freight dispatch is temporarily unavailable. Territory, rail and trade operations remain accessible.');return null}
  };
- useEffect(()=>{load().catch(e=>setError(e.message||'Freight records unavailable'));const timer=setInterval(()=>load().catch(()=>{}),30000);return()=>clearInterval(timer)},[]);
+ useEffect(()=>{let active=true;load().catch(e=>setError(e.message||'Freight records unavailable'));const timer=setInterval(()=>{if(active&&freightAvailable)load().catch(()=>{})},30000);return()=>{active=false;clearInterval(timer)}},[freightAvailable]);
  const facilities=data?.facilities||[],templates=data?.templates||[],contracts=data?.contracts||[],shipments=data?.shipments||[],vehicles=data?.vehicles||[],stocks=data?.stocks||[],items=data?.items||[];
  const civicTypes=data?.civic_types||[],civicReceipts=data?.civic_receipts||[];
  const itemName=id=>items.find(x=>x.id===id)?.name||id;
