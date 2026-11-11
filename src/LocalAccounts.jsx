@@ -8,6 +8,7 @@ import DiscordAccessPage from './DiscordAccessPage.jsx';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
+ not_authenticated:'Your session has expired. Sign in again.',
  chair_must_be_offline:'The apparatus must be Offline before a character can be seated.',
  chair_occupied:'The chamber chair is already occupied. Release the current character first.',
  chair_empty:'The chamber chair is empty.',
@@ -122,6 +123,7 @@ export default function LocalAccounts(){
  return <div className="eo-local">
   <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
+    {token&&<button type="button" className="eo-primary" onClick={()=>{setMessage('');setSessionRetry(n=>n+1)}}>Retry connection</button>}
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
    <h1>Enter the Order</h1>
    <p>Sign in with Discord to enter the Order. Your existing membership and characters will be here once your accounts are connected.</p>
