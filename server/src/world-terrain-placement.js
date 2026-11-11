@@ -2,7 +2,7 @@
 // Open legacy mountain ridges exclude a 3.2-unit corridor. Closed mountains
 // exclude their complete interior, including the boundary buffer.
 export const MOUNTAIN_EXCLUSION_RADIUS=3.2;
-export const NPC_MAP_EDGE_PADDING=10;
+export const NPC_MAP_EDGE_PADDING=3;
 export const riverPointValid=p=>p&&typeof p.x==='number'&&typeof p.y==='number'&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=100&&p.y>=0&&p.y<=100;
 export const validTerrainPoints=points=>Array.isArray(points)&&points.length>=2&&points.length<=256&&points.every(riverPointValid);
 export function distanceToRidge(point,points,closed=false){
