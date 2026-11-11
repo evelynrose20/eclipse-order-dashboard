@@ -1,3 +1,4 @@
+import {blueprintRoute,levelInfo,validateRecipe,spendWarehouseMaterials} from './world-warehouse-blueprints.js';
 // Warehouse inventory is physically distinct from industrial and player-reserved stock.
 // All cargo debits and receipts use the same industry ledger and a warehouse receipt ledger.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -30,16 +31,33 @@ async function receipt(db,shipment,actor,ledger){
 }
 export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledger,availableVehicle,operationalAirDocks}){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ if(path.startsWith('/world-admin/logistics/warehouses/blueprints')||/^\/world-admin\/logistics\/warehouses\/\d+\/upgrade$/.test(path))return blueprintRoute(pool,req,path,actor,{ledger});
  if(path==='/world-admin/logistics/warehouses'&&req.method==='POST'){
-  const b=await parse(req),tier=WAREHOUSE_TIERS[b?.tier];
-  if(!tier||!id(b.settlement_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>130||typeof b.construction_item_id!=='string'||b.construction_item_id.length>48)return fail(400,'invalid_warehouse_plan');
+  const b=await parse(req);
+  if(!b||!id(b.settlement_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>130||(!id(b.blueprint_id)&&(!WAREHOUSE_TIERS[b.tier]||typeof b.construction_item_id!=='string'||b.construction_item_id.length>48)))return fail(400,'invalid_warehouse_plan');
   return transaction(pool,async db=>{
    const [[settlement]]=await db.execute('SELECT id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[b.settlement_id]);
    if(!settlement||settlement.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(settlement.strategic_state))return fail(409,'warehouse_requires_order_settlement');
+   if(id(b.blueprint_id)){
+    const [[blueprint]]=await db.execute('SELECT id,active FROM world_logistics_warehouse_blueprints WHERE id=?',[b.blueprint_id]);
+    const level=await levelInfo(db,b.blueprint_id,1);
+    if(!blueprint?.active||!level)return fail(409,'warehouse_blueprint_unavailable');
+    const recipe=await validateRecipe(db,level.requirements);
+    if(!recipe)return fail(409,'warehouse_blueprint_requirements_missing');
+    const lead=recipe[0],legacyTier=Number(b.blueprint_id)===2?'storehouse':Number(b.blueprint_id)===3?'grand':'depot';
+    const [made]=await db.execute('INSERT INTO world_logistics_warehouses(settlement_id,name,tier,capacity_units,construction_item_id,construction_quantity,created_by) VALUES(?,?,?,?,?,?,?)',[settlement.id,b.name.trim(),legacyTier,level.capacity_units,lead.item_id,lead.quantity,actor.id]);
+    await db.execute('INSERT INTO world_logistics_warehouse_progress(warehouse_id,blueprint_id,level_number) VALUES(?,?,1)',[made.insertId,b.blueprint_id]);
+    await db.execute('INSERT INTO world_logistics_warehouse_build_orders(warehouse_id,target_level,requirements) VALUES(?,1,?)',[made.insertId,JSON.stringify(recipe)]);
+    return ok({id:made.insertId,state:'planned',blueprint_id:Number(b.blueprint_id),level:1,capacity_units:Number(level.capacity_units)});
+   }
+   // Compatibility with older dashboard clients; never delete or silently convert legacy records.
+   const tier=WAREHOUSE_TIERS[b.tier];
+   if(!tier||typeof b.construction_item_id!=='string'||b.construction_item_id.length>48)return fail(400,'invalid_warehouse_plan');
    const [[item]]=await db.execute("SELECT id FROM world_industry_items WHERE id=? AND category IN ('refined','supply')",[b.construction_item_id]);
-   if(!item)return fail(409,'warehouse_construction_material_required');
+   if(!item)return fail(404,'warehouse_construction_material_required');
    const [made]=await db.execute('INSERT INTO world_logistics_warehouses(settlement_id,name,tier,capacity_units,construction_item_id,construction_quantity,created_by) VALUES(?,?,?,?,?,?,?)',[settlement.id,b.name.trim(),b.tier,tier.capacity,b.construction_item_id,tier.cost,actor.id]);
-   return ok({id:made.insertId,state:'planned',capacity_units:tier.capacity,construction_quantity:tier.cost});
+   await db.execute('INSERT INTO world_logistics_warehouse_progress(warehouse_id,blueprint_id,level_number) VALUES(?,?,1)',[made.insertId,b.tier==='depot'?1:b.tier==='storehouse'?2:3]);
+   return ok({id:made.insertId,state:'planned',capacity_units:tier.capacity});
   });
  }
  let match=/^\/world-admin\/logistics\/warehouses\/(\d+)\/state$/.exec(path);
@@ -54,7 +72,13 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
     const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.status,COALESCE(site.zone_id,home.zone_id) AS zone_id,COALESCE(site.controlling_faction_id,home.controlling_faction_id) AS controlling_faction_id,home.strategic_state FROM world_industry_facilities f LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_settlements home ON home.id=f.settlement_id WHERE f.id=? FOR UPDATE',[b.facility_id]);
     const [[destination]]=await db.execute('SELECT zone_id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[wh.settlement_id]);
     if(!facility||!destination||Number(facility.zone_id)!==Number(destination.zone_id)||facility.owner_faction_id!=='eclipse-order'||facility.controlling_faction_id!=='eclipse-order'||destination.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(destination.strategic_state)||['ruined','captured'].includes(facility.status))return fail(409,'warehouse_construction_requires_local_stock');
-    if(!await ledger(db,facility.id,wh.construction_item_id,-Number(wh.construction_quantity),'corridor_build',wh.id,actor,'warehouse'))return fail(409,'warehouse_building_materials_insufficient');
+    const [[build]]=await db.execute('SELECT requirements FROM world_logistics_warehouse_build_orders WHERE warehouse_id=? FOR UPDATE',[wh.id]);
+    if(build){
+     const recipe=await validateRecipe(db,build.requirements);
+     if(!recipe)return fail(409,'warehouse_building_recipe_unavailable');
+     if(!await spendWarehouseMaterials(db,wh,facility.id,recipe,actor,ledger,'build-'+wh.id))return fail(409,'warehouse_building_materials_insufficient');
+     await db.execute('DELETE FROM world_logistics_warehouse_build_orders WHERE warehouse_id=?',[wh.id]);
+    }else if(!await ledger(db,facility.id,wh.construction_item_id,-Number(wh.construction_quantity),'corridor_build',wh.id,actor,'warehouse'))return fail(409,'warehouse_building_materials_insufficient');
    }
    await db.execute('UPDATE world_logistics_warehouses SET state=?,commissioned_at=IF(?="operational",UTC_TIMESTAMP(),commissioned_at) WHERE id=?',[b.state,b.state,wh.id]);
    return ok({state:b.state});

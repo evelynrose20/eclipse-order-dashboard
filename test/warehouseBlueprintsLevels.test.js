@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {recipeEntries,validateRecipe} from '../server/src/world-warehouse-blueprints.js';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const sql=read('server/sql/104_warehouse_blueprints_levels.sql');
+const api=read('server/src/world-warehouses.js');
+const blueprint=read('server/src/world-warehouse-blueprints.js');
+const summary=read('server/src/world-logistics.js');
+const ui=read('src/LogisticsWarehouses.jsx');
+const editor=read('src/WarehouseBlueprintsPanel.jsx');
+const corridor=read('src/LogisticsCorridorsPanel.jsx');
+test('warehouse levels and requirements migrate without wiping old warehouse inventories',()=>{
+ assert.match(sql,/CREATE TABLE IF NOT EXISTS world_logistics_warehouse_blueprints/);
+ assert.match(sql,/CREATE TABLE IF NOT EXISTS world_logistics_warehouse_blueprint_levels/);
+ assert.match(sql,/CREATE TABLE IF NOT EXISTS world_logistics_warehouse_progress/);
+ assert.match(sql,/CREATE TABLE IF NOT EXISTS world_logistics_warehouse_build_orders/);
+ assert.match(sql,/INSERT IGNORE INTO world_logistics_warehouse_progress/);
+ assert.doesNotMatch(sql,/DROP TABLE|TRUNCATE/i);
+ assert.match(read('server/src/setup-local.js'),/104_warehouse_blueprints_levels\.sql/);
+ assert.match(read('server/test/mysql-schema.integration.test.js'),/104_warehouse_blueprints_levels\.sql/);
+});
+test('editable multiple-item building recipes validate quantities and duplicate items',async()=>{
+ assert.deepEqual(recipeEntries([{item_id:'iron-ingot',quantity:12},{item_id:'machine-parts',quantity:5}]),[{item_id:'iron-ingot',quantity:12},{item_id:'machine-parts',quantity:5}]);
+ assert.equal(recipeEntries([]),null);
+ assert.equal(recipeEntries([{item_id:'steel',quantity:1},{item_id:'steel',quantity:2}]),null);
+ assert.equal(recipeEntries([{item_id:'steel',quantity:-5}]),null);
+ const fake={execute:async()=>[[{id:'iron-ingot'},{id:'machine-parts'}]]};
+ assert.equal((await validateRecipe(fake,[{item_id:'iron-ingot',quantity:12},{item_id:'machine-parts',quantity:5}])).length,2);
+ assert.match(blueprint,/warehouse_level_capacity_must_increase/);
+});
+test('construction and upgrade debit actual inventory and preserve old warehouses',()=>{
+ assert.match(api,/warehouse_build_orders/);
+ assert.match(api,/spendWarehouseMaterials/);
+ assert.match(blueprint,/warehouse_upgrade_materials_insufficient/);
+ assert.match(blueprint,/UPDATE world_logistics_warehouse_progress SET level_number/);
+ assert.match(blueprint,/UPDATE world_logistics_warehouses SET capacity_units/);
+ assert.match(blueprint,/warehouse_not_operational/);
+ assert.match(blueprint,/facility.owner_faction_id!=='eclipse-order'/);
+ assert.match(summary,/warehouse_blueprints:warehouseBlueprints/);
+ assert.match(summary,/warehouse_progress:warehouseProgress/);
+});
+test('UI exposes warehouse designs and upgrades while rendering real region names',()=>{
+ assert.match(ui,/WarehouseBlueprintsPanel/);
+ assert.match(ui,/Warehouse designs/);
+ assert.match(ui,/Upgrade warehouse/);
+ assert.match(ui,/blueprint_id:Number\(draft.blueprint_id\)/);
+ assert.match(editor,/Construction material bill/);
+ assert.match(editor,/warehouse_blueprint/);
+ assert.match(corridor,/l.zone_name,l.region_name/);
+ assert.doesNotMatch(corridor,/Settlement in region /);
+});

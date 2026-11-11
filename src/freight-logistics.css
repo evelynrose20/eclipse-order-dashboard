@@ -265,3 +265,38 @@
 .freight-root .lp-search-select .eo-search-results{max-height:min(250px,35vh)}
 .freight-root .lp-search-select .eo-search-option.focused,.freight-root .lp-search-select .eo-search-option:hover{background:#3b4e5a}
 .freight-root .lp-search-select .eo-search-group{background:#2f414e}
+
+/* Warehouse blueprint library: visual building patterns with separate level upgrades */
+.wh-blueprints{display:grid;gap:17px}
+.wh-blueprints .freight-list-head h3{font:800 28px var(--imperial-heading,'Barlow Condensed',sans-serif);margin:6px 0}
+.wh-blueprint-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.wh-blueprint-card{background:#162a37;border:1px solid #596d78;min-width:0}
+.wh-blueprint-head{display:flex;gap:13px;align-items:center;padding:18px;background:linear-gradient(120deg,#324653,#1e3340);border-bottom:1px solid #728077}
+.wh-blueprint-head>i{color:#e1bd83;font-size:29px;width:38px;text-align:center}
+.wh-blueprint-head h4{font:800 24px var(--imperial-heading,'Barlow Condensed',sans-serif);color:#f3e6d0;margin:0 0 6px}
+.wh-blueprint-head p{font-size:11px;color:#b4c5cc;margin:0}
+.wh-level-list{display:grid;gap:8px;padding:13px}
+.wh-level-item{display:flex;gap:10px;align-items:center;background:#0e202b;border:1px solid #435a69;padding:11px}
+.wh-level-item>div:first-child{display:grid;gap:4px;min-width:85px}
+.wh-level-item strong{color:#eed6b0;font-size:12px}
+.wh-level-item small{color:#b4c5cc;font-size:11px}
+.wh-level-materials{display:grid;gap:3px;flex:1;min-width:0}
+.wh-level-materials small{overflow-wrap:anywhere}
+.wh-level-item button,.wh-add-level{background:#43505a;color:#f4e1c4;border:1px solid #b49c73;padding:8px 11px;cursor:pointer}
+.wh-add-level{margin:0 13px 13px}
+.wh-recipe-list{display:grid;gap:10px}
+.wh-recipe-row{display:flex;align-items:center;gap:9px;min-width:0}
+.wh-recipe-row>span{display:grid;place-items:center;background:#3e4e5d;min-width:28px;height:30px;color:#d7b783;font-size:12px;font-weight:850}
+.wh-recipe-row>.eo-material-picker{flex:1}
+.wh-recipe-row label{width:110px;flex:none;display:grid;gap:4px;font-size:11px;color:#c2cbd0}
+.wh-recipe-row input,.wh-level-input input{background:#10212d;color:#f4e6d1;border:1px solid #5b7380;padding:9px;width:100%;min-width:0}
+.wh-recipe-row>button{border:1px solid #946c62;background:#3b3031;color:#e4b5b0;padding:10px;cursor:pointer}
+.wh-level-input{display:grid;gap:7px;max-width:360px;font-size:12px;font-weight:750;color:#e2cfb2}
+.wh-design-intro{display:flex;gap:12px;align-items:center;color:#f0d7aa;padding:20px}
+.wh-design-intro i{font-size:32px}
+.wh-design-intro small{color:#bcc8ce}
+.wh-upgrade-box{display:grid;gap:8px;background:#203b44;padding:12px;border:1px solid #73816c;width:100%}
+.wh-upgrade-box strong{color:#edcb91;font-size:12px}
+.wh-upgrade-box small{color:#c7d5d5;font-size:11px}
+.wh-upgrade-box select,.wh-upgrade-box button{min-width:0}
+@media(max-width:820px){.wh-blueprint-grid{grid-template-columns:1fr}.wh-recipe-row{flex-wrap:wrap}.wh-recipe-row>.eo-material-picker{flex-basis:65%}}
