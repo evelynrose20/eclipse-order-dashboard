@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab} from '../src/characterDossierRules.js';
+import {dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab,canViewCharacterChamber} from '../src/characterDossierRules.js';
 
 const base={
  id:'synthetic-character',name:'Astra Moonveil',species:'Viera',class_name:'Mage',
@@ -43,4 +43,22 @@ test('classic sheet is the main default for permitted characters',()=>{
  assert.equal(dossierTabs(base)[0].id,'legacy');
  assert.equal(defaultDossierTab({...base,collar_bound:true,view_mode:'bound'}),'identity');
  assert.equal(defaultDossierTab({...base,collar_bound:true,view_mode:'full'},true),'identity');
+});
+
+test('authorized staff can open Chamber for other players unbound and bound characters',()=>{
+ const other={...base,player_user_id:'another-player'};
+ assert.equal(canViewCharacterChamber(other,'staff',{staff:true}),true);
+ assert.equal(canViewCharacterChamber({...other,collar_bound:true},'staff',{staff:true}),true);
+});
+test('members cannot view another player Chamber solely because a character is bound',()=>{
+ const other={...base,player_user_id:'another-player',collar_bound:true};
+ assert.equal(canViewCharacterChamber(other,'member'),false);
+ assert.equal(canViewCharacterChamber(other,'staff',{staff:true,playerPreview:true}),false);
+ assert.equal(canViewCharacterChamber(other,'staff',{staff:false}),false);
+});
+test('character owner always sees their Chamber record including in player preview',()=>{
+ const own={...base,player_user_id:'member'};
+ assert.equal(canViewCharacterChamber(own,'member'),true);
+ assert.equal(canViewCharacterChamber(own,'member',{playerPreview:true}),true);
+ assert.equal(canViewCharacterChamber(null,'member',{staff:true}),false);
 });
