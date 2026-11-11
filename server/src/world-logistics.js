@@ -333,7 +333,7 @@ export async function logisticsRoute(pool,req,path,actor){
   const b=await body(req);
   if(!validTreatySchedule(b)||typeof b.notes!=='string'||b.notes.length>600)return fail(400,'invalid_treaty_terms');
   const [[existing]]=await db.execute('SELECT * FROM world_logistics_trade_treaties WHERE id=? FOR UPDATE',[Number(renewMatch[1])]);
-  if(!existing||!['countered','rejected','expired','suspended'].includes(existing.status))return fail(409,'treaty_not_open_for_renegotiation');
+  if(!existing||!(['countered','rejected','expired','suspended'].includes(existing.status)||(existing.status==='proposed'&&!existing.response_due_at)))return fail(409,'treaty_not_open_for_renegotiation');
   await db.execute("UPDATE world_logistics_trade_treaties SET status='proposed',notes=?,starts_at=?,ends_at=?,response_due_at=?,responded_at=NULL,response_reason='' WHERE id=?",[b.notes,sqlDate(b.starts_at),sqlDate(b.ends_at),sqlDate(b.response_due_at),existing.id]);
   return ok({status:'proposed'});
  });
