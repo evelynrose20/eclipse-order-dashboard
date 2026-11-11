@@ -51,8 +51,9 @@ export async function warehousesRoute(pool,req,path,actor,{route,facilities,ledg
    if(!wh)return fail(404,'warehouse_not_found');
    if(b.state==='operational'&&wh.state!=='operational'){
     if(!id(b.facility_id))return fail(400,'warehouse_construction_depot_required');
-    const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.settlement_id,f.status,s.controlling_faction_id,s.strategic_state FROM world_industry_facilities f JOIN world_settlements s ON s.id=f.settlement_id WHERE f.id=? FOR UPDATE',[b.facility_id]);
-    if(!facility||Number(facility.settlement_id)!==Number(wh.settlement_id)||facility.owner_faction_id!=='eclipse-order'||facility.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(facility.strategic_state)||['ruined','captured'].includes(facility.status))return fail(409,'warehouse_construction_requires_local_stock');
+    const [[facility]]=await db.execute('SELECT f.id,f.owner_faction_id,f.status,COALESCE(site.zone_id,home.zone_id) AS zone_id,COALESCE(site.controlling_faction_id,home.controlling_faction_id) AS controlling_faction_id,home.strategic_state FROM world_industry_facilities f LEFT JOIN world_industry_sites site ON site.id=f.site_id LEFT JOIN world_settlements home ON home.id=f.settlement_id WHERE f.id=? FOR UPDATE',[b.facility_id]);
+    const [[destination]]=await db.execute('SELECT zone_id,controlling_faction_id,strategic_state FROM world_settlements WHERE id=? FOR UPDATE',[wh.settlement_id]);
+    if(!facility||!destination||Number(facility.zone_id)!==Number(destination.zone_id)||facility.owner_faction_id!=='eclipse-order'||facility.controlling_faction_id!=='eclipse-order'||destination.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(destination.strategic_state)||['ruined','captured'].includes(facility.status))return fail(409,'warehouse_construction_requires_local_stock');
     if(!await ledger(db,facility.id,wh.construction_item_id,-Number(wh.construction_quantity),'corridor_build',wh.id,actor,'warehouse'))return fail(409,'warehouse_building_materials_insufficient');
    }
    await db.execute('UPDATE world_logistics_warehouses SET state=?,commissioned_at=IF(?="operational",UTC_TIMESTAMP(),commissioned_at) WHERE id=?',[b.state,b.state,wh.id]);
