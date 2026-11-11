@@ -66,6 +66,8 @@ export async function transitionRoute(pool,req,path){
    data.rank=r.target_bound?'Unmarked':'Unbound: Free';
    await connection.execute('UPDATE characters SET collar_bound=?,bound_rank=?,sheet_json=? WHERE id=?',
     [r.target_bound?1:0,r.target_bound?'rank_i':null,JSON.stringify(data),ch.id]);
+   if(r.target_bound)await connection.execute("INSERT INTO character_order_ranks(character_id,rank_code) VALUES(?,'unmarked') ON DUPLICATE KEY UPDATE rank_code='unmarked',assigned_at=CURRENT_TIMESTAMP",[ch.id]);
+   else await connection.execute('DELETE FROM character_order_ranks WHERE character_id=?',[ch.id]);
    newState='applied';
   }
   await connection.execute('UPDATE character_status_requests SET state=?,decided_at=CASE WHEN ? IN ("approved","declined") THEN UTC_TIMESTAMP() ELSE decided_at END,applied_at=CASE WHEN ?="applied" THEN UTC_TIMESTAMP() ELSE applied_at END WHERE id=?',
