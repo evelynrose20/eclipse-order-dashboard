@@ -109,6 +109,7 @@ export async function factionRoute(pool,req,path){
   const body=await read(req),data=editFields(body);
   if(!data)return fail(400,'invalid_faction');
   const [updated]=await pool.execute('UPDATE order_factions SET name=?,leader=?,relationship=?,description=?,notes=?,image_reference_url=?,public_visible=?,sort_order=?,faction_scope=?,trade_enabled=?,map_color=? WHERE id=?',[...data,id]);
+  if(updated.affectedRows&&!body.trade_enabled)await pool.execute("UPDATE fc_trade_contracts SET status='paused' WHERE faction_id=? AND status='open'",[id]);
   return updated.affectedRows?result(200,{status:'saved'}):fail(404,'faction_not_found');
  }
  if(path==='/factions/'+id&&req.method==='POST'){
