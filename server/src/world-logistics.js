@@ -417,7 +417,7 @@ export async function logisticsRoute(pool,req,path,actor){
    const [[location]]=await db.execute('SELECT controlling_faction_id,strategic_state FROM world_settlements WHERE id=?',[dock.settlement_id]);
    if(!location||location.controlling_faction_id!=='eclipse-order'||['destroyed','abandoned'].includes(location.strategic_state))return fail(409,'air_dock_requires_order_settlement');
   }
-  await db.execute('UPDATE world_logistics_air_docks SET status=?,repair_required=CASE WHEN ?='damaged' THEN 1 WHEN ?='operational' THEN 0 ELSE repair_required END,commissioned_at=IF(?="operational",COALESCE(commissioned_at,UTC_TIMESTAMP()),commissioned_at) WHERE id=?',[b.status,b.status,b.status,b.status,dock.id]);
+  await db.execute(`UPDATE world_logistics_air_docks SET status=?,repair_required=CASE WHEN ?='damaged' THEN 1 WHEN ?='operational' THEN 0 ELSE repair_required END,commissioned_at=IF(?='operational',COALESCE(commissioned_at,UTC_TIMESTAMP()),commissioned_at) WHERE id=?`,[b.status,b.status,b.status,b.status,dock.id]);
   return ok({status:b.status});
  });
  if(path==='/world-admin/logistics/itineraries'&&req.method==='POST'){
