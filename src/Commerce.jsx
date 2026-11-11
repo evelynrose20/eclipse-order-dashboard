@@ -1,3 +1,4 @@
+import MaterialPicker from './MaterialPicker.jsx';
 import React,{useEffect,useMemo,useState} from 'react';
 import './commerce.css';
 
@@ -203,7 +204,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
    <label>Order title<input maxLength={130} value={createDraft.title} onChange={e=>setCreateDraft({...createDraft,title:e.target.value})}/></label>
    <label>Order details<textarea maxLength={600} value={createDraft.description} onChange={e=>setCreateDraft({...createDraft,description:e.target.value})}/></label>
    <label>Goods type<select value={createDraft.item_kind} onChange={e=>setCreateDraft({...createDraft,item_kind:e.target.value,item_id:''})}><option value="material">FC shared materials / provisions</option><option value="equipment">Crafted weapon, armor or tool</option></select></label>
-   <label>Good requested<select value={createDraft.item_id} onChange={e=>setCreateDraft({...createDraft,item_id:e.target.value})}><option value="">Select goods</option>{(createDraft.item_kind==='material'?materials:templates).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+   <label>Good requested<MaterialPicker catalog={createDraft.item_kind==='material'?materials:templates} value={createDraft.item_id} onChange={e=>setCreateDraft({...createDraft,item_id:e.target.value})}><option value="">Select goods</option>{(createDraft.item_kind==='material'?materials:templates).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</MaterialPicker></label>
    <div className="eo-commerce-three"><label>Units requested<input type="number" min="1" max="100000" value={createDraft.required_quantity} onChange={e=>setCreateDraft({...createDraft,required_quantity:e.target.value})}/></label><label>Standing per item<input type="number" min="1" max="20" value={createDraft.rep_per_unit} onChange={e=>setCreateDraft({...createDraft,rep_per_unit:e.target.value})}/></label><label>Gil paid to FC per item<input type="number" min="0" max="100000" value={createDraft.sale_value_per_unit} onChange={e=>setCreateDraft({...createDraft,sale_value_per_unit:e.target.value})}/></label></div>
    <button type="button" className="btn primary" disabled={busy||!createDraft.faction_id||!createDraft.item_id||!createDraft.title.trim()} onClick={createOrder}>Publish buy order</button></section></div>}
  </section>;
