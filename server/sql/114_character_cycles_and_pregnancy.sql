@@ -33,9 +33,21 @@ CREATE TABLE IF NOT EXISTS character_conception_rolls (
  cycle_phase VARCHAR(20) NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE KEY uq_character_conception_event(character_id,event_key),
+ UNIQUE KEY uq_character_conception_day(character_id,ic_event_date),
  FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
  FOREIGN KEY (actor_account_id) REFERENCES accounts(id),
  CONSTRAINT chk_conception_roll CHECK(roll_d100 BETWEEN 1 AND 100 AND chance<=100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS character_reproductive_events (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ character_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ actor_account_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+ action VARCHAR(40) NOT NULL,
+ summary VARCHAR(180) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX ix_reproductive_event_history(character_id,created_at),
+ FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+ FOREIGN KEY (actor_account_id) REFERENCES accounts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT INTO schema_migrations(version) VALUES('114_character_cycles_and_pregnancy')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
