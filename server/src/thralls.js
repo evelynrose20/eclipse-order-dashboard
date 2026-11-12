@@ -212,14 +212,9 @@ export async function thrallsRoute(pool,req,path){
    if(data.status==='running'&&!seat.character_id)return await rollback(cn,'chair_empty');
    if(data.status==='running'&&(machine.upper_status!=='ready'&&machine.lower_status!=='ready'&&machine.upper_status!=='active'&&machine.lower_status!=='active'))return await rollback(cn,'no_operational_assembly');
    updates=['machine_status=?'];values=[data.status];detail='System status changed to '+data.status;
-   if(data.status==='running'){
-    for(const channel of ['upper','lower']){
-     if(machine[channel+'_status']==='ready'){
-      updates.push(channel+'_status=?');values.push('active');
-      await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
-     }
-    }
-   }else{
+   // Starting the main apparatus never starts either collection assembly.
+   // Each assembly must be activated separately by an operator.
+   if(data.status!=='running'){
     for(const channel of ['upper','lower']){
      if(machine[channel+'_status']==='active'){updates.push(channel+'_status=?');values.push('ready')}
     }
@@ -228,6 +223,8 @@ export async function thrallsRoute(pool,req,path){
    const channel=data.channel,status=data.status;
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
    if(status==='active'&&machine.machine_status!=='running')return await rollback(cn,'chamber_not_running');
+   if(status==='active'&&!seat.character_id)return await rollback(cn,'chair_empty');
+   if(status==='active'&&machine[channel+'_status']!=='active')await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
    updates=[channel+'_status=?'];values=[status];detail=channel+' assembly set to '+status;
   }else if(action==='run_cycle'){
    const channel=data.channel;
