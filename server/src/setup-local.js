@@ -276,6 +276,9 @@ async function main(){
   const [[chamberMigrationState]]=await pool.query("SELECT COUNT(*) AS applied FROM schema_migrations WHERE version IN ('117_chamber_fractional_fluids','118_chamber_fluid_labels')");
   if(Number(chamberMigrationState.applied)!==2)throw new Error('Chamber SQL migrations 117 and 118 have not both been recorded.');
   console.log('Chamber schema verified: fractional fluid values and admin fluid names are installed (117, 118).');
+  const chamberBatchTanks=await readFile(new URL('../sql/119_chamber_batch_tanks_workshop.sql',import.meta.url),'utf8');
+  await pool.query(chamberBatchTanks);
+  console.log('Chamber batch tanks and workshop reagents verified (119).');
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
