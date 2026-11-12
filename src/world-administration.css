@@ -406,3 +406,36 @@
 .power-grid-fields label{display:grid;gap:7px;font-size:11px;font-weight:800;color:#d2dce0}
 .power-grid-fields input,.power-grid-fields select{width:100%;box-sizing:border-box}
 @media(max-width:600px){.power-grid-list,.power-grid-fields{grid-template-columns:1fr}.power-grid-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Power construction adopts existing settlement projects instead of an instant stat editor. */
+.power-grid-empty{border:1px dashed #5a6875;background:#17232d;text-align:center;padding:30px 20px;grid-column:1/-1}
+.power-grid-empty>i{font-size:26px;color:#ad838d;margin-bottom:9px}
+.power-grid-empty h3{margin:5px 0 7px;color:#f3eee9}
+.power-grid-empty p{font-size:12px;color:#b2c1cb;margin:0}
+.power-grid-projects{display:grid;gap:12px;margin-top:6px}
+.power-grid-projects>h3{font-size:15px;letter-spacing:.01em;margin:0;color:#e9e5e1}
+.power-grid-project{border:1px solid #56636c;background:#192832;padding:15px;display:grid;gap:11px}
+.power-grid-project-head{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.power-grid-project-head>div{display:grid;gap:5px}
+.power-grid-project-head strong{font-size:13px;color:#f7eae6}
+.power-grid-project-head small{font-size:11px;color:#adbfc7}
+.power-grid-project-head>span{color:#cda6ad;border:1px solid #856f7b;font-size:10px;text-transform:uppercase;padding:6px 9px}
+.power-grid-project>small{color:#aebfc8}
+.power-grid-progress{height:8px;border:1px solid #3b5660;background:#101a22;border-radius:3px;overflow:hidden}
+.power-grid-progress>div{height:100%;background:linear-gradient(90deg,#808e88,#b9d3bf);transition:width .2s}
+.power-grid-project-materials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.power-grid-project-materials>div{display:grid;gap:9px;padding:12px;background:#13212a;border:1px solid #374953}
+.power-grid-project-materials span{font-size:12px;color:#d2dce0}
+.power-grid-project-materials button,.power-grid-project>button{padding:9px 11px;background:#283a44;border:1px solid #7a828c;border-radius:3px;color:#e9edef;cursor:pointer}
+.power-grid-project-materials button:disabled,.power-grid-project>button:disabled{opacity:.5;cursor:not-allowed}
+.power-grid-fuel{border-top:1px solid #435563;padding-top:12px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.power-grid-fuel>strong{width:100%;color:#bfd0ce;font-size:11px}
+.power-grid-fuel select{flex:1;min-width:160px}
+.power-grid-fuel input{width:115px}
+.power-grid-fuel button{background:#334c47;border:1px solid #7aaf9b;color:#e6f3e7;padding:9px 12px;border-radius:3px;cursor:pointer}
+.power-grid-fuel button:disabled{opacity:.45}
+.power-grid-project-link{border-left:3px solid #baa484;background:#272e37;color:#ebdec3;font-size:12px;margin:0;padding:9px 12px}
+.power-grid-preview{display:grid;gap:7px;background:#12222c;border:1px solid #4f6770;padding:13px;margin-top:11px;font-size:12px}
+.power-grid-preview strong{color:#efede8}
+.power-grid-preview small{color:#a9bdc5}
+@media(max-width:600px){.power-grid-project-materials{grid-template-columns:1fr}.power-grid-fuel input{width:100%}}
