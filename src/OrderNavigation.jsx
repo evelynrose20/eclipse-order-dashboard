@@ -2,13 +2,13 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
-const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',freight:'truck-ramp-box',fronts:'store',treasury:'coins',chamber:'flask-vial', 'breeding-pit':'egg',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears','venue-management':'store'};
+const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',freight:'truck-ramp-box',fronts:'store',treasury:'coins',chamber:'flask-vial', 'breeding-pit':'egg','lineage-research':'dna',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears','venue-management':'store'};
 const navIcon=id=>'fa-solid fa-'+(FA_NAV[id]||'circle');
 const SECTION_MAP={
  overview:'home',
  roster:'characters',sheet:'characters',
  scenes:'activities',encounters:'activities',events:'activities',construction:'world',factions:'world',world:'world',workshop:'economy',trade:'economy',freight:'economy',fronts:'economy',treasury:'economy',
- chamber:'thralls','breeding-pit':'thralls',
+ chamber:'thralls','breeding-pit':'thralls','lineage-research':'thralls',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',lore:'administration',
  settings:'administration','venue-management':'administration'
@@ -28,6 +28,7 @@ const DESCRIPTIONS={
  scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
  chamber:'Aetheric extraction chamber and alchemical annex',
  'breeding-pit':'Brood incubation, nursery, strains and military transfers',
+ 'lineage-research':'Restricted heredity research and gestation studies',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'The Order’s governing chamber and charter',

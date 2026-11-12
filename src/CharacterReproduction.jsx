@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import GestationDevelopment from './GestationDevelopment.jsx';
 import './character-reproduction.css';
 
 const today=()=>new Date().toISOString().slice(0,10);
@@ -12,7 +13,17 @@ export default function CharacterReproduction({character,request,readOnly=false,
  const [modal,setModal]=useState(null),[subview,setSubview]=useState('overview');
  const [eventDate,setEventDate]=useState(today()),[eventKey,setEventKey]=useState(null),[outcome,setOutcome]=useState(null);
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const [researchAccess,setResearchAccess]=useState(null),[researchBusy,setResearchBusy]=useState(false);
  const endpoint='/characters/'+character.id+'/reproduction';
+ useEffect(()=>{let live=true;setResearchAccess(null);
+  if(readOnly)return()=>{live=false};
+  request('/characters/'+character.id+'/lineage-consent').then(r=>{if(live)setResearchAccess(Boolean(r.allow_research))}).catch(()=>{});
+  return()=>{live=false};
+ },[character.id,readOnly]);
+ async function toggleResearch(){if(researchBusy||researchAccess===null)return;setResearchBusy(true);setError('');
+  try{const next=!researchAccess;await request('/characters/'+character.id+'/lineage-consent',{method:'PUT',body:{allow_research:next}});setResearchAccess(next);setNotice(next?'Research linkage authorized.':'Research linkage withdrawn.');}
+  catch(e){setError(e.message||'Unable to update research permission')}finally{setResearchBusy(false)}
+ }
  async function load(){
   const result=await request(endpoint);
   setData(result);
@@ -80,9 +91,11 @@ export default function CharacterReproduction({character,request,readOnly=false,
        <div className="repro-data"><span>Status</span><strong>{progress?.due?'Delivery pending':'Progressing'}</strong><small>{Math.max(0,(progress?.total_days||90)-(progress?.days||0))} IC days remaining</small></div>
       </div>
       <div className="repro-progress-block"><div><span>Progress</span><strong>{progress?.percent||0}%</strong></div><div className="repro-progress"><span style={{width:(progress?.percent||0)+'%'}}/></div></div>
+      <GestationDevelopment days={progress?.days||0} totalDays={progress?.total_days||90}/>
       {profile.pregnancy_notes&&<div className="repro-case-notes"><span>Story notes</span><p>{profile.pregnancy_notes}</p></div>}
       {!locked&&<div className="repro-actions"><span>Record an agreed story outcome when the plot reaches that stage.</span><button type="button" onClick={()=>{if(window.confirm('Record this pregnancy as completed?'))void submit('complete','POST',{status:'completed'},'Delivery recorded.')}} disabled={busy}>Record delivery</button><button type="button" className="repro-danger" onClick={()=>{if(window.confirm('End this pregnancy record?'))void submit('complete','POST',{status:'ended'},'Pregnancy record ended.')}} disabled={busy}>End record</button></div>}
      </>:<div className="repro-empty-action"><div className="repro-empty-symbol"><i className="fa-solid fa-file-medical" aria-hidden="true"/></div><div><h4>{profile.pregnancy_status==='none'?'No pregnancy on record':'Previous pregnancy '+title(profile.pregnancy_status)}</h4><p>Register an established IC pregnancy. New records default to a three-month (90 IC day) term.</p>{bound&&!mayRegister&&<p className="repro-hint">Pregnancy registration for bound characters is managed by authorized Order staff.</p>}</div>{mayRegister&&<button type="button" className="repro-primary" onClick={()=>{setPregnancy({anchor:today(),start_day:0,total_days:90,notes:''});setModal('pregnancy')}}><i className="fa-solid fa-plus" aria-hidden="true"/> Register pregnancy</button>}</div>}
+     {!locked&&researchAccess!==null&&<div className="repro-research-access"><div><strong><i className="fa-solid fa-microscope" aria-hidden="true"/> Imperial Lineage research</strong><p>Allow authorized research staff to link this character's record to a research case. You can withdraw permission at any time.</p></div><button type="button" disabled={researchBusy} onClick={toggleResearch}>{researchAccess?'Withdraw research access':'Authorize research link'}</button></div>}
      {!commandLimited&&<div className="repro-history"><h4>Story history</h4>{(data.history||[]).length?(data.history||[]).map((h,i)=><div key={i}><span>{String(h.created_at||'').slice(0,10)} · {title(h.action)}</span><strong>{h.summary}</strong></div>):<p>No previous changes recorded.</p>}</div>}
     </div>}
     {subview==='events'&&<div className="repro-panel">

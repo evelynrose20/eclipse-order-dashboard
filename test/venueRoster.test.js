@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const app=read('App.jsx'),site=read('src/VenueSite.jsx'),roster=read('src/VenueRoster.jsx'),css=read('src/venue-roster.css'),deploy=read('.github/workflows/deploy.yml');
+const app=read('App.jsx'),site=read('src/VenueSite.jsx'),roster=read('src/VenueRoster.jsx'),css=read('src/venue-roster.css'),routes=read('scripts/generate-static-routes.mjs');
 const people=JSON.parse(read('public/venue-roster.json'));
 
 test('venue people page is routable and has a static GitHub Pages entry point',()=>{
  assert.match(app,/path==='\/venue\/people'/);
  assert.match(app,/return <VenueRoster\/>/);
- assert.match(deploy,/dist\/venue\/people\/index.html/);
+ assert.match(routes,/route: '\/venue\/people'/);
  assert.match(site,/href="\/venue\/people\/"/);
 });
 test('public editable roster has distinct staff and thrall entries with unique identifiers',()=>{

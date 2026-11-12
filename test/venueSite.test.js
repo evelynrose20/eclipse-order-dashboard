@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const app=read('App.jsx'),publicSite=read('src/PublicSite.jsx'),venue=read('src/VenueSite.jsx'),menu=read('src/VenueMenu.jsx'),status=read('src/VenueStatus.jsx'),styles=read('src/venue-site.css'),deployment=read('.github/workflows/deploy.yml');
+const app=read('App.jsx'),publicSite=read('src/PublicSite.jsx'),venue=read('src/VenueSite.jsx'),menu=read('src/VenueMenu.jsx'),status=read('src/VenueStatus.jsx'),styles=read('src/venue-site.css'),routes=read('scripts/generate-static-routes.mjs');
 
 test('venue is a public page that leaves Discord login and dashboard routing intact',()=>{
  assert.match(app,/path==='\/venue'/);
@@ -46,7 +46,7 @@ test('the venue includes the Carrd menu, seasonal travel lore, and accessible na
 test('full menu has its own direct Pages route, separate from venue landing page',()=>{
  assert.match(app,/path==='\/venue\/menu'/);
  assert.match(app,/return <VenueMenu\/>/);
- assert.match(deployment,/dist\/venue\/menu\/index.html/);
+ assert.match(routes,/route: '\/venue\/menu'/);
  assert.match(venue,/href="\/venue\/menu\/"/);
  assert.doesNotMatch(venue,/SIGNATURES\.map|FOOD_MENU\.map|DESSERT_MENU\.map/);
  assert.match(menu,/SIGNATURES\.map/);

@@ -4,9 +4,11 @@ import {readFile} from 'node:fs/promises';
 import {createPool} from 'mysql2/promise';
 import {powerProjectRoute} from '../src/world-power-projects.js';
 
-test('Moonlight generator repair and upgrade require real materials and progress', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'},async()=>{
+test('Moonlight generator repair and upgrade require real materials and progress', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'},async t=>{
  const pool=createPool({host:'127.0.0.1',port:3306,user:'root',password:process.env.ECLIPSE_CI_MYSQL_PASSWORD,database:'eclipse_order',multipleStatements:true,connectionLimit:2});
  try{
+  const [[fullWorld]]=await pool.query("SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='world_settlements' AND COLUMN_NAME='strategic_state'");
+  if(Number(fullWorld.n)>0){t.skip('Minimal power fixture already verified before full world schema was installed');return}
   // The preceding chamber test has installed the core account and workshop tables.
   await pool.query(`CREATE TABLE IF NOT EXISTS world_settlements (
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -86,5 +88,18 @@ test('Moonlight generator repair and upgrade require real materials and progress
   assert.equal(Number(modern.level),2);
   assert.equal(Number(modern.rated_output),280);
   assert.equal(Number(modern.fuel_per_day),80);
- }finally{await pool.end()}
+ }finally{
+  // This isolated power-fixture schema is intentionally partial. Remove it
+  // before the subsequent full world migration test, which installs the real
+  // world_settlements columns rather than reusing this miniature table.
+  const connection=await pool.getConnection();
+  try{
+   // Restore the empty workshop stock expected by the full schema fixture.
+   await connection.query("DELETE FROM fc_material_stock WHERE material_id IN ('iron-ingot','repair-timbers')");
+   await connection.query('SET FOREIGN_KEY_CHECKS=0');
+   for(const table of ['world_power_project_contributions','world_power_projects','world_power_consumers','world_power_plants','world_power_blueprints','world_industry_ledger','world_industry_stock','world_industry_facilities','world_industry_items','world_settlements']){
+    await connection.query('DROP TABLE IF EXISTS `'+table+'`');
+   }
+  }finally{await connection.query('SET FOREIGN_KEY_CHECKS=1');connection.release();await pool.end()}
+ }
 });
