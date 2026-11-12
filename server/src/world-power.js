@@ -82,7 +82,7 @@ export async function worldPowerRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
  if(req.method==='GET'&&path==='/world-admin/power'){
   const snapshot=await powerSnapshot(pool);
-  const [settlements]=await pool.execute('SELECT id,name,population,unrest,civil_stability FROM world_settlements ORDER BY name');
+  const [settlements]=await pool.execute('SELECT id,name,population,unrest,civil_stability,region_id,zone_id,controlling_faction_id,workforce FROM world_settlements ORDER BY name');
   const projects=await powerProjectSummary(pool);
   return ok({plants:snapshot.plants,consumers:snapshot.consumers,settlements,grades:Object.fromEntries(snapshot.grades),...projects});
  }
