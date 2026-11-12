@@ -69,7 +69,7 @@ export async function breedingPitRoute(pool,req,path){
   const [strains]=await pool.execute('SELECT *,DATE_FORMAT(last_cultivation_day,\'%Y-%m-%d\') AS last_cultivation_day FROM order_brood_strains ORDER BY id');
   const [incubations]=await pool.execute("SELECT i.*,s.name AS strain_name,s.role,c.character_name AS host_name FROM order_brood_incubations i JOIN order_brood_strains s ON s.id=i.strain_id LEFT JOIN characters c ON c.id=i.host_character_id ORDER BY i.id DESC LIMIT 150");
   const [cohorts]=await pool.execute('SELECT c.*,s.name AS strain_name,s.role,i.incubation_mode FROM order_brood_cohorts c JOIN order_brood_strains s ON s.id=c.strain_id JOIN order_brood_incubations i ON i.id=c.incubation_id ORDER BY c.id DESC LIMIT 150');
-  const [installations]=await pool.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.name AS location_name FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE i.state IN ('operational','damaged') AND i.condition_pct>=25 ORDER BY i.name");
+  const [installations]=await pool.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.name AS location_name FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE s.controlling_faction_id='eclipse-order' AND i.state IN ('operational','damaged') AND i.condition_pct>=25 ORDER BY i.name");
   const [hosts]=await pool.execute("SELECT c.id,c.character_name AS name FROM order_brood_host_permissions p JOIN characters c ON c.id=p.character_id WHERE p.allow_incubation=1 ORDER BY c.character_name");
   const [history]=await pool.execute('SELECT b.id,b.action,b.detail,b.created_at,a.display_name AS actor FROM order_brood_activity b JOIN accounts a ON a.id=b.actor_id ORDER BY b.id DESC LIMIT 75');
   const now=Date.now();
@@ -155,8 +155,8 @@ export async function breedingPitRoute(pool,req,path){
    if(cohort.status==='deployed')return fail(409,'cohort_already_deployed');
    const [[readiness]]=await db.execute('SELECT mature_at<=NOW() AS ready FROM order_brood_cohorts WHERE id=?',[cohort.id]);
    if(!readiness.ready)return fail(409,'cohort_not_mature');
-   const [[site]]=await db.execute('SELECT id,name,state,condition_pct FROM world_military_installations WHERE id=?',[body.installation_id]);
-   if(!site||!['operational','damaged'].includes(site.state)||Number(site.condition_pct)<25)return fail(409,'installation_not_operational');
+   const [[site]]=await db.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.controlling_faction_id FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE i.id=?",[body.installation_id]);
+   if(!site||site.controlling_faction_id!=='eclipse-order'||!['operational','damaged'].includes(site.state)||Number(site.condition_pct)<25)return fail(409,'installation_not_operational');
    const [[strain]]=await db.execute('SELECT name FROM order_brood_strains WHERE id=?',[cohort.strain_id]);
    const troop='Brood: '+strain.name;
    if(troop.length>80)return fail(409,'strain_name_too_long_for_garrison');
