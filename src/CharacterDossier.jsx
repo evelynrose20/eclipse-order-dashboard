@@ -4,6 +4,7 @@ import CharacterProgression from './CharacterProgression.jsx';
 import ClassSpellbook from './ClassSpellbook.jsx';
 import CharacterEquipment from './CharacterEquipment.jsx';
 import ContributionPreferences from './ContributionPreferences.jsx';
+import BroodHostSettings from './BroodHostSettings.jsx';
 import CharacterReproduction from './CharacterReproduction.jsx';
 import {DOSSIER_TABS,dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab,canViewCharacterChamber} from './characterDossierRules.js';
 import './character-dossier.css';
@@ -26,7 +27,7 @@ export default function CharacterDossier({
  const canViewChamber=canViewCharacterChamber(character,userId,{staff:canViewChamberStaff,playerPreview});
  const recordOwner=!playerPreview&&character?.player_user_id===userId;
  const personalRecord=!playerPreview&&(recordOwner||canCommand||canViewPregnancyStaff);
- const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[]),...(personalRecord?[...(character?.collar_bound?[{id:'binding-cycle',label:'Binding cycle',icon:'◌'}]:[]),{id:'pregnancy',label:'Pregnancy',icon:'○'},{id:'parenthood',label:'Parenthood',icon:'♧'}]:[])];
+ const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[]),...(personalRecord?[{id:'brood-host',label:'Brood Pit',icon:'✧'},...(character?.collar_bound?[{id:'binding-cycle',label:'Binding cycle',icon:'◌'}]:[]),{id:'pregnancy',label:'Pregnancy',icon:'○'},{id:'parenthood',label:'Parenthood',icon:'♧'}]:[])];
  const [section,setSection]=useState(()=>defaultDossierTab(character,playerPreview));
  const [rankBusy,setRankBusy]=useState(false),[rankError,setRankError]=useState('');
  const [privateCycle,setPrivateCycle]=useState(null);
@@ -78,6 +79,7 @@ export default function CharacterDossier({
     {active==='binding-cycle'&&personalRecord&&character.collar_bound&&<CharacterReproduction key={character.id+'-cycle'} view="cycle" character={character} request={request} readOnly={!recordOwner} onPhaseChange={recordOwner?setPrivateCycle:undefined}/>}
     {active==='pregnancy'&&personalRecord&&<CharacterReproduction key={character.id+'-pregnancy'} view="pregnancy" character={character} request={request} readOnly={!recordOwner}/>}
     {active==='parenthood'&&personalRecord&&<section className="dossier-parenthood"><div className="dossier-parenthood-mark"><i className="fa-solid fa-people-roof" aria-hidden="true"/></div><div><span>HOUSEHOLD RECORDS</span><h3>Parenthood</h3><p>Family relationships, guardianships, dependents, and household history will be managed here in a future update.</p><div className="dossier-parenthood-status">In development</div></div></section>}
+    {active==='brood-host'&&personalRecord&&<BroodHostSettings key={character.id+'-brood'} character={character} request={request} userId={userId} readOnly={!recordOwner}/>}
     {active==='contributions'&&canViewChamber&&<ContributionPreferences key={character.id} character={character} request={request} userId={userId} readOnly={playerPreview}/>}
     {active==='legacy'&&!restricted&&<Chapter eyebrow="PRIMARY / CHARACTER SHEET" title="Classic character sheet" description="Your complete character sheet, with all existing details and mechanics. Explore the other dossier tabs whenever you like."><FullDndSheet character={character}/><div className="dossier-integrated"><CharacterEquipment character={character} request={request} canEquip={!playerPreview&&character.player_user_id===userId}/></div></Chapter>}
    </div>
