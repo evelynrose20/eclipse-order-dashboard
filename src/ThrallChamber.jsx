@@ -4,6 +4,7 @@ import './thrall-chamber.css';
 const channels=[{id:'upper',label:'Lacteal Reservoir',material:'Breast milk',icon:'flask'},{id:'lower',label:'Secondary Reservoir',material:'Biological collection',icon:'vial'}];
 const title=s=>String(s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 const stamp=s=>s?new Date(s).toLocaleString():'—';
+const fluid=n=>Number(n||0).toFixed(1);
 const lowerTypes={unclassified:'Unclassified',vaginal:'Vaginal collection',seminal:'Seminal collection',mixed:'Mixed collection',other:'Fantasy collection'};
 const anatomyLabel={vulva:'Vulva anatomy',penis:'Penis anatomy',mixed:'Mixed anatomy',other:'Fantasy anatomy',unspecified:'Anatomy not specified'};
 
@@ -18,7 +19,7 @@ export default function ThrallChamber({request}){
  const [seatChoice,setSeatChoice]=useState('');
  const load=async()=>setData(await request('/thralls/chamber'));
  useEffect(()=>{let active=true;request('/thralls/chamber').then(d=>{if(active)setData(d)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
- useEffect(()=>{const tick=setInterval(()=>{request('/thralls/chamber').then(setData).catch(()=>{})},60000);return()=>clearInterval(tick)},[]);
+ useEffect(()=>{const tick=setInterval(()=>{request('/thralls/chamber').then(setData).catch(()=>{})},10000);return()=>clearInterval(tick)},[]);
  const canManage=Boolean(data?.can_manage);
  async function act(action,fields={},message='Updated'){
   if(!canManage)return;
@@ -45,8 +46,8 @@ export default function ThrallChamber({request}){
   {notice&&<div className="chamber-notice" role="status">{notice}</div>}
   {machine&&<>
    <div className="chamber-stats">
-    <div><small>UPPER RESERVOIR</small><strong>{machine.upper_volume} <em>/ {machine.upper_capacity}</em></strong><span>Units</span></div>
-    <div><small>LOWER RESERVOIR</small><strong>{machine.lower_volume} <em>/ {machine.lower_capacity}</em></strong><span>Units</span></div>
+    <div><small>UPPER RESERVOIR</small><strong>{fluid(machine.upper_volume)} <em>/ {fluid(machine.upper_capacity)}</em></strong><span>Fluid units</span></div>
+    <div><small>LOWER RESERVOIR</small><strong>{fluid(machine.lower_volume)} <em>/ {fluid(machine.lower_capacity)}</em></strong><span>Fluid units</span></div>
     <div><small>ARCHIVED BATCHES</small><strong>{data.batches.length}</strong><span>Most recent records</span></div>
    </div>
    <nav className="chamber-tabs" aria-label="Chamber workspace">
@@ -66,22 +67,22 @@ export default function ThrallChamber({request}){
        <div className="chamber-feed"><span>LOWER ASSEMBLY</span><span className={'chamber-pill '+machine.lower_status}>{title(machine.lower_status)}</span></div>
       </div>
       <div className="chamber-actions">
-       <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id||machine.upper_status!=='ready'||machine.lower_status!=='ready'} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
+       <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id||!['upper','lower'].some(channel=>machine[channel+'_status']==='ready')} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">A character must occupy the chair before the system can run. Both reservoirs begin Offline. Select Ready on each reservoir, then press Start to activate both and begin gradual extraction. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. Both reservoirs begin Offline. Set either reservoir to Ready, then press Start to extract from that one. Prepare both if you want both running. Each assembly can be operated independently. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
-      <p className="chamber-helper">Select Ready separately for both reservoirs. Start is available only after both are Ready; it activates both assemblies.</p>
-      {occupant?.character_id&&machine.machine_status!=='running'&&(machine.upper_status!=='ready'||machine.lower_status!=='ready')&&<p className="chamber-helper" role="status">Start locked: set Lacteal Reservoir and Secondary Reservoir to Ready first.</p>}
+      <p className="chamber-helper">Select Ready on either or both reservoirs. Start activates only prepared assemblies. You can prepare or switch off the other independently while running.</p>
+      {occupant?.character_id&&machine.machine_status!=='running'&&(!['upper','lower'].some(channel=>machine[channel+'_status']==='ready'))&&<p className="chamber-helper" role="status">Start locked: set at least one reservoir to Ready first.</p>}
       {channels.map(c=><div className="chamber-assembly" key={c.id}>
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
        {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
-        <div><span>CHARACTER AVAILABLE TODAY</span><strong>{data.daily[c.id].remaining} <small>/ {data.daily[c.id].maximum} units</small></strong></div>
+        <div><span>CHARACTER AVAILABLE TODAY</span><strong>{fluid(data.daily[c.id].remaining)} <small>/ {fluid(data.daily[c.id].maximum)} fluid units</small></strong></div>
         <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
-        <small>Replenishes at 00:00 UTC · Existing collected stock is retained.</small>
+        <small>Decreases by 0.1 every 30 seconds while extracting · Replenishes at 00:00 UTC · Stored fluid is retained.</small>
        </div>}
        <div className="chamber-buttons">{['offline','ready','maintenance'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
@@ -92,7 +93,7 @@ export default function ThrallChamber({request}){
      <div className="chamber-heading"><div><span>03 / CHAIR OCCUPANCY</span><h3>Character assignment</h3></div><i className="fa-solid fa-user-lock"/></div>
      {occupant?.character_id?<div className="chamber-assembly">
       <div className="chamber-assembly-head"><strong>{occupant.name}</strong><span className="chamber-pill active">Seated</span></div>
-      <p className="chamber-helper">Upper recorded: {occupant.upper_recorded} units · Lower recorded: {occupant.lower_recorded} units. Output is simulated from recorded character physiology and machine cycles.</p>
+      <p className="chamber-helper">Upper recorded: {fluid(occupant.upper_recorded)} fluid units · Lower recorded: {fluid(occupant.lower_recorded)} fluid units. Output is simulated from recorded character physiology and machine cycles.</p>
       {data.can_release&&<div className="chamber-actions"><button type="button" disabled={busy} className="chamber-danger" onClick={()=>act('release',{},'Character released and apparatus switched offline.')}>Release character</button></div>}
      </div>:<div className="chamber-assembly">
       <p className="chamber-helper">Eligible bound characters and your own registered characters appear here. The apparatus must be offline to place anyone in the chair.</p>
@@ -109,7 +110,7 @@ export default function ThrallChamber({request}){
      <div className="chamber-reservoirs">{channels.map(c=>{
       const volume=Number(machine[c.id+'_volume']),capacity=Number(machine[c.id+'_capacity']),pct=Math.min(100,Math.round(100*volume/capacity));
       return <div className="chamber-reservoir" key={c.id}>
-       <div className="chamber-reservoir-top"><strong>{c.label}</strong><span>{volume} / {capacity} units</span></div>
+       <div className="chamber-reservoir-top"><strong>{c.label}</strong><span>{fluid(volume)} / {fluid(capacity)} fluid units</span></div>
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
        <small>{c.id==='lower'?(lowerTypes[machine.lower_material_type]||'Unclassified'):c.material} · {pct}% of capacity</small>
        {canManage&&<div className="chamber-record">
@@ -120,13 +121,13 @@ export default function ThrallChamber({request}){
     </section>
    </>}
    {view==='inventory'&&<section className="chamber-card"><div className="chamber-heading"><div><span>ALCHEMICAL ANNEX</span><h3>Collected batch inventory</h3></div><i className="fa-solid fa-box-archive"/></div>
-    {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':(lowerTypes[b.material_type]||'Secondary biological')}</td><td>{b.quantity} units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
+    {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':(lowerTypes[b.material_type]||'Secondary biological')}</td><td>{fluid(b.quantity)} fluid units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
    </section>}
    {view==='history'&&<section className="chamber-card"><div className="chamber-heading"><div><span>SECURE RECORDS</span><h3>Activity ledger</h3></div><i className="fa-solid fa-book"/></div>{!data.history.length?<div className="chamber-empty">No recorded activity yet.</div>:<div className="chamber-history">{data.history.map(h=><div key={h.id}><span className="chamber-history-icon"><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{title(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {stamp(h.created_at)}</small></div></div>)}</div>}</section>}
    {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Batch placed into alchemical inventory.')){setShowBatch(false);setView('inventory')}}}>
     <div className="chamber-heading"><div><span>ALCHEMICAL STORAGE</span><h3>Decant reservoir batch</h3></div><button type="button" onClick={()=>setShowBatch(false)} aria-label="Close">✕</button></div>
     <label>Reservoir<select value={batch.channel} onChange={e=>setBatch(v=>({...v,channel:e.target.value,quantity:Math.min(v.quantity,Number(machine[e.target.value+'_volume']))}))}>{channels.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
-    <label>Quantity (units)<input required type="number" min="1" max={machine[batch.channel+'_volume']} value={batch.quantity} onChange={e=>setBatch(v=>({...v,quantity:e.target.value}))}/></label>
+    <label>Quantity (fluid units)<input required type="number" min="0.1" step="0.1" max={machine[batch.channel+'_volume']} value={batch.quantity} onChange={e=>setBatch(v=>({...v,quantity:e.target.value}))}/></label>
     <label>Alchemical classification<input maxLength="80" value={batch.classification} onChange={e=>setBatch(v=>({...v,classification:e.target.value}))}/></label>
     <label>Research notes<textarea maxLength="500" value={batch.notes} onChange={e=>setBatch(v=>({...v,notes:e.target.value}))}/></label>
     <div className="chamber-actions"><button type="button" onClick={()=>setShowBatch(false)}>Cancel</button><button disabled={busy} type="submit">Store batch</button></div>
