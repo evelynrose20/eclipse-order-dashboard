@@ -12,7 +12,7 @@ const routeGenerator=read('scripts/generate-static-routes.mjs');
 test('venue rules have a first-class route and GitHub Pages direct entry point',()=>{
  assert.match(app,/path==='\/venue\/rules'/);
  assert.match(app,/return <VenueRules\/>/);
- assert.match(deployment,/dist\/venue\/rules\/index.html/);
+ assert.match(routeGenerator,/route: '\/venue\/rules'/);
  for(const source of [site,menu,roster])assert.match(source,/href="\/venue\/rules\/"/);
  assert.match(site,/Read the venue rules/);
 });
