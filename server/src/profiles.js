@@ -1,13 +1,20 @@
 import {resolveSession} from './auth.js';
 
 const themes=new Set(['violence','horror','captivity','mind_control','humiliation','body_horror','minor_transformation','full_transformation','romance','sexual_themes','character_death']);
-// Offered only to profiles that do not yet exist. No existing saved list is modified.
+// Suggested only once per profile; existing ratings, custom labels and boundaries are preserved.
 export const STARTER_RP_PREFERENCES=[
  'Romance','Flirting','Affection','Combat RP','Horror RP','Captivity RP',
  'Power dynamics','Humiliation','Mind control','Body transformation',
  'Minor transformation','Full transformation','Body horror','Monster RP',
  'Pregnancy RP','Oviposition RP','Milking RP','Aftercare'
 ].map(label=>({label,rating:'maybe'}));
+// Match case-insensitively, preserving original user labels and selections.
+export function addMissingStarterPreferences(entries) {
+ const kept=Array.isArray(entries)?entries:[];
+ const labels=new Set(kept.map(entry=>String(entry?.label||'').trim().toLocaleLowerCase('en-US')));
+ const missing=STARTER_RP_PREFERENCES.filter(entry=>!labels.has(entry.label.toLocaleLowerCase('en-US')));
+ return [...kept,...missing.slice(0,Math.max(0,60-kept.length)).map(entry=>({...entry}))];
+}
 const keys=new Set(['welcome','house_rules','scene_guidelines']);
 const result=(status,body)=>({status,body});
 const fail=(status,error)=>result(status,{error});
@@ -37,8 +44,8 @@ export async function profileRoute(pool,req,path){
  }
  if(path==='/profile/rp'){
   if(req.method==='GET'){
-   const [rows]=await pool.execute('SELECT display_name,share_content,share_kinks,kink_entries FROM order_member_rp_profiles WHERE user_id=?',[user.id]);
-   return result(200,rows.length?{display_name:rows[0].display_name,share_content:Boolean(rows[0].share_content),share_kinks:Boolean(rows[0].share_kinks),kink_entries:json(rows[0].kink_entries)}:{display_name:'',share_content:false,share_kinks:false,kink_entries:STARTER_RP_PREFERENCES.map(entry=>({...entry}))});
+   const [rows]=await pool.execute('SELECT display_name,share_content,share_kinks,starter_seeds_applied,kink_entries FROM order_member_rp_profiles WHERE user_id=?',[user.id]);
+   return result(200,rows.length?{display_name:rows[0].display_name,share_content:Boolean(rows[0].share_content),share_kinks:Boolean(rows[0].share_kinks),kink_entries:rows[0].starter_seeds_applied?json(rows[0].kink_entries):addMissingStarterPreferences(json(rows[0].kink_entries))}:{display_name:'',share_content:false,share_kinks:false,kink_entries:addMissingStarterPreferences([])});
   }
   if(req.method==='PUT'){
    const b=await read(req);
@@ -50,7 +57,7 @@ export async function profileRoute(pool,req,path){
     const [adult]=await pool.execute('SELECT adult_declaration FROM order_profile_preferences WHERE user_id=?',[user.id]);
     if(!adult[0]?.adult_declaration)return fail(403,'adult_declaration_required_before_sharing');
    }
-   await pool.execute('INSERT INTO order_member_rp_profiles(user_id,display_name,share_content,share_kinks,kink_entries) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name),share_content=VALUES(share_content),share_kinks=VALUES(share_kinks),kink_entries=VALUES(kink_entries)',[user.id,name,b.share_content?1:0,b.share_kinks?1:0,JSON.stringify(b.kink_entries)]);
+   await pool.execute('INSERT INTO order_member_rp_profiles(user_id,display_name,share_content,share_kinks,kink_entries,starter_seeds_applied) VALUES(?,?,?,?,?,1) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name),share_content=VALUES(share_content),share_kinks=VALUES(share_kinks),kink_entries=VALUES(kink_entries),starter_seeds_applied=1',[user.id,name,b.share_content?1:0,b.share_kinks?1:0,JSON.stringify(b.kink_entries)]);
    return result(200,{status:'saved'});
   }
  }
