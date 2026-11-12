@@ -5,6 +5,8 @@ const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const uuid=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 const whole=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
 const roles=['scout','assault','support'];
+export const eligibleThrallHost=character=>Boolean(character?.collar_bound||character?.servitude_rank);
+
 const canCommand=actor=>['domina','high_command'].includes(actor.account_role);
 async function canManage(pool,actor){
  if(['domina','high_command','handler'].includes(actor.account_role))return true;
@@ -35,8 +37,9 @@ export async function breedingPitRoute(pool,req,path){
  if(!actor)return fail(401,'not_authenticated');
  const host=/^\/thralls\/breeding-pit\/hosts\/([0-9a-f-]{36})$/.exec(path);
  if(host&&uuid.test(host[1])){
-  const id=host[1],[[char]]=await pool.execute('SELECT id,character_name,player_account_id FROM characters WHERE id=?',[id]);
+  const id=host[1],[[char]]=await pool.execute('SELECT c.id,c.character_name,c.player_account_id,c.collar_bound,EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude') AS servitude_rank FROM characters c WHERE c.id=?',[id]);
   if(!char)return fail(404,'character_not_found');
+  if(!eligibleThrallHost(char))return fail(403,'bound_thrall_required');
   const owner=char.player_account_id===actor.id;
   if(!owner&&!await canManage(pool,actor))return fail(403,'character_access_denied');
   if(req.method==='GET'){
@@ -70,7 +73,7 @@ export async function breedingPitRoute(pool,req,path){
   const [incubations]=await pool.execute("SELECT i.*,s.name AS strain_name,s.role,c.character_name AS host_name FROM order_brood_incubations i JOIN order_brood_strains s ON s.id=i.strain_id LEFT JOIN characters c ON c.id=i.host_character_id ORDER BY i.id DESC LIMIT 150");
   const [cohorts]=await pool.execute('SELECT c.*,s.name AS strain_name,s.role,i.incubation_mode FROM order_brood_cohorts c JOIN order_brood_strains s ON s.id=c.strain_id JOIN order_brood_incubations i ON i.id=c.incubation_id ORDER BY c.id DESC LIMIT 150');
   const [installations]=await pool.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.name AS location_name FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE s.controlling_faction_id='eclipse-order' AND i.state IN ('operational','damaged') AND i.condition_pct>=25 ORDER BY i.name");
-  const [hosts]=await pool.execute("SELECT c.id,c.character_name AS name FROM order_brood_host_permissions p JOIN characters c ON c.id=p.character_id WHERE p.allow_incubation=1 ORDER BY c.character_name");
+  const [hosts]=await pool.execute("SELECT c.id,c.character_name AS name FROM order_brood_host_permissions p JOIN characters c ON c.id=p.character_id WHERE p.allow_incubation=1 AND (c.collar_bound=1 OR EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude')) ORDER BY c.character_name");
   const [history]=await pool.execute('SELECT b.id,b.action,b.detail,b.created_at,a.display_name AS actor FROM order_brood_activity b JOIN accounts a ON a.id=b.actor_id ORDER BY b.id DESC LIMIT 75');
   const now=Date.now();
   const capacity_used=cohorts.filter(c=>c.status!=='deployed').reduce((n,c)=>n+Number(c.quantity),0);
@@ -107,24 +110,23 @@ export async function breedingPitRoute(pool,req,path){
    return ok({saved:true,added});
   }
   if(action==='incubate'){
-   if(!whole(body.strain_id,1,Number.MAX_SAFE_INTEGER)||!['vat','host'].includes(body.mode)||typeof body.notes!=='string'||body.notes.length>800)return fail(400,'invalid_incubation');
+   if(!whole(body.strain_id,1,Number.MAX_SAFE_INTEGER)||body.mode!=='host'||typeof body.notes!=='string'||body.notes.length>800)return fail(400,'invalid_incubation');
    const [[strain]]=await db.execute('SELECT * FROM order_brood_strains WHERE id=? FOR UPDATE',[body.strain_id]);
    if(!strain)return fail(404,'strain_not_found');
    if(!Number(strain.egg_stock))return fail(409,'no_eggs_in_stock');
    const [[running]]=await db.execute("SELECT COUNT(*) AS n FROM order_brood_incubations WHERE status='incubating'");
    if(Number(running.n)>=Number(facility.incubator_capacity))return fail(409,'incubators_full');
-   let hostId=null;
-   if(body.mode==='host'){
-    if(!uuid.test(body.host_character_id||''))return fail(400,'choose_host');
-    hostId=body.host_character_id;
-    const [[permission]]=await db.execute('SELECT allow_incubation FROM order_brood_host_permissions WHERE character_id=? FOR UPDATE',[hostId]);
-    if(!permission?.allow_incubation)return fail(403,'host_has_not_enabled_incubation');
-    const [[existing]]=await db.execute("SELECT id FROM order_brood_incubations WHERE host_character_id=? AND status='incubating' LIMIT 1",[hostId]);
-    if(existing)return fail(409,'host_already_incubating');
-   }
-   const [row]=await db.execute('INSERT INTO order_brood_incubations(strain_id,host_character_id,incubation_mode,started_at,ready_at,notes,created_by) VALUES(?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL ? DAY),?,?)',[strain.id,hostId,body.mode,strain.incubation_days,body.notes,actor.id]);
+   if(!uuid.test(body.host_character_id||''))return fail(400,'choose_host');
+   const hostId=body.host_character_id;
+   const [[hostCharacter]]=await db.execute("SELECT c.id,c.collar_bound,EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude') AS servitude_rank FROM characters c WHERE c.id=?",[hostId]);
+   if(!eligibleThrallHost(hostCharacter))return fail(403,'bound_thrall_required');
+   const [[permission]]=await db.execute('SELECT allow_incubation FROM order_brood_host_permissions WHERE character_id=? FOR UPDATE',[hostId]);
+   if(!permission?.allow_incubation)return fail(403,'host_has_not_enabled_incubation');
+   const [[existing]]=await db.execute("SELECT id FROM order_brood_incubations WHERE host_character_id=? AND status='incubating' LIMIT 1",[hostId]);
+   if(existing)return fail(409,'host_already_incubating');
+   const [row]=await db.execute('INSERT INTO order_brood_incubations(strain_id,host_character_id,incubation_mode,started_at,ready_at,notes,created_by) VALUES(?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL ? DAY),?,?)',[strain.id,hostId,'host',strain.incubation_days,body.notes,actor.id]);
    await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock-1 WHERE id=?',[strain.id]);
-   await log(db,actor,'incubate','Started '+strain.name+' '+body.mode+' incubation #'+row.insertId);
+   await log(db,actor,'incubate','Started '+strain.name+' thrall incubation #'+row.insertId);
    return ok({saved:true,id:row.insertId});
   }
   if(action==='cancel'||action==='hatch'){
