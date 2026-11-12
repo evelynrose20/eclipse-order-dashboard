@@ -7,7 +7,7 @@ const RANKS=Object.freeze({
  eclipse_attendant:[4,45,1.30],silken_thrall:[5,60,1.45],violet_keeper:[6,75,1.60],
  serpents_chosen:[7,90,1.80],eclipsed_consort:[8,100,2]
 });
-const blank=()=>({cycle_opt_in:false,conception_opt_in:false,cycle_type:'heat',cycle_anchor:null,cycle_days:30,base_chance:20,pregnancy_status:'none',pregnancy_anchor:null,pregnancy_start_day:0,pregnancy_total_days:280,pregnancy_notes:'',shared_with_command:false});
+const blank=()=>({cycle_opt_in:false,conception_opt_in:false,cycle_type:'heat',cycle_anchor:null,cycle_days:30,base_chance:20,pregnancy_status:'none',pregnancy_anchor:null,pregnancy_start_day:0,pregnancy_total_days:90,pregnancy_notes:'',shared_with_command:false});
 const fail=(status,error)=>({status,body:{error}});
 const ok=(body)=>({status:200,body});
 const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d+'T00:00:00Z'))&&new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;
@@ -135,7 +135,7 @@ export async function reproductionRoute(pool,req,path){
    const chance=conceptionChance(settings,status),value=randomInt(1,101),success=value<=chance;
    const [insert]=await db.execute(`INSERT INTO character_conception_rolls(character_id,event_key,actor_account_id,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase)
     VALUES(?,?,?,?,?,?,?,?,?)`,[id,b.event_key,actor.id,b.ic_event_date,value,chance,success,character.rank_code||null,status.phase]);
-   if(success)await db.execute(`UPDATE character_reproductive_profiles SET pregnancy_status='active',pregnancy_anchor=?,pregnancy_start_day=0,pregnancy_total_days=280,pregnancy_notes='' WHERE character_id=?`,[b.ic_event_date,id]);
+   if(success)await db.execute(`UPDATE character_reproductive_profiles SET pregnancy_status='active',pregnancy_anchor=?,pregnancy_start_day=0,pregnancy_total_days=90,pregnancy_notes='' WHERE character_id=?`,[b.ic_event_date,id]);
    await db.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
     [id,actor.id,'conception_roll',success?'Approved conception event established pregnancy':'Approved conception event recorded']);
    await db.commit();
