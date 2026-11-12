@@ -1,3 +1,4 @@
+import {powerProjectRoute,powerProjectSummary} from './world-power-projects.js';
 // Persistent settlement power infrastructure. No free power or fuel creation.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const finite=(n,min,max)=>typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max;
@@ -82,32 +83,34 @@ export async function worldPowerRoute(pool,req,path,actor){
  if(req.method==='GET'&&path==='/world-admin/power'){
   const snapshot=await powerSnapshot(pool);
   const [settlements]=await pool.execute('SELECT id,name,population,unrest,civil_stability FROM world_settlements ORDER BY name');
-  return ok({plants:snapshot.plants,consumers:snapshot.consumers,settlements,grades:Object.fromEntries(snapshot.grades)});
+  const projects=await powerProjectSummary(pool);
+  return ok({plants:snapshot.plants,consumers:snapshot.consumers,settlements,grades:Object.fromEntries(snapshot.grades),...projects});
  }
  if(req.method!=='POST')return fail(405,'method_not_allowed');
  const b=await input(req);
  if(!b)return fail(400,'invalid_request');
- if(path==='/world-admin/power/plants'){
-  if(!Number.isSafeInteger(b.settlement_id)||!b.name||typeof b.name!=='string'||b.name.length>140||!finite(b.condition_pct,0,100)||!Number.isInteger(b.condition_pct)||!finite(b.rated_output,1,1000000)||!finite(b.fuel_units,0,1e9)||!finite(b.fuel_per_day,.001,100000)||!['operational','paused','damaged','destroyed'].includes(b.status)||typeof b.model!=='string'||b.model.length>100)return fail(400,'invalid_power_plant');
-  const [found]=await pool.execute('SELECT id FROM world_settlements WHERE id=?',[b.settlement_id]);
-  if(!found.length)return fail(404,'settlement_not_found');
-  const [result]=await pool.execute('INSERT INTO world_power_plants(settlement_id,name,model,condition_pct,rated_output,fuel_units,fuel_per_day,status,last_fuel_at) VALUES(?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3))',[b.settlement_id,b.name.trim(),b.model.trim(),b.condition_pct,b.rated_output,b.fuel_units,b.fuel_per_day,b.status]);
-  return ok({id:result.insertId});
- }
- const edit=/^\/world-admin\/power\/plants\/(\d+)$/.exec(path);
- if(edit){
-  if(!finite(b.condition_pct,0,100)||!Number.isInteger(b.condition_pct)||!finite(b.rated_output,1,1e6)||!finite(b.fuel_per_day,.001,1e5)||!['operational','paused','damaged','destroyed'].includes(b.status))return fail(400,'invalid_power_plant');
-  await settlePowerGrid(pool);
-  const [updated]=await pool.execute('UPDATE world_power_plants SET condition_pct=?,rated_output=?,fuel_per_day=?,status=? WHERE id=?',[b.condition_pct,b.rated_output,b.fuel_per_day,b.status,Number(edit[1])]);
-  return updated.affectedRows?ok({saved:true}):fail(404,'plant_not_found');
- }
+ if(path==='/world-admin/power/projects'||/^\/world-admin\/power\/projects\/\d+\/(commit|advance)$/.test(path))return powerProjectRoute(pool,path,b,actor);
+ // Former free-form generator creation and repair endpoints are deliberately retired.
+ if(path==='/world-admin/power/plants'||/^\/world-admin\/power\/plants\/\d+$/.test(path))
+  return fail(409,'generator_changes_require_blueprint_project');
  const refuel=/^\/world-admin\/power\/plants\/(\d+)\/refuel$/.exec(path);
  if(refuel){
-  if(!finite(b.quantity,.001,1e7))return fail(400,'invalid_fuel_quantity');
+  if(!finite(b.quantity,.001,1e7)||!Number.isSafeInteger(b.facility_id))return fail(400,'fuel_delivery_requires_source_facility');
   await settlePowerGrid(pool);
-  // Only a recorded refuel delivery; not a free automated fuel source.
-  const [updated]=await pool.execute('UPDATE world_power_plants SET fuel_units=fuel_units+? WHERE id=?',[b.quantity,Number(refuel[1])]);
-  return updated.affectedRows?ok({saved:true}):fail(404,'plant_not_found');
+  const db=await pool.getConnection();
+  try{
+   await db.beginTransaction();
+   const [[plant]]=await db.execute('SELECT * FROM world_power_plants WHERE id=? FOR UPDATE',[Number(refuel[1])]);
+   if(!plant){await db.rollback();return fail(404,'plant_not_found')}
+   const [[facility]]=await db.execute("SELECT f.id FROM world_industry_facilities f WHERE f.id=? AND f.settlement_id=? AND f.owner_faction_id='eclipse-order' FOR UPDATE",[b.facility_id,plant.settlement_id]);
+   if(!facility){await db.rollback();return fail(409,'source_facility_not_at_power_station')}
+   const [[stock]]=await db.execute("SELECT quantity FROM world_industry_stock WHERE facility_id=? AND item_id='ceruleum-fuel' FOR UPDATE",[b.facility_id]);
+   if(!stock||Number(stock.quantity)<b.quantity){await db.rollback();return fail(409,'insufficient_ceruleum_fuel_at_facility')}
+   await db.execute("UPDATE world_industry_stock SET quantity=quantity-? WHERE facility_id=? AND item_id='ceruleum-fuel'",[b.quantity,b.facility_id]);
+   await db.execute("INSERT INTO world_industry_ledger(facility_id,item_id,delta,balance_after,action,reference_key,actor_id) VALUES(?,'ceruleum-fuel',?,?,'consume',?,?)",[b.facility_id,-b.quantity,Number(stock.quantity)-b.quantity,'power-plant:'+plant.id,actor.id]);
+   await db.execute("UPDATE world_power_plants SET fuel_units=fuel_units+?,status=IF(status='paused' AND condition_pct>0,'operational',status) WHERE id=?",[b.quantity,plant.id]);
+   await db.commit();return ok({saved:true});
+  }catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}
  }
  if(path==='/world-admin/power/chamber'){
   if(!(b.settlement_id===null||Number.isSafeInteger(b.settlement_id)))return fail(400,'invalid_settlement');
