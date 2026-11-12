@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - name: Install API dependencies
         run: npm install --prefix server --no-audit --no-fund
+      - name: Test chamber extraction and fluid labels
+        run: node --test server/test/thralls-access.test.js
       - run: npm test
       - run: npm run build
       - name: Test API authorization and MySQL migrations
