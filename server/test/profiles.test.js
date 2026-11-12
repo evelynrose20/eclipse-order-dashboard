@@ -78,8 +78,10 @@ test('new RP profiles get editable starter labels while existing empty profiles 
 });
 test('distinguishes limited transformation from full transformation in saved content settings',async()=>{
  const p=pool();
- const allowed=await profileRoute(p.db,req('PUT',{adult_declaration:true,content_preferences:{body_horror:true,full_transformation:false}}),'/profile/preferences');
+ const allowed=await profileRoute(p.db,req('PUT',{adult_declaration:true,content_preferences:{body_horror:false,minor_transformation:true,full_transformation:false}}),'/profile/preferences');
  assert.equal(allowed.status,200);
  const insert=p.statements.find(x=>x.sql.startsWith('INSERT INTO order_profile_preferences'));
+ assert.equal(JSON.parse(insert.args[2]).minor_transformation,true);
+ assert.equal(JSON.parse(insert.args[2]).body_horror,false);
  assert.equal(JSON.parse(insert.args[2]).full_transformation,false);
 });
