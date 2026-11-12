@@ -72,3 +72,7 @@
 .chamber-daily-balance>small{font-size:11px;color:#a9bfb9}
 .chamber-daily-meter{height:9px;background:#0b1820;border:1px solid #41615c;overflow:hidden}
 .chamber-daily-meter>span{display:block;background:linear-gradient(90deg,#4c927c,#94c9ae);height:100%;transition:width .2s}
+
+.chamber .chamber-admin-config{background:#283844;border:1px solid #9b7180;border-radius:3px;color:#f0dce0;font-size:11px;font-weight:800;padding:9px 12px;cursor:pointer;white-space:nowrap}
+.chamber .chamber-admin-config i{margin-right:6px}
+.chamber-dialog input{min-height:39px;padding:9px 11px;border:1px solid #526570;background:#101c25;color:#f1f3f3;border-radius:3px;width:100%;box-sizing:border-box}
