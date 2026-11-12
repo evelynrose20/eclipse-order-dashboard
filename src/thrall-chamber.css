@@ -140,3 +140,5 @@
 .chamber-batch-tank-controls button:disabled,.chamber-inventory-actions button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:540px){.chamber-batch-tank-grid{grid-template-columns:1fr}.chamber-batch-glass{width:72px;height:120px}}
 @media(prefers-reduced-motion:reduce){.chamber-batch-white-fluid,.chamber-batch-white-fluid .chamber-fluid-wave{transition:none;animation:none}}
+
+.chamber-power-readout{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:11px 13px;background:#17282e;border:1px solid #4c665d;font-size:11px;color:#c6d9d4;margin-bottom:10px}.chamber-power-readout i{color:#e6cb91}.chamber-power-readout strong{color:#f6e4bb;letter-spacing:.06em}
