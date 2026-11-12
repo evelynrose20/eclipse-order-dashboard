@@ -26,3 +26,16 @@ export async function askAccountEmail(prompt='Account email: '){
  try{return (await rl.question(prompt)).trim();}
  finally{rl.close()}
 }
+
+/** Used only by the local desktop manager. Password travels over an anonymous stdin pipe. */
+export async function readPipedSecret(){
+ if(process.stdin.isTTY)throw new Error('The desktop setup must provide a private input pipe.');
+ let secret='';
+ for await(const chunk of process.stdin){
+  secret+=chunk.toString('utf8');
+  if(secret.length>2048)throw new Error('Password input exceeds the allowed length.');
+ }
+ secret=secret.split(/\r?\n/,1)[0];
+ if(!secret)throw new Error('Administrator password is required.');
+ return secret;
+}
