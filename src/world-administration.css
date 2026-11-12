@@ -439,3 +439,14 @@
 .power-grid-preview strong{color:#efede8}
 .power-grid-preview small{color:#a9bdc5}
 @media(max-width:600px){.power-grid-project-materials{grid-template-columns:1fr}.power-grid-fuel input{width:100%}}
+
+.power-blueprint-library{border:1px solid #566574;background:#192731;padding:15px;display:grid;gap:12px}
+.power-blueprint-library summary{cursor:pointer;color:#eee2df;font-size:14px;font-weight:850}
+.power-blueprint-library>p{font-size:12px;color:#b9c5ce;margin:12px 0}
+.power-blueprint-library>button,.power-blueprint-card>button{border:1px solid #8d8090;color:#eee9ee;background:#303944;padding:9px 12px;cursor:pointer;border-radius:3px}
+.power-blueprint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px;margin:13px 0}
+.power-blueprint-card{display:grid;gap:8px;border:1px solid #455b66;background:#14232d;padding:13px}
+.power-blueprint-card small{font-size:10px;color:#c58fa0}
+.power-blueprint-card strong{font-size:13px;color:#f0e8e7}
+.power-blueprint-card span{font-size:11px;color:#bfcbd0}
+.power-blueprint-description{grid-column:1/-1}
