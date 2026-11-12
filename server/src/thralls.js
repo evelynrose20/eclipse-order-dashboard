@@ -77,6 +77,9 @@ export function simulatedCycleYield(channel,preferences,random=Math.random()){
  return 0;
 }
 export const lowerMaterialForAnatomy=anatomy=>({vulva:'vaginal',penis:'seminal',mixed:'mixed',other:'other'})[anatomy]||'unclassified';
+// Legacy secondary stock may have no classification. Adopt its first configured type;
+// only block actual incompatible, already-classified inventory.
+export const canMixLowerMaterial=(storedVolume,storedType,nextType)=>Number(storedVolume)<=0||!storedType||storedType==='unclassified'||storedType===nextType;
 export const availableChamberChannels=prefs=>({
  upper:Boolean(prefs&&prefs.lactation_state&&prefs.lactation_state!=='none'),
  lower:Boolean(prefs&&LOWER_ANATOMIES.includes(prefs.lower_anatomy)&&prefs.lower_anatomy!=='unspecified')
@@ -113,7 +116,7 @@ async function settleChamberProduction(pool){
    const remaining=dailyBalance(prefs,usage)[channel].remaining;
    const space=Math.max(0,Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']));
    const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
-   const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===kind;
+   const compatible=channel!=='lower'||canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,kind);
    const amount=compatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
    if(amount){
@@ -181,7 +184,7 @@ export async function thrallsRoute(pool,req,path){
     if(machine.machine_status!=='running'||status!=='active')continue;
     const remaining=daily[channel].remaining;
     const free=Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']);
-    const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===lowerMaterialForAnatomy(prefs?.lower_anatomy);
+    const compatible=channel!=='lower'||canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,lowerMaterialForAnatomy(prefs?.lower_anatomy));
     collection_health[channel]=!prefs?.allow_seating?'Seating permission withdrawn'
      :!availableChamberChannels(prefs)[channel]?'Character profile does not permit this assembly'
      :remaining<=0?'Daily available fluid exhausted'
@@ -218,7 +221,7 @@ export async function thrallsRoute(pool,req,path){
   if(action==='set_fluid_names'){
    const upper=typeof data.upper_fluid_name==='string'?data.upper_fluid_name.trim():'';
    const lower=typeof data.lower_fluid_name==='string'?data.lower_fluid_name.trim():'';
-   if(!upper||!lower||upper.length>80||lower.length>80||/[\\x00-\\x1F\\x7F]/.test(upper+lower))return await rollback(cn,'invalid_fluid_name');
+   if(!upper||!lower||upper.length>80||lower.length>80||/[\x00-\x1F\x7F]/.test(upper+lower))return await rollback(cn,'invalid_fluid_name');
    updates=['upper_fluid_name=?','lower_fluid_name=?'];values=[upper,lower];
    detail='Updated collection fluid labels: upper='+upper+'; lower='+lower;
   }else if(action==='seat'){
@@ -282,7 +285,7 @@ export async function thrallsRoute(pool,req,path){
    if(amount&&Number(machine[channel+'_volume'])+amount>Number(machine[channel+'_capacity']))return await rollback(cn,'reservoir_full');
    if(channel==='lower'&&amount){
     const kind=lowerMaterialForAnatomy(prefs.lower_anatomy);
-    if(machine.lower_volume>0&&machine.lower_material_type!==kind)return await rollback(cn,'decant_lower_reservoir_first');
+    if(!canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,kind))return await rollback(cn,'decant_lower_reservoir_first');
     updates.push('lower_material_type=?');values.push(kind);
    }
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3),'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[amount]);
