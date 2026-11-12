@@ -133,6 +133,25 @@ async function settleChamberProduction(pool){
  }catch(e){await cn.rollback().catch(()=>{});throw e}finally{cn.release()}
 }
 
+// Caller owns the transaction. Both the batch and workshop stock are locked,
+// so concurrent drains cannot create fluid or credit the same quantity twice.
+export async function transferChamberBatchToWorkshop(conn,batchId,qty,actorId){
+ if(!Number.isSafeInteger(batchId)||batchId<=0||!Number.isInteger(qty)||qty<=0||qty>10000)return {error:'invalid_drain_amount'};
+ const [[batch]]=await conn.execute('SELECT * FROM order_thrall_chamber_batches WHERE id=? FOR UPDATE',[batchId]);
+ if(!batch)return {error:'batch_not_found'};
+ if(Number(batch.quantity)<qty)return {error:'insufficient_batch_fluid'};
+ const materialId=batch.material==='lacteal'?'chamber-breast-milk':'chamber-secondary-fluid';
+ await conn.execute('INSERT IGNORE INTO fc_material_stock(material_id,quantity) VALUES(?,0)',[materialId]);
+ const [[stock]]=await conn.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[materialId]);
+ const next=Number(stock.quantity)+qty;
+ if(next>100000000)return {error:'stock_limit'};
+ await conn.execute('UPDATE fc_material_stock SET quantity=? WHERE material_id=?',[next,materialId]);
+ await conn.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,character_id,note) VALUES(?,?,?,?,?,?,?)',[materialId,qty,next,'chamber_transfer',actorId,batch.source_character_id,'Chamber tank #'+batchId]);
+ await conn.execute('UPDATE order_thrall_chamber_batches SET quantity=quantity-?,drained_total=drained_total+? WHERE id=?',[qty,qty,batchId]);
+ await conn.execute('INSERT INTO order_thrall_batch_transfers(batch_id,source_character_id,material_id,quantity,actor_id) VALUES(?,?,?,?,?)',[batchId,batch.source_character_id,materialId,qty,actorId]);
+ return {material_id:materialId,quantity:qty};
+}
+
 export async function thrallsRoute(pool,req,path){
  if(!pool)return forbidden(503,'database_unavailable');
  const actor=await resolveSession(pool,req);
@@ -316,19 +335,8 @@ export async function thrallsRoute(pool,req,path){
    detail='Added '+amount.toFixed(1)+' units to '+material+' batch tank from '+sourceName;
   }else if(action==='drain_batch'){
    const batchId=Number(data.batch_id),qty=Number(data.quantity);
-   if(!Number.isSafeInteger(batchId)||batchId<=0||!Number.isInteger(qty)||qty<=0||qty>10000)return await rollback(cn,'invalid_drain_amount');
-   const [[batch]]=await cn.execute('SELECT * FROM order_thrall_chamber_batches WHERE id=? FOR UPDATE',[batchId]);
-   if(!batch)return await rollback(cn,'batch_not_found');
-   if(Number(batch.quantity)<qty)return await rollback(cn,'insufficient_batch_fluid');
-   const materialId=batch.material==='lacteal'?'chamber-breast-milk':'chamber-secondary-fluid';
-   await cn.execute('INSERT IGNORE INTO fc_material_stock(material_id,quantity) VALUES(?,0)',[materialId]);
-   const [[stock]]=await cn.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[materialId]);
-   const next=Number(stock.quantity)+qty;
-   if(next>100000000)return await rollback(cn,'stock_limit');
-   await cn.execute('UPDATE fc_material_stock SET quantity=? WHERE material_id=?',[next,materialId]);
-   await cn.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,character_id,note) VALUES(?,?,?,?,?,?,?)',[materialId,qty,next,'chamber_transfer',actor.id,batch.source_character_id,'Chamber tank #'+batchId]);
-   await cn.execute('UPDATE order_thrall_chamber_batches SET quantity=quantity-?,drained_total=drained_total+? WHERE id=?',[qty,qty,batchId]);
-   await cn.execute('INSERT INTO order_thrall_batch_transfers(batch_id,source_character_id,material_id,quantity,actor_id) VALUES(?,?,?,?,?)',[batchId,batch.source_character_id,materialId,qty,actor.id]);
+   const transferred=await transferChamberBatchToWorkshop(cn,batchId,qty,actor.id);
+   if(transferred.error)return await rollback(cn,transferred.error);
    detail='Transferred '+qty+' units from batch tank #'+batchId+' into workshop and garden stores';
   }else{
    if(machine.machine_status==='running')return await rollback(cn,'stop_chamber_first');
