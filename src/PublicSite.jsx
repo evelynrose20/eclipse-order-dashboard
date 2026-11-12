@@ -3,7 +3,6 @@ import './public-site.css';
 import './imperial-theme.css';
 import PublicChronicles from './PublicChronicles.jsx';
 import OrderEmblem from './OrderEmblem.jsx';
-import VenueStatus from './VenueStatus.jsx';
 import {SERVITUDE_RANKS} from './servitudeRanks.js';
 
 const DISCORD_INVITE='https://discord.gg/ksqTw4SHYn';
@@ -11,7 +10,7 @@ const FC_ACTIVITIES=[
  {icon:'fa-flag',title:'War campaigns',subtitle:'Campaigns with lasting stakes',description:'Take part in unfolding military campaigns, territorial struggles, and the decisions that shape the Order’s future.'},
  {icon:'fa-chess-knight',title:'Political intrigue',subtitle:'Influence is its own battlefield',description:'Navigate negotiations, rival factions, shifting alliances, and schemes whose consequences reach beyond a single event.'},
  {icon:'fa-shield-halved',title:'Combat events',subtitle:'Fight for what matters',description:'Enter story-driven confrontations, tactical encounters, and dangerous missions where the outcome is not guaranteed.'},
- {icon:'fa-martini-glass',title:'Venue nights',subtitle:'The Order beyond the battlefield',description:'Spend time with characters in a more social setting, build connections, and create opportunities for new stories.'}
+ {icon:'fa-users',title:'Character gatherings',subtitle:'The stories between missions',description:'Share quieter moments, build relationships, and develop personal stories through informal member-led roleplay.'}
 ];
 const RECRUITMENT_LABELS={open:'RECRUITMENT OPEN',limited:'LIMITED RECRUITMENT',closed:'RECRUITMENT CLOSED'};
 const RECRUITMENT_API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
@@ -215,7 +214,6 @@ export default function PublicSite(){
        <div className="public-estate-eyebrow">THE ORDER · IN THE REALM</div>
        {ESTATE.map(([label,value])=><div className="public-estate-field" key={label}><small>{label}</small><strong>{value}</strong></div>)}
        <div className={'public-estate-note public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</div>
-       <div className="public-estate-venue"><div className="public-estate-venue-title"><i className="fa-solid fa-moon" aria-hidden="true"/><span><strong>THE MIDNIGHT ECLIPSE</strong><small>OUR ADULT RP VENUE · NEW CASSIA, ILSABARD</small></span></div><VenueStatus compact/><p>Thrall Night · Fridays, 6 PM–2 AM ET<br/>Business Night · Sundays, 6 PM–2 AM ET</p><a href="/venue" className="public-button-primary">Explore the venue <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"/></a><small className="public-estate-venue-note">This estate is the OOC game entrance. In-character, you are visiting New Cassia—not the Goblet.</small></div>
        <button className="public-copy-address" type="button" onClick={async()=>{try{await navigator.clipboard.writeText('Dynamis · Seraph · The Goblet · Ward 5 · Plot 41');setAddressCopied(true)}catch{setAddressCopied(false)}}}>{addressCopied?'Address copied ✓':'Copy estate address'} <span aria-hidden="true">↗</span></button>
       </aside>
      </div>
@@ -274,7 +272,7 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#activities">FC Activities</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="/venue">The Midnight Eclipse</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Join Discord</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#activities">FC Activities</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Join Discord</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
