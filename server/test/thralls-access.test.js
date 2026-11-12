@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial,canCollectForSource} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -100,7 +100,7 @@ test('staff can use ordinary fluid names without rejecting letters or numbers',(
  for(const name of ['Breast Milk','Secondary Fluid','Milk 1','Aetheric Fluid','Fantasy Elixir']){
   assert.equal(validChamberFluidName(name),true,name);
  }
- for(const name of ['', ' ', 'Bad\\nName', 'Bad\\tName', 'A'.repeat(81)]){
+ for(const name of ['', ' ', 'Bad\nName', 'Bad\tName', 'A'.repeat(81)]){
   assert.equal(validChamberFluidName(name),false,JSON.stringify(name));
  }
 });
@@ -110,4 +110,13 @@ test('secondary collection accepts legacy unclassified stock but blocks real mis
  assert.equal(canMixLowerMaterial('2.0','unclassified','vaginal'),true);
  assert.equal(canMixLowerMaterial('2.0','vaginal','vaginal'),true);
  assert.equal(canMixLowerMaterial('2.0','seminal','vaginal'),false);
+});
+
+test('reservoir ownership prevents misattribution when characters change',()=>{
+ const a='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const b='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ assert.equal(canCollectForSource('0.0',null,a),true);
+ assert.equal(canCollectForSource('2.0',a,a),true);
+ assert.equal(canCollectForSource('2.0',a,b),false);
+ assert.equal(canCollectForSource('2.0',null,b),false,'legacy fluid stays unattributed until decanted');
 });
