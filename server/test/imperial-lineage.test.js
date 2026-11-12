@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {gestationStage,DEVELOPMENT_STAGES} from '../../src/GestationDevelopment.jsx';
+import {gestationStage,DEVELOPMENT_STAGES} from '../../src/gestationStages.js';
 import {lineageRoute} from '../src/imperial-lineage.js';
 import {readFileSync} from 'node:fs';
 
