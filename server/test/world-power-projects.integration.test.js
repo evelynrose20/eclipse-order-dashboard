@@ -15,6 +15,11 @@ test('Moonlight generator repair and upgrade require real materials and progress
    population INT UNSIGNED NOT NULL DEFAULT 0, workforce INT UNSIGNED NOT NULL DEFAULT 0,
    unrest INT UNSIGNED NOT NULL DEFAULT 0,civil_stability INT UNSIGNED NOT NULL DEFAULT 70
   ) ENGINE=InnoDB`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS world_industry_items (
+   id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci PRIMARY KEY,
+   workshop_material_id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NULL
+  ) ENGINE=InnoDB`);
+  await pool.query("INSERT IGNORE INTO world_industry_items(id) VALUES('repair-timbers')");
   await pool.query(`CREATE TABLE IF NOT EXISTS world_industry_facilities(
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,settlement_id BIGINT UNSIGNED,
    name VARCHAR(140),owner_faction_id VARCHAR(45)
@@ -36,6 +41,8 @@ test('Moonlight generator repair and upgrade require real materials and progress
    await pool.query(contents);
    await pool.query(contents); // Running setup a second time must preserve records.
   }
+  const [[itemMapping]]=await pool.execute("SELECT workshop_material_id FROM world_industry_items WHERE id='repair-timbers'");
+  assert.equal(itemMapping.workshop_material_id,'repair-timbers');
   const [[plant]]=await pool.execute('SELECT * FROM world_power_plants WHERE settlement_id=?',[site.insertId]);
   assert.equal(Number(plant.condition_pct),32);
   assert.equal(Number(plant.fuel_units),500);
