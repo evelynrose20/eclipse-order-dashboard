@@ -16,6 +16,8 @@ export default function ThrallChamber({request}){
  const [view,setView]=useState('console');
  const [batch,setBatch]=useState({channel:'upper',quantity:10,classification:'Unclassified',notes:''});
  const [showBatch,setShowBatch]=useState(false);
+ const [inventoryFluid,setInventoryFluid]=useState('lacteal');
+ const [drain,setDrain]=useState(null);
  const [showFluidNames,setShowFluidNames]=useState(false);
  const [fluidNames,setFluidNames]=useState({upper_fluid_name:'Breast Milk',lower_fluid_name:'Secondary Fluid'});
  const [seatChoice,setSeatChoice]=useState('');
@@ -174,8 +176,43 @@ export default function ThrallChamber({request}){
      })}</div>
     </section>
    </>}
-   {view==='inventory'&&<section className="chamber-card"><div className="chamber-heading"><div><span>ALCHEMICAL ANNEX</span><h3>Collected batch inventory</h3></div><i className="fa-solid fa-box-archive"/></div>
-    {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':(lowerTypes[b.material_type]||'Secondary biological')}</td><td>{fluid(b.quantity)} fluid units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
+   {view==='inventory'&&<section className="chamber-card">
+    <div className="chamber-heading"><div><span>ALCHEMICAL ANNEX</span><h3>Collected batch inventory</h3><p className="chamber-helper">Character-attributed fluid tanks. Add more by transferring liquid from the matching collection reservoir, or drain whole units into Workshop and Garden stock for Demon Dust.</p></div><i className="fa-solid fa-flasks"/></div>
+    <div className="chamber-inventory-switch" role="group" aria-label="Batch inventory fluid">
+     <button type="button" aria-pressed={inventoryFluid==='lacteal'} onClick={()=>setInventoryFluid('lacteal')}><i className="fa-solid fa-droplet"/> {machine.upper_fluid_name||'Breast Milk'} Tanks</button>
+     <button type="button" aria-pressed={inventoryFluid==='secondary'} onClick={()=>setInventoryFluid('secondary')}><i className="fa-solid fa-flask"/> {machine.lower_fluid_name||'Secondary Fluid'} Tanks</button>
+    </div>
+    {(()=>{
+     const currentBatches=(data.batches||[]).filter(b=>b.material===inventoryFluid);
+     const channel=inventoryFluid==='lacteal'?'upper':'lower',reservoirVolume=Number(machine[channel+'_volume']||0);
+     return <>
+      <div className="chamber-inventory-actions">
+       <span>{currentBatches.length} tank{currentBatches.length===1?'':'s'} · {fluid(currentBatches.reduce((sum,b)=>sum+Number(b.quantity),0))} fluid units stored</span>
+       {canManage&&<button type="button" disabled={busy||reservoirVolume<=0} onClick={()=>{setBatch({channel,quantity:reservoirVolume,classification:'Unclassified',notes:''});setShowBatch(true)}}><i className="fa-solid fa-plus"/> Add fluid from reservoir ({fluid(reservoirVolume)})</button>}
+      </div>
+      {!currentBatches.length?<div className="chamber-empty">No {inventoryFluid==='lacteal'?'breast milk':'secondary fluid'} tanks yet. Collect fluid in the chamber, then add it from the corresponding reservoir.</div>:
+       <div className="chamber-batch-tank-grid">{currentBatches.map(b=>{
+        const quantity=Number(b.quantity)||0;
+        const capacity=Math.max(10,Math.ceil((quantity+Number(b.drained_total||0))/10)*10);
+        const pct=Math.min(100,capacity?quantity/capacity*100:0);
+        const canAddFromReservoir=reservoirVolume>0&&String(machine[channel+'_source_character_id']||'')===String(b.source_character_id||'')&&(channel==='upper'||machine.lower_material_type===b.material_type);
+        return <div className="chamber-batch-tank-card" key={b.id}>
+         <div className="chamber-batch-tank-heading"><div><span>BATCH TANK #{b.id}</span><strong>{b.source_name||'Unattributed / legacy'}</strong></div><span className="chamber-batch-kind">{inventoryFluid==='lacteal'?'Lacteal':(lowerTypes[b.material_type]||'Secondary')}</span></div>
+         <div className="chamber-batch-tank-body">
+          <div className="chamber-batch-glass" role="progressbar" aria-label={'Tank '+b.id+' stored fluid'} aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={quantity}>
+           <div className="chamber-batch-white-fluid" style={{height:quantity>0?'max(3px, '+pct+'%)':'0%'}}><div className="chamber-fluid-wave"/></div>
+           <div className="chamber-glass-shine"/>
+          </div>
+          <div className="chamber-batch-tank-metrics"><strong>{fluid(quantity)} <small>fluid units available</small></strong><span>{fluid(b.drained_total||0)} units transferred to Workshop</span><span>From: {b.source_name||'Unattributed / legacy'}</span><span>{stamp(b.created_at)}</span><small>{b.classification||'Unclassified'}</small></div>
+         </div>
+         {canManage&&<div className="chamber-batch-tank-controls">
+          <button type="button" disabled={busy||!canAddFromReservoir} title={canAddFromReservoir?'Add from the matching live collection reservoir':'Requires matching source and material in the collection reservoir'} onClick={()=>{setBatch({channel,quantity:reservoirVolume,classification:b.classification||'Unclassified',notes:''});setShowBatch(true)}}><i className="fa-solid fa-plus"/> Add more</button>
+          <button type="button" disabled={busy||Math.floor(quantity)<1} onClick={()=>setDrain({batch_id:b.id,quantity:Math.floor(quantity),available:quantity,source_name:b.source_name||'Unattributed / legacy',channel})}><i className="fa-solid fa-faucet-drip"/> Drain to Workshop</button>
+         </div>}
+        </div>;
+       })}</div>}
+     </>;
+    })()}
    </section>}
    {view==='history'&&<section className="chamber-card"><div className="chamber-heading"><div><span>SECURE RECORDS</span><h3>Activity ledger</h3></div><i className="fa-solid fa-book"/></div>{!data.history.length?<div className="chamber-empty">No recorded activity yet.</div>:<div className="chamber-history">{data.history.map(h=><div key={h.id}><span className="chamber-history-icon"><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{title(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {stamp(h.created_at)}</small></div></div>)}</div>}</section>}
    {showFluidNames&&canConfigureFluids&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" aria-label="Edit collection fluid names" onSubmit={async e=>{e.preventDefault();if(await act('set_fluid_names',fluidNames,'Fluid names updated.'))setShowFluidNames(false)}}>
@@ -185,13 +222,19 @@ export default function ThrallChamber({request}){
     <label>Secondary Reservoir fluid name<input required maxLength="80" value={fluidNames.lower_fluid_name} onChange={e=>setFluidNames(v=>({...v,lower_fluid_name:e.target.value}))} placeholder="Secondary Fluid"/></label>
     <div className="chamber-actions"><button type="button" onClick={()=>setShowFluidNames(false)}>Cancel</button><button type="submit" disabled={busy||!fluidNames.upper_fluid_name.trim()||!fluidNames.lower_fluid_name.trim()}>Save fluid names</button></div>
    </form></div>}
-   {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Batch placed into alchemical inventory.')){setShowBatch(false);setView('inventory')}}}>
-    <div className="chamber-heading"><div><span>ALCHEMICAL STORAGE</span><h3>Decant reservoir batch</h3></div><button type="button" onClick={()=>setShowBatch(false)} aria-label="Close">✕</button></div>
+   {drain&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" aria-label="Drain batch tank to workshop stock" onSubmit={async e=>{e.preventDefault();if(await act('drain_batch',{batch_id:drain.batch_id,quantity:Number(drain.quantity)},'Fluid transferred to Workshop and Garden common stock.'))setDrain(null)}}>
+    <div className="chamber-heading"><div><span>WORKSHOP STOCK TRANSFER</span><h3>Drain batch tank #{drain.batch_id}</h3></div><button type="button" onClick={()=>setDrain(null)} aria-label="Close">✕</button></div>
+    <p className="chamber-helper">Source: {drain.source_name}. Each 1.0 fluid unit transferred becomes 1 whole crafting-stock unit in the shared Workshop and Garden stores. Fractional amounts stay in the tank. Transfers are recorded and cannot be reversed.</p>
+    <label>Quantity to drain (whole units)<input required type="number" min="1" step="1" max={Math.floor(drain.available)} value={drain.quantity} onChange={e=>setDrain(v=>({...v,quantity:e.target.value}))}/></label>
+    <div className="chamber-actions"><button type="button" onClick={()=>setDrain(null)}>Cancel</button><button type="submit" disabled={busy||!Number.isInteger(Number(drain.quantity))||Number(drain.quantity)<1||Number(drain.quantity)>Math.floor(drain.available)}>Transfer to Workshop</button></div>
+   </form></div>}
+   {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Fluid added to its character batch tank.')){setShowBatch(false);setInventoryFluid(batch.channel==='upper'?'lacteal':'secondary');setView('inventory')}}}>
+    <div className="chamber-heading"><div><span>ALCHEMICAL STORAGE</span><h3>Add fluid to batch tank</h3></div><button type="button" onClick={()=>setShowBatch(false)} aria-label="Close">✕</button></div>
     <label>Reservoir<select value={batch.channel} onChange={e=>setBatch(v=>({...v,channel:e.target.value,quantity:Math.min(v.quantity,Number(machine[e.target.value+'_volume']))}))}>{channels.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
     <label>Quantity (fluid units)<input required type="number" min="0.1" step="0.1" max={machine[batch.channel+'_volume']} value={batch.quantity} onChange={e=>setBatch(v=>({...v,quantity:e.target.value}))}/></label>
     <label>Alchemical classification<input maxLength="80" value={batch.classification} onChange={e=>setBatch(v=>({...v,classification:e.target.value}))}/></label>
     <label>Research notes<textarea maxLength="500" value={batch.notes} onChange={e=>setBatch(v=>({...v,notes:e.target.value}))}/></label>
-    <div className="chamber-actions"><button type="button" onClick={()=>setShowBatch(false)}>Cancel</button><button disabled={busy} type="submit">Store batch</button></div>
+    <div className="chamber-actions"><button type="button" onClick={()=>setShowBatch(false)}>Cancel</button><button disabled={busy} type="submit">Add to tank</button></div>
    </form></div>}
   </>}
  </div>;
