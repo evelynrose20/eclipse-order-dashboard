@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -94,4 +94,20 @@ test('future or missing chamber cycle timestamps reset instead of freezing',()=>
  assert.equal(future.reset,true);
  assert.equal(future.settledAt,'2026-11-12 05:00:00.000');
  assert.equal(chamberElapsedTicks(null,'2026-11-12T05:00:00.000Z').reset,true);
+});
+
+test('staff can use ordinary fluid names without rejecting letters or numbers',()=>{
+ for(const name of ['Breast Milk','Secondary Fluid','Milk 1','Aetheric Fluid','Fantasy Elixir']){
+  assert.equal(validChamberFluidName(name),true,name);
+ }
+ for(const name of ['', ' ', 'Bad\\nName', 'Bad\\tName', 'A'.repeat(81)]){
+  assert.equal(validChamberFluidName(name),false,JSON.stringify(name));
+ }
+});
+
+test('secondary collection accepts legacy unclassified stock but blocks real mismatches',()=>{
+ assert.equal(canMixLowerMaterial('0.0','seminal','vaginal'),true);
+ assert.equal(canMixLowerMaterial('2.0','unclassified','vaginal'),true);
+ assert.equal(canMixLowerMaterial('2.0','vaginal','vaginal'),true);
+ assert.equal(canMixLowerMaterial('2.0','seminal','vaginal'),false);
 });
