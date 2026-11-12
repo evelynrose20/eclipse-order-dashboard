@@ -35,4 +35,7 @@ INSERT IGNORE INTO fc_recipe_inputs(recipe_id,material_id,quantity) VALUES
  ('demon-dust','chamber-breast-milk',1),
  ('demon-dust','chamber-secondary-fluid',1),
  ('demon-dust','duskbloom',1);
+-- New Demon Dust recipes belong in the alchemy category when workshop categories exist.
+SET @eo_119_cat := (SELECT IF(COUNT(*)>0, "UPDATE fc_recipes SET category_id='alchemy' WHERE id='demon-dust' AND category_id='other'", "DO 0") FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_recipes' AND COLUMN_NAME='category_id');
+PREPARE eo119cat FROM @eo_119_cat; EXECUTE eo119cat; DEALLOCATE PREPARE eo119cat;
 INSERT INTO schema_migrations(version) VALUES('119_chamber_batch_tanks_workshop') ON DUPLICATE KEY UPDATE version=VALUES(version);
