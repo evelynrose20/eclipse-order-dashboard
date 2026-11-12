@@ -63,11 +63,61 @@ export default function ThrallChamber({request}){
       <div className="chamber-heading"><div><span>01 / MAIN APPARATUS</span><h3>Magitek control station</h3></div><i className="fa-solid fa-gears"/></div>
       <div className="chamber-visual" aria-label="Schematic of the central magitek apparatus">
        <div className="chamber-lightstrip"/>
-       <div className="chamber-frame">
-        <i className="fa-solid fa-chair"/><span>EXTRACTION THRONE</span><small>{occupant?.character_id?'Occupied: '+occupant.name:'Empty · stationary lower vaults'}</small>
+       <div className="chamber-apparatus-layout">
+        {channels.map(c=>{
+         const volume=Math.max(0,Number(machine[c.id+'_volume'])||0);
+         const capacity=Math.max(0,Number(machine[c.id+'_capacity'])||0);
+         const pct=capacity?Math.min(100,100*volume/capacity):0;
+         const extracting=machine.machine_status==='running'&&machine[c.id+'_status']==='active'&&Boolean(occupant?.character_id);
+         const fluidName=machine[c.id+'_fluid_name']||c.material;
+         return <div key={c.id} className={'chamber-visual-vessel '+(extracting?'extracting':'idle')}>
+          <div className="chamber-vessel-heading"><span>{c.id==='upper'?'LACTEAL':'SECONDARY'}</span><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
+          <div className="chamber-glass-shell" role="progressbar" aria-label={fluidName+' collection vessel'} aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={volume} aria-valuetext={fluid(volume)+' of '+fluid(capacity)+' fluid units'}>
+           <div className="chamber-glass-markings" aria-hidden="true"/>
+           <div className="chamber-white-fluid" style={{height:volume>0?'max(3px, '+pct+'%)':'0%'}} aria-hidden="true">
+            <div className="chamber-fluid-wave"/>
+            <span className="chamber-fluid-bubble bubble-one"/>
+            <span className="chamber-fluid-bubble bubble-two"/>
+            <span className="chamber-fluid-bubble bubble-three"/>
+           </div>
+           <div className="chamber-glass-shine" aria-hidden="true"/>
+          </div>
+          <div className="chamber-vessel-readout"><strong>{fluid(volume)}</strong><small>/ {fluid(capacity)} units</small></div>
+          <span className="chamber-vessel-material" title={fluidName}>{fluidName}</span>
+          <span className="chamber-vessel-percent">{pct.toFixed(1)}% full</span>
+         </div>;
+        }).slice(0,1)}
+        <div className="chamber-center-throne">
+         <div className="chamber-frame">
+          <i className="fa-solid fa-chair"/><span>EXTRACTION THRONE</span><small>{occupant?.character_id?'Occupied: '+occupant.name:'Empty · stationary lower vaults'}</small>
+         </div>
+         <div className="chamber-feed"><span>UPPER ASSEMBLY</span><span className={'chamber-pill '+machine.upper_status}>{title(machine.upper_status)}</span></div>
+         <div className="chamber-feed"><span>LOWER ASSEMBLY</span><span className={'chamber-pill '+machine.lower_status}>{title(machine.lower_status)}</span></div>
+        </div>
+        {channels.map(c=>{
+         const volume=Math.max(0,Number(machine[c.id+'_volume'])||0);
+         const capacity=Math.max(0,Number(machine[c.id+'_capacity'])||0);
+         const pct=capacity?Math.min(100,100*volume/capacity):0;
+         const extracting=machine.machine_status==='running'&&machine[c.id+'_status']==='active'&&Boolean(occupant?.character_id);
+         const fluidName=machine[c.id+'_fluid_name']||c.material;
+         return <div key={c.id} className={'chamber-visual-vessel '+(extracting?'extracting':'idle')}>
+          <div className="chamber-vessel-heading"><span>{c.id==='upper'?'LACTEAL':'SECONDARY'}</span><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
+          <div className="chamber-glass-shell" role="progressbar" aria-label={fluidName+' collection vessel'} aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={volume} aria-valuetext={fluid(volume)+' of '+fluid(capacity)+' fluid units'}>
+           <div className="chamber-glass-markings" aria-hidden="true"/>
+           <div className="chamber-white-fluid" style={{height:volume>0?'max(3px, '+pct+'%)':'0%'}} aria-hidden="true">
+            <div className="chamber-fluid-wave"/>
+            <span className="chamber-fluid-bubble bubble-one"/>
+            <span className="chamber-fluid-bubble bubble-two"/>
+            <span className="chamber-fluid-bubble bubble-three"/>
+           </div>
+           <div className="chamber-glass-shine" aria-hidden="true"/>
+          </div>
+          <div className="chamber-vessel-readout"><strong>{fluid(volume)}</strong><small>/ {fluid(capacity)} units</small></div>
+          <span className="chamber-vessel-material" title={fluidName}>{fluidName}</span>
+          <span className="chamber-vessel-percent">{pct.toFixed(1)}% full</span>
+         </div>;
+        }).slice(1)}
        </div>
-       <div className="chamber-feed"><span>UPPER ASSEMBLY</span><span className={'chamber-pill '+machine.upper_status}>{title(machine.upper_status)}</span></div>
-       <div className="chamber-feed"><span>LOWER ASSEMBLY</span><span className={'chamber-pill '+machine.lower_status}>{title(machine.lower_status)}</span></div>
       </div>
       <div className="chamber-actions">
        <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id||!['upper','lower'].some(channel=>machine[channel+'_status']==='ready')} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
