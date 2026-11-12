@@ -1,5 +1,6 @@
 -- Power buildings use the same material-funded, time-progressed model as settlement restoration.
 USE eclipse_order;
+INSERT IGNORE INTO fc_materials(id,name,category,description) VALUES ('repair-timbers','Repair Timbers','refined','Processed structural timber for settlement projects');
 CREATE TABLE IF NOT EXISTS world_power_blueprints(
  id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL PRIMARY KEY,
  name VARCHAR(110) NOT NULL,
