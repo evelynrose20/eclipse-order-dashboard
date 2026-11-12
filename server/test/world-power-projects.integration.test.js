@@ -4,9 +4,11 @@ import {readFile} from 'node:fs/promises';
 import {createPool} from 'mysql2/promise';
 import {powerProjectRoute} from '../src/world-power-projects.js';
 
-test('Moonlight generator repair and upgrade require real materials and progress', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'},async()=>{
+test('Moonlight generator repair and upgrade require real materials and progress', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'},async t=>{
  const pool=createPool({host:'127.0.0.1',port:3306,user:'root',password:process.env.ECLIPSE_CI_MYSQL_PASSWORD,database:'eclipse_order',multipleStatements:true,connectionLimit:2});
  try{
+  const [[fullWorld]]=await pool.query("SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='world_settlements' AND COLUMN_NAME='strategic_state'");
+  if(Number(fullWorld.n)>0){t.skip('Minimal power fixture already verified before full world schema was installed');return}
   // The preceding chamber test has installed the core account and workshop tables.
   await pool.query(`CREATE TABLE IF NOT EXISTS world_settlements (
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
