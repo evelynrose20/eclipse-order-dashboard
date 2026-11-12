@@ -16,26 +16,6 @@ const pages = [
     title: 'The Eclipse Order | FFXIV Garlean Roleplay FC',
     description: 'Discover The Eclipse Order, a Garlean-aligned Final Fantasy XIV roleplay free company. Explore New Cassia, our story, recruitment, and events.',
   },
-  {
-    route: '/venue',
-    title: 'The Midnight Eclipse | FFXIV Roleplay Venue',
-    description: 'Visit The Midnight Eclipse, the Eclipse Order’s Final Fantasy XIV roleplay venue in New Cassia. Discover venue information and events.',
-  },
-  {
-    route: '/venue/menu',
-    title: 'The Midnight Eclipse Menu | FFXIV RP Venue',
-    description: 'Browse the food and drink menu at The Midnight Eclipse, the Eclipse Order’s Final Fantasy XIV roleplay venue.',
-  },
-  {
-    route: '/venue/rules',
-    title: 'The Midnight Eclipse Rules | FFXIV RP Venue',
-    description: 'Read the rules and visitor expectations for The Midnight Eclipse, an Eclipse Order roleplay venue in Final Fantasy XIV.',
-  },
-  {
-    route: '/venue/people',
-    title: 'The Midnight Eclipse Staff | FFXIV RP Venue',
-    description: 'Meet the characters and staff of The Midnight Eclipse, the Eclipse Order’s Final Fantasy XIV roleplay venue.',
-  },
 ];
 
 function escapeHtml(value) {
