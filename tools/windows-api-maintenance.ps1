@@ -66,7 +66,7 @@ function Show-DatabaseUpdateDialog {
  if($script:updating){return}
  $dialog=New-Object System.Windows.Forms.Form
  $dialog.Text='Apply database updates'
- $dialog.Size=New-Object System.Drawing.Size(510,330)
+ $dialog.Size=New-Object System.Drawing.Size(510,377)
  $dialog.StartPosition='CenterParent'
  $dialog.FormBorderStyle='FixedDialog'
  $dialog.MaximizeBox=$false;$dialog.MinimizeBox=$false
@@ -80,29 +80,37 @@ function Show-DatabaseUpdateDialog {
  $backup.SetBounds(22,98,450,30)
  $dialog.Controls.Add($backup)
  $passLabel=New-Object System.Windows.Forms.Label
- $passLabel.Text='Local MySQL administrator password'
+ $passLabel.Text='Local MySQL administrator password (if configured)'
  $passLabel.SetBounds(22,145,440,25)
  $dialog.Controls.Add($passLabel)
  $password=New-Object System.Windows.Forms.TextBox
  $password.SetBounds(22,174,448,31)
  $password.UseSystemPasswordChar=$true
  $dialog.Controls.Add($password)
+ $noPassword=New-Object System.Windows.Forms.CheckBox
+ $noPassword.Text='My local MySQL administrator account has no password.'
+ $noPassword.SetBounds(22,211,460,28)
+ $noPassword.Add_CheckedChanged({
+  $password.Enabled= -not $noPassword.Checked
+  if($noPassword.Checked){$password.Clear()}
+ })
+ $dialog.Controls.Add($noPassword)
  $ok=New-Object System.Windows.Forms.Button
  $ok.Text='APPLY UPDATES'
- $ok.SetBounds(22,226,218,38)
+ $ok.SetBounds(22,270,218,38)
  $ok.FlatStyle='Flat';$ok.BackColor=[System.Drawing.Color]::FromArgb(59,78,91)
  $ok.ForeColor=$form.ForeColor
  $dialog.Controls.Add($ok)
  $cancel=New-Object System.Windows.Forms.Button
- $cancel.Text='CANCEL';$cancel.SetBounds(252,226,218,38)
+ $cancel.Text='CANCEL';$cancel.SetBounds(252,270,218,38)
  $cancel.FlatStyle='Flat';$cancel.BackColor=[System.Drawing.Color]::FromArgb(32,42,51)
  $cancel.ForeColor=$form.ForeColor
  $cancel.DialogResult=[System.Windows.Forms.DialogResult]::Cancel
  $dialog.Controls.Add($cancel)
  $dialog.CancelButton=$cancel
  $ok.Add_Click({
-  if(-not $backup.Checked -or [string]::IsNullOrEmpty($password.Text)){
-   [System.Windows.Forms.MessageBox]::Show($dialog,'Confirm your verified database backup and enter the administrator password.','Database update') | Out-Null
+  if(-not $backup.Checked -or (-not $noPassword.Checked -and [string]::IsNullOrEmpty($password.Text))){
+   [System.Windows.Forms.MessageBox]::Show($dialog,'Confirm your verified database backup and enter your password, or explicitly select No password.','Database update') | Out-Null
    return
   }
   $dialog.DialogResult=[System.Windows.Forms.DialogResult]::OK
@@ -110,7 +118,7 @@ function Show-DatabaseUpdateDialog {
  })
  try {
   if($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK){
-   $entered=$password.Text
+   $entered=if($noPassword.Checked){''}else{$password.Text}
    $password.Clear()
    try { Start-DatabaseUpdate $entered }
    finally { $entered=$null }
