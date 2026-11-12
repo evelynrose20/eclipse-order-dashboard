@@ -81,6 +81,7 @@ export const lowerMaterialForAnatomy=anatomy=>({vulva:'vaginal',penis:'seminal',
 // Legacy secondary stock may have no classification. Adopt its first configured type;
 // only block actual incompatible, already-classified inventory.
 export const canMixLowerMaterial=(storedVolume,storedType,nextType)=>Number(storedVolume)<=0||!storedType||storedType==='unclassified'||storedType===nextType;
+export const canCollectForSource=(volume,recordedSource,seatedSource)=>Number(volume)<=0||recordedSource===seatedSource;
 export const availableChamberChannels=prefs=>({
  upper:Boolean(prefs&&prefs.lactation_state&&prefs.lactation_state!=='none'),
  lower:Boolean(prefs&&LOWER_ANATOMIES.includes(prefs.lower_anatomy)&&prefs.lower_anatomy!=='unspecified')
@@ -118,11 +119,12 @@ async function settleChamberProduction(pool){
    const space=Math.max(0,Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']));
    const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
    const compatible=channel!=='lower'||canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,kind);
-   const amount=compatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
+   const sourceCompatible=canCollectForSource(machine[channel+'_volume'],machine[channel+'_source_character_id'],seat.character_id);
+   const amount=compatible&&sourceCompatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
    if(amount){
     await cn.execute('UPDATE order_thrall_daily_output SET '+channel+'_used='+channel+'_used+? WHERE character_id=? AND cycle_date=?',[amount,seat.character_id,day]);
-    updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount);
+    updates.push(channel+'_volume='+channel+'_volume+?',channel+'_source_character_id=?');values.push(amount,seat.character_id);
     if(channel==='lower'){updates.push('lower_material_type=?');values.push(kind)}
    }
   }
@@ -170,7 +172,7 @@ export async function thrallsRoute(pool,req,path){
  if(path==='/thralls/chamber'&&req.method==='GET'){
   await settleChamberProduction(pool);
   const [[machine]]=await pool.execute('SELECT * FROM order_thrall_chamber WHERE id=1');
-  const [batches]=await pool.execute('SELECT id,material,material_type,quantity,classification,notes,created_at FROM order_thrall_chamber_batches ORDER BY id DESC LIMIT 80');
+  const [batches]=await pool.execute('SELECT b.id,b.material,b.material_type,b.quantity,b.drained_total,b.classification,b.notes,b.source_character_id,COALESCE(b.source_name,c.character_name,\'Unattributed / legacy\') AS source_name,b.created_at FROM order_thrall_chamber_batches b LEFT JOIN characters c ON c.id=b.source_character_id ORDER BY b.id DESC LIMIT 200');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
   const [[seat]]=await pool.execute('SELECT s.character_id,s.seated_at,s.upper_recorded,s.lower_recorded,c.character_name AS name FROM order_thrall_seat s LEFT JOIN characters c ON c.id=s.character_id WHERE s.id=1');
   let daily=null;
@@ -186,11 +188,13 @@ export async function thrallsRoute(pool,req,path){
     const remaining=daily[channel].remaining;
     const free=Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']);
     const compatible=channel!=='lower'||canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,lowerMaterialForAnatomy(prefs?.lower_anatomy));
+    const sourceCompatible=canCollectForSource(machine[channel+'_volume'],machine[channel+'_source_character_id'],seat.character_id);
     collection_health[channel]=!prefs?.allow_seating?'Seating permission withdrawn'
      :!availableChamberChannels(prefs)[channel]?'Character profile does not permit this assembly'
      :remaining<=0?'Daily available fluid exhausted'
      :free<=0?'Collection reservoir full'
      :!compatible?'Stored secondary fluid type differs; decant before collecting'
+     :!sourceCompatible?'Stored reservoir fluid has another or unknown source; decant it first'
      :'Extracting 0.1 fluid unit every 30 seconds';
    }
   }
@@ -203,7 +207,7 @@ export async function thrallsRoute(pool,req,path){
  const data=await readBody(req);
  if(!data||typeof data!=='object')return forbidden(400,'invalid_request');
  const action=data.action;
- if(!['set_status','run_cycle','decant','maintenance','reset','seat','release','set_fluid_names'].includes(action))return forbidden(400,'invalid_chamber_action');
+ if(!['set_status','run_cycle','decant','maintenance','reset','seat','release','set_fluid_names','drain_batch'].includes(action))return forbidden(400,'invalid_chamber_action');
  if(action==='set_fluid_names'&&!mayConfigureChamberFluids(actor))return forbidden(403,'staff_required');
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
  // Persist elapsed output before a stop, decant, or per-assembly state change.
@@ -294,14 +298,42 @@ export async function thrallsRoute(pool,req,path){
    if(amount){updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount)}
    detail='Completed '+channel+' cycle: '+amount+' units recorded';
   }else if(action==='decant'){
-   const channel=data.channel,amount=data.quantity,classification=String(data.classification||'Unclassified').trim(),notes=String(data.notes||'').trim();
+   const channel=data.channel,amount=Number(data.quantity),classification=String(data.classification||'Unclassified').trim(),notes=String(data.notes||'').trim();
    if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0||amount>Number(machine[channel+'_volume'])||classification.length>80||notes.length>500)return await rollback(cn,'invalid_batch');
-   await cn.execute('INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,created_by) VALUES(?,?,?,?,?,?)',[channel==='upper'?'lacteal':'secondary',channel==='upper'?'milk':machine.lower_material_type,amount,classification||'Unclassified',notes,actor.id]);
-   updates=[channel+'_volume='+channel+'_volume-?'];values=[amount];detail='Decanted '+amount+' units from '+channel+' reservoir';
+   const material=channel==='upper'?'lacteal':'secondary',type=channel==='upper'?'milk':machine.lower_material_type;
+   const sourceId=machine[channel+'_source_character_id']||null;
+   const [[source]]=sourceId?await cn.execute('SELECT character_name FROM characters WHERE id=?',[sourceId]):[[]];
+   const sourceName=source?.character_name||'Unattributed / legacy';
+   // Each retained tank belongs to one character and fluid type; depositing more tops it up.
+   const [existing]=await cn.execute('SELECT id FROM order_thrall_chamber_batches WHERE material=? AND material_type=? AND source_character_id <=> ? ORDER BY id DESC LIMIT 1 FOR UPDATE',[material,type,sourceId]);
+   if(existing.length)await cn.execute('UPDATE order_thrall_chamber_batches SET quantity=quantity+? WHERE id=?',[amount,existing[0].id]);
+   else await cn.execute('INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,source_character_id,source_name,created_by) VALUES(?,?,?,?,?,?,?,?)',[material,type,amount,classification||'Unclassified',notes,sourceId,sourceName,actor.id]);
+   updates=[channel+'_volume='+channel+'_volume-?'];values=[amount];
+   if(Math.round((Number(machine[channel+'_volume'])-amount)*10)===0){
+    updates.push(channel+'_source_character_id=NULL');
+    if(channel==='lower')updates.push("lower_material_type='unclassified'");
+   }
+   detail='Added '+amount.toFixed(1)+' units to '+material+' batch tank from '+sourceName;
+  }else if(action==='drain_batch'){
+   const batchId=Number(data.batch_id),qty=Number(data.quantity);
+   if(!Number.isSafeInteger(batchId)||batchId<=0||!Number.isInteger(qty)||qty<=0||qty>10000)return await rollback(cn,'invalid_drain_amount');
+   const [[batch]]=await cn.execute('SELECT * FROM order_thrall_chamber_batches WHERE id=? FOR UPDATE',[batchId]);
+   if(!batch)return await rollback(cn,'batch_not_found');
+   if(Number(batch.quantity)<qty)return await rollback(cn,'insufficient_batch_fluid');
+   const materialId=batch.material==='lacteal'?'chamber-breast-milk':'chamber-secondary-fluid';
+   await cn.execute('INSERT IGNORE INTO fc_material_stock(material_id,quantity) VALUES(?,0)',[materialId]);
+   const [[stock]]=await cn.execute('SELECT quantity FROM fc_material_stock WHERE material_id=? FOR UPDATE',[materialId]);
+   const next=Number(stock.quantity)+qty;
+   if(next>100000000)return await rollback(cn,'stock_limit');
+   await cn.execute('UPDATE fc_material_stock SET quantity=? WHERE material_id=?',[next,materialId]);
+   await cn.execute('INSERT INTO fc_material_ledger(material_id,delta,balance_after,activity,account_id,character_id,note) VALUES(?,?,?,?,?,?,?)',[materialId,qty,next,'chamber_transfer',actor.id,batch.source_character_id,'Chamber tank #'+batchId]);
+   await cn.execute('UPDATE order_thrall_chamber_batches SET quantity=quantity-?,drained_total=drained_total+? WHERE id=?',[qty,qty,batchId]);
+   await cn.execute('INSERT INTO order_thrall_batch_transfers(batch_id,source_character_id,material_id,quantity,actor_id) VALUES(?,?,?,?,?)',[batchId,batch.source_character_id,materialId,qty,actor.id]);
+   detail='Transferred '+qty+' units from batch tank #'+batchId+' into workshop and garden stores';
   }else{
    if(machine.machine_status==='running')return await rollback(cn,'stop_chamber_first');
    if(!['upper','lower'].includes(data.channel))return await rollback(cn,'invalid_channel');
-   updates=[data.channel+'_volume=0'];values=[];detail='Cleared '+data.channel+' reservoir (uncollected contents discarded)';
+   updates=[data.channel+'_volume=0',data.channel+'_source_character_id=NULL'];if(data.channel==='lower')updates.push("lower_material_type='unclassified'");values=[];detail='Cleared '+data.channel+' reservoir (uncollected contents discarded)';
   }
   await cn.execute('UPDATE order_thrall_chamber SET '+[...updates,'revision=revision+1','updated_by=?'].join(',')+' WHERE id=1',[...values,actor.id]);
   await cn.execute('INSERT INTO order_thrall_chamber_log(actor_id,action,detail) VALUES(?,?,?)',[actor.id,action,detail]);
