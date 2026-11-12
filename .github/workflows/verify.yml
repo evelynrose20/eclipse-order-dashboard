@@ -33,6 +33,11 @@ jobs:
         run: npm install --prefix server --no-audit --no-fund
       - name: Test chamber extraction and fluid labels
         run: node --test server/test/thralls-access.test.js
+      - name: Verify chamber batch tank SQL integration
+        env:
+          ECLIPSE_CI_MYSQL: '1'
+          ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
+        run: node --test server/test/chamber-batch-tanks.integration.test.js
       - run: npm test
       - run: npm run build
       - name: Test API authorization and MySQL migrations
