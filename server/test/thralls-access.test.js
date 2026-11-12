@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial,canCollectForSource} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial,canCollectForSource,validEnhancementTier} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -119,4 +119,26 @@ test('reservoir ownership prevents misattribution when characters change',()=>{
  assert.equal(canCollectForSource('2.0',a,a),true);
  assert.equal(canCollectForSource('2.0',a,b),false);
  assert.equal(canCollectForSource('2.0',null,b),false,'legacy fluid stays unattributed until decanted');
+});
+
+test('staff-managed enhancements independently raise daily capacities without bypassing availability',()=>{
+ const profiles=[
+  {tier:0,upper:18,lower:6},
+  {tier:1,upper:24,lower:8},
+  {tier:2,upper:30,lower:10},
+  {tier:3,upper:40,lower:14},
+  {tier:4,upper:50,lower:18}
+ ];
+ for(const p of profiles){
+  const prefs={lactation_state:'established',lower_anatomy:'vulva',upper_enhancement:p.tier,lower_enhancement:p.tier};
+  assert.equal(dailyCapacity('upper',prefs),p.upper);
+  assert.equal(dailyCapacity('lower',prefs),p.lower);
+  assert.equal(dailyBalance(prefs,{upper_used:2.1,lower_used:1.1}).upper.remaining,Math.round((p.upper-2.1)*10)/10);
+ }
+ assert.equal(dailyCapacity('upper',{lactation_state:'none',upper_enhancement:4}),0);
+ assert.equal(dailyCapacity('lower',{lower_anatomy:'unspecified',lower_enhancement:4}),0);
+ assert.equal(dailyCapacity('upper',{lactation_state:'variable',upper_enhancement:0}),8);
+ assert.equal(dailyCapacity('lower',{lower_anatomy:'vulva',lower_enhancement:4,upper_enhancement:0}),18);
+ for(const n of [0,1,2,3,4])assert.equal(validEnhancementTier(n),true);
+ for(const n of [-1,5,1.5,'2',null])assert.equal(validEnhancementTier(n),false);
 });
