@@ -48,6 +48,7 @@ export async function breedingPitRoute(pool,req,path){
   const body=await readBody(req);
   if(typeof body?.allow_incubation!=='boolean')return fail(400,'invalid_host_permission');
   return transaction(pool,async db=>{
+   await db.execute('SELECT id FROM order_brood_facility WHERE id=1 FOR UPDATE');
    await db.execute('INSERT IGNORE INTO order_brood_host_permissions(character_id,allow_incubation) VALUES(?,0)',[id]);
    await db.execute('SELECT allow_incubation FROM order_brood_host_permissions WHERE character_id=? FOR UPDATE',[id]);
    await db.execute('UPDATE order_brood_host_permissions SET allow_incubation=? WHERE character_id=?',[Number(body.allow_incubation),id]);
@@ -64,7 +65,8 @@ export async function breedingPitRoute(pool,req,path){
  }
  if(!await mayEnterThralls(pool,actor))return fail(403,'access_denied');
  if(path==='/thralls/breeding-pit'&&req.method==='GET'){
-  const [strains]=await pool.execute('SELECT * FROM order_brood_strains ORDER BY id');
+  const [[facility]]=await pool.execute('SELECT incubator_capacity,nursery_capacity FROM order_brood_facility WHERE id=1');
+  const [strains]=await pool.execute('SELECT *,DATE_FORMAT(last_cultivation_day,\'%Y-%m-%d\') AS last_cultivation_day FROM order_brood_strains ORDER BY id');
   const [incubations]=await pool.execute("SELECT i.*,s.name AS strain_name,s.role,c.character_name AS host_name FROM order_brood_incubations i JOIN order_brood_strains s ON s.id=i.strain_id LEFT JOIN characters c ON c.id=i.host_character_id ORDER BY i.id DESC LIMIT 150");
   const [cohorts]=await pool.execute('SELECT c.*,s.name AS strain_name,s.role,i.incubation_mode FROM order_brood_cohorts c JOIN order_brood_strains s ON s.id=c.strain_id JOIN order_brood_incubations i ON i.id=c.incubation_id ORDER BY c.id DESC LIMIT 150');
   const [installations]=await pool.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.name AS location_name FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE i.state IN ('operational','damaged') AND i.condition_pct>=25 ORDER BY i.name");
@@ -73,7 +75,7 @@ export async function breedingPitRoute(pool,req,path){
   const now=Date.now();
   const capacity_used=cohorts.filter(c=>c.status!=='deployed').reduce((n,c)=>n+Number(c.quantity),0);
   const incubator_used=incubations.filter(i=>i.status==='incubating').length;
-  return ok({strains,incubations,cohorts,installations,hosts,history,capacity:{incubators:8,incubator_used,nursery:30,nursery_used:capacity_used},server_time:new Date(now).toISOString(),can_manage:await canManage(pool,actor),can_deploy:canCommand(actor)});
+  return ok({strains,incubations,cohorts,installations,hosts,history,capacity:{incubators:Number(facility.incubator_capacity),incubator_used,nursery:Number(facility.nursery_capacity),nursery_used:capacity_used},server_time:new Date(now).toISOString(),can_manage:await canManage(pool,actor),can_deploy:canCommand(actor)});
  }
  if(path!=='/thralls/breeding-pit/actions'||req.method!=='POST')return fail(404,'not_found');
  if(!await canManage(pool,actor))return fail(403,'staff_or_household_required');
@@ -83,7 +85,9 @@ export async function breedingPitRoute(pool,req,path){
  if(!['new_strain','cultivate','incubate','hatch','cancel','deploy'].includes(action))return fail(400,'invalid_action');
  if(action==='deploy'&&!canCommand(actor))return fail(403,'command_required');
  return transaction(pool,async db=>{
-  const now=new Date(),date=now.toISOString().slice(0,10);
+  const [[facility]]=await db.execute('SELECT incubator_capacity,nursery_capacity FROM order_brood_facility WHERE id=1 FOR UPDATE');
+  const [[today]]=await db.execute('SELECT CURDATE() AS today');
+  const date=new Date(today.today).toISOString().slice(0,10);
   if(action==='new_strain'){
    if(typeof body.name!=='string'||!body.name.trim()||body.name.length>100||typeof body.description!=='string'||body.description.length>700||!roles.includes(body.role)||!whole(body.incubation_days,1,14)||!whole(body.maturation_days,1,14)||!whole(body.hatch_yield,1,5))return fail(400,'invalid_strain');
    const [existing]=await db.execute('SELECT id FROM order_brood_strains WHERE name=?',[body.name.trim()]);
@@ -96,7 +100,8 @@ export async function breedingPitRoute(pool,req,path){
    if(!whole(body.strain_id,1,Number.MAX_SAFE_INTEGER))return fail(400,'invalid_strain_id');
    const [[strain]]=await db.execute('SELECT * FROM order_brood_strains WHERE id=? FOR UPDATE',[body.strain_id]);
    if(!strain)return fail(404,'strain_not_found');
-   if(strain.last_cultivation_day&&String(strain.last_cultivation_day).slice(0,10)===date)return fail(409,'cultivation_already_used_today');
+   const [[cultivated]]=await db.execute('SELECT last_cultivation_day=CURDATE() AS used FROM order_brood_strains WHERE id=?',[strain.id]);
+   if(cultivated.used)return fail(409,'cultivation_already_used_today');
    if(Number(strain.egg_stock)>=24)return fail(409,'egg_storage_full');
    const added=Math.min(2,24-Number(strain.egg_stock));
    await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock+?,last_cultivation_day=? WHERE id=?',[added,date,strain.id]);
@@ -109,7 +114,7 @@ export async function breedingPitRoute(pool,req,path){
    if(!strain)return fail(404,'strain_not_found');
    if(!Number(strain.egg_stock))return fail(409,'no_eggs_in_stock');
    const [[running]]=await db.execute("SELECT COUNT(*) AS n FROM order_brood_incubations WHERE status='incubating'");
-   if(Number(running.n)>=8)return fail(409,'incubators_full');
+   if(Number(running.n)>=Number(facility.incubator_capacity))return fail(409,'incubators_full');
    let hostId=null;
    if(body.mode==='host'){
     if(!uuid.test(body.host_character_id||''))return fail(400,'choose_host');
@@ -119,8 +124,7 @@ export async function breedingPitRoute(pool,req,path){
     const [[existing]]=await db.execute("SELECT id FROM order_brood_incubations WHERE host_character_id=? AND status='incubating' LIMIT 1",[hostId]);
     if(existing)return fail(409,'host_already_incubating');
    }
-   const ready=new Date(now.getTime()+Number(strain.incubation_days)*86400000);
-   const [row]=await db.execute('INSERT INTO order_brood_incubations(strain_id,host_character_id,incubation_mode,started_at,ready_at,notes,created_by) VALUES(?,?,?,UTC_TIMESTAMP(),?,?,?)',[strain.id,hostId,body.mode,ready,body.notes,actor.id]);
+   const [row]=await db.execute('INSERT INTO order_brood_incubations(strain_id,host_character_id,incubation_mode,started_at,ready_at,notes,created_by) VALUES(?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL ? DAY),?,?)',[strain.id,hostId,body.mode,strain.incubation_days,body.notes,actor.id]);
    await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock-1 WHERE id=?',[strain.id]);
    await log(db,actor,'incubate','Started '+strain.name+' '+body.mode+' incubation #'+row.insertId);
    return ok({saved:true,id:row.insertId});
@@ -137,11 +141,11 @@ export async function breedingPitRoute(pool,req,path){
     await log(db,actor,'cancel','Cancelled incubation #'+inc.id+' and returned egg stock');
     return ok({saved:true});
    }
-   if(new Date(inc.ready_at).getTime()>now.getTime())return fail(409,'incubation_not_ready');
+   const [[readiness]]=await db.execute('SELECT ready_at<=NOW() AS ready FROM order_brood_incubations WHERE id=?',[inc.id]);
+   if(!readiness.ready)return fail(409,'incubation_not_ready');
    const [[usage]]=await db.execute("SELECT COALESCE(SUM(quantity),0) AS used FROM order_brood_cohorts WHERE status<>'deployed'");
-   if(Number(usage.used)+Number(strain.hatch_yield)>30)return fail(409,'nursery_full');
-   const mature=new Date(now.getTime()+Number(strain.maturation_days)*86400000);
-   await db.execute('INSERT INTO order_brood_cohorts(incubation_id,strain_id,quantity,mature_at) VALUES(?,?,?,?)',[inc.id,strain.id,strain.hatch_yield,mature]);
+   if(Number(usage.used)+Number(strain.hatch_yield)>Number(facility.nursery_capacity))return fail(409,'nursery_full');
+   await db.execute('INSERT INTO order_brood_cohorts(incubation_id,strain_id,quantity,mature_at) VALUES(?,?,?,DATE_ADD(NOW(),INTERVAL ? DAY))',[inc.id,strain.id,strain.hatch_yield,strain.maturation_days]);
    await db.execute("UPDATE order_brood_incubations SET status='hatched' WHERE id=?",[inc.id]);
    await log(db,actor,'hatch','Hatched '+strain.hatch_yield+' '+strain.name+' from incubation #'+inc.id);
    return ok({saved:true});
@@ -151,7 +155,8 @@ export async function breedingPitRoute(pool,req,path){
    const [[cohort]]=await db.execute('SELECT * FROM order_brood_cohorts WHERE id=? FOR UPDATE',[body.cohort_id]);
    if(!cohort)return fail(404,'cohort_not_found');
    if(cohort.status==='deployed')return fail(409,'cohort_already_deployed');
-   if(new Date(cohort.mature_at).getTime()>now.getTime())return fail(409,'cohort_not_mature');
+   const [[readiness]]=await db.execute('SELECT mature_at<=NOW() AS ready FROM order_brood_cohorts WHERE id=?',[cohort.id]);
+   if(!readiness.ready)return fail(409,'cohort_not_mature');
    const [[site]]=await db.execute('SELECT id,name,state,condition_pct FROM world_military_installations WHERE id=?',[body.installation_id]);
    if(!site||!['operational','damaged'].includes(site.state)||Number(site.condition_pct)<25)return fail(409,'installation_not_operational');
    const [[strain]]=await db.execute('SELECT name FROM order_brood_strains WHERE id=?',[cohort.strain_id]);
