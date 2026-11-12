@@ -10,7 +10,8 @@ test('GitHub Pages publishes a real venue entrypoint with root-relative assets',
  const html=load('index.html');
  assert.match(config,/base:\s*'\/'/);
  assert.match(packageJson.scripts.build,/vite build && node scripts\/generate-static-routes\.mjs/);
- assert.match(generator,/venue\/index\.html/);
+ assert.match(generator,/route: '\/venue'/);
+ assert.match(generator,/page.route.slice\(1\)/);
  assert.match(generator,/readFile\(new URL\('index.html',dist\)/);
  assert.match(html,/href="\/favicon\.svg"/);
 });
