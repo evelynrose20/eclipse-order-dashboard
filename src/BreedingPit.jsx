@@ -9,11 +9,63 @@ const emptyProject=()=>({strain_id:'',mode:'host',host_character_id:'',notes:''}
 const emptyStrain=()=>({name:'',description:'',role:'scout',incubation_days:2,maturation_days:2,hatch_yield:2});
 const badge=(state)=>['hatched','ready','deployed'].includes(state)?'complete':state==='cancelled'?'cancelled':'pending';
 
+
+// Schematic-only magitek monitors: procedure states are driven by persisted incubation records.
+function BroodChairMonitor({project,strain,now}){
+ const stage=project?progress(project.started_at,project.ready_at,now):0;
+ const eggs=project?Math.max(1,Math.min(5,Number(strain?.hatch_yield||2))):0;
+ return <div className="brood-chair-console">
+  <div className="brood-console-head"><span><i className="fa-solid fa-chair"/> INCUBATION CHAIR / HARNESS STATUS</span><strong>{project?'Host connected':'Standby'}</strong></div>
+  <div className="brood-chair-visual" role="img" aria-label="Front-view schematic of a magitek incubation chair with four limb harness anchors and sealed egg-transfer conduit">
+   <svg viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="brood-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#627881"/><stop offset="1" stopColor="#17242c"/></linearGradient></defs>
+    <rect x="142" y="14" width="136" height="225" rx="24" fill="url(#brood-metal)" stroke="#b7a172" strokeWidth="2"/>
+    <rect x="163" y="31" width="94" height="169" rx="15" fill="#102128" stroke="#617779" strokeWidth="2"/>
+    <rect x="178" y="48" width="64" height="25" rx="6" fill="#345058" stroke="#9a8566"/>
+    <path d="M142 95H88L65 134M278 95H332L354 134M175 235L130 248M245 235L290 248" stroke="#849aa1" strokeWidth="13" fill="none" strokeLinecap="round"/>
+    {[[68,137],[352,137],[129,244],[291,244]].map(([x,y],i)=><g key={i}><rect x={x-16} y={y-10} width="32" height="21" rx="5" fill="#b5a174" stroke="#e4d2a1"/><circle cx={x} cy={y} r="4" fill="#27434b"/></g>)}
+    <path d="M210 210V253" stroke="#dcbe80" strokeWidth="7" strokeLinecap="round"/><circle cx="210" cy="210" r="17" fill="#30444a" stroke="#e0c085" strokeWidth="3"/><circle cx="210" cy="210" r="7" fill={project?'#acd1b9':'#899293'}/>
+    <path d="M208 254H352" stroke="#8d8b63" strokeWidth="4" strokeDasharray="8 6"/>
+    <text x="20" y="22" fill="#bac6c5" fontSize="11">FOUR-POINT HARNESS</text><text x="270" y="242" fill="#e2c48b" fontSize="10">SEALED CONDUIT</text>
+   </svg>
+  </div>
+  <div className="brood-console-foot"><span>{project?.host_name||'No registered thrall assigned'}</span><span>{project?'Development '+stage+'%':'Awaiting incubation assignment'}</span></div>
+ </div>;
+}
+function BroodCutaway({project,strain,now}){
+ const stage=project?progress(project.started_at,project.ready_at,now):0;
+ const count=project?Math.max(1,Math.min(5,Number(strain?.hatch_yield||2))):0;
+ return <div className="brood-cutaway-console">
+  <div className="brood-console-head"><span><i className="fa-solid fa-microscope"/> BROOD DEVELOPMENT / CUTAWAY MONITOR</span><strong>{project?(stage===100?'Ready for transfer':'Developing'):'No signal'}</strong></div>
+  <svg viewBox="0 0 460 260" role="img" aria-label="Abstract cross-sectional monitor displaying incubating eggs as glowing shapes, connected to a nursery transfer pipeline">
+   <defs><radialGradient id="brood-shell" cx="50%" cy="44%"><stop offset="0" stopColor="#385c61"/><stop offset="1" stopColor="#14242b"/></radialGradient><radialGradient id="brood-egg" cx="38%" cy="35%"><stop offset="0" stopColor="#efe0ae"/><stop offset=".55" stopColor="#b6a477"/><stop offset="1" stopColor="#646442"/></radialGradient></defs>
+   <path d="M32 42C103 17 275 19 350 42C393 70 398 181 347 218C274 252 105 244 34 210C-1 159 -2 84 32 42Z" fill="url(#brood-shell)" stroke="#9b9065" strokeWidth="3"/>
+   <path d="M59 69C127 47 264 46 320 68C344 104 344 162 319 190C251 217 124 216 62 185C40 143 40 107 59 69Z" fill="#1c3033" stroke="#50716b" strokeWidth="2" strokeDasharray="5 5"/>
+   {Array.from({length:count},(_,i)=>{const x=120+(i%3)*88,y=99+Math.floor(i/3)*88;return <g key={i}><ellipse cx={x} cy={y} rx={27} ry={35} fill="url(#brood-egg)" opacity={.85+stage/700}/><path d={`M${x-6} ${y-18}Q${x+10} ${y-4} ${x-4} ${y+18}`} stroke="#e7ddbc" strokeWidth="2" fill="none" opacity=".5"/></g>})}
+   <path d="M368 133H434" stroke="#c1ac75" strokeWidth="8"/><path d="M408 119L438 133L408 147" fill="none" stroke="#f0d69d" strokeWidth="4"/>
+   <text x="19" y="17" fontSize="11" fill="#c9d3c9">CROSS-SECTION / EGG COUNT: {count}</text><text x="358" y="169" fontSize="10" fill="#dfcb91">NURSERY</text>
+  </svg>
+  <div className="brood-progress"><span style={{width:stage+'%'}}/></div><div className="brood-progress-caption"><span>{stage}% incubation progress</span><span>{project?date(project.ready_at):'No active project selected'}</span></div>
+ </div>;
+}
+function NurseryLifeSupport({cohorts,now}){
+ const active=cohorts.filter(c=>c.status!=='deployed');
+ return <section className="brood-lifesupport">
+  <div className="brood-console-head"><span><i className="fa-solid fa-heart-pulse"/> NURSERY / NUTRIENT FEED NETWORK</span><strong>{active.length?active.length+' connected cohorts':'Standby'}</strong></div>
+  <div className="brood-feed-bank">{active.length?active.slice(0,8).map(c=>{
+   const pct=progress(c.created_at,c.mature_at,now);
+   return <div key={c.id} className="brood-feed-vessel"><div className="brood-feed-cap"><span/><span/><span/></div><div className="brood-feed-tube"><div className="brood-feed-liquid" style={{height:pct+'%'}}/><div className="brood-feed-specimen"><i className="fa-solid fa-dna"/></div></div><small>#{c.id}</small><strong>{c.quantity} · {pct}%</strong></div>;
+  }):<div className="brood-empty"><i className="fa-solid fa-flask"/><strong>Nursery feeds idle</strong><p>Transfer a completed incubation to connect its hatchlings to the growth network.</p></div>}</div>
+  <p className="brood-muted">The nursery supplies nutrient flow and aetheric stabilization while each cohort matures. Mature cohorts become eligible for army assignment.</p>
+ </section>;
+}
+
 export default function BreedingPit({request}){
  const [data,setData]=useState(null),[tab,setTab]=useState('incubation');
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [dialog,setDialog]=useState(''),[project,setProject]=useState(emptyProject()),[strain,setStrain]=useState(emptyStrain());
  const [deployment,setDeployment]=useState({cohort_id:'',installation_id:''});
+ const [selectedIncubation,setSelectedIncubation]=useState('');
  async function reload(){const result=await request('/thralls/breeding-pit');setData(result)}
  useEffect(()=>{let active=true;request('/thralls/breeding-pit').then(x=>{if(active)setData(x)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
  useEffect(()=>{const timer=setInterval(()=>reload().catch(()=>{}),60000);return()=>clearInterval(timer)},[]);
@@ -25,6 +77,8 @@ export default function BreedingPit({request}){
  }
  const incubations=data?.incubations||[],cohorts=data?.cohorts||[],strains=data?.strains||[];
  const running=incubations.filter(x=>x.status==='incubating');
+ const selectedProject=running.find(x=>String(x.id)===selectedIncubation)||running[0]||null;
+ const selectedStrain=strains.find(x=>Number(x.id)===Number(selectedProject?.strain_id));
  const nursery=cohorts.filter(x=>x.status!=='deployed');
  const assignments=data?.installations||[];
  const now=data?.server_time||new Date().toISOString();
@@ -53,6 +107,10 @@ export default function BreedingPit({request}){
    </div>
    {tab==='incubation'&&<div className="brood-panel">
     <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>Each egg is assigned to a registered bound thrall for incubation. No growth vats are used for new projects.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={()=>{setProject(emptyProject());setDialog('project')}} disabled={running.length>=data.capacity.incubators||!data.hosts.length}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
+    <div className="brood-monitor-workspace">
+     <div className="brood-monitor-selection"><label>Active incubation monitor<select value={selectedProject?.id||''} onChange={e=>setSelectedIncubation(String(e.target.value))}><option value="">No project selected</option>{running.map(x=><option key={x.id} value={x.id}>{x.host_name||'Thrall'} · {x.strain_name} #{x.id}</option>)}</select></label><small>Chair harness, egg-development cutaway and nursery transfer status</small></div>
+     <div className="brood-monitor-grid"><BroodChairMonitor project={selectedProject} strain={selectedStrain} now={now}/><BroodCutaway project={selectedProject} strain={selectedStrain} now={now}/></div>
+    </div>
     {!data.hosts.length&&<p className="brood-muted" role="status">No registered bound thralls are available. Register an eligible character through their Brood Pit dossier tab before beginning an incubation.</p>}
     {!incubations.length?<div className="brood-empty"><i className="fa-solid fa-egg"/><strong>No incubation projects</strong><p>Start a project using an available brood strain and egg from the strain registry.</p></div>:
     <div className="brood-projects">{incubations.map(item=>{
@@ -62,12 +120,13 @@ export default function BreedingPit({request}){
       <p className="brood-muted">{item.incubation_mode==='host'?'Thrall host: '+(item.host_name||'Unknown character'):'Historical growth-vat project'}</p>
       {item.status==='incubating'&&<><div className="brood-progress"><span style={{width:pct+'%'}}/></div><div className="brood-progress-caption"><span>{pct}% developed</span><span>{ready?'Mature egg': 'Hatch window: '+date(item.ready_at)}</span></div></>}
       {item.notes&&<p className="brood-project-notes">{item.notes}</p>}
-      {item.status==='incubating'&&data.can_manage&&<div className="brood-actions"><button disabled={busy||!ready||data.capacity.nursery_used>=data.capacity.nursery} onClick={()=>run('hatch',{incubation_id:Number(item.id)},'Brood moved to the nursery.')}>Hatch specimen</button><button className="danger" disabled={busy} onClick={()=>run('cancel',{incubation_id:Number(item.id)},'Incubation cancelled; egg returned to stock.')}>Cancel</button></div>}
+      {item.status==='incubating'&&data.can_manage&&<div className="brood-actions"><button disabled={busy||!ready||data.capacity.nursery_used>=data.capacity.nursery} onClick={()=>run('hatch',{incubation_id:Number(item.id)},'Hatchlings transferred to nursery life support.')}>Transfer brood to nursery</button><button className="danger" disabled={busy} onClick={()=>run('cancel',{incubation_id:Number(item.id)},'Incubation cancelled; egg returned to stock.')}>Cancel</button></div>}
      </article>;
     })}</div>}
    </div>}
    {tab==='nursery'&&<div className="brood-panel">
     <div className="brood-heading"><div><small>02 / NURSERY</small><h3>Hatchling Development</h3><p>Hatched broods require maturation time before they can be deployed. Nursery capacity is shared across all strains.</p></div></div>
+    <NurseryLifeSupport cohorts={cohorts} now={now}/>
     {!cohorts.length?<div className="brood-empty"><i className="fa-solid fa-seedling"/><strong>No hatched broods</strong><p>Hatch a mature incubation project to begin nursery development.</p></div>:<div className="brood-projects">{cohorts.map(c=>{
      const matured=new Date(c.mature_at)<=new Date(now);
      return <article key={c.id} className="brood-project">
