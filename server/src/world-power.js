@@ -38,7 +38,7 @@ export async function settlePowerGrid(pool){
    await db.execute('UPDATE world_power_plants SET fuel_units=?,last_fuel_at=? WHERE id=?',[remaining,sqlUtc(now),p.id]);
   }
   const [sites]=await db.execute('SELECT id,population,unrest,civil_stability FROM world_settlements ORDER BY id FOR UPDATE');
-  const [fresh]=await db.execute('SELECT id,settlement_id,status,condition_pct,rated_output,fuel_units,last_outage_penalty_date FROM world_power_plants ORDER BY id FOR UPDATE');
+  const [fresh]=await db.execute("SELECT id,settlement_id,status,condition_pct,rated_output,fuel_units,DATE_FORMAT(last_outage_penalty_date,'%Y-%m-%d') AS last_outage_penalty_date FROM world_power_plants ORDER BY id FOR UPDATE");
   const day=clock.now_utc.slice(0,10);
   for(const s of sites){
    const local=fresh.filter(p=>Number(p.settlement_id)===Number(s.id));
@@ -64,7 +64,8 @@ export async function powerSnapshot(pool){
   const local=plants.filter(p=>Number(p.settlement_id)===Number(s.id));
   const load=50+Number(s.population)/100+consumers.filter(c=>Number(c.settlement_id)===Number(s.id)).reduce((sum,c)=>sum+Number(c.load_units),0);
   const output=local.reduce((sum,p)=>sum+(Number(p.fuel_units)>0&&['operational','damaged'].includes(p.status)?Number(p.rated_output)*Number(p.condition_pct)/100:0),0);
-  const condition=local.length?Math.max(...local.map(p=>Number(p.condition_pct))):0;
+  const operating=local.filter(p=>Number(p.fuel_units)>0&&['operational','damaged'].includes(p.status));
+  const condition=operating.length?Math.max(...operating.map(p=>Number(p.condition_pct))):0;
   grades.set(Number(s.id),local.length?powerGrade(output,load,condition):'unconfigured');
  }
  return {plants:plants.map(p=>({...p,fuel_days:Number(p.fuel_per_day)>0?Number(p.fuel_units)/Number(p.fuel_per_day):0,grade:grades.get(Number(p.settlement_id))})),consumers,grades};
