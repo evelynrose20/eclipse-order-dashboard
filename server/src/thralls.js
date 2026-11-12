@@ -168,14 +168,15 @@ export async function thrallsRoute(pool,req,path){
   }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,batches,history,seat,daily,roster,can_manage,can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  return ok({machine,batches,history,seat,daily,roster,can_manage,can_configure_fluids:actor.account_role==='domina',can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
  const data=await readBody(req);
  if(!data||typeof data!=='object')return forbidden(400,'invalid_request');
  const action=data.action;
- if(!['set_status','run_cycle','decant','maintenance','reset','seat','release'].includes(action))return forbidden(400,'invalid_chamber_action');
+ if(!['set_status','run_cycle','decant','maintenance','reset','seat','release','set_fluid_names'].includes(action))return forbidden(400,'invalid_chamber_action');
+ if(action==='set_fluid_names'&&actor.account_role!=='domina')return forbidden(403,'domina_required');
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
  // Persist elapsed output before a stop, decant, or per-assembly state change.
  await settleChamberProduction(pool);
@@ -190,7 +191,13 @@ export async function thrallsRoute(pool,req,path){
    if(!mine.length){await cn.rollback();return forbidden(403,'owner_or_staff_required')}
   }
   let updates=[],values=[],detail='';
-  if(action==='seat'){
+  if(action==='set_fluid_names'){
+   const upper=typeof data.upper_fluid_name==='string'?data.upper_fluid_name.trim():'';
+   const lower=typeof data.lower_fluid_name==='string'?data.lower_fluid_name.trim():'';
+   if(!upper||!lower||upper.length>80||lower.length>80||/[\\x00-\\x1F\\x7F]/.test(upper+lower))return await rollback(cn,'invalid_fluid_name');
+   updates=['upper_fluid_name=?','lower_fluid_name=?'];values=[upper,lower];
+   detail='Updated collection fluid labels: upper='+upper+'; lower='+lower;
+  }else if(action==='seat'){
    if(machine.machine_status!=='offline')return await rollback(cn,'chair_must_be_offline');
    if(seat.character_id)return await rollback(cn,'chair_occupied');
    if(!uuid.test(data.character_id||''))return await rollback(cn,'invalid_character');
