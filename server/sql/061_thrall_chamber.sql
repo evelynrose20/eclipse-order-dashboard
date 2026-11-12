@@ -3,9 +3,9 @@ USE eclipse_order;
 CREATE TABLE IF NOT EXISTS order_thrall_chamber (
  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
  revision INT UNSIGNED NOT NULL DEFAULT 0,
- machine_status ENUM('offline','standby','running','maintenance') NOT NULL DEFAULT 'standby',
- upper_status ENUM('offline','ready','active','maintenance') NOT NULL DEFAULT 'ready',
- lower_status ENUM('offline','ready','active','maintenance') NOT NULL DEFAULT 'ready',
+ machine_status ENUM('offline','standby','running','maintenance') NOT NULL DEFAULT 'offline',
+ upper_status ENUM('offline','ready','active','maintenance') NOT NULL DEFAULT 'offline',
+ lower_status ENUM('offline','ready','active','maintenance') NOT NULL DEFAULT 'offline',
  upper_volume INT UNSIGNED NOT NULL DEFAULT 0,
  lower_volume INT UNSIGNED NOT NULL DEFAULT 0,
  upper_capacity INT UNSIGNED NOT NULL DEFAULT 1000,
