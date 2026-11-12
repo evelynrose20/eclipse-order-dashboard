@@ -66,15 +66,16 @@ export default function ThrallChamber({request}){
        <div className="chamber-feed"><span>LOWER ASSEMBLY</span><span className={'chamber-pill '+machine.lower_status}>{title(machine.lower_status)}</span></div>
       </div>
       <div className="chamber-actions">
-       <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
+       <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id||machine.upper_status!=='ready'||machine.lower_status!=='ready'} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">A character must occupy the chair before the system can run. Press Start to power the apparatus, then activate each collection assembly separately. Only active assemblies collect gradually. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. Both reservoirs begin Offline. Select Ready on each reservoir, then press Start to activate both and begin gradual extraction. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
-      <p className="chamber-helper">Assemblies remain idle until you select Active for each one. Seating a character and powering on the apparatus do not begin collection.</p>
+      <p className="chamber-helper">Select Ready separately for both reservoirs. Start is available only after both are Ready; it activates both assemblies.</p>
+      {occupant?.character_id&&machine.machine_status!=='running'&&(machine.upper_status!=='ready'||machine.lower_status!=='ready')&&<p className="chamber-helper" role="status">Start locked: set Lacteal Reservoir and Secondary Reservoir to Ready first.</p>}
       {channels.map(c=><div className="chamber-assembly" key={c.id}>
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
        {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
@@ -82,7 +83,7 @@ export default function ThrallChamber({request}){
         <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
         <small>Replenishes at 00:00 UTC · Existing collected stock is retained.</small>
        </div>}
-       <div className="chamber-buttons">{['ready','active','maintenance','offline'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
+       <div className="chamber-buttons">{['offline','ready','maintenance'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
       {!canManage&&<p className="chamber-helper">Your rank permits viewing this workspace. Staff and Household ranks can modify chamber controls and records.</p>}
      </section>
