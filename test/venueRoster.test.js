@@ -9,7 +9,7 @@ const people=JSON.parse(read('public/venue-roster.json'));
 test('venue people page is routable and has a static GitHub Pages entry point',()=>{
  assert.match(app,/path==='\/venue\/people'/);
  assert.match(app,/return <VenueRoster\/>/);
- assert.match(deploy,/dist\/venue\/people\/index.html/);
+ assert.match(routes,/route: '\/venue\/people'/);
  assert.match(site,/href="\/venue\/people\/"/);
 });
 test('public editable roster has distinct staff and thrall entries with unique identifiers',()=>{
