@@ -213,3 +213,23 @@
  background:repeating-radial-gradient(ellipse at 50% 125%,#8c2a7155 0 4px,transparent 7px 20px,#b4468a45 24px 28px,transparent 32px 54px);
 }
 .brood-feed-tube{box-shadow:inset 0 0 18px #d977b35e,0 0 14px #d24d9859}
+
+/* Explicit chair assignment, visible even when there are no active projects. */
+.brood-chair-assignment{border:1px solid #aa6293;border-radius:13px;padding:19px;margin-bottom:18px;background:linear-gradient(135deg,#481b43,#25112f 67%,#341338);box-shadow:inset 0 1px 0 #f0a7d530,0 8px 22px #11041575}
+.brood-chair-assignment-head{display:flex;gap:15px;justify-content:space-between;align-items:start;margin-bottom:15px}
+.brood-chair-assignment-head span:not(.brood-tag){font-size:10px;font-weight:800;letter-spacing:.13em;color:#efabd8}
+.brood-chair-assignment-head h4{font-size:19px;color:#ffe2f3;margin:6px 0;font-family:Georgia,serif}
+.brood-chair-assignment-head h4 i{color:#e78ec5;margin-right:7px}
+.brood-chair-assignment-head p{font-size:12px;color:#d2b0ca;max-width:630px;margin:0;line-height:1.5}
+.brood-chair-inputs,.brood-register-owner{display:flex;align-items:end;flex-wrap:wrap;gap:12px}
+.brood-chair-inputs label,.brood-register-owner label{display:grid;flex:1;min-width:220px;gap:7px;font-size:11px;color:#e8b9d9;font-weight:700}
+.brood-chair-assignment select{width:100%;box-sizing:border-box;min-height:42px;background:#1c1027;color:#f9e5f2;border:1px solid #a35b93;border-radius:7px;padding:9px 11px;font:inherit}
+.brood-chair-assignment button{padding:10px 15px;min-height:42px;border-radius:6px;border:1px solid #c17aab;background:#63345a;color:#ffe5f4;font-weight:700;cursor:pointer}
+.brood-chair-assignment button:disabled{opacity:.46;cursor:not-allowed}
+.brood-chair-empty{display:flex;align-items:start;gap:12px;padding:14px;border-radius:9px;border:1px solid #7f446f;background:#241329}
+.brood-chair-empty>i{color:#e89dcc;margin-top:3px}
+.brood-chair-empty strong{color:#f7d8eb;font-size:13px}
+.brood-chair-empty p{margin:5px 0 0;color:#c8a1c0;font-size:12px}
+.brood-register-owner{border-top:1px solid #7b456c;margin-top:15px;padding-top:15px}
+.brood-assignment-footnote{display:block;font-size:11px;color:#cda5c3;margin-top:12px;line-height:1.55}
+@media(max-width:650px){.brood-chair-assignment{padding:12px}.brood-chair-assignment-head{flex-wrap:wrap}.brood-chair-inputs button,.brood-register-owner button{width:100%}}
