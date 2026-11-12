@@ -8,6 +8,21 @@ import DiscordAccessPage from './DiscordAccessPage.jsx';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
+ no_eggs_in_stock:'This brood strain has no eggs in storage. Cultivate a new batch first.',
+ incubators_full:'All incubation spaces are occupied.',
+ nursery_full:'The brood nursery is at capacity. Deploy mature units before hatching more.',
+ cultivation_already_used_today:'This strain has already received its daily cultivation.',
+ egg_storage_full:'This strain has reached its egg storage capacity.',
+ host_has_not_enabled_incubation:'This character is not registered for Brood Pit incubation.',
+ host_already_incubating:'This character already has an active incubation project.',
+ incubation_not_ready:'This incubation has not completed its development period.',
+ incubation_already_resolved:'This incubation was already hatched or cancelled.',
+ cohort_not_mature:'The brood must finish maturing before military transfer.',
+ cohort_already_deployed:'This brood cohort was already assigned to the military.',
+ installation_not_operational:'Choose an operational Eclipse Order military installation.',
+ strain_exists:'A brood strain with this name already exists.',
+ command_required:'Domina or High Command authorization is required for military transfer.',
+
  not_authenticated:'Your session has expired. Sign in again.',
  chair_must_be_offline:'The apparatus must be Offline before a character can be seated.',
  chair_occupied:'The chamber chair is already occupied. Release the current character first.',
