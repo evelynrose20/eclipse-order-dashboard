@@ -222,13 +222,14 @@ export async function thrallsRoute(pool,req,path){
     }
    }else{
     for(const channel of ['upper','lower']){
-     if(machine[channel+'_status']==='active'){updates.push(channel+'_status=?');values.push(data.status==='offline'?'offline':'ready')}
+     if(machine[channel+'_status']==='active'||(data.status==='offline'&&machine[channel+'_status']==='ready')){updates.push(channel+'_status=?');values.push(data.status==='offline'?'offline':'ready')}
     }
    }
   }else if(action==='maintenance'){
    const channel=data.channel,status=data.status;
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
    if(status==='active')return await rollback(cn,'start_apparatus_to_activate');
+   if(status==='ready'&&!seat.character_id)return await rollback(cn,'chair_empty');
    if(machine.machine_status==='running'&&status==='ready')return await rollback(cn,'stop_chamber_first');
    updates=[channel+'_status=?'];values=[status];detail=channel+' assembly set to '+status;
   }else if(action==='run_cycle'){
