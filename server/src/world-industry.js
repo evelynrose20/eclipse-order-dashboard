@@ -1,4 +1,5 @@
 import {equipmentRoute,equipmentSummary} from './world-magitek-equipment.js';
+import {settlePowerGrid} from './world-power.js';
 import {npcTooCloseToMapEdge,mountainPlacementConflict} from './world-terrain-placement.js';
 import {validateIndustryConfiguration,validateIndustryRules,industryDependenciesHaveCycle,validItemId,industryProductionPreview} from './world-industry-rules.js';
 import {atomicIndustry,adjustFacilityStock,getIndustryPreview,produceIndustryCycle,advanceIndustryProject} from './world-industry-engine.js';
@@ -85,6 +86,7 @@ async function summary(pool){
 }
 export async function industryRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor?.account_role))return fail(403,'command_required');
+ await settlePowerGrid(pool);
  if(path.startsWith('/world-admin/industry/equipment')||path.startsWith('/world-admin/industry/trains'))return equipmentRoute(pool,req,path,actor);
  if(req.method==='GET'&&path==='/world-admin/industry')return summary(pool);
  let match;
