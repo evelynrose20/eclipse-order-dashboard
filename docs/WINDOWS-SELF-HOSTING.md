@@ -20,3 +20,7 @@ The legacy browser/Supabase adapter remains in the repository for compatibility 
 Verify account approval and login, server-side role checks, private bound-sheet redaction, OOC pause and revocation, event signup ownership, GM dice, completed-event XP, HTTPS/CORS, rate limiting and a restorable encrypted database backup. Test from a second device through the published website; local `/ready` is not a substitute for a public login check.
 
 Hosting from a Windows PC means downtime during power loss, sleep, restarts, or network failure unless you add reliable service startup and power protection. Do not store passwords, private member records or backups in GitHub. 
+
+## Windows tray control center
+
+For automatic API startup after Windows sign-in, live API/SQL status and automatic restart when a manually pulled Git revision changes, use the [API Control Center setup](WINDOWS-API-CONTROL-CENTER.md). The control center does not perform MySQL migrations, install dependencies or manage the Cloudflare Tunnel; these remain separate operational steps.
