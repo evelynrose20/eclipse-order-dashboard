@@ -6,6 +6,7 @@ export default function ContributionPreferences({character,request,userId,readOn
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [busy,setBusy]=useState(false);
+ const [enhancementBusy,setEnhancementBusy]=useState(false);
  const url='/thralls/characters/'+character.id+'/contributions';
  useEffect(()=>{
   let active=true;
@@ -14,7 +15,24 @@ export default function ContributionPreferences({character,request,userId,readOn
   return()=>{active=false};
  },[character.id]);
  const editable=Boolean(data?.can_edit&&!readOnly&&character.player_user_id===userId);
+ const canManageEnhancements=Boolean(data?.can_manage_enhancements&&!readOnly);
+ const upperTiers=[0,24,30,40,50],lowerTiers=[6,8,10,14,18];
+ const upperBase=draft?.lactation_state==='established'?18:draft?.lactation_state==='variable'?8:0;
+ const lowerBase=draft?.lower_anatomy&&draft.lower_anatomy!=='unspecified'?6:0;
+ const upperCapacity=upperBase?(Number(draft.upper_enhancement||0)?upperTiers[Number(draft.upper_enhancement)]:upperBase):0;
+ const lowerCapacity=lowerBase?(lowerTiers[Number(draft.lower_enhancement||0)]||6):0;
  const toggle=(key,value)=>setDraft(old=>({...old,[key]:value}));
+ async function saveEnhancements(){
+  if(!canManageEnhancements)return;
+  setEnhancementBusy(true);setError('');setNotice('');
+  try{
+   const payload={upper_enhancement:Number(draft.upper_enhancement||0),lower_enhancement:Number(draft.lower_enhancement||0)};
+   await request(url+'/enhancements',{method:'PUT',body:payload});
+   setData(old=>({...old,preferences:{...old.preferences,...payload}}));
+   setNotice('Both production enhancement levels saved.');
+  }catch(e){setError(e.message||'Unable to save enhancements.')}
+  finally{setEnhancementBusy(false)}
+ }
  async function save(e){
   e.preventDefault();setBusy(true);setError('');setNotice('');
   try{
@@ -64,6 +82,26 @@ export default function ContributionPreferences({character,request,userId,readOn
      <p><strong>Lower assembly:</strong> {draft.lower_anatomy&&draft.lower_anatomy!=='unspecified'?'Categorized from anatomy':'Anatomy not configured'}</p>
     </div>
     <small>Output is determined by timed cycles and the character's production profile. Some cycles may produce nothing.</small>
+   </div>
+   <div className="panel" style={{display:'grid',gap:12}}>
+    <strong>Daily production enhancements</strong>
+    <p className="muted">Optional RP enhancements increase each assembly's daily capacity, not its extraction speed. The two reservoirs are independent. Only staff can assign a tier.</p>
+    <div className="dossier-fields">
+     <label style={{display:'grid',gap:6}}>Lacteal Reservoir
+      <select value={draft.upper_enhancement||0} disabled={!canManageEnhancements||enhancementBusy} onChange={e=>toggle('upper_enhancement',Number(e.target.value))}>
+       <option value={0}>Normal (character baseline)</option>
+       {upperTiers.slice(1).map((n,i)=><option key={n} value={i+1}>{['Minor','Moderate','Major','Exceptional'][i]} — {n.toFixed(1)} units/day</option>)}
+      </select>
+     </label>
+     <label style={{display:'grid',gap:6}}>Secondary Reservoir
+      <select value={draft.lower_enhancement||0} disabled={!canManageEnhancements||enhancementBusy} onChange={e=>toggle('lower_enhancement',Number(e.target.value))}>
+       <option value={0}>Normal — 6.0 units/day</option>
+       {lowerTiers.slice(1).map((n,i)=><option key={n} value={i+1}>{['Minor','Moderate','Major','Exceptional'][i]} — {n.toFixed(1)} units/day</option>)}
+      </select>
+     </label>
+    </div>
+    <p className="muted">Current daily capacity: Lacteal {upperCapacity.toFixed(1)} · Secondary {lowerCapacity.toFixed(1)} fluid units. Unavailable anatomy or lactation still produces 0.</p>
+    {canManageEnhancements?<button type="button" className="btn" disabled={enhancementBusy||busy} onClick={saveEnhancements}>{enhancementBusy?'Saving…':'Save enhancement levels'}</button>:<small className="muted">Production tiers are controlled by authorized staff.</small>}
    </div>
    {editable?<button type="submit" className="btn primary" disabled={busy}>{busy?'Saving…':'Save permissions'}</button>:<p className="muted">Read-only. Only this character's player can change contribution permissions.</p>}
    <p className="muted">Seating defaults to disabled. Turning it off releases the character and stops the apparatus.</p>
