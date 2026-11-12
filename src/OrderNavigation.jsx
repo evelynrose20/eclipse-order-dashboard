@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import './order-navigation.css';
 import OrderEmblem from './OrderEmblem.jsx';
 
-const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',freight:'truck-ramp-box',fronts:'store',treasury:'coins',chamber:'flask-vial', 'breeding-pit':'egg','lineage-research':'dna',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears','venue-management':'store'};
+const FA_NAV={overview:'house',roster:'users',sheet:'scroll',scenes:'dice-d20',encounters:'shield-halved',events:'calendar-days',construction:'hammer',factions:'flag',world:'earth-europe',workshop:'screwdriver-wrench',trade:'truck-fast',freight:'truck-ramp-box',fronts:'store',treasury:'coins',chamber:'flask-vial', 'breeding-pit':'egg','lineage-research':'dna',profile:'user-gear',directory:'address-book',transitions:'right-left',members:'user-group',governance:'landmark',lore:'book-open',settings:'gears'};
 const navIcon=id=>'fa-solid fa-'+(FA_NAV[id]||'circle');
 const SECTION_MAP={
  overview:'home',
@@ -11,7 +11,7 @@ const SECTION_MAP={
  chamber:'thralls','breeding-pit':'thralls','lineage-research':'thralls',
  profile:'community',directory:'community',transitions:'community',
  members:'administration',governance:'administration',lore:'administration',
- settings:'administration','venue-management':'administration'
+ settings:'administration'
 };
 const GROUPS=[
  {id:'home',name:'YOUR SPACE',hint:'Start here'},
@@ -32,7 +32,7 @@ const DESCRIPTIONS={
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
  governance:'The Order’s governing chamber and charter',
- settings:'Rules and records','venue-management':'Public venue staff, thralls and portraits',lore:'The Order’s history, figures and places',world:'Territories, climate, civilians and supplies'
+ settings:'Rules and records',lore:'The Order’s history, figures and places',world:'Territories, climate, civilians and supplies'
 };
 
 export const getNavSection=(id)=>GROUPS.find(g=>g.id===SECTION_MAP[id])?.name||'WORKSPACE';
