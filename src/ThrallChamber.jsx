@@ -63,6 +63,7 @@ export default function ThrallChamber({request}){
     <div className="chamber-layout">
      <section className="chamber-card chamber-machine">
       <div className="chamber-heading"><div><span>01 / MAIN APPARATUS</span><h3>Magitek control station</h3></div><i className="fa-solid fa-gears"/></div>
+      <div className="chamber-power-readout" role="status"><i className="fa-solid fa-bolt"/> Power flow: <strong>{(data.power?.grade||'legacy').toUpperCase()}</strong> · {Number(data.power?.rate?.amount??0.1).toFixed(1)} fluid units / {Number(data.power?.rate?.interval_ms??30000)/1000}s{Number(data.power?.rate?.amount)===0?' · Extraction paused until power improves':''}</div>
       <div className="chamber-visual" aria-label="Schematic of the central magitek apparatus">
        <div className="chamber-lightstrip"/>
        <div className="chamber-apparatus-layout">
@@ -137,7 +138,7 @@ export default function ThrallChamber({request}){
        {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
         <div><span>{(machine[c.id+'_fluid_name']||(c.id==='upper'?'Breast Milk':'Secondary Fluid')).toLocaleUpperCase()} AVAILABLE TODAY</span><strong>{fluid(data.daily[c.id].remaining)} <small>/ {fluid(data.daily[c.id].maximum)} fluid units</small></strong></div>
         <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
-        <small>Decreases by 0.1 every 30 seconds while extracting · Replenishes at 00:00 UTC · Stored fluid is retained.</small>
+        <small>Power-adjusted extraction rate shown in the control station · Replenishes at 00:00 UTC · Stored fluid is retained.</small>
         {data.collection_health?.[c.id]&&<small role="status">Collection status: {data.collection_health[c.id]}</small>}
        </div>}
        <div className="chamber-buttons">{['offline','ready','maintenance'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
