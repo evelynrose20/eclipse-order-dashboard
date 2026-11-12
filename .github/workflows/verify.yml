@@ -40,6 +40,11 @@ jobs:
           ECLIPSE_CI_MYSQL: '1'
           ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
         run: node --test server/test/chamber-batch-tanks.integration.test.js
+      - name: Verify power building projects with real MySQL
+        env:
+          ECLIPSE_CI_MYSQL: '1'
+          ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
+        run: node --test server/test/world-power-projects.integration.test.js
       - run: npm test
       - run: npm run build
       - name: Test API authorization and MySQL migrations
