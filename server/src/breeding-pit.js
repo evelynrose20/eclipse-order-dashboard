@@ -86,10 +86,8 @@ export async function breedingPitRoute(pool,req,path){
  if(action==='deploy'&&!canCommand(actor))return fail(403,'command_required');
  return transaction(pool,async db=>{
   const [[facility]]=await db.execute('SELECT incubator_capacity,nursery_capacity FROM order_brood_facility WHERE id=1 FOR UPDATE');
-  const [[today]]=await db.execute('SELECT CURDATE() AS today');
-  const date=new Date(today.today).toISOString().slice(0,10);
   if(action==='new_strain'){
-   if(typeof body.name!=='string'||!body.name.trim()||body.name.length>100||typeof body.description!=='string'||body.description.length>700||!roles.includes(body.role)||!whole(body.incubation_days,1,14)||!whole(body.maturation_days,1,14)||!whole(body.hatch_yield,1,5))return fail(400,'invalid_strain');
+   if(typeof body.name!=='string'||!body.name.trim()||body.name.length>73||typeof body.description!=='string'||body.description.length>700||!roles.includes(body.role)||!whole(body.incubation_days,1,14)||!whole(body.maturation_days,1,14)||!whole(body.hatch_yield,1,5))return fail(400,'invalid_strain');
    const [existing]=await db.execute('SELECT id FROM order_brood_strains WHERE name=?',[body.name.trim()]);
    if(existing.length)return fail(409,'strain_exists');
    const [added]=await db.execute('INSERT INTO order_brood_strains(name,description,role,incubation_days,maturation_days,hatch_yield,egg_stock,created_by) VALUES(?,?,?,?,?,?,0,?)',[body.name.trim(),body.description,body.role,body.incubation_days,body.maturation_days,body.hatch_yield,actor.id]);
@@ -104,7 +102,7 @@ export async function breedingPitRoute(pool,req,path){
    if(cultivated.used)return fail(409,'cultivation_already_used_today');
    if(Number(strain.egg_stock)>=24)return fail(409,'egg_storage_full');
    const added=Math.min(2,24-Number(strain.egg_stock));
-   await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock+?,last_cultivation_day=? WHERE id=?',[added,date,strain.id]);
+   await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock+?,last_cultivation_day=CURDATE() WHERE id=?',[added,strain.id]);
    await log(db,actor,'cultivate','Cultivated '+added+' '+strain.name+' eggs');
    return ok({saved:true,added});
   }
