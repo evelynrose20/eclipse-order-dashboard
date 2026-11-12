@@ -1,29 +1,37 @@
-# Eclipse Order API Control Center (Windows)
+# Eclipse Order API Control Center — no terminal required
 
-The Windows tray manager is a small local desktop control panel for the existing Node.js API and MySQL connection. It does not create a new public endpoint, modify database credentials or install SQL automatically.
+The Windows Control Center starts with Windows sign-in and keeps the existing Node API running. **No PowerShell or npm window should remain open.**
 
-## One-time installation
+## Install or upgrade the desktop launcher
 
-1. Install Node.js 22+ and Git on the Windows host. Keep MySQL configured as a **Windows service with Automatic startup** (Services → MySQL/MariaDB → Properties → Startup type: Automatic). Setting service startup may require administrator access. Ensure the database is restored and working before enabling unattended startup.
-2. Keep the repository on the Windows machine, with a **private** `server/.env` and dependencies installed using `cd server; npm ci`.
-3. From the repository, double-click **`tools/install-api-manager.cmd`**, or run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/install-api-manager.ps1`.
-4. The control center starts immediately and a shortcut is created for the **current Windows user's sign-in**. You must log into that Windows account; this is not a boot-time Windows service.
-5. Stop any other manually started `npm start` API instance first so two processes do not compete for port 3182. Keep the existing Cloudflare Tunnel installation and service running separately.
+1. `git pull` the latest `main` branch on the Windows host (the existing GitHub installation).
+2. Right-click the old tray icon and select **Exit and stop API**.
+3. Double-click **`tools/install-api-manager.vbs`**. This replaces the old startup shortcut with a silent Windows Script Host launcher and opens the Control Center.
+4. On subsequent Windows sign-ins, Windows runs `tools/launch-api-manager.vbs` in the tray without a visible terminal. Double-click `launch-api-manager.vbs` to launch manually (it starts minimized); use `wscript.exe tools/launch-api-manager.vbs /show` to open the window immediately.
+5. If you already used the earlier installer, **re-run this new installer once** to replace its startup registration. The old PowerShell shortcut is not silently switched until then.
 
-## Usage
+The installer requires no machine-wide service changes. The Windows account must be signed in and the PC awake for the user-level manager to run. Cloudflare Tunnel remains managed separately.
 
-- The app opens as a tray icon and has **Start**, **Restart**, **Stop** and **Open logs** actions. Closing the window minimizes to the tray; **Exit and stop API** exits the app.
-- It checks local `/health` and `/ready` to distinguish a running Node process from a working MySQL connection. The MySQL service is **not** installed or managed by the app.
-- It detects when **Git HEAD changes** after your own `git pull` (or `git checkout`) and restarts the Node API after that revision stays stable across two checks. It retries on API crashes. It does **not** run `git pull` itself or pull untrusted code.
-- Logs are stored under `%LOCALAPPDATA%\EclipseOrder\ApiManager\logs` on the Windows PC, not in the public repo. Review logs locally; they can include sensitive diagnostic data.
-- It does **not** automatically run `npm ci` or `setup:local`. After dependency or SQL changes, **back up MySQL**, run `cd server; npm ci; npm run setup:local` with the administrator password, and use Restart in the manager. Migrations remain manual because they can affect real member data.
-- When the manager script itself changes on pull, exit and launch it again to load the new manager version. The live manager watches the API code revision but does not replace its own running PowerShell code.
-- Keep the PC awake and the Windows account logged in for uninterrupted operation. If it is asleep, powered off, or logged out, API availability stops even if Cloudflare Tunnel reports healthy.
+## Database status and updates
 
-## Remove startup
+- **API** shows whether local `/health` responds.
+- **Database** shows whether local `/ready` can connect to MySQL. MySQL may be running inside XAMPP, Docker or another host; it does not need a recognizable Windows service name.
+- **Database updates** compares the tracked SQL migration records in the local database against the scripts called by the repository's `setup-local.js`. It checks on startup and periodically. **Update required** means tracked schema versions are missing; **Current** means all tracked versions were found, not that every API functionality test passed. **Unknown** means the status could not be verified.
+- **CHECK / APPLY DATABASE UPDATES** runs the existing SQL setup from inside the app. No npm terminal is necessary. First make a **verified restorable MySQL backup** (the app does not create backups). In the dialog, confirm the backup and enter your *local MySQL administrator* password. Password input is masked and sent over a private stdin pipe, not command arguments, environment variables or logs.
+- The app temporarily stops its own API process while the migration runs, then restarts it if it was running. It stores logs locally under `%LOCALAPPDATA%\EclipseOrder\ApiManager\logs`. An error remains visible if migration fails. Never send logs with secrets or private member information to public issues.
+- The manager does not automatically run schema migrations on every Git pull because a failed migration could damage production data. The **update status** tells you when manual approval and backup are needed. It also does not automatically install new npm dependencies after updates.
 
-Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/uninstall-api-manager.ps1`. That removes only the startup shortcut; it never deletes the database or API configuration.
+## API controls
+
+**START**, **RESTART**, **STOP**, and **OPEN LOGS** remain available. Git HEAD changes from a manual `git pull` trigger an API restart after the revision stabilizes. A crash is retried automatically. Close the window to minimize to the tray; choose **Exit and stop API** to quit.
+
+## Uninstall startup
+
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/uninstall-api-manager.ps1`, or delete the **Eclipse Order API Control Center** shortcut from the Windows Startup folder. Uninstalling does not affect your database or secrets.
 
 ## Troubleshooting
 
-If the API is offline, use Open logs and check for missing Node.js, an invalid `server/.env`, or port 3182 already in use. If the API is online but the database is not ready, check the MySQL Windows service and private DB connection details; do not paste credentials into public issues or chat. Confirm `http://127.0.0.1:3182/health` and `http://127.0.0.1:3182/ready` on the Windows PC.
+- If **Database connected** but **Database updates unknown**, the connection may lack permission to read `schema_migrations`. Check local logs and the configured database user.
+- If **Update required**, use the in-app button only after backing up, then confirm the status becomes **Current**.
+- If the old Windows PowerShell window remains open, it belongs to the older manager instance: exit it through its tray menu, then run the new VBS installer.
+- Keep `server/.env` private and MySQL bound to localhost. Do not expose the management app to the internet.

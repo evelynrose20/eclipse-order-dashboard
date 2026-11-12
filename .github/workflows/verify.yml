@@ -62,7 +62,7 @@ jobs:
       - name: Parse PowerShell manager and installer files
         shell: pwsh
         run: |
-          $paths = @('tools/windows-api-manager.ps1', 'tools/install-api-manager.ps1', 'tools/uninstall-api-manager.ps1')
+          $paths = @('tools/windows-api-manager.ps1', 'tools/windows-api-maintenance.ps1', 'tools/install-api-manager.ps1', 'tools/uninstall-api-manager.ps1')
           foreach ($path in $paths) {
             $tokens = $null
             $errors = $null

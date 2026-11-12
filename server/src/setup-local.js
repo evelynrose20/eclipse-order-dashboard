@@ -1,11 +1,13 @@
 import {createPool} from 'mysql2/promise';
 import {readFile} from 'node:fs/promises';
-import {askSecret} from './terminal-secret.js';
+import {askSecret,readPipedSecret} from './terminal-secret.js';
 async function main(){
  if(!process.env.DB_USER||!process.env.DB_PASSWORD)throw new Error('Set DB_USER and DB_PASSWORD in your private server/.env.');
  if((process.env.DB_NAME||'eclipse_order')!=='eclipse_order')throw new Error('Migration SQL targets eclipse_order; DB_NAME must be eclipse_order to prevent updating a different database.');
  const adminName=process.env.MIGRATION_DB_USER||'root';
- const adminPassword=await askSecret('Local MySQL administrator password (hidden): ');
+ const adminPassword=process.argv.includes('--admin-password-stdin')
+  ? await readPipedSecret()
+  : await askSecret('Local MySQL administrator password (hidden): ');
  const pool=createPool({host:'127.0.0.1',port:Number(process.env.DB_PORT||3306),
   database:'eclipse_order',user:adminName,password:adminPassword,connectionLimit:1,multipleStatements:true});
  try{
