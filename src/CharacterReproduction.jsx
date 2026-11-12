@@ -41,6 +41,7 @@ export default function CharacterReproduction({character,request,readOnly=false,
   const key=eventKey||crypto.randomUUID();setEventKey(key);
   const result=await submit('roll','POST',{event_key:key,ic_event_date:eventDate},'Conception event recorded.');
   if(result)setOutcome(result.roll);
+  return result;
  }
  const close=()=>{if(!busy)setModal(null)};
  return <section className="repro-root">
