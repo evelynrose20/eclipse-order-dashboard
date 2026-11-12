@@ -14,6 +14,27 @@
     <meta property="og:description" content="Discover The Eclipse Order, a Garlean-aligned Final Fantasy XIV roleplay free company. Explore New Cassia, our story, recruitment, and events." />
     <meta property="og:url" content="https://rosefires.com/eclipse-order-dashboard/" />
     <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="The Eclipse Order | FFXIV Garlean Roleplay FC" />
+    <meta name="twitter:description" content="Explore The Eclipse Order, a Garlean-aligned Final Fantasy XIV roleplay free company based in New Cassia." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "The Eclipse Order",
+        "url": "https://rosefires.com/eclipse-order-dashboard/",
+        "description": "A Garlean-aligned Final Fantasy XIV roleplay free company based in New Cassia.",
+        "sameAs": ["https://discord.gg/ksqTw4SHYn"]
+      }
+    </script>
+    <script>
+      // GitHub Pages also serves the member portal with ?portal on the public HTML.
+      // Keep that query-based entry point out of search results.
+      if (new URLSearchParams(location.search).has('portal')) {
+        const robots = document.querySelector('meta[name="robots"]');
+        if (robots) robots.content = 'noindex, nofollow';
+        document.querySelector('link[rel="canonical"]')?.remove();
+      }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
     <title>The Eclipse Order | FFXIV Garlean Roleplay FC</title>
   </head>
