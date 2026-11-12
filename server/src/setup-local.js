@@ -245,6 +245,8 @@ async function main(){
   await pool.query(councilCharacterLock);
   const characterCycles=await readFile(new URL('../sql/114_character_cycles_and_pregnancy.sql',import.meta.url),'utf8');
   await pool.query(characterCycles);
+  const pregnancyNinetyDayDefault=await readFile(new URL('../sql/115_pregnancy_ninety_day_default.sql',import.meta.url),'utf8');
+  await pool.query(pregnancyNinetyDayDefault);
   const zoneCrossings=await readFile(new URL('../sql/115_world_zone_crossings.sql',import.meta.url),'utf8');
   await pool.query(zoneCrossings);
   const directionalGeography=await readFile(new URL('../sql/116_world_directional_geography.sql',import.meta.url),'utf8');
