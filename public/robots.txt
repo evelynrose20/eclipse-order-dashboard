@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Member URLs are excluded using page-level noindex, not robots.txt,
+# so crawlers can read the directive.
+Sitemap: https://rosefires.com/eclipse-order-dashboard/sitemap.xml
