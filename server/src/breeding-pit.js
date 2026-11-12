@@ -74,11 +74,13 @@ export async function breedingPitRoute(pool,req,path){
   const [cohorts]=await pool.execute('SELECT c.*,s.name AS strain_name,s.role,i.incubation_mode FROM order_brood_cohorts c JOIN order_brood_strains s ON s.id=c.strain_id JOIN order_brood_incubations i ON i.id=c.incubation_id ORDER BY c.id DESC LIMIT 150');
   const [installations]=await pool.execute("SELECT i.id,i.name,i.state,i.condition_pct,s.name AS location_name FROM world_military_installations i JOIN world_settlements s ON s.id=i.settlement_id WHERE s.controlling_faction_id='eclipse-order' AND i.state IN ('operational','damaged') AND i.condition_pct>=25 ORDER BY i.name");
   const [hosts]=await pool.execute("SELECT c.id,c.character_name AS name FROM order_brood_host_permissions p JOIN characters c ON c.id=p.character_id WHERE p.allow_incubation=1 AND (c.collar_bound=1 OR EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude')) ORDER BY c.character_name");
+  // Only the character owner may register an unregistered thrall for incubation.
+  const [my_thralls]=await pool.execute("SELECT c.id,c.character_name AS name,COALESCE(p.allow_incubation,0) AS registered FROM characters c LEFT JOIN order_brood_host_permissions p ON p.character_id=c.id WHERE c.player_account_id=? AND (c.collar_bound=1 OR EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude')) ORDER BY c.character_name",[actor.id]);
   const [history]=await pool.execute('SELECT b.id,b.action,b.detail,b.created_at,a.display_name AS actor FROM order_brood_activity b JOIN accounts a ON a.id=b.actor_id ORDER BY b.id DESC LIMIT 75');
   const now=Date.now();
   const capacity_used=cohorts.filter(c=>c.status!=='deployed').reduce((n,c)=>n+Number(c.quantity),0);
   const incubator_used=incubations.filter(i=>i.status==='incubating').length;
-  return ok({strains,incubations,cohorts,installations,hosts,history,capacity:{incubators:Number(facility.incubator_capacity),incubator_used,nursery:Number(facility.nursery_capacity),nursery_used:capacity_used},server_time:new Date(now).toISOString(),can_manage:await canManage(pool,actor),can_deploy:canCommand(actor)});
+  return ok({strains,incubations,cohorts,installations,hosts,my_thralls,history,capacity:{incubators:Number(facility.incubator_capacity),incubator_used,nursery:Number(facility.nursery_capacity),nursery_used:capacity_used},server_time:new Date(now).toISOString(),can_manage:await canManage(pool,actor),can_deploy:canCommand(actor)});
  }
  if(path!=='/thralls/breeding-pit/actions'||req.method!=='POST')return fail(404,'not_found');
  if(!await canManage(pool,actor))return fail(403,'staff_or_household_required');
