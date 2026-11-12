@@ -5,7 +5,7 @@ const tidy=value=>String(value||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toU
 const date=value=>value?new Date(value).toLocaleString():'—';
 const options={scout:'Reconnaissance',assault:'Frontline assault',support:'Aetheric support'};
 const progress=(start,end,now)=>Math.min(100,Math.max(0,Math.round(100*(new Date(now)-new Date(start))/Math.max(1,new Date(end)-new Date(start)))));
-const emptyProject=()=>({strain_id:'',mode:'vat',host_character_id:'',notes:''});
+const emptyProject=()=>({strain_id:'',mode:'host',host_character_id:'',notes:''});
 const emptyStrain=()=>({name:'',description:'',role:'scout',incubation_days:2,maturation_days:2,hatch_yield:2});
 const badge=(state)=>['hatched','ready','deployed'].includes(state)?'complete':state==='cancelled'?'cancelled':'pending';
 
@@ -40,7 +40,7 @@ export default function BreedingPit({request}){
   {notice&&<div className="brood-success" role="status">{notice}</div>}
   {data&&<>
    <div className="brood-metrics">
-    <div><span>ACTIVE INCUBATIONS</span><strong>{running.length} <small>/ {data.capacity.incubators}</small></strong><small>Occupied incubation spaces</small></div>
+    <div><span>ACTIVE INCUBATIONS</span><strong>{running.length} <small>/ {data.capacity.incubators}</small></strong><small>Registered thrall hosts</small></div>
     <div><span>NURSERY CAPACITY</span><strong>{activeTotal} <small>/ {data.capacity.nursery}</small></strong><small>Undeployed creatures</small></div>
     <div><span>MATURE BROODS</span><strong>{readyCohorts.reduce((s,c)=>s+Number(c.quantity),0)}</strong><small>Available for army transfer</small></div>
     <div><span>REGISTERED STRAINS</span><strong>{strains.length}</strong><small>Distinct brood lines</small></div>
@@ -52,13 +52,14 @@ export default function BreedingPit({request}){
     <button type="button" className="brood-refresh" onClick={()=>reload().catch(e=>setError(e.message))}><i className="fa-solid fa-rotate"/> Refresh</button>
    </div>
    {tab==='incubation'&&<div className="brood-panel">
-    <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>Eggs develop in a sealed growth vat or within a registered character-hosted story project. Each incubation uses one egg.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={()=>{setProject(emptyProject());setDialog('project')}} disabled={running.length>=data.capacity.incubators}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
+    <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>Each egg is assigned to a registered bound thrall for incubation. No growth vats are used for new projects.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={()=>{setProject(emptyProject());setDialog('project')}} disabled={running.length>=data.capacity.incubators||!data.hosts.length}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
+    {!data.hosts.length&&<p className="brood-muted" role="status">No registered bound thralls are available. Register an eligible character through their Brood Pit dossier tab before beginning an incubation.</p>}
     {!incubations.length?<div className="brood-empty"><i className="fa-solid fa-egg"/><strong>No incubation projects</strong><p>Start a project using an available brood strain and egg from the strain registry.</p></div>:
     <div className="brood-projects">{incubations.map(item=>{
      const pct=progress(item.started_at,item.ready_at,now),ready=pct===100;
      return <article className="brood-project" key={item.id}>
-      <div className="brood-project-top"><div><small>PROJECT #{item.id} · {item.incubation_mode==='vat'?'GROWTH VAT':'HOST INCUBATION'}</small><h4>{item.strain_name}</h4></div><span className={'brood-tag '+badge(item.status)}>{item.status==='incubating'&&ready?'Ready to hatch':tidy(item.status)}</span></div>
-      <p className="brood-muted">{item.incubation_mode==='host'?'Host: '+(item.host_name||'Unknown character'):'Self-contained magitek growth vessel'}</p>
+      <div className="brood-project-top"><div><small>PROJECT #{item.id} · {item.incubation_mode==='vat'?'LEGACY VAT RECORD':'THRALL INCUBATION'}</small><h4>{item.strain_name}</h4></div><span className={'brood-tag '+badge(item.status)}>{item.status==='incubating'&&ready?'Ready to hatch':tidy(item.status)}</span></div>
+      <p className="brood-muted">{item.incubation_mode==='host'?'Thrall host: '+(item.host_name||'Unknown character'):'Historical growth-vat project'}</p>
       {item.status==='incubating'&&<><div className="brood-progress"><span style={{width:pct+'%'}}/></div><div className="brood-progress-caption"><span>{pct}% developed</span><span>{ready?'Mature egg': 'Hatch window: '+date(item.ready_at)}</span></div></>}
       {item.notes&&<p className="brood-project-notes">{item.notes}</p>}
       {item.status==='incubating'&&data.can_manage&&<div className="brood-actions"><button disabled={busy||!ready||data.capacity.nursery_used>=data.capacity.nursery} onClick={()=>run('hatch',{incubation_id:Number(item.id)},'Brood moved to the nursery.')}>Hatch specimen</button><button className="danger" disabled={busy} onClick={()=>run('cancel',{incubation_id:Number(item.id)},'Incubation cancelled; egg returned to stock.')}>Cancel</button></div>}
@@ -96,15 +97,15 @@ export default function BreedingPit({request}){
     {!data.history.length?<div className="brood-empty">No activity recorded.</div>:<div className="brood-history">{data.history.map(h=><div key={h.id}><span><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{tidy(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {date(h.created_at)}</small></div></div>)}</div>}
    </div>}
    {dialog&&<div className="brood-overlay" role="presentation"><form className="brood-dialog" onSubmit={e=>{e.preventDefault();
-    if(dialog==='project')run('incubate',{strain_id:Number(initial),mode:project.mode,host_character_id:project.mode==='host'?project.host_character_id:null,notes:project.notes},'Incubation project created.');
+    if(dialog==='project')run('incubate',{strain_id:Number(initial),mode:'host',host_character_id:project.host_character_id,notes:project.notes},'Incubation project created.');
     if(dialog==='strain')run('new_strain',{...strain,incubation_days:Number(strain.incubation_days),maturation_days:Number(strain.maturation_days),hatch_yield:Number(strain.hatch_yield)},'New strain registered.');
     if(dialog==='deploy')run('deploy',{cohort_id:Number(deployment.cohort_id),installation_id:Number(deployment.installation_id)},'Brood transferred to military garrison.');
    }}>
     <div className="brood-heading"><div><small>BROOD PIT / OPERATIONS</small><h3>{dialog==='project'?'Begin incubation':dialog==='strain'?'Register brood strain':'Transfer to army'}</h3></div><button type="button" className="brood-close" onClick={()=>setDialog('')} aria-label="Close dialog"><i className="fa-solid fa-xmark"/></button></div>
     {dialog==='project'&&<>
      <label>Brood strain<select value={initial} onChange={e=>setProject(p=>({...p,strain_id:e.target.value}))} required>{strains.map(s=><option key={s.id} value={s.id} disabled={!Number(s.egg_stock)}>{s.name} · {s.egg_stock} eggs</option>)}</select></label>
-     <label>Incubation method<select value={project.mode} onChange={e=>setProject(p=>({...p,mode:e.target.value}))}><option value="vat">Sealed growth vat</option><option value="host">Registered character host</option></select></label>
-     {project.mode==='host'&&<label>Character host<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered host</option>{data.hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select><small>Characters register availability in their own dossier.</small></label>}
+     <p className="brood-muted">Incubation method: Registered bound thrall</p>
+     <label>Thrall host<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered bound thrall</option>{data.hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select><small>Bound characters register availability in their own dossier.</small></label>
      <label>Project notes<textarea rows={3} maxLength={800} value={project.notes} onChange={e=>setProject(p=>({...p,notes:e.target.value}))}/></label>
     </>}
     {dialog==='strain'&&<>
@@ -118,7 +119,7 @@ export default function BreedingPit({request}){
      <label>Destination installation<select required value={deployment.installation_id} onChange={e=>setDeployment(d=>({...d,installation_id:e.target.value}))}>{assignments.map(a=><option key={a.id} value={a.id}>{a.name} · {a.location_name}</option>)}</select></label>
      <p className="brood-muted">The creatures will appear in that installation's garrison roster under their brood strain name.</p>
     </>}
-    <div className="brood-dialog-actions"><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" className="brood-primary" disabled={busy||(dialog==='project'&&(!strains.find(s=>String(s.id)===initial)?.egg_stock||(project.mode==='host'&&!project.host_character_id)))||(dialog==='deploy'&&!deployment.installation_id)}>{busy?'Saving…':dialog==='project'?'Begin incubation':dialog==='strain'?'Register strain':'Confirm transfer'}</button></div>
+    <div className="brood-dialog-actions"><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" className="brood-primary" disabled={busy||(dialog==='project'&&(!strains.find(s=>String(s.id)===initial)?.egg_stock||!project.host_character_id))||(dialog==='deploy'&&!deployment.installation_id)}>{busy?'Saving…':dialog==='project'?'Begin incubation':dialog==='strain'?'Register strain':'Confirm transfer'}</button></div>
    </form></div>}
   </>}
  </section>;
