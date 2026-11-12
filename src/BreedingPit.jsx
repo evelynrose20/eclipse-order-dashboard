@@ -30,7 +30,7 @@ export default function BreedingPit({request}){
  const now=data?.server_time||new Date().toISOString();
  const activeTotal=nursery.reduce((total,x)=>total+Number(x.quantity),0);
  const readyCohorts=useMemo(()=>nursery.filter(x=>new Date(x.mature_at)<=new Date(now)),[data]);
- const initial=project.strain_id||String(strains[0]?.id||'');
+ const initial=project.strain_id||String(strains.find(x=>Number(x.egg_stock)>0)?.id||strains[0]?.id||'');
  if(!data&&!error)return <section className="brood-root"><div className="brood-panel">Opening the Brood Pit…</div></section>;
  return <section className="brood-root">
   <header className="brood-hero"><div><span className="brood-kicker"><i className="fa-solid fa-dungeon"/> LOWER VAULTS · BIO-ARCANE DIVISION</span><h2>Breeding Pit</h2><p>Brood cultivation, incubation, nursery development and military assignment</p></div>
@@ -108,7 +108,7 @@ export default function BreedingPit({request}){
      <label>Project notes<textarea rows={3} maxLength={800} value={project.notes} onChange={e=>setProject(p=>({...p,notes:e.target.value}))}/></label>
     </>}
     {dialog==='strain'&&<>
-     <label>Strain name<input required maxLength={100} value={strain.name} onChange={e=>setStrain(s=>({...s,name:e.target.value}))}/></label>
+     <label>Strain name<input required maxLength={73} value={strain.name} onChange={e=>setStrain(s=>({...s,name:e.target.value}))}/></label>
      <label>Military specialization<select value={strain.role} onChange={e=>setStrain(s=>({...s,role:e.target.value}))}>{Object.entries(options).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
      <div className="brood-dialog-grid">{[['incubation_days','Incubation days',14],['maturation_days','Maturation days',14],['hatch_yield','Creatures per hatch',5]].map(([key,label,max])=><label key={key}>{label}<input type="number" min={1} max={max} required value={strain[key]} onChange={e=>setStrain(s=>({...s,[key]:e.target.value}))}/></label>)}</div>
      <label>Strain description<textarea required rows={3} maxLength={700} value={strain.description} onChange={e=>setStrain(s=>({...s,description:e.target.value}))}/></label>
