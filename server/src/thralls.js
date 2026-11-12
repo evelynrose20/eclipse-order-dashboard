@@ -182,7 +182,7 @@ export async function thrallsRoute(pool,req,path){
    return ok({saved:true,upper_enhancement:data.upper_enhancement,lower_enhancement:data.lower_enhancement});
   }catch(e){await cn.rollback().catch(()=>{});throw e}finally{cn.release()}
  }
- const preferencesPath=new RegExp('^/thralls/characters/([0-9a-f-]{36})/contributions
+ const preferencesPath=/^\/thralls\/characters\/([0-9a-f-]{36})\/contributions$/.exec(path);
  if(preferencesPath&&uuid.test(preferencesPath[1])){
   const id=preferencesPath[1];
   const [[character]]=await pool.execute('SELECT id,character_name,player_account_id,collar_bound FROM characters WHERE id=?',[id]);
