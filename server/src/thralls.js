@@ -74,6 +74,53 @@ async function seatRoster(pool,actor){
  return rows.map(row=>({...row,is_own:row.player_account_id===actor.id}));
 }
 
+// Settle elapsed production on reads; no manual collection action is required.
+async function settleChamberProduction(pool){
+ const cn=await pool.getConnection();
+ try{
+  await cn.beginTransaction();
+  const [[machine]]=await cn.execute('SELECT * FROM order_thrall_chamber WHERE id=1 FOR UPDATE');
+  if(!machine||machine.machine_status!=='running'){await cn.commit();return}
+  const [[seat]]=await cn.execute('SELECT * FROM order_thrall_seat WHERE id=1 FOR UPDATE');
+  if(!seat?.character_id){await cn.commit();return}
+  const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
+  if(!prefs?.allow_seating){await cn.commit();return}
+  const now=new Date(),day=chamberCycleDate(now),midnight=Date.parse(day+'T00:00:00Z');
+  await cn.execute('INSERT IGNORE INTO order_thrall_daily_output(character_id,cycle_date) VALUES(?,?)',[seat.character_id,day]);
+  const [[usage]]=await cn.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=? FOR UPDATE',[seat.character_id,day]);
+  const updates=[],values=[];
+  for(const channel of ['upper','lower']){
+   if(machine[channel+'_status']!=='active'||!availableChamberChannels(prefs)[channel])continue;
+   const previous=seat[channel+'_last_cycle_at'];
+   const startingAt=previous?new Date(previous).getTime():now.getTime();
+   const from=Math.max(Number.isFinite(startingAt)?startingAt:now.getTime(),midnight);
+   const ticks=Math.floor((now.getTime()-from)/CYCLE_MS);
+   if(ticks<=0){
+    if(!previous)await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+    continue;
+   }
+   const remaining=dailyBalance(prefs,usage)[channel].remaining;
+   const space=Math.max(0,Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']));
+   let amount=0;
+   const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
+   const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===kind;
+   if(compatible&&remaining>0&&space>0){
+    for(let i=0;i<Math.min(ticks,288)&&amount<remaining&&amount<space;i++)
+     amount+=Math.min(remaining-amount,space-amount,simulatedCycleYield(channel,prefs));
+   }
+   const settledAt=new Date(from+ticks*CYCLE_MS);
+   await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
+   if(amount){
+    await cn.execute('UPDATE order_thrall_daily_output SET '+channel+'_used='+channel+'_used+? WHERE character_id=? AND cycle_date=?',[amount,seat.character_id,day]);
+    updates.push(channel+'_volume='+channel+'_volume+?');values.push(amount);
+    if(channel==='lower'){updates.push('lower_material_type=?');values.push(kind)}
+   }
+  }
+  if(updates.length)await cn.execute('UPDATE order_thrall_chamber SET '+updates.join(',')+',revision=revision+1 WHERE id=1',values);
+  await cn.commit();
+ }catch(e){await cn.rollback().catch(()=>{});throw e}finally{cn.release()}
+}
+
 export async function thrallsRoute(pool,req,path){
  if(!pool)return forbidden(503,'database_unavailable');
  const actor=await resolveSession(pool,req);
@@ -111,6 +158,7 @@ export async function thrallsRoute(pool,req,path){
  }
  if(!await mayEnterThralls(pool,actor))return forbidden(403,'access_denied');
  if(path==='/thralls/chamber'&&req.method==='GET'){
+  await settleChamberProduction(pool);
   const [[machine]]=await pool.execute('SELECT * FROM order_thrall_chamber WHERE id=1');
   const [batches]=await pool.execute('SELECT id,material,material_type,quantity,classification,notes,created_at FROM order_thrall_chamber_batches ORDER BY id DESC LIMIT 80');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
@@ -164,6 +212,18 @@ export async function thrallsRoute(pool,req,path){
    if(data.status==='running'&&!seat.character_id)return await rollback(cn,'chair_empty');
    if(data.status==='running'&&(machine.upper_status!=='ready'&&machine.lower_status!=='ready'&&machine.upper_status!=='active'&&machine.lower_status!=='active'))return await rollback(cn,'no_operational_assembly');
    updates=['machine_status=?'];values=[data.status];detail='System status changed to '+data.status;
+   if(data.status==='running'){
+    for(const channel of ['upper','lower']){
+     if(machine[channel+'_status']==='ready'){
+      updates.push(channel+'_status=?');values.push('active');
+      await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+     }
+    }
+   }else{
+    for(const channel of ['upper','lower']){
+     if(machine[channel+'_status']==='active'){updates.push(channel+'_status=?');values.push('ready')}
+    }
+   }
   }else if(action==='maintenance'){
    const channel=data.channel,status=data.status;
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
