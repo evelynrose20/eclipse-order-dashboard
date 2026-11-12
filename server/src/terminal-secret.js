@@ -28,14 +28,16 @@ export async function askAccountEmail(prompt='Account email: '){
 }
 
 /** Used only by the local desktop manager. Password travels over an anonymous stdin pipe. */
-export async function readPipedSecret(){
- if(process.stdin.isTTY)throw new Error('The desktop setup must provide a private input pipe.');
+export async function readPipedSecret(input=process.stdin){
+ if(input.isTTY)throw new Error('The desktop setup must provide a private input pipe.');
  let secret='';
- for await(const chunk of process.stdin){
+ for await(const chunk of input){
   secret+=chunk.toString('utf8');
   if(secret.length>2048)throw new Error('Password input exceeds the allowed length.');
  }
- secret=secret.split(/\r?\n/,1)[0];
- if(!secret)throw new Error('Administrator password is required.');
- return secret;
+ // A deliberate blank line means a local passwordless administrator account.
+ // Empty EOF without a line is not valid: the desktop must send an explicit choice.
+ const newline=secret.indexOf('\n');
+ if(newline<0)throw new Error('Missing desktop administrator credential response.');
+ return secret.slice(0,newline).replace(/\r$/,'');
 }
