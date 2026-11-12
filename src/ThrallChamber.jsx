@@ -19,9 +19,9 @@ export default function ThrallChamber({request}){
  const [showFluidNames,setShowFluidNames]=useState(false);
  const [fluidNames,setFluidNames]=useState({upper_fluid_name:'Breast Milk',lower_fluid_name:'Secondary Fluid'});
  const [seatChoice,setSeatChoice]=useState('');
- const load=async()=>setData(await request('/thralls/chamber'));
+ const load=async()=>{const next=await request('/thralls/chamber');setData(next);setError('');};
  useEffect(()=>{let active=true;request('/thralls/chamber').then(d=>{if(active)setData(d)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
- useEffect(()=>{const tick=setInterval(()=>{request('/thralls/chamber').then(setData).catch(()=>{})},10000);return()=>clearInterval(tick)},[]);
+ useEffect(()=>{let active=true;const tick=setInterval(()=>{request('/thralls/chamber').then(d=>{if(active){setData(d);setError('')}}).catch(e=>{if(active)setError('Chamber refresh failed: '+(e.message||'API unavailable')+'. Check the Windows API and run npm run setup:local.')})},10000);return()=>{active=false;clearInterval(tick)}},[]);
  const canManage=Boolean(data?.can_manage);
  const canConfigureFluids=Boolean(data?.can_configure_fluids);
  async function act(action,fields={},message='Updated'){
