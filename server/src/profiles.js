@@ -1,6 +1,13 @@
 import {resolveSession} from './auth.js';
 
-const themes=new Set(['violence','horror','captivity','mind_control','humiliation','body_horror','romance','sexual_themes','character_death']);
+const themes=new Set(['violence','horror','captivity','mind_control','humiliation','body_horror','minor_transformation','full_transformation','romance','sexual_themes','character_death']);
+// Offered only to profiles that do not yet exist. No existing saved list is modified.
+export const STARTER_RP_PREFERENCES=[
+ 'Romance','Flirting','Affection','Combat RP','Horror RP','Captivity RP',
+ 'Power dynamics','Humiliation','Mind control','Body transformation',
+ 'Minor transformation','Full transformation','Body horror','Monster RP',
+ 'Pregnancy RP','Oviposition RP','Milking RP','Aftercare'
+].map(label=>({label,rating:'maybe'}));
 const keys=new Set(['welcome','house_rules','scene_guidelines']);
 const result=(status,body)=>({status,body});
 const fail=(status,error)=>result(status,{error});
@@ -31,7 +38,7 @@ export async function profileRoute(pool,req,path){
  if(path==='/profile/rp'){
   if(req.method==='GET'){
    const [rows]=await pool.execute('SELECT display_name,share_content,share_kinks,kink_entries FROM order_member_rp_profiles WHERE user_id=?',[user.id]);
-   return result(200,rows.length?{display_name:rows[0].display_name,share_content:Boolean(rows[0].share_content),share_kinks:Boolean(rows[0].share_kinks),kink_entries:json(rows[0].kink_entries)}:{display_name:'',share_content:false,share_kinks:false,kink_entries:[]});
+   return result(200,rows.length?{display_name:rows[0].display_name,share_content:Boolean(rows[0].share_content),share_kinks:Boolean(rows[0].share_kinks),kink_entries:json(rows[0].kink_entries)}:{display_name:'',share_content:false,share_kinks:false,kink_entries:STARTER_RP_PREFERENCES.map(entry=>({...entry}))});
   }
   if(req.method==='PUT'){
    const b=await read(req);
