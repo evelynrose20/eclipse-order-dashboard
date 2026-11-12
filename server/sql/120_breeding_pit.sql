@@ -1,5 +1,11 @@
 -- 120: Independent Brood Pit facility, separate from the Extraction Chamber and normal pregnancy.
 USE eclipse_order;
+CREATE TABLE IF NOT EXISTS order_brood_facility (
+ id TINYINT UNSIGNED PRIMARY KEY,
+ incubator_capacity SMALLINT UNSIGNED NOT NULL DEFAULT 8,
+ nursery_capacity SMALLINT UNSIGNED NOT NULL DEFAULT 30
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO order_brood_facility(id) VALUES(1);
 CREATE TABLE IF NOT EXISTS order_brood_strains (
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
  name VARCHAR(100) NOT NULL UNIQUE,
