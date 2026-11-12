@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {askSecret} from './terminal-secret.js';
 async function main(){
  if(!process.env.DB_USER||!process.env.DB_PASSWORD)throw new Error('Set DB_USER and DB_PASSWORD in your private server/.env.');
+ if((process.env.DB_NAME||'eclipse_order')!=='eclipse_order')throw new Error('Migration SQL targets eclipse_order; DB_NAME must be eclipse_order to prevent updating a different database.');
  const adminName=process.env.MIGRATION_DB_USER||'root';
  const adminPassword=await askSecret('Local MySQL administrator password (hidden): ');
  const pool=createPool({host:'127.0.0.1',port:Number(process.env.DB_PORT||3306),
@@ -255,6 +256,26 @@ async function main(){
   await pool.query(fractionalChamber);
   const chamberFluidLabels=await readFile(new URL('../sql/118_chamber_fluid_labels.sql',import.meta.url),'utf8');
   await pool.query(chamberFluidLabels);
+  // Verify that setup really installed the chamber fields needed by the running API.
+  const [chamberColumns]=await pool.query(
+   "SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE,NUMERIC_SCALE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='eclipse_order' AND ((TABLE_NAME='order_thrall_chamber' AND COLUMN_NAME IN ('upper_fluid_name','lower_fluid_name','upper_volume','lower_volume')) OR (TABLE_NAME='order_thrall_daily_output' AND COLUMN_NAME IN ('upper_used','lower_used')) OR (TABLE_NAME='order_thrall_seat' AND COLUMN_NAME IN ('upper_recorded','lower_recorded')) OR (TABLE_NAME='order_thrall_chamber_batches' AND COLUMN_NAME='quantity'))"
+  );
+  const expected={
+   order_thrall_chamber:{upper_fluid_name:null,lower_fluid_name:null,upper_volume:1,lower_volume:1},
+   order_thrall_daily_output:{upper_used:1,lower_used:1},
+   order_thrall_seat:{upper_recorded:1,lower_recorded:1},
+   order_thrall_chamber_batches:{quantity:1}
+  };
+  for(const [table,columns] of Object.entries(expected)){
+   for(const [column,scale] of Object.entries(columns)){
+    const found=chamberColumns.find(row=>row.TABLE_NAME===table&&row.COLUMN_NAME===column);
+    if(!found||(scale!==null&&(found.DATA_TYPE!=='decimal'||Number(found.NUMERIC_SCALE)!==scale)))
+     throw new Error('Chamber SQL migration incomplete: '+table+'.'+column+' is missing or has the wrong type.');
+   }
+  }
+  const [[chamberMigrationState]]=await pool.query("SELECT COUNT(*) AS applied FROM schema_migrations WHERE version IN ('117_chamber_fractional_fluids','118_chamber_fluid_labels')");
+  if(Number(chamberMigrationState.applied)!==2)throw new Error('Chamber SQL migrations 117 and 118 have not both been recorded.');
+  console.log('Chamber schema verified: fractional fluid values and admin fluid names are installed (117, 118).');
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
