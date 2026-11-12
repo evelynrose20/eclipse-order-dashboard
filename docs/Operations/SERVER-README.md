@@ -45,6 +45,10 @@ On the Windows host, check:
 
 A healthy process is not proof that permissions and migrations have been fully tested.
 
+## Existing member RP starter preferences
+
+After taking a private database backup, run `npm run setup:local` in `server/` to install migration **127**, which adds the `starter_seeds_applied` marker to existing RP profiles without modifying their saved entries or sharing choices. Restart the API. When any member (including an existing one) opens their RP preferences, missing starter labels appear with **Maybe**, preserving case-insensitive matching names and all existing ratings. These suggestions remain unsaved and private until the member explicitly saves; the save marks this one-time offering complete. Entries deliberately removed thereafter do not reappear. Existing sharing remains opt-in and nothing is auto-published by this migration. If a profile already has 60 entries, no additional items are offered.
+
 ## First Domina account, registration and sign-in
 
 Only when the database has no accounts, the **local** member portal offers first-Domina setup. Public requests to `/auth/setup-domina` are disabled. Do not attempt to re-create an existing Domina account.
