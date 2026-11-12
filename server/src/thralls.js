@@ -177,6 +177,8 @@ export async function thrallsRoute(pool,req,path){
  const action=data.action;
  if(!['set_status','run_cycle','decant','maintenance','reset','seat','release'].includes(action))return forbidden(400,'invalid_chamber_action');
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
+ // Persist elapsed output before a stop, decant, or per-assembly state change.
+ await settleChamberProduction(pool);
  const cn=await pool.getConnection();
  try{
   await cn.beginTransaction();
