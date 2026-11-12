@@ -94,6 +94,8 @@ test('Moonlight generator repair and upgrade require real materials and progress
   // world_settlements columns rather than reusing this miniature table.
   const connection=await pool.getConnection();
   try{
+   // Restore the empty workshop stock expected by the full schema fixture.
+   await connection.query("DELETE FROM fc_material_stock WHERE material_id IN ('iron-ingot','repair-timbers')");
    await connection.query('SET FOREIGN_KEY_CHECKS=0');
    for(const table of ['world_power_project_contributions','world_power_projects','world_power_consumers','world_power_plants','world_power_blueprints','world_industry_ledger','world_industry_stock','world_industry_facilities','world_industry_items','world_settlements']){
     await connection.query('DROP TABLE IF EXISTS `'+table+'`');
