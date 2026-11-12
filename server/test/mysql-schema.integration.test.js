@@ -36,7 +36,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
     await admin.query("CREATE TABLE IF NOT EXISTS ci_existing_fk_name (character_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL, CONSTRAINT fk_wallet_character FOREIGN KEY(character_id) REFERENCES characters(id)) ENGINE=InnoDB");
    }
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
-   await admin.query(sql);
+   try{await admin.query(sql)}catch(error){throw new Error('Migration '+filename+': '+error.message,{cause:error})}
   }
   const [faqSeed]=await admin.query('SELECT id,question FROM order_public_faq ORDER BY sort_order,id');
   assert.equal(faqSeed.length,7,'initial public FAQ is imported');
