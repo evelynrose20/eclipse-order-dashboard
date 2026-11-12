@@ -289,6 +289,9 @@ async function main(){
   const powerGrid=await readFile(new URL('../sql/123_world_power_grid.sql',import.meta.url),'utf8');
   await pool.query(powerGrid);
   console.log('Settlement power plants and chamber power link ready (123).');
+  const powerProjects=await readFile(new URL('../sql/124_power_blueprint_projects.sql',import.meta.url),'utf8');
+  await pool.query(powerProjects);
+  console.log('Generator blueprints and funded restoration projects ready (124).');
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
