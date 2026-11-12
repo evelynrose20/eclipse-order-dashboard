@@ -66,3 +66,30 @@
 .brood-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}.brood-close{background:transparent!important;border:0!important}
 @media(max-width:850px){.brood-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.brood-hero{padding:20px}.brood-mark{display:none}.brood-heading{flex-wrap:wrap}.brood-toolbar{flex-wrap:wrap}.brood-toolbar nav{width:100%}}
 @media(max-width:500px){.brood-root{gap:12px}.brood-metrics{gap:6px}.brood-metrics>div{padding:12px}.brood-panel{padding:14px}.brood-dialog-grid{grid-template-columns:1fr}.brood-assignment{flex-wrap:wrap}}
+
+/* Incubation chair and brood-monitoring consoles */
+.brood-monitor-workspace{border:1px solid #586052;border-radius:10px;padding:16px;margin:0 0 20px;background:linear-gradient(115deg,#111c24,#1b282b)}
+.brood-monitor-selection{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.brood-monitor-selection label{display:grid;gap:6px;min-width:225px;font-size:11px;font-weight:700;letter-spacing:.05em;color:#c8bc98}
+.brood-monitor-selection select{min-height:36px;border:1px solid #60716c;border-radius:5px;background:#14252d;color:#e9e5d3;padding:7px 10px}
+.brood-monitor-selection>small{font-size:11px;color:#a8b7b4}
+.brood-monitor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.brood-chair-console,.brood-cutaway-console,.brood-lifesupport{border:1px solid #465958;background:#132228;border-radius:8px;padding:13px;min-width:0}
+.brood-console-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:10px;letter-spacing:.07em;font-weight:800;color:#b9aa84}
+.brood-console-head strong{color:#acd1b9;font-size:11px}
+.brood-chair-visual{max-height:285px;display:flex;justify-content:center;align-items:center;margin:6px auto}
+.brood-chair-visual svg{max-width:420px;width:100%;max-height:260px}
+.brood-cutaway-console svg{width:100%;height:auto;max-height:245px;margin:5px auto}
+.brood-console-foot{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#d6d0b6;border-top:1px solid #3a5658;padding-top:10px}
+.brood-lifesupport{margin-bottom:19px;padding:18px}
+.brood-feed-bank{display:flex;flex-wrap:wrap;gap:16px;min-height:120px;align-items:flex-end;padding:25px 9px 16px}
+.brood-feed-vessel{display:grid;justify-items:center;gap:6px;min-width:75px}
+.brood-feed-cap{display:flex;gap:6px;border:1px solid #bca978;background:#4a5958;border-radius:4px;padding:5px}
+.brood-feed-cap span{display:block;background:#c9ad73;width:6px;height:8px;border-radius:4px}
+.brood-feed-tube{position:relative;overflow:hidden;width:64px;height:104px;border:2px solid #82988d;border-top:5px solid #aa9671;border-radius:9px 9px 21px 21px;background:linear-gradient(90deg,#182f35,#365450,#14252a)}
+.brood-feed-liquid{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(160deg,#b4af7b8c,#637d6766);transition:height .3s}
+.brood-feed-specimen{position:absolute;inset:0;display:grid;place-items:center;font-size:27px;color:#d7c99f;filter:drop-shadow(0 0 8px #e5d89f5a)}
+.brood-feed-vessel>small{color:#a8b9b5;font-size:11px}
+.brood-feed-vessel>strong{font-size:11px;color:#d0c6aa}
+.brood-lifesupport>.brood-muted{border-top:1px solid #374b4d;padding-top:11px}
+@media(max-width:860px){.brood-monitor-grid{grid-template-columns:1fr}}
