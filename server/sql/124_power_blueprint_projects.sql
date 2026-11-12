@@ -1,6 +1,8 @@
 -- Power buildings use the same material-funded, time-progressed model as settlement restoration.
 USE eclipse_order;
 INSERT IGNORE INTO fc_materials(id,name,category,description) VALUES ('repair-timbers','Repair Timbers','refined','Processed structural timber for settlement projects');
+-- Link industry-produced repair timber to the existing shared workshop transfer workflow.
+UPDATE world_industry_items SET workshop_material_id='repair-timbers' WHERE id='repair-timbers' AND workshop_material_id IS NULL;
 CREATE TABLE IF NOT EXISTS world_power_blueprints(
  id VARCHAR(48) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL PRIMARY KEY,
  name VARCHAR(110) NOT NULL,
