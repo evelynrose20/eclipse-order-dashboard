@@ -76,3 +76,37 @@
 .chamber .chamber-admin-config{background:#283844;border:1px solid #9b7180;border-radius:3px;color:#f0dce0;font-size:11px;font-weight:800;padding:9px 12px;cursor:pointer;white-space:nowrap}
 .chamber .chamber-admin-config i{margin-right:6px}
 .chamber-dialog input{min-height:39px;padding:9px 11px;border:1px solid #526570;background:#101c25;color:#f1f3f3;border-radius:3px;width:100%;box-sizing:border-box}
+
+/* In-console glass vessels: two independent live white-fluid readouts. */
+.chamber-apparatus-layout{display:grid;grid-template-columns:minmax(104px,.85fr) minmax(170px,1.55fr) minmax(104px,.85fr);gap:12px;align-items:stretch;min-width:0}
+.chamber-center-throne{min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.chamber-center-throne .chamber-frame{min-height:140px;align-content:center;padding:16px 8px;overflow-wrap:anywhere}
+.chamber-center-throne .chamber-frame small{text-align:center;line-height:1.5}
+.chamber-center-throne .chamber-feed{gap:6px;flex-wrap:wrap}
+.chamber-visual-vessel{position:relative;min-width:0;border:1px solid #63727c;background:linear-gradient(135deg,#283541,#141f29 55%,#202c36);padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:inset 0 0 0 1px #ffffff09}
+.chamber-vessel-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:5px;width:100%;font-weight:900;font-size:9px;letter-spacing:.08em;color:#e4b9bf}
+.chamber-vessel-heading .chamber-pill{font-size:8px;padding:3px 5px}
+.chamber-glass-shell{position:relative;flex:1;min-height:134px;width:min(100%,100px);overflow:hidden;isolation:isolate;border:2px solid #8495a3;border-radius:12px 12px 21px 21px;background:linear-gradient(90deg,#0b131c,#263642 24%,#16212b 73%,#0b131b);box-shadow:inset 5px 0 14px #0007,inset -5px 0 12px #0007,0 0 0 3px #ffffff08}
+.chamber-glass-shell::before{content:"";position:absolute;z-index:4;inset:6px auto 9px 6px;width:5px;border-radius:8px;background:linear-gradient(#ffffff65,#ffffff07);pointer-events:none}
+.chamber-glass-markings{position:absolute;z-index:3;inset:0;width:100%;height:100%;background:repeating-linear-gradient(to top,transparent 0,transparent calc(10% - 1px),#dae7ec2b calc(10% - 1px),#dae7ec2b 10%);opacity:.65;pointer-events:none}
+.chamber-white-fluid{position:absolute;left:0;right:0;bottom:0;min-height:0;overflow:visible;border-radius:0 0 16px 16px;background:linear-gradient(90deg,#c3c8cd 0%,#fafaf6 23%,#e9edee 53%,#c5cdd1 82%,#fafbf7 100%);box-shadow:0 -2px 13px #f5f8f393,inset 0 5px 5px #fff9;transition:height 1.8s ease-out}
+.chamber-white-fluid::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(120deg,transparent 10%,#ffffff8f 32%,transparent 49%,#ffffff65 70%,transparent 86%);opacity:.6}
+.chamber-fluid-wave{position:absolute;z-index:2;left:-12%;width:124%;top:-4px;height:9px;border-radius:50%;background:linear-gradient(90deg,#fafaf7e8,#fff,#cfd4da,#fff);box-shadow:0 0 8px #ffffff88;transform-origin:center}
+.chamber-visual-vessel.extracting .chamber-fluid-wave{animation:chamber-milk-wave 3.5s ease-in-out infinite alternate}
+.chamber-fluid-bubble{position:absolute;z-index:2;bottom:8%;width:4px;height:4px;border:1px solid #a6afb7;border-radius:50%;opacity:0;pointer-events:none}
+.chamber-fluid-bubble.bubble-one{left:28%;animation-delay:.1s}
+.chamber-fluid-bubble.bubble-two{left:58%;animation-delay:1.2s;width:3px;height:3px}
+.chamber-fluid-bubble.bubble-three{left:74%;animation-delay:2.1s;width:5px;height:5px}
+.chamber-visual-vessel.extracting .chamber-fluid-bubble{animation-name:chamber-milk-bubble;animation-duration:3s;animation-timing-function:ease-out;animation-iteration-count:infinite}
+.chamber-visual-vessel.extracting .chamber-glass-shell{box-shadow:inset 5px 0 14px #0007,inset -5px 0 12px #0007,0 0 12px #e5f3ef35}
+.chamber-glass-shine{position:absolute;z-index:4;inset:3px 0 3px 0;background:linear-gradient(96deg,#ffffff14 0%,transparent 26%,#ffffff08 72%,transparent 100%);pointer-events:none}
+.chamber-vessel-readout{display:flex;align-items:baseline;gap:3px;flex-wrap:wrap;justify-content:center;font-variant-numeric:tabular-nums}
+.chamber-vessel-readout strong{font-size:19px;color:#fffaf3}
+.chamber-vessel-readout small{font-size:9px;color:#b4c4cb}
+.chamber-vessel-material{font-size:10px;font-weight:800;color:#dfebec;text-align:center;max-width:100%;overflow-wrap:anywhere}
+.chamber-vessel-percent{font-size:9px;color:#b1bfca}
+@keyframes chamber-milk-wave{0%{transform:translateX(-3%) rotate(-2deg)}100%{transform:translateX(3%) rotate(2deg)}}
+@keyframes chamber-milk-bubble{0%{transform:translateY(0) scale(.7);opacity:0}20%{opacity:.7}85%{opacity:.4}100%{transform:translateY(-95px) scale(1.1);opacity:0}}
+@media(max-width:760px){.chamber-apparatus-layout{grid-template-columns:minmax(75px,1fr) minmax(128px,1.3fr) minmax(75px,1fr);gap:7px}.chamber-visual{padding:10px}.chamber-visual-vessel{padding:6px}.chamber-center-throne .chamber-frame i{font-size:31px}.chamber-vessel-heading{justify-content:center}}
+@media(max-width:480px){.chamber-apparatus-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.chamber-center-throne{grid-column:1/-1;grid-row:1}.chamber-glass-shell{min-height:115px}.chamber-vessel-heading{justify-content:space-between}.chamber-center-throne .chamber-frame{min-height:80px}}
+@media(prefers-reduced-motion:reduce){.chamber-white-fluid{transition:none}.chamber-visual-vessel.extracting .chamber-fluid-wave,.chamber-visual-vessel.extracting .chamber-fluid-bubble{animation:none}}
