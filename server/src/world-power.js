@@ -89,6 +89,27 @@ export async function worldPowerRoute(pool,req,path,actor){
  if(req.method!=='POST')return fail(405,'method_not_allowed');
  const b=await input(req);
  if(!b)return fail(400,'invalid_request');
+ const blueprintEdit=/^\/world-admin\/power\/blueprints(?:\/([a-z0-9-]{2,48}))?$/.exec(path);
+ if(blueprintEdit){
+  const fields=['id','name','technology_level','rated_output','fuel_per_day','material_iron','material_timber','labor_required','description'];
+  const candidate={...b,id:blueprintEdit[1]||b.id};
+  if(typeof candidate.id!=='string'||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(candidate.id)||candidate.id.length>48||
+    typeof candidate.name!=='string'||!candidate.name.trim()||candidate.name.length>110||
+    !Number.isSafeInteger(candidate.technology_level)||candidate.technology_level<1||candidate.technology_level>20||
+    !finite(candidate.rated_output,1,1e6)||!finite(candidate.fuel_per_day,.001,1e5)||
+    !Number.isSafeInteger(candidate.material_iron)||candidate.material_iron<1||candidate.material_iron>1e6||
+    !Number.isSafeInteger(candidate.material_timber)||candidate.material_timber<1||candidate.material_timber>1e6||
+    !Number.isSafeInteger(candidate.labor_required)||candidate.labor_required<1||candidate.labor_required>1e7||
+    typeof candidate.description!=='string'||candidate.description.length>300)return fail(400,'invalid_power_blueprint');
+  if(blueprintEdit[1]){
+   const [updated]=await pool.execute('UPDATE world_power_blueprints SET name=?,technology_level=?,rated_output=?,fuel_per_day=?,material_iron=?,material_timber=?,labor_required=?,description=? WHERE id=?',[candidate.name.trim(),candidate.technology_level,candidate.rated_output,candidate.fuel_per_day,candidate.material_iron,candidate.material_timber,candidate.labor_required,candidate.description,candidate.id]);
+   return updated.affectedRows?ok({saved:true}):fail(404,'blueprint_not_found');
+  }
+  try{
+   await pool.execute('INSERT INTO world_power_blueprints(id,name,technology_level,rated_output,fuel_per_day,material_iron,material_timber,labor_required,description) VALUES(?,?,?,?,?,?,?,?,?)',[candidate.id,candidate.name.trim(),candidate.technology_level,candidate.rated_output,candidate.fuel_per_day,candidate.material_iron,candidate.material_timber,candidate.labor_required,candidate.description]);
+   return ok({saved:true});
+  }catch(e){if(e.code==='ER_DUP_ENTRY')return fail(409,'blueprint_id_exists');throw e}
+ }
  if(path==='/world-admin/power/projects'||/^\/world-admin\/power\/projects\/\d+\/(commit|advance)$/.test(path))return powerProjectRoute(pool,path,b,actor);
  // Former free-form generator creation and repair endpoints are deliberately retired.
  if(path==='/world-admin/power/plants'||/^\/world-admin\/power\/plants\/\d+$/.test(path))
