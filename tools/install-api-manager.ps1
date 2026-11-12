@@ -1,22 +1,24 @@
-# Run once in Windows PowerShell. No administrator access required for startup at sign-in.
+# Eclipse Order Control Center installer. Run via install-api-manager.vbs (no console).
 $ErrorActionPreference='Stop'
-$manager=(Resolve-Path (Join-Path $PSScriptRoot 'windows-api-manager.ps1')).Path
+Add-Type -AssemblyName System.Windows.Forms
+$launcher=(Resolve-Path (Join-Path $PSScriptRoot 'launch-api-manager.vbs')).Path
 $startup=[Environment]::GetFolderPath('Startup')
-if(-not (Test-Path $startup)){New-Item -Path $startup -ItemType Directory -Force | Out-Null}
+if(-not(Test-Path $startup)){New-Item -Path $startup -ItemType Directory -Force | Out-Null}
 $shortcut=Join-Path $startup 'Eclipse Order API Control Center.lnk'
 $shell=New-Object -ComObject WScript.Shell
 $link=$shell.CreateShortcut($shortcut)
-$link.TargetPath=Join-Path $PSHOME 'powershell.exe'
-$link.Arguments='-NoProfile -STA -ExecutionPolicy Bypass -File "'+$manager+'" -Minimized'
-$link.WorkingDirectory=(Split-Path $manager)
-$link.Description='Start the Eclipse Order API tray control center at Windows sign-in'
+$link.TargetPath=Join-Path $env:WINDIR 'System32\wscript.exe'
+$link.Arguments='"'+$launcher+'"'
+$link.WorkingDirectory=(Split-Path $launcher)
+$link.Description='Start Eclipse Order API Control Center without a terminal on Windows sign-in'
 $link.Save()
-Write-Host "Installed startup shortcut: $shortcut"
-Write-Host 'The API manager starts at your next Windows sign-in, or you can launch it now.'
+$created=$false
+$mutex=New-Object System.Threading.Mutex($false,'Local\EclipseOrderApiManager',[ref]$created)
 try {
- $mysql=Get-Service | Where-Object {$_.Name -match '^(MySQL|MariaDB)'} | Select-Object -First 1
- if($mysql){
-  Write-Host "Database service: $($mysql.Name) ($($mysql.Status)); verify its Windows Startup type is Automatic."
- }else{Write-Warning 'No MySQL/MariaDB Windows service found. Configure your database service separately.'}
-}catch{Write-Warning 'Could not inspect database services.'}
-Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList @('-NoProfile','-STA','-ExecutionPolicy','Bypass','-File',('"'+$manager+'"'))
+ if($created){
+  Start-Process -FilePath (Join-Path $env:WINDIR 'System32\wscript.exe') -ArgumentList @('"'+$launcher+'"','/show')
+  [System.Windows.Forms.MessageBox]::Show('The Eclipse Order Control Center was installed and launched without a terminal. It will start in the tray when you sign in to Windows.','Installation complete')|Out-Null
+ }else{
+  [System.Windows.Forms.MessageBox]::Show('Startup registration updated. The old Control Center is still running. Select Exit and stop API from its tray icon, then double-click launch-api-manager.vbs to load this new version.','Installation complete')|Out-Null
+ }
+}finally{$mutex.Dispose()}
