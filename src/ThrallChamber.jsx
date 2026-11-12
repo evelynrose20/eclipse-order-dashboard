@@ -70,10 +70,11 @@ export default function ThrallChamber({request}){
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">A character must occupy the chair before the system can run. Starting activates ready assemblies, which collect gradually until stopped. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. Press Start to power the apparatus, then activate each collection assembly separately. Only active assemblies collect gradually. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
+      <p className="chamber-helper">Assemblies remain idle until you select Active for each one. Seating a character and powering on the apparatus do not begin collection.</p>
       {channels.map(c=><div className="chamber-assembly" key={c.id}>
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
        {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
