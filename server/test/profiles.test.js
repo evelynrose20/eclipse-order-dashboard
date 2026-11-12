@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {profileRoute} from '../src/profiles.js';
+import {profileRoute,addMissingStarterPreferences,STARTER_RP_PREFERENCES} from '../src/profiles.js';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 function req(method='GET',body){
  return {method,headers:{authorization:'Bearer '+('T'.repeat(48))},
@@ -13,7 +13,7 @@ function pool(role='member'){
    statements.push({sql,args});
    if(sql.startsWith('SELECT a.id'))return [[{id,account_role:role}]];
    if(sql.startsWith('SELECT adult_declaration'))return [[{adult_declaration:1,content_preferences:{romance:true,violence:false}}]];
-   if(sql.startsWith('SELECT display_name'))return [[{display_name:'Private',share_content:false,share_kinks:false,kink_entries:[{label:'confidential',rating:'no'}]}]];
+   if(sql.startsWith('SELECT display_name'))return [[{display_name:'Private',share_content:false,share_kinks:false,starter_seeds_applied:1,kink_entries:[{label:'confidential',rating:'no'}]}]];
    return [[{affectedRows:1}]];
   },
   query:async(sql)=>{
@@ -84,4 +84,44 @@ test('distinguishes limited transformation from full transformation in saved con
  assert.equal(JSON.parse(insert.args[2]).minor_transformation,true);
  assert.equal(JSON.parse(insert.args[2]).body_horror,false);
  assert.equal(JSON.parse(insert.args[2]).full_transformation,false);
+});
+
+test('legacy existing profile receives only missing Maybe starter labels without changing ratings or sharing',async()=>{
+ const p=pool();
+ p.db.execute=async(sql,args)=>{
+  p.statements.push({sql,args});
+  if(sql.startsWith('SELECT a.id'))return [[{id,account_role:'member'}]];
+  if(sql.startsWith('SELECT display_name'))return [[{display_name:'Existing',share_content:true,share_kinks:false,starter_seeds_applied:0,kink_entries:[{label:'mIlKiNg rP',rating:'favorite'},{label:'Custom preference',rating:'no'}]}]];
+  return [[]];
+ };
+ const r=await profileRoute(p.db,req('GET'),'/profile/rp');
+ assert.equal(r.status,200);
+ assert.equal(r.body.share_content,true);
+ assert.equal(r.body.share_kinks,false);
+ assert.deepEqual(r.body.kink_entries.slice(0,2),[{label:'mIlKiNg rP',rating:'favorite'},{label:'Custom preference',rating:'no'}]);
+ assert.equal(r.body.kink_entries.length,STARTER_RP_PREFERENCES.length+1);
+ assert.equal(r.body.kink_entries.find(x=>x.label==='Romance').rating,'maybe');
+ assert.equal(p.statements.filter(x=>x.sql.startsWith('INSERT')).length,0,'GET must not publish or mutate old member preferences');
+});
+test('one-time seed marker allows members to remove starter labels permanently',async()=>{
+ const p=pool();
+ const body={display_name:'Existing',share_content:false,share_kinks:false,kink_entries:[{label:'Custom',rating:'no'}]};
+ const saved=await profileRoute(p.db,req('PUT',body),'/profile/rp');
+ assert.equal(saved.status,200);
+ const insert=p.statements.find(x=>x.sql.startsWith('INSERT INTO order_member_rp_profiles'));
+ assert.match(insert.sql,/starter_seeds_applied=1/);
+ assert.equal(insert.args[4],'[{"label":"Custom","rating":"no"}]');
+ const result=addMissingStarterPreferences([]);
+ assert.equal(result.length,STARTER_RP_PREFERENCES.length);
+ const existing=await profileRoute(p.db,req('GET'),'/profile/rp');
+ assert.deepEqual(existing.body.kink_entries,[{label:'confidential',rating:'no'}]);
+});
+test('merging starter labels enforces the 60-entry limit and never changes existing entries',()=>{
+ const original=Array.from({length:58},(_,i)=>({label:'Custom '+i,rating:'no'}));
+ const filled=addMissingStarterPreferences(original);
+ assert.equal(filled.length,60);
+ assert.deepEqual(filled.slice(0,58),original);
+ assert.equal(filled[58].rating,'maybe');
+ const full=Array.from({length:60},(_,i)=>({label:'Custom '+i,rating:'favorite'}));
+ assert.deepEqual(addMissingStarterPreferences(full),full);
 });
