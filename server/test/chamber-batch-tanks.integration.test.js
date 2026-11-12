@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createPool} from 'mysql2/promise';
+import {transferChamberBatchToWorkshop} from '../src/thralls.js';
 
 test('chamber batch tank migration installs alongside real workshop materials and recipes', {skip:process.env.ECLIPSE_CI_MYSQL!=='1'},async()=>{
  const pool=createPool({
@@ -30,5 +31,32 @@ test('chamber batch tank migration installs alongside real workshop materials an
   assert.equal(Number(recipe[0].ingredients),3);
   const [applied]=await pool.query("SELECT version FROM schema_migrations WHERE version='119_chamber_batch_tanks_workshop'");
   assert.equal(applied.length,1);
+  // Exercise the real atomic transfer helper against both fluid types.
+  const conn=await pool.getConnection();
+  try{
+   await conn.beginTransaction();
+   const actor='11111111-1111-4111-8111-111111111111';
+   const character='22222222-2222-4222-8222-222222222222';
+   await conn.execute('INSERT INTO accounts(id,email,password_hash,display_name) VALUES(?,?,?,?)',[actor,'batch-smoke@example.test','unused','Batch Smoke']);
+   await conn.execute('INSERT INTO characters(id,character_name,player_account_id,sheet_json) VALUES(?,?,?,?)',[character,'Test Character',actor,'{}']);
+   const [milk]=await conn.execute("INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,created_by,source_character_id,source_name) VALUES('lacteal','milk',3.5,'Unclassified','',?,?,?)",[actor,character,'Test Character']);
+   const [secondary]=await conn.execute("INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,created_by,source_character_id,source_name) VALUES('secondary','vaginal',2.2,'Unclassified','',?,?,?)",[actor,character,'Test Character']);
+   assert.equal((await transferChamberBatchToWorkshop(conn,milk.insertId,2,actor)).material_id,'chamber-breast-milk');
+   assert.equal((await transferChamberBatchToWorkshop(conn,secondary.insertId,1,actor)).material_id,'chamber-secondary-fluid');
+   assert.equal((await transferChamberBatchToWorkshop(conn,milk.insertId,2,actor)).error,'insufficient_batch_fluid','cannot drain the same stock twice');
+   const [tanks]=await conn.execute('SELECT id,quantity,drained_total,source_character_id FROM order_thrall_chamber_batches WHERE id IN (?,?) ORDER BY id',[milk.insertId,secondary.insertId]);
+   assert.deepEqual(tanks.map(b=>Number(b.quantity)),[1.5,1.2]);
+   assert.deepEqual(tanks.map(b=>Number(b.drained_total)),[2,1]);
+   assert.ok(tanks.every(b=>b.source_character_id===character));
+   const [stock]=await conn.execute("SELECT material_id,quantity FROM fc_material_stock WHERE material_id IN ('chamber-breast-milk','chamber-secondary-fluid') ORDER BY material_id");
+   assert.deepEqual(stock.map(b=>Number(b.quantity)),[2,1]);
+   const [transfers]=await conn.execute('SELECT batch_id,quantity,source_character_id FROM order_thrall_batch_transfers WHERE batch_id IN (?,?)',[milk.insertId,secondary.insertId]);
+   assert.equal(transfers.length,2);
+   assert.ok(transfers.every(b=>b.source_character_id===character));
+  }finally{
+   await conn.rollback();
+   conn.release();
+  }
+
  }finally{await pool.end()}
 });
