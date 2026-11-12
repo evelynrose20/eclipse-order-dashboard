@@ -30,11 +30,10 @@ INSERT IGNORE INTO fc_materials(id,name,category,description) VALUES
  ('chamber-secondary-fluid','Secondary Chamber Fluid','supply','Fictional secondary reagent transferred from character-attributed chamber tanks'),
  ('demon-dust','Demon Dust','supply','A fictional Eclipse Order alchemical RP product');
 INSERT IGNORE INTO fc_recipes(id,name,description,output_material,output_quantity) VALUES
- ('demon-dust','Prepare Demon Dust','Fictional Eclipse Order alchemical recipe using chamber reagents and garden botanicals','demon-dust',1);
+ ('demon-dust','Prepare Demon Dust','Fictional Eclipse Order alchemical recipe with chamber reagents','demon-dust',1);
 INSERT IGNORE INTO fc_recipe_inputs(recipe_id,material_id,quantity) VALUES
  ('demon-dust','chamber-breast-milk',1),
- ('demon-dust','chamber-secondary-fluid',1),
- ('demon-dust','duskbloom',1);
+ ('demon-dust','chamber-secondary-fluid',1);
 -- New Demon Dust recipes belong in the alchemy category when workshop categories exist.
 SET @eo_119_cat := (SELECT IF(COUNT(*)>0, "UPDATE fc_recipes SET category_id='alchemy' WHERE id='demon-dust' AND category_id='other'", "DO 0") FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='fc_recipes' AND COLUMN_NAME='category_id');
 PREPARE eo119cat FROM @eo_119_cat; EXECUTE eo119cat; DEALLOCATE PREPARE eo119cat;
