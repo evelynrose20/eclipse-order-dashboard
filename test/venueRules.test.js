@@ -7,7 +7,7 @@ const site=read('src/VenueSite.jsx');
 const rules=read('src/VenueRules.jsx');
 const menu=read('src/VenueMenu.jsx');
 const roster=read('src/VenueRoster.jsx');
-const deployment=read('.github/workflows/deploy.yml');
+const routeGenerator=read('scripts/generate-static-routes.mjs');
 
 test('venue rules have a first-class route and GitHub Pages direct entry point',()=>{
  assert.match(app,/path==='\/venue\/rules'/);
