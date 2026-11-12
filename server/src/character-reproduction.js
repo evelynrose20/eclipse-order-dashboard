@@ -55,31 +55,38 @@ export async function reproductionRoute(pool,req,path){
  const match=/^\/characters\/([0-9a-f-]{36})\/reproduction(?:\/(settings|pregnancy|complete|roll))?$/.exec(path);
  if(!match||!UUID.test(match[1]))return fail(404,'record_not_found');
  const [,id,action]=match;
- const [rows]=await pool.execute(`SELECT c.id,c.player_account_id,c.collar_bound,c.created_at,cor.rank_code
+ const [rows]=await pool.execute(`SELECT c.id,c.player_account_id,c.handler_account_id,c.collar_bound,c.created_at,cor.rank_code
   FROM characters c LEFT JOIN character_order_ranks cor ON cor.character_id=c.id WHERE c.id=?`,[id]);
  const character=rows[0];
  if(!character)return fail(404,'character_not_found');
  const owner=character.player_account_id===actor.id;
  const command=['domina','high_command'].includes(actor.account_role);
+ const assignedHandler=actor.account_role==='handler'&&character.handler_account_id===actor.id;
+ const bound=Boolean(character.collar_bound);
+ const canRegisterPregnancy=bound?(command||assignedHandler):owner;
  const [records]=await pool.execute('SELECT * FROM character_reproductive_profiles WHERE character_id=?',[id]);
  const profile=safeProfile(records[0]);
- if(!owner&&!command)return fail(403,'private_character_record');
+ if(!owner&&!command&&!assignedHandler)return fail(403,'private_character_record');
  // Start legacy bound characters on a stable character date, not today's first visit.
  const cycleProfile={...profile,cycle_anchor:profile.cycle_anchor||dateKey(character.created_at||'2026-01-01')};
  const cycle=cycleStatus(cycleProfile,Boolean(character.collar_bound),character.rank_code);
  if(!action&&req.method==='GET'){
   // Command always sees IC status and stage; sealed notes, rolls and private details
   // require separate affirmative sharing from the character owner.
-  const full=owner||Boolean(command&&profile.shared_with_command);
+  const full=owner||Boolean((command||assignedHandler)&&profile.shared_with_command);
   const [rolls]=full?await pool.execute('SELECT id,event_key,ic_event_date,roll_d100,chance,success,rank_code,cycle_phase,created_at FROM character_conception_rolls WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]):[[]];
   const [history]=full?await pool.execute('SELECT action,summary,created_at FROM character_reproductive_events WHERE character_id=? ORDER BY id DESC LIMIT 20',[id]):[[]];
   const publicIC={cycle_type:profile.cycle_type,cycle_days:profile.cycle_days,
    pregnancy_status:profile.pregnancy_status,pregnancy_anchor:profile.pregnancy_anchor,
    pregnancy_start_day:profile.pregnancy_start_day,pregnancy_total_days:profile.pregnancy_total_days};
   return ok({profile:full?{...profile,cycle_anchor:cycleProfile.cycle_anchor}:publicIC,cycle,pregnancy:pregnancyProgress(profile),rolls,history,
-   can_edit:owner,command_view:command&&!owner,details_shared:full,character_bound:Boolean(character.collar_bound)});
+   can_edit:owner,can_register_pregnancy:canRegisterPregnancy,command_view:(command||assignedHandler)&&!owner,details_shared:full,character_bound:bound});
  }
- if(!owner)return fail(403,'character_owner_required');
+ // Registration is a distinct staff action on bound characters; all other
+ // settings, rolls and outcome decisions remain with the character owner.
+ if(action==='pregnancy'&&req.method==='POST'){
+  if(!canRegisterPregnancy)return fail(403,'bound_pregnancy_requires_staff');
+ }else if(!owner)return fail(403,'character_owner_required');
  const b=await readBody(req);
  if(action==='settings'&&req.method==='PUT'){
   if(!asBool(b?.conception_opt_in)||!asBool(b?.shared_with_command)||
