@@ -54,3 +54,18 @@ jobs:
         run: npm test --prefix server
       - name: Check password-management script syntax
         run: node --check server/src/set-local-password.js
+
+  windows-api-manager-syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell manager and installer files
+        shell: pwsh
+        run: |
+          $paths = @('tools/windows-api-manager.ps1', 'tools/install-api-manager.ps1', 'tools/uninstall-api-manager.ps1')
+          foreach ($path in $paths) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error "$path : $_" }; exit 1 }
+          }
