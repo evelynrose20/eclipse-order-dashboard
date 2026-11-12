@@ -37,7 +37,7 @@ export async function breedingPitRoute(pool,req,path){
  if(!actor)return fail(401,'not_authenticated');
  const host=/^\/thralls\/breeding-pit\/hosts\/([0-9a-f-]{36})$/.exec(path);
  if(host&&uuid.test(host[1])){
-  const id=host[1],[[char]]=await pool.execute('SELECT c.id,c.character_name,c.player_account_id,c.collar_bound,EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude') AS servitude_rank FROM characters c WHERE c.id=?',[id]);
+  const id=host[1],[[char]]=await pool.execute("SELECT c.id,c.character_name,c.player_account_id,c.collar_bound,EXISTS(SELECT 1 FROM character_order_ranks r JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE r.character_id=c.id AND cat.track='servitude') AS servitude_rank FROM characters c WHERE c.id=?",[id]);
   if(!char)return fail(404,'character_not_found');
   if(!eligibleThrallHost(char))return fail(403,'bound_thrall_required');
   const owner=char.player_account_id===actor.id;
