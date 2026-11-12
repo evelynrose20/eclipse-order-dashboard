@@ -91,7 +91,7 @@ export async function worldPowerRoute(pool,req,path,actor){
   if(!Number.isSafeInteger(b.settlement_id)||!b.name||typeof b.name!=='string'||b.name.length>140||!finite(b.condition_pct,0,100)||!Number.isInteger(b.condition_pct)||!finite(b.rated_output,1,1000000)||!finite(b.fuel_units,0,1e9)||!finite(b.fuel_per_day,.001,100000)||!['operational','paused','damaged','destroyed'].includes(b.status)||typeof b.model!=='string'||b.model.length>100)return fail(400,'invalid_power_plant');
   const [found]=await pool.execute('SELECT id FROM world_settlements WHERE id=?',[b.settlement_id]);
   if(!found.length)return fail(404,'settlement_not_found');
-  const [result]=await pool.execute('INSERT INTO world_power_plants(settlement_id,name,model,condition_pct,rated_output,fuel_units,fuel_per_day,status) VALUES(?,?,?,?,?,?,?,?)',[b.settlement_id,b.name.trim(),b.model.trim(),b.condition_pct,b.rated_output,b.fuel_units,b.fuel_per_day,b.status]);
+  const [result]=await pool.execute('INSERT INTO world_power_plants(settlement_id,name,model,condition_pct,rated_output,fuel_units,fuel_per_day,status,last_fuel_at) VALUES(?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3))',[b.settlement_id,b.name.trim(),b.model.trim(),b.condition_pct,b.rated_output,b.fuel_units,b.fuel_per_day,b.status]);
   return ok({id:result.insertId});
  }
  const edit=/^\/world-admin\/power\/plants\/(\d+)$/.exec(path);
