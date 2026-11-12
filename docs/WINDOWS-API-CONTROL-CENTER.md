@@ -31,6 +31,13 @@ Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/uninstall-api-man
 
 ## Troubleshooting
 
+### Port 3182 already in use (EADDRINUSE)
+
+If a previous `npm start`, Node process, or Windows service is already listening on port **3182**, the Control Center now detects it before launching a duplicate. It reports **ONLINE - EXTERNAL PROCESS** if that process responds to the API health check, or **PORT IN USE** otherwise. It will not kill an unknown process. To let the Control Center own the API, stop the old manually started Node server or its service, then press **START**. Do not run `npm start` in a terminal while the Control Center manages the server. Database updates are blocked while another server owns the port.
+
+To identify the listener locally, use Windows Resource Monitor (Network → Listening Ports) or `Get-NetTCPConnection -LocalPort 3182 -State Listen | Select-Object OwningProcess`. Check the PID's command before ending anything. No automatic kill is performed.
+
+
 - If **Database connected** but **Database updates unknown**, the connection may lack permission to read `schema_migrations`. Check local logs and the configured database user.
 - If **Update required**, use the in-app button only after backing up, then confirm the status becomes **Current**.
 - If the old Windows PowerShell window remains open, it belongs to the older manager instance: exit it through its tray menu, then run the new VBS installer.

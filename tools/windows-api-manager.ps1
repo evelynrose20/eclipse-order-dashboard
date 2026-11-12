@@ -39,6 +39,18 @@ function Healthy([string]$path) {
   return $ok
  }catch{return $false}
 }
+# A TCP listener can be present without being our API; do not take ownership.
+function PortOccupied {
+ $client=New-Object System.Net.Sockets.TcpClient
+ try{
+  $attempt=$client.BeginConnect('127.0.0.1',$script:port,$null,$null)
+  if(-not $attempt.AsyncWaitHandle.WaitOne(500)){return $false}
+  try{$client.EndConnect($attempt);return $true}catch{return $false}
+ }catch{return $false}finally{$client.Close()}
+}
+function UnmanagedApi {
+ return ($null -eq $script:child -and (PortOccupied))
+}
 function StopApi {
  if($null -eq $script:child){return}
  try {
@@ -50,6 +62,11 @@ function StopApi {
 }
 function StartApi {
  $script:attempt=Get-Date
+ if($script:child){return}
+ if(PortOccupied){
+  $script:status="Port $($script:port) already in use. The Control Center will not start a duplicate. Stop the original API to hand over control."
+  return
+ }
  if(-not (Test-Path $envPath)){$script:status='Missing private server/.env';return}
  try {$node=(Get-Command node.exe -ErrorAction Stop).Source}
  catch {$script:status='Node.js was not found on PATH';return}
@@ -59,7 +76,15 @@ function StartApi {
   $script:status="Started API process $($script:child.Id)"
  }catch{$script:child=$null;$script:status="Start failed: $($_.Exception.Message)"}
 }
-function RestartApi([string]$reason){StopApi;$script:status=$reason;StartApi}
+function RestartApi([string]$reason){
+ if(UnmanagedApi){
+  $script:status="Cannot restart: port $($script:port) belongs to a process not started by this Control Center."
+  return
+ }
+ StopApi
+ $script:status=$reason
+ StartApi
+}
 . (Join-Path $PSScriptRoot 'windows-api-maintenance.ps1')
 $form=New-Object System.Windows.Forms.Form
 $form.Text='Eclipse Order - API Control Center'
@@ -91,7 +116,11 @@ function Button([string]$name,[int]$x,[int]$width,[scriptblock]$action) {
 }
 Button 'START' 22 108 {if(-not $script:updating){$script:stopped=$false;if(-not $script:child){StartApi}}}
 Button 'RESTART' 138 108 {if(-not $script:updating){$script:stopped=$false;RestartApi 'Manually restarted'}}
-Button 'STOP' 254 108 {if(-not $script:updating){$script:stopped=$true;StopApi;$script:status='Stopped by user'}}
+Button 'STOP' 254 108 {if(-not $script:updating){
+ $script:stopped=$true
+ if(UnmanagedApi){$script:status='Unmanaged server detected. STOP will not terminate another process.'}
+ else{StopApi;$script:status='Stopped by user'}
+}}
 Button 'OPEN LOGS' 370 186 {Start-Process explorer.exe -ArgumentList $logs}
 $updateButton=New-Object System.Windows.Forms.Button
 $updateButton.Text='CHECK / APPLY DATABASE UPDATES'
@@ -139,7 +168,7 @@ $timer.Add_Tick({
   if(-not $script:child -and -not $script:stopped -and -not $script:updating -and ((Get-Date)-$script:attempt).TotalSeconds -gt 15){StartApi}
   $online=Healthy '/health'
   $ready=if($online){Healthy '/ready'}else{$false}
-  $apiLabel.Text=if($online){"API: ONLINE (port $($script:port))"}else{"API: OFFLINE (port $($script:port))"}
+  $apiLabel.Text=if($online -and (UnmanagedApi)){"API: ONLINE - EXTERNAL PROCESS (port $($script:port))"}elseif($online){"API: ONLINE (port $($script:port))"}elseif(PortOccupied){"API: PORT $($script:port) IN USE (unknown service)"}else{"API: OFFLINE (port $($script:port))"}
   $apiLabel.ForeColor=if($online){[System.Drawing.Color]::FromArgb(169,223,195)}else{[System.Drawing.Color]::FromArgb(222,142,142)}
   $dbLabel.Text="Database: $(if($ready){'CONNECTED'}else{'NOT READY'})"
   $migrationLabel.Text=$script:migrationStatus

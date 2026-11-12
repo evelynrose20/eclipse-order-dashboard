@@ -50,7 +50,7 @@ const localOrigin=process.env.API_LOCAL_ORIGIN||'http://localhost:5173';
 if(!/^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(localOrigin))throw new Error('API_LOCAL_ORIGIN must be a local HTTP origin.');
 if(isPublic&&(!publicHost||!/^api[.][a-z0-9.-]+$/.test(publicHost)))throw new Error('Public API requires explicit API_PUBLIC_HOST.');
 if (!Number.isInteger(port) || port<1024 || port>65535) throw new Error('Invalid API_PORT.');
-const dbReady=Boolean(process.env.DB_USER&&process.env.DB_PASSWORD);
+const dbReady=Boolean(process.env.DB_USER)&&process.env.DB_PASSWORD!==undefined;
 const pool=dbReady?createPool({
   host:'127.0.0.1',
   port:Number(process.env.DB_PORT||3306),

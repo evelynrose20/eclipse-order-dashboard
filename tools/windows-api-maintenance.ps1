@@ -127,6 +127,12 @@ function Show-DatabaseUpdateDialog {
 }
 function Start-DatabaseUpdate([string]$secret) {
  if($script:updating){return}
+ if(UnmanagedApi){
+  $script:status="Database setup blocked: another process owns port $($script:port). Stop that API first."
+  $script:migrationStatus='DATABASE UPDATE: BLOCKED BY UNMANAGED API'
+  [System.Windows.Forms.MessageBox]::Show($form,'Another process is running on the API port. Close the old Node server before applying database migrations. This Control Center will not kill that process.','API still running') | Out-Null
+  return
+ }
  $script:resumeAfterUpdate= -not $script:stopped
  StopApi
  $script:migrationStatus='DATABASE UPDATE: RUNNING - do not close this application'
