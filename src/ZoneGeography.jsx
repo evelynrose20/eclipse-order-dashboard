@@ -13,14 +13,16 @@ export default function ZoneGeography({region,zones=[],activeZone,regionAccess=[
  const placeable=useMemo(()=>zones,[zones]);
  const placed=placeable.filter(z=>z.grid_x!=null&&z.grid_y!=null);
  const unplaced=placeable.filter(z=>z.grid_x==null||z.grid_y==null);
- const eligible=placeable.filter(z=>!placed.length||placed.length===1||z.grid_x==null||z.grid_y==null);
+ const eligible=placeable;
  useEffect(()=>{setTarget(previous=>eligible.some(z=>String(z.id)===previous)?previous:String(eligible[0]?.id||''));setAnchor(previous=>placed.some(z=>String(z.id)===previous)?previous:String(placed[0]?.id||''))},[eligible.map(z=>z.id).join(','),placed.map(z=>z.id).join(',')]);
  useEffect(()=>{setAccess(regionAccess.find(r=>Number(r.region_id)===Number(region?.id))?.access_policy||'ground_and_air')},[region?.id,regionAccess.map(r=>r.region_id+':'+r.access_policy).join(',')]);
+ const otherPlaced=placed.filter(z=>String(z.id)!==target);
+ const validAnchor=otherPlaced.some(z=>String(z.id)===anchor)?anchor:String(otherPlaced[0]?.id||'');
  const savePosition=async()=>{
   if(busy||!target)return;
   setBusy(true);setError('');setNotice('');
   try{
-   await request('/world-admin/geography/zones/'+target+'/place',{method:'POST',body:placed.some(z=>String(z.id)!==target)?{anchor_zone_id:Number(anchor),direction}:{anchor_zone_id:null}});
+   await request('/world-admin/geography/zones/'+target+'/place',{method:'POST',body:otherPlaced.length?{anchor_zone_id:Number(validAnchor),direction}:{anchor_zone_id:null}});
    await onSaved?.();setNotice('Zone position saved. Neighboring maps now have fixed directions.');
   }catch(e){setError(e.message||'Unable to position this zone.')}finally{setBusy(false)}
  };
@@ -45,10 +47,10 @@ export default function ZoneGeography({region,zones=[],activeZone,regionAccess=[
    {canEdit&&<section className="wa-geography-layout-controls">
     <h3>Place a zone</h3>
     <label>Zone to position<select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choose zone</option>{eligible.map(z=><option value={z.id} key={z.id}>{z.name}{z.grid_x!=null?' (positioned)':''}</option>)}</select></label>
-    {!unplaced.length&&<p>All zones are positioned. Create another zone with New zone above, or adjust the current single-zone position here.</p>}
-    {placed.some(z=>String(z.id)!==target)&&<><label>Beside zone<select value={anchor} onChange={e=>setAnchor(e.target.value)}><option value="">Choose anchor</option>{placed.filter(z=>String(z.id)!==target).map(z=><option key={z.id} value={z.id}>{z.name} ({z.grid_x},{z.grid_y})</option>)}</select></label>
+    {!unplaced.length&&<p>All zones are positioned. You can select a zone to rearrange it, or add another with New zone above. A saved crossing must be removed before its attached zone can move.</p>}
+    {otherPlaced.length>0&&<><label>Beside zone<select value={validAnchor} onChange={e=>setAnchor(e.target.value)}>{otherPlaced.map(z=><option key={z.id} value={z.id}>{z.name} ({z.grid_x},{z.grid_y})</option>)}</select></label>
     <label>Direction<select value={direction} onChange={e=>setDirection(e.target.value)}>{directions.map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label></>}
-    <button type="button" disabled={busy||!target||(placed.some(z=>String(z.id)!==target)&&(!anchor||anchor===target))} onClick={savePosition}>{placed.some(z=>String(z.id)!==target)?'Place beside zone':'Set as map origin'}</button>
+    <button type="button" disabled={busy||!target||(otherPlaced.length>0&&!validAnchor)} onClick={savePosition}>{otherPlaced.length?'Save zone position':'Set as map origin'}</button>
     <h3>Travel into this region</h3>
     <label>Regional access<select value={access} onChange={e=>setAccess(e.target.value)}><option value="ground_and_air">Ground crossings and airships</option><option value="airship_only">Airship only from other regions</option></select></label>
     <p>Airship-only blocks road and railway crossings entering or leaving this region. Roads and rails inside the region still work. An actual airship service and landing facilities are still required for travel.</p>
