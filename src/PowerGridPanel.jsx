@@ -5,6 +5,7 @@ const gradeIcon={outage:'fa-plug-circle-xmark',low:'fa-battery-quarter',good:'fa
 export default function PowerGridPanel({request,regionId,zoneId}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const [dialog,setDialog]=useState(null),[fuel,setFuel]=useState({}),[source,setSource]=useState({}),[chamber,setChamber]=useState('');
+ const [blueprintDraft,setBlueprintDraft]=useState(null);
  async function load(){
   const result=await request('/world-admin/power');
   setData(result);
@@ -81,11 +82,34 @@ export default function PowerGridPanel({request,regionId,zoneId}){
      {p.status==='active'&&<button disabled={busy||Number(p.iron_committed)<Number(p.iron_required)||Number(p.timber_committed)<Number(p.timber_required)} onClick={()=>action('/world-admin/power/projects/'+p.id+'/advance',{},'Power construction advanced one workforce cycle.')}>Advance funded construction · once per UTC day</button>}
     </article>)}
    </div>
+   <details className="power-blueprint-library">
+    <summary><i className="fa-solid fa-screwdriver-wrench"/> Generator Blueprint Library · {blueprints.length} models</summary>
+    <p>Blueprints are shared templates. Editing one changes future project specifications, not installed generators or already-started project costs.</p>
+    <div className="power-blueprint-grid">{blueprints.map(b=><div key={b.id} className="power-blueprint-card">
+      <small>LEVEL {b.technology_level} · {b.id}</small>
+      <strong>{b.name}</strong>
+      <span>Output {amount(b.rated_output)} · Fuel/day {amount(b.fuel_per_day)}</span>
+      <span>{amount(b.material_iron)} iron · {amount(b.material_timber)} timber · {amount(b.labor_required)} labor</span>
+      <button disabled={busy} onClick={()=>setBlueprintDraft({...b})}>Edit blueprint</button>
+    </div>)}</div>
+    <button type="button" onClick={()=>setBlueprintDraft({id:'',name:'',technology_level:1,rated_output:100,fuel_per_day:50,material_iron:80,material_timber:80,labor_required:150,description:''})}><i className="fa-solid fa-plus"/> Create blueprint</button>
+   </details>
    <div className="power-grid-link"><h3>Extraction Chamber Power Source</h3><p>Link the chamber to the settlement where it is physically installed. Changing the region or zone above does not move an existing chamber.</p>
     <select value={chamber} onChange={e=>setChamber(e.target.value)}><option value="">Unassigned — existing power rate</option>{local.map(s=><option value={s.id} key={s.id}>{s.name} · {nice(data.grades[String(s.id)]||'unconfigured')}</option>)}{chamber&&!localIds.has(Number(chamber))&&<option value={chamber}>Linked outside current zone — choose a local settlement to move</option>}</select>
     <button disabled={busy} onClick={()=>action('/world-admin/power/chamber',{settlement_id:chamber?Number(chamber):null},'Chamber grid link saved.')}>Save location</button>
    </div>
   </>}
+  {blueprintDraft&&<div className="wa-overlay"><form className="wa-dialog power-grid-dialog" onSubmit={e=>{e.preventDefault();const id=blueprintDraft.id;const exists=blueprints.some(b=>b.id===id);const url='/world-admin/power/blueprints'+(exists?'/'+id:'');setBusy(true);setError('');setNotice('');request(url,{method:'POST',body:{...blueprintDraft,technology_level:Number(blueprintDraft.technology_level),rated_output:Number(blueprintDraft.rated_output),fuel_per_day:Number(blueprintDraft.fuel_per_day),material_iron:Number(blueprintDraft.material_iron),material_timber:Number(blueprintDraft.material_timber),labor_required:Number(blueprintDraft.labor_required)}}).then(load).then(()=>{setBlueprintDraft(null);setNotice('Generator blueprint saved.')}).catch(err=>setError(err.message||'Unable to save blueprint.')).finally(()=>setBusy(false))}}>
+   <div className="wa-dialog-head"><h3>{blueprints.some(b=>b.id===blueprintDraft.id)?'Edit':'Create'} generator blueprint</h3><button type="button" onClick={()=>setBlueprintDraft(null)} aria-label="Close">×</button></div>
+   <p className="muted">Defines the cost and capabilities for future construction, repair, upgrades and replacement projects. Existing power station stats are not changed.</p>
+   <div className="power-grid-fields">
+    <label>Blueprint ID<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength="48" disabled={blueprints.some(b=>b.id===blueprintDraft.id)} value={blueprintDraft.id} onChange={e=>setBlueprintDraft(v=>({...v,id:e.target.value}))}/></label>
+    <label>Model name<input required maxLength="110" value={blueprintDraft.name} onChange={e=>setBlueprintDraft(v=>({...v,name:e.target.value}))}/></label>
+    {[['technology_level','Technology level',1,20,1],['rated_output','Rated output',1,1000000,.1],['fuel_per_day','Fuel used per day',.001,100000,.001],['material_iron','Iron ingots required',1,1000000,1],['material_timber','Repair timbers required',1,1000000,1],['labor_required','Labor required',1,10000000,1]].map(([key,label,min,max,step])=><label key={key}>{label}<input type="number" required min={min} max={max} step={step} value={blueprintDraft[key]} onChange={e=>setBlueprintDraft(v=>({...v,[key]:e.target.value}))}/></label>)}
+    <label className="power-blueprint-description">Description<input maxLength="300" value={blueprintDraft.description||''} onChange={e=>setBlueprintDraft(v=>({...v,description:e.target.value}))}/></label>
+   </div>
+   <div className="power-grid-actions"><button type="button" onClick={()=>setBlueprintDraft(null)}>Cancel</button><button type="submit" disabled={busy}>Save blueprint</button></div>
+  </form></div>}
   {dialog&&<div className="wa-overlay"><form className="wa-dialog power-grid-dialog" onSubmit={e=>{e.preventDefault();action('/world-admin/power/projects',{settlement_id:Number(dialog.settlement_id),plant_id:dialog.plant?Number(dialog.plant.id):null,blueprint_id:dialog.blueprint_id,action:dialog.kind},'Power construction project created.')}}>
    <div className="wa-dialog-head"><h3>{nice(dialog.kind)} power building</h3><button type="button" onClick={()=>setDialog(null)} aria-label="Close">×</button></div>
    <p className="muted">This creates a real construction project. Condition, level and output cannot be changed directly. Fund its materials and advance workforce cycles to finish.</p>
