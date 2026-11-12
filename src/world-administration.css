@@ -382,3 +382,27 @@
 .wa-heating-form .wa-industry-attach-foot{margin-top:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .wa-heating-form .wa-industry-attach-foot>div{display:flex;gap:8px}
 @media(max-width:540px){.wa-heating-form .wa-civic-build-fields{grid-template-columns:1fr;padding:0 12px}.wa-heating-form .wa-industry-attach-foot{flex-direction:column;align-items:stretch}}
+
+/* Power Grid — settlement infrastructure controls */
+.power-grid{display:grid;gap:17px}.power-grid>p{color:#b9c7cf;line-height:1.65;font-size:12px}
+.power-grid-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:13px}
+.power-grid-card{border:1px solid #53616e;background:#1b2933;padding:16px;display:grid;gap:15px}
+.power-grid-card>div:first-child span{font-size:10px;letter-spacing:.12em;color:#c88b99;font-weight:900}
+.power-grid-card h3{font-size:17px;margin:7px 0;color:#f4eeea}
+.power-grid-card small{font-size:11px;color:#aebfc9}
+.power-grid-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.power-grid-metrics>div{background:#12212b;padding:10px;display:grid;gap:7px;min-width:0}
+.power-grid-metrics strong{font-size:16px;color:#ebf0ee;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.power-grade.low,.power-grade.outage{color:#e8a5a3}
+.power-grade.good{color:#e6d19b}.power-grade.perfect{color:#a7dec2}
+.power-grid-actions{display:flex;flex-wrap:wrap;align-items:end;gap:9px}
+.power-grid-actions button,.power-grid-link button{padding:10px 13px;background:#443b4b;border:1px solid #a9788d;color:#f6edf1;border-radius:3px;cursor:pointer;font-size:12px;font-weight:800}
+.power-grid-actions label{display:grid;gap:5px;font-size:11px;color:#bfccd0}
+.power-grid-actions input{width:125px}
+.power-grid-link{border:1px solid #52616e;background:#182630;padding:16px;display:grid;gap:11px}
+.power-grid-link h3{margin:0;font-size:16px}.power-grid-link p{font-size:12px;color:#b9c6cc;margin:0}
+.power-grid-link select{max-width:430px}
+.power-grid-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.power-grid-fields label{display:grid;gap:7px;font-size:11px;font-weight:800;color:#d2dce0}
+.power-grid-fields input,.power-grid-fields select{width:100%;box-sizing:border-box}
+@media(max-width:600px){.power-grid-list,.power-grid-fields{grid-template-columns:1fr}.power-grid-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
