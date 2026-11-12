@@ -11,7 +11,7 @@ test('chamber batch tank migration installs alongside real workshop materials an
  });
  try{
   const migrations=[
-   '001_core.sql','020_fc_crafting_garden.sql','061_thrall_chamber.sql',
+   '001_core.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','061_thrall_chamber.sql',
    '062_thrall_seating.sql','063_chamber_character_profiles.sql','064_chamber_simulation.sql',
    '065_chamber_daily_output.sql','117_chamber_fractional_fluids.sql',
    '118_chamber_fluid_labels.sql','119_chamber_batch_tanks_workshop.sql'
@@ -28,7 +28,13 @@ test('chamber batch tank migration installs alongside real workshop materials an
   assert.equal(materials.length,3);
   const [recipe]=await pool.query("SELECT r.id,r.output_material,COUNT(i.material_id) AS ingredients FROM fc_recipes r JOIN fc_recipe_inputs i ON i.recipe_id=r.id WHERE r.id='demon-dust' GROUP BY r.id,r.output_material");
   assert.equal(recipe[0].output_material,'demon-dust');
-  assert.equal(Number(recipe[0].ingredients),3);
+  assert.equal(Number(recipe[0].ingredients),4,'original two Demon Dust ingredients plus two new chamber reagents');
+  const [ingredientRows]=await pool.execute("SELECT material_id FROM fc_recipe_inputs WHERE recipe_id='demon-dust' ORDER BY material_id");
+  assert.deepEqual(ingredientRows.map(row=>row.material_id),['chamber-breast-milk','chamber-secondary-fluid','hellshade-bloom','moonstone']);
+  const [[originalRecipe]]=await pool.execute("SELECT minimum_level,category_id FROM fc_recipes WHERE id='demon-dust'");
+  assert.equal(Number(originalRecipe.minimum_level),12);
+  assert.equal(originalRecipe.category_id,'alchemy');
+
   const [applied]=await pool.query("SELECT version FROM schema_migrations WHERE version='119_chamber_batch_tanks_workshop'");
   assert.equal(applied.length,1);
   // Exercise the real atomic transfer helper against both fluid types.
