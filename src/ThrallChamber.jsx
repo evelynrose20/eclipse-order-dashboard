@@ -16,11 +16,14 @@ export default function ThrallChamber({request}){
  const [view,setView]=useState('console');
  const [batch,setBatch]=useState({channel:'upper',quantity:10,classification:'Unclassified',notes:''});
  const [showBatch,setShowBatch]=useState(false);
+ const [showFluidNames,setShowFluidNames]=useState(false);
+ const [fluidNames,setFluidNames]=useState({upper_fluid_name:'Breast Milk',lower_fluid_name:'Secondary Fluid'});
  const [seatChoice,setSeatChoice]=useState('');
  const load=async()=>setData(await request('/thralls/chamber'));
  useEffect(()=>{let active=true;request('/thralls/chamber').then(d=>{if(active)setData(d)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
  useEffect(()=>{const tick=setInterval(()=>{request('/thralls/chamber').then(setData).catch(()=>{})},10000);return()=>clearInterval(tick)},[]);
  const canManage=Boolean(data?.can_manage);
+ const canConfigureFluids=Boolean(data?.can_configure_fluids);
  async function act(action,fields={},message='Updated'){
   if(!canManage)return;
   setBusy(true);setError('');setNotice('');
@@ -74,13 +77,13 @@ export default function ThrallChamber({request}){
       <p className="chamber-helper">A character must occupy the chair before the system can run. Both reservoirs begin Offline. Set either reservoir to Ready, then press Start to extract from that one. Prepare both if you want both running. Each assembly can be operated independently. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
      </section>
      <section className="chamber-card">
-      <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
+      <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div>{canConfigureFluids&&<button type="button" className="chamber-admin-config" disabled={busy} onClick={()=>{setFluidNames({upper_fluid_name:machine.upper_fluid_name||'Breast Milk',lower_fluid_name:machine.lower_fluid_name||'Secondary Fluid'});setShowFluidNames(true)}}><i className="fa-solid fa-pen-to-square"/> Edit fluid names</button>}</div>
       <p className="chamber-helper">Select Ready on either or both reservoirs. Start activates only prepared assemblies. You can prepare or switch off the other independently while running.</p>
       {occupant?.character_id&&machine.machine_status!=='running'&&(!['upper','lower'].some(channel=>machine[channel+'_status']==='ready'))&&<p className="chamber-helper" role="status">Start locked: set at least one reservoir to Ready first.</p>}
       {channels.map(c=><div className="chamber-assembly" key={c.id}>
        <div className="chamber-assembly-head"><strong>{c.label}</strong><span className={'chamber-pill '+machine[c.id+'_status']}>{title(machine[c.id+'_status'])}</span></div>
        {machine[c.id+'_status']==='active'&&occupant?.character_id&&data.daily&&<div className="chamber-daily-balance">
-        <div><span>CHARACTER AVAILABLE TODAY</span><strong>{fluid(data.daily[c.id].remaining)} <small>/ {fluid(data.daily[c.id].maximum)} fluid units</small></strong></div>
+        <div><span>{(machine[c.id+'_fluid_name']||(c.id==='upper'?'Breast Milk':'Secondary Fluid')).toLocaleUpperCase()} AVAILABLE TODAY</span><strong>{fluid(data.daily[c.id].remaining)} <small>/ {fluid(data.daily[c.id].maximum)} fluid units</small></strong></div>
         <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
         <small>Decreases by 0.1 every 30 seconds while extracting · Replenishes at 00:00 UTC · Stored fluid is retained.</small>
        </div>}
@@ -124,6 +127,13 @@ export default function ThrallChamber({request}){
     {!data.batches.length?<div className="chamber-empty">No batches recorded. Decant a reservoir from the Control room to create a stored batch.</div>:<div className="chamber-table-wrap"><table><thead><tr><th>Batch</th><th>Material</th><th>Quantity</th><th>Classification</th><th>Notes</th><th>Recorded</th></tr></thead><tbody>{data.batches.map(b=><tr key={b.id}><td>#{b.id}</td><td>{b.material==='lacteal'?'Breast milk':(lowerTypes[b.material_type]||'Secondary biological')}</td><td>{fluid(b.quantity)} fluid units</td><td>{b.classification}</td><td>{b.notes||'—'}</td><td>{stamp(b.created_at)}</td></tr>)}</tbody></table></div>}
    </section>}
    {view==='history'&&<section className="chamber-card"><div className="chamber-heading"><div><span>SECURE RECORDS</span><h3>Activity ledger</h3></div><i className="fa-solid fa-book"/></div>{!data.history.length?<div className="chamber-empty">No recorded activity yet.</div>:<div className="chamber-history">{data.history.map(h=><div key={h.id}><span className="chamber-history-icon"><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{title(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {stamp(h.created_at)}</small></div></div>)}</div>}</section>}
+   {showFluidNames&&canConfigureFluids&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" aria-label="Edit collection fluid names" onSubmit={async e=>{e.preventDefault();if(await act('set_fluid_names',fluidNames,'Fluid names updated.'))setShowFluidNames(false)}}>
+    <div className="chamber-heading"><div><span>ADMIN / CHAMBER SETTINGS</span><h3>Collection fluid names</h3></div><button type="button" onClick={()=>setShowFluidNames(false)} aria-label="Close">✕</button></div>
+    <p className="chamber-helper">Names appear above each character's available fluid balance. Changing a name does not change existing quantities or extraction behavior.</p>
+    <label>Lacteal Reservoir fluid name<input required maxLength="80" value={fluidNames.upper_fluid_name} onChange={e=>setFluidNames(v=>({...v,upper_fluid_name:e.target.value}))} placeholder="Breast Milk"/></label>
+    <label>Secondary Reservoir fluid name<input required maxLength="80" value={fluidNames.lower_fluid_name} onChange={e=>setFluidNames(v=>({...v,lower_fluid_name:e.target.value}))} placeholder="Secondary Fluid"/></label>
+    <div className="chamber-actions"><button type="button" onClick={()=>setShowFluidNames(false)}>Cancel</button><button type="submit" disabled={busy||!fluidNames.upper_fluid_name.trim()||!fluidNames.lower_fluid_name.trim()}>Save fluid names</button></div>
+   </form></div>}
    {showBatch&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" onSubmit={async e=>{e.preventDefault();if(await act('decant',{...batch,quantity:Number(batch.quantity)},'Batch placed into alchemical inventory.')){setShowBatch(false);setView('inventory')}}}>
     <div className="chamber-heading"><div><span>ALCHEMICAL STORAGE</span><h3>Decant reservoir batch</h3></div><button type="button" onClick={()=>setShowBatch(false)} aria-label="Close">✕</button></div>
     <label>Reservoir<select value={batch.channel} onChange={e=>setBatch(v=>({...v,channel:e.target.value,quantity:Math.min(v.quantity,Number(machine[e.target.value+'_volume']))}))}>{channels.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
