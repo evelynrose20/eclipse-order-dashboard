@@ -249,6 +249,8 @@ async function main(){
   await pool.query(zoneCrossings);
   const directionalGeography=await readFile(new URL('../sql/116_world_directional_geography.sql',import.meta.url),'utf8');
   await pool.query(directionalGeography);
+  const regionConnectionsSql=await readFile(new URL('../sql/117_world_region_connections.sql',import.meta.url),'utf8');
+  await pool.query(regionConnectionsSql);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
