@@ -24,3 +24,19 @@
 .wa-geography-layout-controls button:disabled{opacity:.45;cursor:default}
 .wa-geography-feedback{padding:0 15px}
 @media(max-width:760px){.wa-geography-layout-body{grid-template-columns:1fr}}
+
+.wa-region-links{border:1px solid #455965;background:#15222b;padding:15px;margin:10px 0;color:#d8e1e4}
+.wa-region-links h3{font-size:13px;margin:0 0 8px;letter-spacing:.04em;color:#e4cbad;text-transform:uppercase}
+.wa-region-links p{color:#b4c0c7;font-size:12px;line-height:1.5}
+.wa-region-link-list{display:grid;gap:6px;margin:10px 0}
+.wa-region-link-row{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #3d535f;background:#1b2b35}
+.wa-region-link-row>div{flex:1;display:grid;gap:4px}
+.wa-region-link-row small{color:#b1bec6;font-size:11px}
+.wa-region-link-row button,.wa-region-link-form button{padding:8px 12px;background:#402c32;border:1px solid #a97b65;color:#f0e1dc;cursor:pointer}
+.wa-region-link-row button:disabled,.wa-region-link-form button:disabled{opacity:.45;cursor:default}
+.wa-region-link-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.wa-region-link-form label{display:grid;gap:5px;font-size:12px}
+.wa-region-link-form input,.wa-region-link-form select{width:100%;min-width:0;padding:8px;background:#14232d;color:#e8eeee;border:1px solid #53636d}
+.wa-region-link-form>button{align-self:end}
+@media(max-width:800px){.wa-region-link-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:530px){.wa-region-link-form{grid-template-columns:1fr}}
