@@ -46,7 +46,7 @@ test('the venue includes the Carrd menu, seasonal travel lore, and accessible na
 test('full menu has its own direct Pages route, separate from venue landing page',()=>{
  assert.match(app,/path==='\/venue\/menu'/);
  assert.match(app,/return <VenueMenu\/>/);
- assert.match(deployment,/dist\/venue\/menu\/index.html/);
+ assert.match(routes,/route: '\/venue\/menu'/);
  assert.match(venue,/href="\/venue\/menu\/"/);
  assert.doesNotMatch(venue,/SIGNATURES\.map|FOOD_MENU\.map|DESSERT_MENU\.map/);
  assert.match(menu,/SIGNATURES\.map/);
