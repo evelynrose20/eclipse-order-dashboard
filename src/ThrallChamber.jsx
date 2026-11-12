@@ -48,7 +48,6 @@ export default function ThrallChamber({request}){
     <div><small>UPPER RESERVOIR</small><strong>{machine.upper_volume} <em>/ {machine.upper_capacity}</em></strong><span>Units</span></div>
     <div><small>LOWER RESERVOIR</small><strong>{machine.lower_volume} <em>/ {machine.lower_capacity}</em></strong><span>Units</span></div>
     <div><small>ARCHIVED BATCHES</small><strong>{data.batches.length}</strong><span>Most recent records</span></div>
-    <div><small>CHAMBER REVISION</small><strong>{machine.revision}</strong><span>Persisted server state</span></div>
    </div>
    <nav className="chamber-tabs" aria-label="Chamber workspace">
     {[['console','Control room','sliders'],['inventory','Batch inventory','flask-vial'],['history','Activity ledger','clock-rotate-left']].map(([id,label,icon])=><button key={id} type="button" className={view===id?'selected':''} onClick={()=>setView(id)} aria-current={view===id?'page':undefined}><i className={'fa-solid fa-'+icon}/> {label}</button>)}
@@ -71,7 +70,7 @@ export default function ThrallChamber({request}){
        <button disabled={!canManage||busy||machine.machine_status!=='running'} onClick={()=>act('set_status',{status:'standby'},'Apparatus returned to standby.')}><i className="fa-solid fa-stop"/> Stop</button>
        <button disabled={!canManage||busy} className="chamber-danger" onClick={()=>act('set_status',{status:'offline'},'All operations halted.')}><i className="fa-solid fa-power-off"/> Emergency stop</button>
       </div>
-      <p className="chamber-helper">A character must occupy the chair before the system can run. The chair must be offline before seating a character. Machine state and activity are saved to the Order ledger.</p>
+      <p className="chamber-helper">A character must occupy the chair before the system can run. Starting activates ready assemblies, which collect gradually until stopped. Daily output and reservoir capacity still apply. The chair must be offline before seating a character.</p>
      </section>
      <section className="chamber-card">
       <div className="chamber-heading"><div><span>02 / SYSTEM MANAGEMENT</span><h3>Assembly states</h3></div><i className="fa-solid fa-gauge-high"/></div>
@@ -112,7 +111,6 @@ export default function ThrallChamber({request}){
        <div className="chamber-tank" role="progressbar" aria-label={c.label} aria-valuenow={volume} aria-valuemin={0} aria-valuemax={capacity}><div style={{width:pct+'%'}}/></div>
        <small>{c.id==='lower'?(lowerTypes[machine.lower_material_type]||'Unclassified'):c.material} · {pct}% of capacity</small>
        {canManage&&<div className="chamber-record">
-        <button type="button" disabled={busy||!occupant?.character_id||machine.machine_status!=='running'||machine[c.id+'_status']!=='active'||(data.daily&&data.daily[c.id].remaining===0)} onClick={()=>act('run_cycle',{channel:c.id},'Collection cycle complete. Reservoirs and activity ledger updated.')}>Run collection cycle</button>
         <button type="button" disabled={busy||volume<=0} onClick={()=>{setBatch({channel:c.id,quantity:volume,classification:'Unclassified',notes:''});setShowBatch(true)}}>Decant batch</button>
        </div>}
       </div>;
