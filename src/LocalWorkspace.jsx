@@ -17,6 +17,7 @@ import Treasury from './Treasury.jsx';
 import Fronts from './Fronts.jsx';
 import ThrallChamber from './ThrallChamber.jsx';
 import BreedingPit from './BreedingPit.jsx';
+import ImperialLineageProject from './ImperialLineageProject.jsx';
 import ConstructionProjects from './ConstructionProjects.jsx';
 import DiscordAccountConnection from './DiscordAccountConnection.jsx';
 import InlineSheetEditor from './InlineSheetEditor.jsx';
@@ -109,6 +110,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['fronts','Order Fronts','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ...(broodAccess?[['breeding-pit','Breeding Pit','◇']]:[]),
+  ...(!playerPreview&&staff?[['lineage-research','Imperial Lineage Project','◇']]:[]),
   ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
@@ -148,7 +150,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
    <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className={"content"+(tab==='encounters'?" encounter-content":"")}>
     {playerPreview&&<div className="player-preview-banner" role="status"><strong>Player View · Read-only preview</strong><span>Showing member navigation and your own linked characters. Your staff login and server permissions are unchanged; use a separate member account to verify real access restrictions.</span></div>}
-    {tab!=='encounters'&&<div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'ORDER OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Order at a glance.'):tab==='members'?'Approve membership requests; manage syndicate ranks and separate account permissions.':tab==='chamber'?'Operate the permanent magitek installation and maintain its collection and alchemical records.':tab==='breeding-pit'?'Cultivate voidspawn strains, oversee incubation, raise broods and prepare units for deployment.':'Manage the Order’s records and activities.'}</p></div></div>}
+    {tab!=='encounters'&&<div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'ORDER OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Order at a glance.'):tab==='members'?'Approve membership requests; manage syndicate ranks and separate account permissions.':tab==='chamber'?'Operate the permanent magitek installation and maintain its collection and alchemical records.':tab==='breeding-pit'?'Cultivate voidspawn strains, oversee incubation, raise broods and prepare units for deployment.':tab==='lineage-research'?'Study Garlean heredity, research cases and gestation observations.':'Manage the Order’s records and activities.'}</p></div></div>}
     {message&&<div className="alert" role="status">{message}</div>}
     {tab==='overview'&&<>
      <div className="eo-summary"><div><strong>{visibleCharacters.length}</strong><span>Visible characters</span></div>{!playerPreview&&profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}{!playerPreview&&<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div>}</div>
@@ -179,6 +181,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
     {tab==='breeding-pit'&&broodAccess&&<BreedingPit request={request}/>}
+    {tab==='lineage-research'&&!playerPreview&&staff&&<ImperialLineageProject request={request}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='freight'&&admin&&<FreightLogistics request={request} onNavigate={setTab}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
