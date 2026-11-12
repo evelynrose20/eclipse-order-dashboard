@@ -292,6 +292,8 @@ async function main(){
   const powerProjects=await readFile(new URL('../sql/124_power_blueprint_projects.sql',import.meta.url),'utf8');
   await pool.query(powerProjects);
   console.log('Generator blueprints and funded restoration projects ready (124).');
+  const lineageProject=await readFile(new URL('../sql/125_imperial_lineage_project.sql',import.meta.url),'utf8');
+  await pool.query(lineageProject);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
