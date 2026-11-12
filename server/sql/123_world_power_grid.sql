@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS world_power_consumers(
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT IGNORE INTO world_power_consumers(consumer_key,settlement_id,load_units) VALUES('aetheric-chamber',NULL,10);
 -- An obsolete damaged power plant, precisely five days of fuel at its current burn rate.
-INSERT INTO world_power_plants(settlement_id,name,model,condition_pct,rated_output,fuel_units,fuel_per_day,status)
-SELECT s.id,'Castrum Moonlight Auxiliary Generator','Obsolete Garlean Ceruleum Mk.I',32,180,500,100,'damaged'
+INSERT INTO world_power_plants(settlement_id,name,model,condition_pct,rated_output,fuel_units,fuel_per_day,status,last_fuel_at)
+SELECT s.id,'Castrum Moonlight Auxiliary Generator','Obsolete Garlean Ceruleum Mk.I',32,180,500,100,'damaged',UTC_TIMESTAMP(3)
 FROM world_settlements s
 WHERE LOWER(TRIM(s.name))='castrum moonlight'
 AND NOT EXISTS(SELECT 1 FROM world_power_plants p WHERE p.settlement_id=s.id);
