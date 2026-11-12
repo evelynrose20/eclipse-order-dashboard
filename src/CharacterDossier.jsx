@@ -19,13 +19,13 @@ function TextCard({title,body}){
 }
 export default function CharacterDossier({
  character,playerPreview=false,canEdit=false,onEdit,onOpenPreferences,
- canCommand=false,canChangeBoundRank=false,canViewChamberStaff=false,servitudeRanks=[],request,onRefresh,classCatalog={},userId
+ canCommand=false,canChangeBoundRank=false,canViewPregnancyStaff=false,canViewChamberStaff=false,servitudeRanks=[],request,onRefresh,classCatalog={},userId
 }){
  const restricted=isDossierRestricted(character,playerPreview);
  const summary=dossierSummary(character,playerPreview);
  const canViewChamber=canViewCharacterChamber(character,userId,{staff:canViewChamberStaff,playerPreview});
  const recordOwner=!playerPreview&&character?.player_user_id===userId;
- const personalRecord=!playerPreview&&(recordOwner||canCommand);
+ const personalRecord=!playerPreview&&(recordOwner||canCommand||canViewPregnancyStaff);
  const allowed=[...dossierTabs(character,playerPreview),...(canViewChamber?[{id:'contributions',label:'Chamber',icon:'◇'}]:[]),...(personalRecord?[...(character?.collar_bound?[{id:'binding-cycle',label:'Binding cycle',icon:'◌'}]:[]),{id:'pregnancy',label:'Pregnancy',icon:'○'},{id:'parenthood',label:'Parenthood',icon:'♧'}]:[])];
  const [section,setSection]=useState(()=>defaultDossierTab(character,playerPreview));
  const [rankBusy,setRankBusy]=useState(false),[rankError,setRankError]=useState('');
