@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {chamberPower} from './world-power.js';
 
 const forbidden=(status,error)=>({status,body:{error}});
 
@@ -102,6 +103,7 @@ async function seatRoster(pool,actor){
 
 // Settle elapsed production on reads; no manual collection action is required.
 async function settleChamberProduction(pool){
+ const power=await chamberPower(pool);
  const cn=await pool.getConnection();
  try{
   await cn.beginTransaction();
@@ -119,7 +121,12 @@ async function settleChamberProduction(pool){
   const updates=[],values=[];
   for(const channel of ['upper','lower']){
    if(machine[channel+'_status']!=='active'||!availableChamberChannels(prefs)[channel])continue;
-   const {ticks,settledAt,reset}=chamberElapsedTicks(seat[channel+'_cycle_utc'],now);
+   if(power.rate.amount<=0){
+    // No power: no production debt accrues that could be collected when power returns.
+    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+    continue;
+   }
+   const {ticks,settledAt,reset}=chamberElapsedTicks(seat[channel+'_cycle_utc'],now,power.rate.interval_ms);
    if(ticks<=0){
     if(reset)await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=? WHERE id=1',[settledAt]);
     continue;
@@ -129,7 +136,7 @@ async function settleChamberProduction(pool){
    const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
    const compatible=channel!=='lower'||canMixLowerMaterial(machine.lower_volume,machine.lower_material_type,kind);
    const sourceCompatible=canCollectForSource(machine[channel+'_volume'],machine[channel+'_source_character_id'],seat.character_id);
-   const amount=compatible&&sourceCompatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
+   const amount=compatible&&sourceCompatible?Math.max(0,Math.round(Math.min(remaining,space,ticks*power.rate.amount)*10)/10):0;
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
    if(amount){
     await cn.execute('UPDATE order_thrall_daily_output SET '+channel+'_used='+channel+'_used+? WHERE character_id=? AND cycle_date=?',[amount,seat.character_id,day]);
@@ -216,6 +223,7 @@ export async function thrallsRoute(pool,req,path){
  if(!await mayEnterThralls(pool,actor))return forbidden(403,'access_denied');
  if(path==='/thralls/chamber'&&req.method==='GET'){
   await settleChamberProduction(pool);
+  const power=await chamberPower(pool);
   const [[machine]]=await pool.execute('SELECT * FROM order_thrall_chamber WHERE id=1');
   const [batches]=await pool.execute('SELECT b.id,b.material,b.material_type,b.quantity,b.drained_total,b.classification,b.notes,b.source_character_id,COALESCE(b.source_name,c.character_name,\'Unattributed / legacy\') AS source_name,b.created_at FROM order_thrall_chamber_batches b LEFT JOIN characters c ON c.id=b.source_character_id ORDER BY b.id DESC LIMIT 200');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
@@ -240,12 +248,13 @@ export async function thrallsRoute(pool,req,path){
      :free<=0?'Collection reservoir full'
      :!compatible?'Stored secondary fluid type differs; decant before collecting'
      :!sourceCompatible?'Stored reservoir fluid has another or unknown source; decant it first'
-     :'Extracting 0.1 fluid unit every 30 seconds';
+     :power.rate.amount<=0?'Power supply insufficient; extraction paused'
+     :'Extracting '+power.rate.amount.toFixed(1)+' fluid units every '+(power.rate.interval_ms/1000)+' seconds';
    }
   }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,batches,history,seat,daily,collection_health,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  return ok({machine,power,batches,history,seat,daily,collection_health,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
