@@ -14,7 +14,7 @@ test('chamber batch tank migration installs alongside real workshop materials an
    '001_core.sql','020_fc_crafting_garden.sql','021_workshop_expansion.sql','022_expedition_encounters.sql','023_expedition_zones.sql','024_hellshade_bloom.sql','025_recipe_categories.sql','061_thrall_chamber.sql',
    '062_thrall_seating.sql','063_chamber_character_profiles.sql','064_chamber_simulation.sql',
    '065_chamber_daily_output.sql','117_chamber_fractional_fluids.sql',
-   '118_chamber_fluid_labels.sql','119_chamber_batch_tanks_workshop.sql'
+   '118_chamber_fluid_labels.sql','119_chamber_batch_tanks_workshop.sql','122_chamber_production_enhancements.sql'
   ];
   for(const filename of migrations){
    const sql=await readFile(new URL('../sql/'+filename,import.meta.url),'utf8');
@@ -24,6 +24,9 @@ test('chamber batch tank migration installs alongside real workshop materials an
   await pool.query(sql); // idempotent on repeat setup:local runs
   const [columns]=await pool.execute("SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='eclipse_order' AND ((TABLE_NAME='order_thrall_chamber' AND COLUMN_NAME IN ('upper_source_character_id','lower_source_character_id')) OR (TABLE_NAME='order_thrall_chamber_batches' AND COLUMN_NAME IN ('source_character_id','source_name','drained_total')))");
   assert.equal(columns.length,5);
+  const [boostColumns]=await pool.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='eclipse_order' AND TABLE_NAME='order_thrall_contribution_preferences' AND COLUMN_NAME IN ('upper_enhancement','lower_enhancement')");
+  assert.equal(boostColumns.length,2,'both enhancement columns must be installed');
+
   const [materials]=await pool.query("SELECT id FROM fc_materials WHERE id IN ('chamber-breast-milk','chamber-secondary-fluid','demon-dust')");
   assert.equal(materials.length,3);
   const [recipe]=await pool.query("SELECT r.id,r.output_material,COUNT(i.material_id) AS ingredients FROM fc_recipes r JOIN fc_recipe_inputs i ON i.recipe_id=r.id WHERE r.id='demon-dust' GROUP BY r.id,r.output_material");
