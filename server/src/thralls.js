@@ -31,6 +31,7 @@ async function readBody(req){
  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}
 }
 const isAmount=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1000&&Math.round(n*10)===n*10;
+export const validChamberFluidName=value=>typeof value==='string'&&value.trim().length>0&&value.trim().length<=80&&!/[\x00-\x1F\x7F]/.test(value);
 export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status==='offline'&&!seat?.character_id&&Boolean(character?.allow_seating);
 export const withinContributionLimit=(prefs,seat,channel,amount)=>['upper','lower'].includes(channel)&&isAmount(amount)&&amount>0&&Boolean(prefs?.allow_seating)&&Boolean(prefs?.['allow_'+channel])&&Number(seat?.[channel+'_recorded']||0)+amount<=Number(prefs?.[channel+'_limit']||0);
 
@@ -221,7 +222,7 @@ export async function thrallsRoute(pool,req,path){
   if(action==='set_fluid_names'){
    const upper=typeof data.upper_fluid_name==='string'?data.upper_fluid_name.trim():'';
    const lower=typeof data.lower_fluid_name==='string'?data.lower_fluid_name.trim():'';
-   if(!upper||!lower||upper.length>80||lower.length>80||/[\x00-\x1F\x7F]/.test(upper+lower))return await rollback(cn,'invalid_fluid_name');
+   if(!validChamberFluidName(upper)||!validChamberFluidName(lower))return await rollback(cn,'invalid_fluid_name');
    updates=['upper_fluid_name=?','lower_fluid_name=?'];values=[upper,lower];
    detail='Updated collection fluid labels: upper='+upper+'; lower='+lower;
   }else if(action==='seat'){
