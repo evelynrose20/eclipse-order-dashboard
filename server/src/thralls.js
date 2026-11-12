@@ -170,15 +170,29 @@ export async function thrallsRoute(pool,req,path){
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
   const [[seat]]=await pool.execute('SELECT s.character_id,s.seated_at,s.upper_recorded,s.lower_recorded,c.character_name AS name FROM order_thrall_seat s LEFT JOIN characters c ON c.id=s.character_id WHERE s.id=1');
   let daily=null;
+  const collection_health={};
   const now=new Date(),cycle=chamberCycleDate(now);
   if(seat?.character_id){
-   const [[prefs]]=await pool.execute('SELECT lactation_state,lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=?',[seat.character_id]);
+   const [[prefs]]=await pool.execute('SELECT allow_seating,lactation_state,lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=?',[seat.character_id]);
    const [[used]]=await pool.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=?',[seat.character_id,cycle]);
    daily={...dailyBalance(prefs,used),cycle_date:cycle,next_reset_at:chamberNextReset(now)};
+   for(const channel of ['upper','lower']){
+    const status=machine[channel+'_status'];
+    if(machine.machine_status!=='running'||status!=='active')continue;
+    const remaining=daily[channel].remaining;
+    const free=Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']);
+    const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===lowerMaterialForAnatomy(prefs?.lower_anatomy);
+    collection_health[channel]=!prefs?.allow_seating?'Seating permission withdrawn'
+     :!availableChamberChannels(prefs)[channel]?'Character profile does not permit this assembly'
+     :remaining<=0?'Daily available fluid exhausted'
+     :free<=0?'Collection reservoir full'
+     :!compatible?'Stored secondary fluid type differs; decant before collecting'
+     :'Extracting 0.1 fluid unit every 30 seconds';
+   }
   }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,batches,history,seat,daily,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  return ok({machine,batches,history,seat,daily,collection_health,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
