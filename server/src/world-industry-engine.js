@@ -3,6 +3,7 @@ import {weatherHazard} from './world-worker-hazards.js';
 import {climateForRegions} from './world-region-climate.js';
 import {settlementDemographics} from './world-demographics.js';
 import {industryProductionPreview} from './world-industry-rules.js';
+import {powerGrade} from './world-power.js';
 import {simulationCycleKey} from './world-settlement-simulation.js';
 
 export const industryCycleKey=(date,cadence)=>simulationCycleKey(date,cadence);
@@ -93,6 +94,23 @@ export async function getIndustryPreview(db,id,lock=false){
  preview.equipment_condition=Number(facility.equipment_condition??100);
  preview.heat_required=config.heat;
  preview.power_required=config.power;
+ // Existing standalone fuel-powered sites retain their legacy behavior.
+ // Connected settlement sites must also have adequate grid electricity.
+ if(Number(config.power)>0&&facility.settlement_id){
+  const [gridPlants]=await db.execute('SELECT rated_output,condition_pct,fuel_units,status FROM world_power_plants WHERE settlement_id=?',[facility.settlement_id]);
+  if(gridPlants.length){
+   const output=gridPlants.reduce((sum,p)=>sum+(Number(p.fuel_units)>0&&['operational','damaged'].includes(p.status)?Number(p.rated_output)*Number(p.condition_pct)/100:0),0);
+   const condition=Math.max(...gridPlants.filter(p=>Number(p.fuel_units)>0&&['operational','damaged'].includes(p.status)).map(p=>Number(p.condition_pct)),0);
+   const grade=powerGrade(output,50+Number(facility.population)/100+Number(config.power),condition);
+   preview.grid_power=grade;
+   if(grade==='outage'||grade==='low'){
+    preview.operations=0;preview.blocked.push('settlement_grid_power_insufficient');
+    preview.inputs={};preview.outputs={};preview.byproducts={};
+    preview.utility_fuel_required=0;
+   }
+  }
+ }
+
  if(['destroyed','abandoned'].includes(facility.map_condition))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['mapped_location_needs_rebuilding'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  if((facility.owner_faction_id||null)!==(facility.controlling_faction_id||null))return {facility,config,rules,stock,preview:{...preview,operations:0,blocked:['facility_ownership_changed'],inputs:{},outputs:{},byproducts:{},utility_fuel_required:0}};
  // Access is checked for every dry-run and committed cycle, including grandfathered NPC factories.
