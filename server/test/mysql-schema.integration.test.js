@@ -431,7 +431,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   const zoneMountain=await worldAdministrationRoute(admin,request('POST',{region_id:wrid,zone_id:newZoneId,name:'Northern ridge',points:[{x:20,y:25},{x:60,y:40}]}),'/world-admin/mountains');
   assert.equal(zoneMountain.status,200,JSON.stringify(zoneMountain.body));
   const retrievedZones=await worldAdministrationRoute(admin,request('GET'),'/world-admin');
-  assert.equal(retrievedZones.status,200);
+  assert.equal(retrievedZones.status,200,JSON.stringify(retrievedZones.body));
   assert.ok(retrievedZones.body.zones.some(z=>Number(z.id)===newZoneId),'zones appear in world-admin response');
   assert.ok(retrievedZones.body.routes.every(r=>r.zone_id!=null));
   assert.ok(retrievedZones.body.network_nodes.every(n=>n.zone_id!=null));
