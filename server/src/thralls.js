@@ -19,6 +19,7 @@ export async function mayEnterThralls(pool,actor){
 
 
 const ok=body=>({status:200,body});
+const mayConfigureChamberFluids=actor=>['domina','high_command','handler'].includes(actor.account_role);
 async function manager(pool,actor){
  if(['domina','high_command','handler'].includes(actor.account_role))return true;
  const [rows]=await pool.execute("SELECT 1 FROM account_order_ranks WHERE account_id=? AND track='household' LIMIT 1",[actor.id]);
@@ -175,7 +176,7 @@ export async function thrallsRoute(pool,req,path){
   }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,batches,history,seat,daily,roster,can_manage,can_configure_fluids:actor.account_role==='domina',can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  return ok({machine,batches,history,seat,daily,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
@@ -183,7 +184,7 @@ export async function thrallsRoute(pool,req,path){
  if(!data||typeof data!=='object')return forbidden(400,'invalid_request');
  const action=data.action;
  if(!['set_status','run_cycle','decant','maintenance','reset','seat','release','set_fluid_names'].includes(action))return forbidden(400,'invalid_chamber_action');
- if(action==='set_fluid_names'&&actor.account_role!=='domina')return forbidden(403,'domina_required');
+ if(action==='set_fluid_names'&&!mayConfigureChamberFluids(actor))return forbidden(403,'staff_required');
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
  // Persist elapsed output before a stop, decant, or per-assembly state change.
  await settleChamberProduction(pool);
