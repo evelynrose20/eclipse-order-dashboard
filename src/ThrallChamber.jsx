@@ -86,6 +86,7 @@ export default function ThrallChamber({request}){
         <div><span>{(machine[c.id+'_fluid_name']||(c.id==='upper'?'Breast Milk':'Secondary Fluid')).toLocaleUpperCase()} AVAILABLE TODAY</span><strong>{fluid(data.daily[c.id].remaining)} <small>/ {fluid(data.daily[c.id].maximum)} fluid units</small></strong></div>
         <div className="chamber-daily-meter" role="progressbar" aria-label={c.label+' daily availability'} aria-valuemin={0} aria-valuemax={data.daily[c.id].maximum} aria-valuenow={data.daily[c.id].remaining}><span style={{width:(data.daily[c.id].maximum?100*data.daily[c.id].remaining/data.daily[c.id].maximum:0)+'%'}}/></div>
         <small>Decreases by 0.1 every 30 seconds while extracting · Replenishes at 00:00 UTC · Stored fluid is retained.</small>
+        {data.collection_health?.[c.id]&&<small role="status">Collection status: {data.collection_health[c.id]}</small>}
        </div>}
        <div className="chamber-buttons">{['offline','ready','maintenance'].map(status=><button type="button" key={status} aria-pressed={machine[c.id+'_status']===status} disabled={!canManage||busy||machine[c.id+'_status']===status} onClick={()=>act('maintenance',{channel:c.id,status},c.label+' marked '+status)}>{title(status)}</button>)}</div>
       </div>)}
