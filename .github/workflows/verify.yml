@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - name: Install API dependencies
         run: npm install --prefix server --no-audit --no-fund
+      - name: Test settlement power and chamber rates
+        run: node --test server/test/world-power.test.js
       - name: Test chamber extraction and fluid labels
         run: node --test server/test/thralls-access.test.js
       - name: Verify chamber batch tank SQL integration
