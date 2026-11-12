@@ -97,7 +97,9 @@ async function settleChamberProduction(pool){
   if(!seat?.character_id){await cn.commit();return}
   const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
   if(!prefs?.allow_seating){await cn.commit();return}
-  const now=new Date(),day=chamberCycleDate(now);
+  // Compare SQL UTC timestamps against the same database clock, not Windows local time.
+  const [[dbClock]]=await cn.execute("SELECT DATE_FORMAT(UTC_TIMESTAMP(3),'%Y-%m-%d %H:%i:%s.%f') AS now_utc");
+  const now=new Date(dbClock.now_utc.replace(' ','T')+'Z'),day=chamberCycleDate(now);
   await cn.execute('INSERT IGNORE INTO order_thrall_daily_output(character_id,cycle_date) VALUES(?,?)',[seat.character_id,day]);
   const [[usage]]=await cn.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=? FOR UPDATE',[seat.character_id,day]);
   const updates=[],values=[];
