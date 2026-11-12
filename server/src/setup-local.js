@@ -253,6 +253,8 @@ async function main(){
   await pool.query(directionalGeography);
   const fractionalChamber=await readFile(new URL('../sql/117_chamber_fractional_fluids.sql',import.meta.url),'utf8');
   await pool.query(fractionalChamber);
+  const chamberFluidLabels=await readFile(new URL('../sql/118_chamber_fluid_labels.sql',import.meta.url),'utf8');
+  await pool.query(chamberFluidLabels);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
