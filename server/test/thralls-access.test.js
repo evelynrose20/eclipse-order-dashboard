@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset} from '../src/thralls.js';
+import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -78,4 +78,20 @@ test('midnight UTC starts a new daily cycle without changing stored quantities',
  assert.equal(chamberCycleDate('2026-11-09T00:00:00.000Z'),'2026-11-09');
  assert.equal(chamberNextReset('2026-11-08T23:59:59.999Z'),'2026-11-09T00:00:00.000Z');
  assert.equal(dailyBalance({lactation_state:'established',lower_anatomy:'vulva'},null).upper.remaining,18);
+});
+
+test('UTC SQL chamber timestamps advance every 30 seconds even on non-UTC Windows hosts',()=>{
+ assert.deepEqual(chamberElapsedTicks('2026-11-12 05:00:00.000000','2026-11-12T05:02:00.000Z'),{
+  ticks:4,settledAt:'2026-11-12 05:02:00.000',reset:false
+ });
+ assert.deepEqual(chamberElapsedTicks('2026-11-12 05:00:00.000000','2026-11-12T05:00:29.999Z'),{
+  ticks:0,settledAt:'2026-11-12 05:00:00.000',reset:false
+ });
+ assert.equal(chamberUtcSqlTime('2026-11-12T05:00:00Z'),'2026-11-12 05:00:00.000');
+});
+test('future or missing chamber cycle timestamps reset instead of freezing',()=>{
+ const future=chamberElapsedTicks('2026-11-12 10:00:00.000000','2026-11-12T05:00:00.000Z');
+ assert.equal(future.reset,true);
+ assert.equal(future.settledAt,'2026-11-12 05:00:00.000');
+ assert.equal(chamberElapsedTicks(null,'2026-11-12T05:00:00.000Z').reset,true);
 });
