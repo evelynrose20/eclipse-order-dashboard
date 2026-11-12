@@ -1,6 +1,6 @@
 import {resolveSession} from './auth.js';
 
-const themes=new Set(['violence','horror','captivity','mind_control','humiliation','body_horror','full_transformation','romance','sexual_themes','character_death']);
+const themes=new Set(['violence','horror','captivity','mind_control','humiliation','body_horror','minor_transformation','full_transformation','romance','sexual_themes','character_death']);
 // Offered only to profiles that do not yet exist. No existing saved list is modified.
 export const STARTER_RP_PREFERENCES=[
  'Romance','Flirting','Affection','Combat RP','Horror RP','Captivity RP',
