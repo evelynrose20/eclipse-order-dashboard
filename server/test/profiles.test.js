@@ -59,3 +59,27 @@ test('reject malformed opt-in lists and unsupported categories',async()=>{
  const k=await profileRoute(p.db,req('PUT',{display_name:'A',share_content:false,share_kinks:true,kink_entries:[{label:'Entry',rating:'not_valid'}]}),'/profile/rp');
  assert.equal(k.status,400);
 });
+
+test('new RP profiles get editable starter labels while existing empty profiles stay empty',async()=>{
+ const p=pool();
+ p.db.execute=async(sql,args)=>{
+  p.statements.push({sql,args});
+  if(sql.startsWith('SELECT a.id'))return [[{id,account_role:'member'}]];
+  if(sql.startsWith('SELECT display_name'))return [[]];
+  return [[]];
+ };
+ const r=await profileRoute(p.db,req('GET'),'/profile/rp');
+ assert.equal(r.status,200);
+ assert.ok(r.body.kink_entries.some(x=>x.label==='Minor transformation'&&x.rating==='maybe'));
+ assert.equal(r.body.share_kinks,false);
+ const original=pool();
+ const existing=await profileRoute(original.db,req('GET'),'/profile/rp');
+ assert.deepEqual(existing.body.kink_entries,[{label:'confidential',rating:'no'}]);
+});
+test('distinguishes limited transformation from full transformation in saved content settings',async()=>{
+ const p=pool();
+ const allowed=await profileRoute(p.db,req('PUT',{adult_declaration:true,content_preferences:{body_horror:true,full_transformation:false}}),'/profile/preferences');
+ assert.equal(allowed.status,200);
+ const insert=p.statements.find(x=>x.sql.startsWith('INSERT INTO order_profile_preferences'));
+ assert.equal(JSON.parse(insert.args[2]).full_transformation,false);
+});
