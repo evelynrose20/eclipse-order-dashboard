@@ -39,6 +39,17 @@ export const GENDER_IDENTITIES=['unspecified','female','male','nonbinary','other
 export const LOWER_ANATOMIES=['unspecified','vulva','penis','mixed','other'];
 export const LACTATION_STATES=['none','established','variable'];
 const CYCLE_MS=30*1000; // 0.1 unit per 30 seconds per active assembly
+export const chamberUtcSqlTime=when=>new Date(when).toISOString().slice(0,23).replace('T',' ');
+export const chamberElapsedTicks=(lastUtc,now=new Date(),cycleMs=CYCLE_MS)=>{
+ const nowMs=new Date(now).getTime();
+ const lastMs=typeof lastUtc==='string'?Date.parse(lastUtc.replace(' ','T')+'Z'):NaN;
+ // Legacy bad/future timestamps are rebaselined instead of freezing production indefinitely.
+ if(!Number.isFinite(lastMs)||lastMs>nowMs+1000)return {ticks:0,settledAt:chamberUtcSqlTime(now),reset:true};
+ const midnight=Date.parse(chamberCycleDate(now)+'T00:00:00Z');
+ const from=Math.max(lastMs,midnight);
+ const ticks=Math.max(0,Math.floor((nowMs-from)/cycleMs));
+ return {ticks,settledAt:chamberUtcSqlTime(from+ticks*cycleMs),reset:false};
+};
 export const chamberCycleDate=now=>new Date(now).toISOString().slice(0,10);
 export const chamberNextReset=now=>new Date(Date.UTC(new Date(now).getUTCFullYear(),new Date(now).getUTCMonth(),new Date(now).getUTCDate()+1)).toISOString();
 // Per-day game balance; two independent reserves. No character's balance can go negative.
@@ -81,22 +92,19 @@ async function settleChamberProduction(pool){
   await cn.beginTransaction();
   const [[machine]]=await cn.execute('SELECT * FROM order_thrall_chamber WHERE id=1 FOR UPDATE');
   if(!machine||machine.machine_status!=='running'){await cn.commit();return}
-  const [[seat]]=await cn.execute('SELECT * FROM order_thrall_seat WHERE id=1 FOR UPDATE');
+  const [[seat]]=await cn.execute("SELECT s.*, DATE_FORMAT(s.upper_last_cycle_at,'%Y-%m-%d %H:%i:%s.%f') AS upper_cycle_utc, DATE_FORMAT(s.lower_last_cycle_at,'%Y-%m-%d %H:%i:%s.%f') AS lower_cycle_utc FROM order_thrall_seat s WHERE s.id=1 FOR UPDATE");
   if(!seat?.character_id){await cn.commit();return}
   const [[prefs]]=await cn.execute('SELECT * FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[seat.character_id]);
   if(!prefs?.allow_seating){await cn.commit();return}
-  const now=new Date(),day=chamberCycleDate(now),midnight=Date.parse(day+'T00:00:00Z');
+  const now=new Date(),day=chamberCycleDate(now);
   await cn.execute('INSERT IGNORE INTO order_thrall_daily_output(character_id,cycle_date) VALUES(?,?)',[seat.character_id,day]);
   const [[usage]]=await cn.execute('SELECT upper_used,lower_used FROM order_thrall_daily_output WHERE character_id=? AND cycle_date=? FOR UPDATE',[seat.character_id,day]);
   const updates=[],values=[];
   for(const channel of ['upper','lower']){
    if(machine[channel+'_status']!=='active'||!availableChamberChannels(prefs)[channel])continue;
-   const previous=seat[channel+'_last_cycle_at'];
-   const startingAt=previous?new Date(previous).getTime():now.getTime();
-   const from=Math.max(Number.isFinite(startingAt)?startingAt:now.getTime(),midnight);
-   const ticks=Math.floor((now.getTime()-from)/CYCLE_MS);
+   const {ticks,settledAt,reset}=chamberElapsedTicks(seat[channel+'_cycle_utc'],now);
    if(ticks<=0){
-    if(!previous)await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+    if(reset)await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=? WHERE id=1',[settledAt]);
     continue;
    }
    const remaining=dailyBalance(prefs,usage)[channel].remaining;
@@ -104,7 +112,6 @@ async function settleChamberProduction(pool){
    const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
    const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===kind;
    const amount=compatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
-   const settledAt=new Date(from+ticks*CYCLE_MS);
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
    if(amount){
     await cn.execute('UPDATE order_thrall_daily_output SET '+channel+'_used='+channel+'_used+? WHERE character_id=? AND cycle_date=?',[amount,seat.character_id,day]);
