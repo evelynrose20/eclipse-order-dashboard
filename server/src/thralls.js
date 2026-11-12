@@ -148,7 +148,7 @@ export async function thrallsRoute(pool,req,path){
    const [[seat]]=await cn.execute('SELECT character_id FROM order_thrall_seat WHERE id=1 FOR UPDATE');
    const [[previous]]=await cn.execute('SELECT lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[id]);
    if(seat.character_id===id&&(!next.allow_seating||(previous&&previous.lower_anatomy!==next.lower_anatomy))){
-    await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready',revision=revision+1 WHERE id=1");
+    await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='offline',lower_status='offline',revision=revision+1 WHERE id=1");
     await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
     await cn.execute('INSERT INTO order_thrall_chamber_log(actor_id,action,detail) VALUES(?,?,?)',[actor.id,'release','Player withdrew chair permission; character released']);
    }
@@ -200,31 +200,36 @@ export async function thrallsRoute(pool,req,path){
    const character=rows[0];
    if(!canSeatCharacter(machine,seat,character))return await rollback(cn,'character_has_not_opted_in');
    await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1',[data.character_id,actor.id]);
+   await cn.execute("UPDATE order_thrall_chamber SET upper_status='offline',lower_status='offline' WHERE id=1");
    detail='Seated '+character.character_name+' with recorded player permission';
   }else if(action==='release'){
    if(!seat.character_id)return await rollback(cn,'chair_empty');
-   await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='ready',lower_status='ready' WHERE id=1");
+   await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='offline',lower_status='offline' WHERE id=1");
    await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
    detail='Released the seated character; machine set offline';
   }else if(action==='set_status'){
    const allowed=['offline','standby','running','maintenance'];
    if(!allowed.includes(data.status))return await rollback(cn,'invalid_status');
    if(data.status==='running'&&!seat.character_id)return await rollback(cn,'chair_empty');
-   if(data.status==='running'&&(machine.upper_status!=='ready'&&machine.lower_status!=='ready'&&machine.upper_status!=='active'&&machine.lower_status!=='active'))return await rollback(cn,'no_operational_assembly');
+   if(data.status==='running'&&(machine.upper_status!=='ready'||machine.lower_status!=='ready'))return await rollback(cn,'assemblies_must_be_ready');
    updates=['machine_status=?'];values=[data.status];detail='System status changed to '+data.status;
-   // Starting the main apparatus never starts either collection assembly.
-   // Each assembly must be activated separately by an operator.
-   if(data.status!=='running'){
+   // Both assemblies must be armed manually with Ready before Start.
+   // Start engages the prepared assemblies and begins gradual extraction.
+   if(data.status==='running'){
     for(const channel of ['upper','lower']){
-     if(machine[channel+'_status']==='active'){updates.push(channel+'_status=?');values.push('ready')}
+     updates.push(channel+'_status=?');values.push('active');
+     await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+    }
+   }else{
+    for(const channel of ['upper','lower']){
+     if(machine[channel+'_status']==='active'){updates.push(channel+'_status=?');values.push(data.status==='offline'?'offline':'ready')}
     }
    }
   }else if(action==='maintenance'){
    const channel=data.channel,status=data.status;
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
-   if(status==='active'&&machine.machine_status!=='running')return await rollback(cn,'chamber_not_running');
-   if(status==='active'&&!seat.character_id)return await rollback(cn,'chair_empty');
-   if(status==='active'&&machine[channel+'_status']!=='active')await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+   if(status==='active')return await rollback(cn,'start_apparatus_to_activate');
+   if(machine.machine_status==='running'&&status==='ready')return await rollback(cn,'stop_chamber_first');
    updates=[channel+'_status=?'];values=[status];detail=channel+' assembly set to '+status;
   }else if(action==='run_cycle'){
    const channel=data.channel;
