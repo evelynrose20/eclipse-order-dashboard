@@ -54,6 +54,8 @@ export async function worldGeographyRoute(pool,req,path,actor){
    if(b.access_policy==='airship_only'){
     const [[crossing]]=await db.execute('SELECT id FROM world_zone_crossings WHERE from_region_id<>to_region_id AND (from_region_id=? OR to_region_id=?) LIMIT 1',[regionId,regionId]);
     if(crossing)return fail(409,'remove_ground_crossings_before_airship_only');
+    const [[groundBorder]]=await db.execute("SELECT id FROM world_region_connections WHERE connection_kind='ground' AND (from_region_id=? OR to_region_id=?) LIMIT 1",[regionId,regionId]);
+    if(groundBorder)return fail(409,'remove_ground_region_connections_before_airship_only');
    }
    await db.execute('INSERT INTO world_region_access(region_id,access_policy) VALUES(?,?) ON DUPLICATE KEY UPDATE access_policy=VALUES(access_policy)',[regionId,b.access_policy]);
    await audit(db,actor,regionId,'region_access');
