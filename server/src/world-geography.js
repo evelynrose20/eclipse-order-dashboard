@@ -25,7 +25,7 @@ export async function worldGeographyRoute(pool,req,path,actor){
   if(!validId(zoneId)||!b||!(b.anchor_zone_id==null||validId(anchorId))||(b.anchor_zone_id!=null&&!vector[b.direction]))return fail(400,'invalid_zone_placement');
   return tx(pool,async db=>{
    const [[target]]=await db.execute('SELECT id,region_id,is_default,grid_x,grid_y FROM world_zones WHERE id=? FOR UPDATE',[zoneId]);
-   if(!target||target.is_default)return fail(404,'placeable_zone_not_found');
+   if(!target)return fail(404,'placeable_zone_not_found');
    const [placed]=await db.execute('SELECT id,grid_x,grid_y FROM world_zones WHERE region_id=? AND grid_x IS NOT NULL FOR UPDATE',[target.region_id]);
    let x=0,y=0;
    if(b.anchor_zone_id!=null){
