@@ -113,6 +113,8 @@ export default function BreedingPit({request}){
  const [dialog,setDialog]=useState(''),[project,setProject]=useState(emptyProject()),[strain,setStrain]=useState(emptyStrain());
  const [deployment,setDeployment]=useState({cohort_id:'',installation_id:''});
  const [selectedIncubation,setSelectedIncubation]=useState('');
+ const [chairHost,setChairHost]=useState('');
+ const [registerHost,setRegisterHost]=useState('');
  async function reload(){const result=await request('/thralls/breeding-pit');setData(result)}
  useEffect(()=>{let active=true;request('/thralls/breeding-pit').then(x=>{if(active)setData(x)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
  useEffect(()=>{const timer=setInterval(()=>reload().catch(()=>{}),60000);return()=>clearInterval(timer)},[]);
@@ -132,6 +134,16 @@ export default function BreedingPit({request}){
  const activeTotal=nursery.reduce((total,x)=>total+Number(x.quantity),0);
  const readyCohorts=useMemo(()=>nursery.filter(x=>new Date(x.mature_at)<=new Date(now)),[data]);
  const initial=project.strain_id||String(strains.find(x=>Number(x.egg_stock)>0)?.id||strains[0]?.id||'');
+ const availableHosts=(data?.hosts||[]).filter(h=>!running.some(i=>i.host_character_id===h.id));
+ const assignedHost=availableHosts.find(h=>String(h.id)===chairHost);
+ const ownedUnregistered=(data?.my_thralls||[]).filter(h=>!h.registered);
+ function openAssignment(){setProject({...emptyProject(),host_character_id:assignedHost?.id||availableHosts[0]?.id||''});setDialog('project')}
+ async function registerOwnedHost(){
+  if(!registerHost)return;
+  setBusy(true);setError('');setNotice('');
+  try{await request('/thralls/breeding-pit/hosts/'+registerHost,{method:'PUT',body:{allow_incubation:true}});await reload();setChairHost(registerHost);setRegisterHost('');setNotice('Thrall registered. Select a brood strain and begin the incubation.')}
+  catch(e){setError(e.message||'Unable to register character')}finally{setBusy(false)}
+ }
  if(!data&&!error)return <section className="brood-root"><div className="brood-panel">Opening the Brood Pit…</div></section>;
  return <section className="brood-root">
   <header className="brood-hero"><div><span className="brood-kicker"><i className="fa-solid fa-dungeon"/> LOWER VAULTS · BIO-ARCANE DIVISION</span><h2>Breeding Pit</h2><p>Brood cultivation, incubation, nursery development and military assignment</p></div>
@@ -153,12 +165,19 @@ export default function BreedingPit({request}){
     <button type="button" className="brood-refresh" onClick={()=>reload().catch(e=>setError(e.message))}><i className="fa-solid fa-rotate"/> Refresh</button>
    </div>
    {tab==='incubation'&&<div className="brood-panel">
-    <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>An organic incubation suite where registered hosts sustain the developing brood. Watch the throne and cross-section monitors as each clutch matures.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={()=>{setProject(emptyProject());setDialog('project')}} disabled={running.length>=data.capacity.incubators||!data.hosts.length}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
+    <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>An organic incubation suite where registered hosts sustain the developing brood. Watch the throne and cross-section monitors as each clutch matures.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={openAssignment} disabled={running.length>=data.capacity.incubators||!availableHosts.length}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
+    <section className="brood-chair-assignment" aria-label="Assign thrall to incubation chair">
+      <div className="brood-chair-assignment-head"><div><span>THRONE CONTROL / HOST ASSIGNMENT</span><h4><i className="fa-solid fa-user-lock"/> Assign a thrall to the chair</h4><p>Choose a registered, unoccupied bound thrall, then select an egg strain to begin incubation.</p></div><span className="brood-tag pending">{availableHosts.length} available</span></div>
+      {data.can_manage&&availableHosts.length>0&&<div className="brood-chair-inputs"><label>Available thrall<select value={assignedHost?.id||availableHosts[0]?.id||''} onChange={e=>setChairHost(e.target.value)}>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><button type="button" className="brood-primary" disabled={busy||running.length>=data.capacity.incubators} onClick={openAssignment}><i className="fa-solid fa-chair"/> Place in throne / begin incubation</button></div>}
+      {availableHosts.length===0&&<div className="brood-chair-empty"><i className="fa-solid fa-circle-info"/><div><strong>No available thralls registered</strong><p>{running.length?'Thralls already hosting an active incubation are unavailable for another.':'Register an eligible bound character below, then assign them to the throne.'}</p></div></div>}
+      {ownedUnregistered.length>0&&<div className="brood-register-owner"><label>Register one of your bound characters<select value={registerHost} onChange={e=>setRegisterHost(e.target.value)}><option value="">Choose your character</option>{ownedUnregistered.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><button type="button" disabled={busy||!registerHost} onClick={registerOwnedHost}>Register for incubation</button></div>}
+      <small className="brood-assignment-footnote">Character registration is controlled by the character's player. Other bound characters must be registered from their Character Dossier → Brood Pit tab.</small>
+    </section>
     <div className="brood-monitor-workspace"><LivingFloor/><div className="brood-monitor-content">
      <div className="brood-monitor-selection"><label>Active incubation monitor<select value={selectedProject?.id||''} onChange={e=>setSelectedIncubation(String(e.target.value))}><option value="">No project selected</option>{running.map(x=><option key={x.id} value={x.id}>{x.host_name||'Thrall'} · {x.strain_name} #{x.id}</option>)}</select></label><small>Chair harness, egg-development cutaway and nursery transfer status</small></div>
      <div className="brood-monitor-grid"><BroodChairMonitor project={selectedProject} now={now}/><BroodCutaway project={selectedProject} strain={selectedStrain} now={now}/></div></div>
     </div>
-    {!data.hosts.length&&<p className="brood-muted" role="status">No registered bound thralls are available. Register an eligible character through their Brood Pit dossier tab before beginning an incubation.</p>}
+
     {!incubations.length?<div className="brood-empty"><i className="fa-solid fa-egg"/><strong>No incubation projects</strong><p>Start a project using an available brood strain and egg from the strain registry.</p></div>:
     <div className="brood-projects">{incubations.map(item=>{
      const pct=progress(item.started_at,item.ready_at,now),ready=pct===100;
@@ -211,7 +230,7 @@ export default function BreedingPit({request}){
     {dialog==='project'&&<>
      <label>Brood strain<select value={initial} onChange={e=>setProject(p=>({...p,strain_id:e.target.value}))} required>{strains.map(s=><option key={s.id} value={s.id} disabled={!Number(s.egg_stock)}>{s.name} · {s.egg_stock} eggs</option>)}</select></label>
      <p className="brood-muted">Incubation method: Registered bound thrall</p>
-     <label>Thrall host<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered bound thrall</option>{data.hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select><small>Bound characters register availability in their own dossier.</small></label>
+     <label>Assigned thrall<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered bound thrall</option>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
      <label>Project notes<textarea rows={3} maxLength={800} value={project.notes} onChange={e=>setProject(p=>({...p,notes:e.target.value}))}/></label>
     </>}
     {dialog==='strain'&&<>
