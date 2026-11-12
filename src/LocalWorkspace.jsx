@@ -7,7 +7,6 @@ import {CharacterTransitions} from './RPPlatform.jsx';
 import {ProfileConsent} from './ProfileConsent.jsx';
 import {MemberRPDirectory} from './MemberRPDirectory.jsx';
 import FCSettings from './FCSettings.jsx';
-import VenueManagement from './VenueManagement.jsx';
 import Factions from './Factions.jsx';
 import WorldAdministration from './WorldAdministration.jsx';
 import Workshop from './Workshop.jsx';
@@ -103,7 +102,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['factions','Factions & diplomacy','✧'],
   ['world','World Administration','▧'],
   ['lore','Order Chronicles','✦'],
-  ...(!playerPreview&&canManage(profile.role)?[['venue-management','Venue Management','♧']]:[]),
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
   ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣']]:[]),
@@ -176,7 +174,6 @@ export default function LocalWorkspace({profile,request,onLogout}){
      <section className="panel"><h3>No character selected</h3><p>Create a character to get started.</p>{!playerPreview&&<button className="btn primary" onClick={()=>setDraft(newSheet())}>Create your first character</button>}</section>}
     </>}
     {tab==='lore'&&<LoreArchive request={request} admin={!playerPreview}/>}
-    {tab==='venue-management'&&admin&&<VenueManagement request={request}/>}
     {tab==='governance'&&!playerPreview&&<GovernancePreview currentUser={profile} request={request} accounts={members}/>}
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
