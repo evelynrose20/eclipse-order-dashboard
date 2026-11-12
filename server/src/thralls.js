@@ -29,7 +29,7 @@ async function readBody(req){
  for await(const chunk of req){size+=chunk.length;if(size>4096)return null;chunks.push(chunk)}
  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{return null}
 }
-const isAmount=n=>Number.isInteger(n)&&n>=0&&n<=1000;
+const isAmount=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1000&&Math.round(n*10)===n*10;
 export const canSeatCharacter=(machine,seat,character)=>machine?.machine_status==='offline'&&!seat?.character_id&&Boolean(character?.allow_seating);
 export const withinContributionLimit=(prefs,seat,channel,amount)=>['upper','lower'].includes(channel)&&isAmount(amount)&&amount>0&&Boolean(prefs?.allow_seating)&&Boolean(prefs?.['allow_'+channel])&&Number(seat?.[channel+'_recorded']||0)+amount<=Number(prefs?.[channel+'_limit']||0);
 
@@ -38,7 +38,7 @@ const defaultPrefs={allow_upper:0,allow_lower:0,allow_seating:0,gender_identity:
 export const GENDER_IDENTITIES=['unspecified','female','male','nonbinary','other'];
 export const LOWER_ANATOMIES=['unspecified','vulva','penis','mixed','other'];
 export const LACTATION_STATES=['none','established','variable'];
-const CYCLE_MS=5*60*1000;
+const CYCLE_MS=30*1000; // 0.1 unit per 30 seconds per active assembly
 export const chamberCycleDate=now=>new Date(now).toISOString().slice(0,10);
 export const chamberNextReset=now=>new Date(Date.UTC(new Date(now).getUTCFullYear(),new Date(now).getUTCMonth(),new Date(now).getUTCDate()+1)).toISOString();
 // Per-day game balance; two independent reserves. No character's balance can go negative.
@@ -51,8 +51,8 @@ export function dailyBalance(prefs,used={}){
  const consumption=used||{};
  const upperMax=dailyCapacity('upper',prefs),lowerMax=dailyCapacity('lower',prefs);
  return {
-  upper:{maximum:upperMax,used:Math.min(upperMax,Number(consumption.upper_used||0)),remaining:Math.max(0,upperMax-Number(consumption.upper_used||0))},
-  lower:{maximum:lowerMax,used:Math.min(lowerMax,Number(consumption.lower_used||0)),remaining:Math.max(0,lowerMax-Number(consumption.lower_used||0))}
+  upper:{maximum:upperMax,used:Math.min(upperMax,Number(consumption.upper_used||0)),remaining:Math.max(0,Math.round((upperMax-Number(consumption.upper_used||0))*10)/10)},
+  lower:{maximum:lowerMax,used:Math.min(lowerMax,Number(consumption.lower_used||0)),remaining:Math.max(0,Math.round((lowerMax-Number(consumption.lower_used||0))*10)/10)}
  };
 }
 // A deliberately fictional, low-volume game abstraction. Not a model of human physiology.
@@ -101,13 +101,9 @@ async function settleChamberProduction(pool){
    }
    const remaining=dailyBalance(prefs,usage)[channel].remaining;
    const space=Math.max(0,Number(machine[channel+'_capacity'])-Number(machine[channel+'_volume']));
-   let amount=0;
    const kind=channel==='lower'?lowerMaterialForAnatomy(prefs.lower_anatomy):null;
    const compatible=channel!=='lower'||Number(machine.lower_volume)===0||machine.lower_material_type===kind;
-   if(compatible&&remaining>0&&space>0){
-    for(let i=0;i<Math.min(ticks,288)&&amount<remaining&&amount<space;i++)
-     amount+=Math.min(remaining-amount,space-amount,simulatedCycleYield(channel,prefs));
-   }
+   const amount=compatible?Math.max(0,Math.round(Math.min(remaining,space,ticks/10)*10)/10):0;
    const settledAt=new Date(from+ticks*CYCLE_MS);
    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=?,'+channel+'_recorded='+channel+'_recorded+? WHERE id=1',[settledAt,amount]);
    if(amount){
@@ -211,12 +207,12 @@ export async function thrallsRoute(pool,req,path){
    const allowed=['offline','standby','running','maintenance'];
    if(!allowed.includes(data.status))return await rollback(cn,'invalid_status');
    if(data.status==='running'&&!seat.character_id)return await rollback(cn,'chair_empty');
-   if(data.status==='running'&&(machine.upper_status!=='ready'||machine.lower_status!=='ready'))return await rollback(cn,'assemblies_must_be_ready');
+   if(data.status==='running'&&!['upper','lower'].some(channel=>machine[channel+'_status']==='ready'))return await rollback(cn,'prepare_at_least_one_assembly');
    updates=['machine_status=?'];values=[data.status];detail='System status changed to '+data.status;
-   // Both assemblies must be armed manually with Ready before Start.
-   // Start engages the prepared assemblies and begins gradual extraction.
+   // Only manually prepared assemblies start; the other assembly remains independent.
    if(data.status==='running'){
     for(const channel of ['upper','lower']){
+     if(machine[channel+'_status']!=='ready')continue;
      updates.push(channel+'_status=?');values.push('active');
      await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
     }
@@ -230,8 +226,11 @@ export async function thrallsRoute(pool,req,path){
    if(!['upper','lower'].includes(channel)||!['offline','ready','active','maintenance'].includes(status))return await rollback(cn,'invalid_assembly_status');
    if(status==='active')return await rollback(cn,'start_apparatus_to_activate');
    if(status==='ready'&&!seat.character_id)return await rollback(cn,'chair_empty');
-   if(machine.machine_status==='running'&&status==='ready')return await rollback(cn,'stop_chamber_first');
-   updates=[channel+'_status=?'];values=[status];detail=channel+' assembly set to '+status;
+   // An assembly can be brought online after its partner has already started.
+   const nextStatus=status==='ready'&&machine.machine_status==='running'?'active':status;
+   if(nextStatus==='active'&&machine[channel+'_status']!=='active')
+    await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+   updates=[channel+'_status=?'];values=[nextStatus];detail=channel+' assembly set to '+nextStatus;
   }else if(action==='run_cycle'){
    const channel=data.channel;
    if(!['upper','lower'].includes(channel))return await rollback(cn,'invalid_channel');
@@ -259,7 +258,7 @@ export async function thrallsRoute(pool,req,path){
    detail='Completed '+channel+' cycle: '+amount+' units recorded';
   }else if(action==='decant'){
    const channel=data.channel,amount=data.quantity,classification=String(data.classification||'Unclassified').trim(),notes=String(data.notes||'').trim();
-   if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0||amount>machine[channel+'_volume']||classification.length>80||notes.length>500)return await rollback(cn,'invalid_batch');
+   if(!['upper','lower'].includes(channel)||!isAmount(amount)||amount===0||amount>Number(machine[channel+'_volume'])||classification.length>80||notes.length>500)return await rollback(cn,'invalid_batch');
    await cn.execute('INSERT INTO order_thrall_chamber_batches(material,material_type,quantity,classification,notes,created_by) VALUES(?,?,?,?,?,?)',[channel==='upper'?'lacteal':'secondary',channel==='upper'?'milk':machine.lower_material_type,amount,classification||'Unclassified',notes,actor.id]);
    updates=[channel+'_volume='+channel+'_volume-?'];values=[amount];detail='Decanted '+amount+' units from '+channel+' reservoir';
   }else{
