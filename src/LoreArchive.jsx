@@ -3,7 +3,7 @@ import './lore-archive.css';
 import './imperial-theme.css';
 
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
-export const ERAS=[['garlemald','Garlemald'],['arr','A Realm Reborn'],['heavensward','Heavensward'],['stormblood','Stormblood'],['shadowbringers','Shadowbringers'],['endwalker','Endwalker'],['dawntrail','Dawntrail'],['present','The Return']];
+export const ERAS=[['garlemald','Origins & Garlean Ties'],['arr','A Realm Reborn'],['heavensward','Heavensward'],['stormblood','Stormblood'],['shadowbringers','Shadowbringers'],['endwalker','Endwalker'],['dawntrail','Dawntrail'],['present','The Return']];
 const TYPES=[['history','Chronicle'],['place','Places'],['person','Figures'],['faction','Factions']];
 const label=(pairs,id)=>pairs.find(([x])=>x===id)?.[1]||id;
 const empty=()=>({id:'',title:'',era:'present',kind:'history',summary:'',body:'',sort_order:100,published:false});
