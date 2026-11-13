@@ -31,9 +31,12 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
  }
  if(!data)return <section className="wa-panel"><h3>{settlement.name} · Civilian needs</h3>{error?<p role="alert" className="wa-error">{error}</p>:<p>Loading civic records…</p>}</section>;
  const civicStockById=new Map(data.stock.map(item=>[item.item_code,item]));
+ // Source-prefixed picker IDs keep City Builder and FC entries visible even when
+ // both catalogs define the same underlying material code.
  const civicItemOptions=[
-  ...data.stock.map(item=>({id:item.item_code,name:item.item_label,category:item.resource_kind,quantity:item.quantity,description:item.food_group?'Food group: '+item.food_group:'Already in settlement stock'})),
-  ...(data.shared_materials||[]).filter(item=>!civicStockById.has(item.id)).map(item=>({id:item.id,name:item.name,category:item.category||'Material',quantity:item.quantity??0,description:'Order item catalog'}))
+  ...data.stock.map(item=>({id:'stock:'+item.item_code,name:item.item_label,category:'Settlement stock · '+item.resource_kind,quantity:item.quantity,description:item.food_group?'Food group: '+item.food_group:'Already in settlement inventory'})),
+  ...(data.city_builder_items||[]).map(item=>({id:'city:'+item.id,name:item.name,category:'City Builder · '+item.category,description:item.description||'World Industry item'})),
+  ...(data.shared_materials||[]).map(item=>({id:'fc:'+item.id,name:item.name,category:'FC Workshop · '+item.category,description:'FC Workshop material catalog'}))
  ];
  const inferEssentialKind=item=>{
   const match=(String(item?.name||'')+' '+String(item?.category||'')).toLowerCase();
@@ -42,11 +45,16 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   if(/medicine|medical|bandage|remedy|potion|tonic/.test(match))return 'medicine';
   return 'food';
  };
- const chooseCivicItem=code=>{
+ const chooseCivicItem=selection=>{
+  const option=civicItemOptions.find(item=>item.id===selection);
+  if(!option)return;
+  const code=selection.slice(selection.indexOf(':')+1);
   const existing=civicStockById.get(code);
-  const catalogItem=(data.shared_materials||[]).find(item=>item.id===code);
-  setStockItemSelection(code);
-  setMovement(previous=>({...defaults,item_code:code,item_label:existing?.item_label||catalogItem?.name||'',resource_kind:existing?.resource_kind||inferEssentialKind(catalogItem),food_group:existing?.food_group||'grain',quantity_delta:previous.quantity_delta,reason:previous.reason}));
+  const cityItem=(data.city_builder_items||[]).find(item=>item.id===code);
+  const fcItem=(data.shared_materials||[]).find(item=>item.id===code);
+  const chosen=selection.startsWith('city:')?cityItem:selection.startsWith('fc:')?fcItem:existing;
+  setStockItemSelection(selection);
+  setMovement(previous=>({...defaults,item_code:code,item_label:existing?.item_label||chosen?.name||cityItem?.name||fcItem?.name||'',resource_kind:existing?.resource_kind||inferEssentialKind(chosen),food_group:existing?.food_group||'grain',quantity_delta:previous.quantity_delta,reason:previous.reason}));
  };
  const p=data.preview;
  const empty=Number(settlement.population)===0;
@@ -141,7 +149,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     {data.stock.length?<div className="wa-civic-inventory-rows">{data.stock.map(item=><div className="wa-civic-inventory-row" key={item.item_code}>
      <span className="wa-civic-inventory-goods"><i className={'fa-solid '+({food:'fa-wheat-awn',fuel:'fa-fire-flame-simple',water:'fa-droplet',medicine:'fa-kit-medical'}[item.resource_kind]||'fa-box')} aria-hidden="true"/><span><strong>{item.item_label}</strong><small>{item.resource_kind}{item.food_group?' · '+item.food_group:''}</small></span></span>
      <strong className="wa-civic-inventory-amount">{format(item.quantity)} <small>units</small></strong>
-     {canEdit&&<button type="button" disabled={busy} onClick={()=>{chooseCivicItem(item.item_code);setMovementDirection('remove');setStockCorrectionOpen(true)}}>Correct</button>}
+     {canEdit&&<button type="button" disabled={busy} onClick={()=>{chooseCivicItem('stock:'+item.item_code);setMovementDirection('remove');setStockCorrectionOpen(true)}}>Correct</button>}
     </div>)}</div>:<div className="wa-civic-inventory-empty"><i className="fa-solid fa-box-open" aria-hidden="true"/><p>No supplies recorded for this settlement.</p><span>Deliver goods from the shared Workshop stores to establish civilian inventory.</span></div>}
    </div>
    {canEdit&&<section className="wa-civic-correction" aria-label="Manual civilian stock correction">
@@ -151,7 +159,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     {stockCorrectionOpen&&<form className="wa-civic-correction-form" onSubmit={async e=>{
      e.preventDefault();
      const amount=Number(movement.quantity_delta),delta=movementDirection==='remove'?-amount:amount;
-     const existing=data.stock.find(item=>item.item_code===movement.item_code);
+     const existing=civicStockById.get(movement.item_code);
      if(!stockItemSelection||!movement.item_label){setError('Choose a supply item from the inventory picker first.');return}
      if(!Number.isFinite(amount)||amount<=0||amount>1e9){setError('Enter a positive quantity to adjust.');return}
      if(delta<0&&!existing){setError('This item is not in the settlement inventory yet.');return}
@@ -165,7 +173,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
       <label className="wide">Inventory item
        <MaterialPicker options={civicItemOptions} value={stockItemSelection} onChange={chooseCivicItem} required placeholder="Choose a civilian supply item" ariaLabel="Choose a civilian supply item"/>
       </label>
-      {stockItemSelection&&<div className="wa-civic-selected-item wide"><i className="fa-solid fa-box" aria-hidden="true"/><div><strong>{movement.item_label}</strong><span>{civicStockById.has(stockItemSelection)?'Existing settlement inventory · '+format(civicStockById.get(stockItemSelection).quantity)+' units':'From the existing Order item catalog · Not currently stocked here'}</span></div></div>}
+      {stockItemSelection&&<div className="wa-civic-selected-item wide"><i className="fa-solid fa-box" aria-hidden="true"/><div><strong>{movement.item_label}</strong><span>{civicStockById.has(movement.item_code)?'Existing settlement inventory · '+format(civicStockById.get(movement.item_code).quantity)+' units':'From the existing Order item catalog · Not currently stocked here'}</span></div></div>}
       {stockItemSelection&&!civicStockById.has(stockItemSelection)&&<>
        <label>Supply category<select value={movement.resource_kind} onChange={e=>setMovement(v=>({...v,resource_kind:e.target.value,food_group:e.target.value==='food'?'grain':''}))}>
         <option value="food">Food</option><option value="fuel">Heating fuel</option><option value="water">Clean water</option><option value="medicine">Medicine</option>
@@ -175,14 +183,14 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
       <label>Correction type<select value={movementDirection} onChange={e=>setMovementDirection(e.target.value)}>
        <option value="add">Increase recorded stock</option><option value="remove">Decrease recorded stock</option>
       </select></label>
-      <label>Quantity (units)<input required type="number" min=".001" max={movementDirection==='remove'?civicStockById.get(stockItemSelection)?.quantity||0:1000000000} step=".001" value={movement.quantity_delta||''} placeholder="0.000" onChange={e=>setMovement(v=>({...v,quantity_delta:e.target.value}))}/></label>
+      <label>Quantity (units)<input required type="number" min=".001" max={movementDirection==='remove'?civicStockById.get(movement.item_code)?.quantity||0:1000000000} step=".001" value={movement.quantity_delta||''} placeholder="0.000" onChange={e=>setMovement(v=>({...v,quantity_delta:e.target.value}))}/></label>
       <label className="wide">Reason and source<input required maxLength="180" placeholder="Document the correction or story event" value={movement.reason} onChange={e=>setMovement(v=>({...v,reason:e.target.value}))}/></label>
      </div>
      <div className="wa-civic-correction-footer"><span>{movementDirection==='remove'?'Decreasing recorded inventory':'Increasing recorded inventory'} · This will be logged for review.</span><button className="wa-accent" type="submit" disabled={busy||!stockItemSelection||!Number(movement.quantity_delta)}>{busy?'Recording…':'Confirm stock correction'}</button></div>
     </form>}
    </section>}
    <details className="wa-civic-movement-history"><summary><i className="fa-solid fa-clock-rotate-left" aria-hidden="true"/> Recent stock movements <span>{(data.recent_movements||[]).length}</span></summary>
-    {(data.recent_movements||[]).length?<div className="wa-civic-movement-list">{data.recent_movements.map((item,i)=><div key={i}><span><strong>{civicStockById.get(item.item_code)?.item_label||(data.shared_materials||[]).find(material=>material.id===item.item_code)?.name||'Previously recorded supply'}</strong><small>{item.reason}</small></span><span className={Number(item.quantity_delta)>=0?'positive':'negative'}>{Number(item.quantity_delta)>=0?'+':''}{format(item.quantity_delta)}</span><small>{new Date(item.created_at).toLocaleString()}</small></div>)}</div>:<p className="wa-hint">No recorded stock movements yet.</p>}
+    {(data.recent_movements||[]).length?<div className="wa-civic-movement-list">{data.recent_movements.map((item,i)=><div key={i}><span><strong>{civicStockById.get(item.item_code)?.item_label||(data.city_builder_items||[]).find(material=>material.id===item.item_code)?.name||(data.shared_materials||[]).find(material=>material.id===item.item_code)?.name||'Previously recorded supply'}</strong><small>{item.reason}</small></span><span className={Number(item.quantity_delta)>=0?'positive':'negative'}>{Number(item.quantity_delta)>=0?'+':''}{format(item.quantity_delta)}</span><small>{new Date(item.created_at).toLocaleString()}</small></div>)}</div>:<p className="wa-hint">No recorded stock movements yet.</p>}
    </details>
   </div>}
   {tab==='people'&&<div className="wa-civic-workspace">
