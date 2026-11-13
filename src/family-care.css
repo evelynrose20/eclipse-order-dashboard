@@ -11,7 +11,6 @@
 .family-need-title strong{font-variant-numeric:tabular-nums;font-weight:700}
 .family-need-track{height:7px;background:#34424b;overflow:hidden}
 .family-need-track span{display:block;height:100%;background:#a9dfc3;transition:width .25s ease}
-.family-need:has(.family-need-track [style*="20%"]) .family-need-track span{background:#debf8c}
 .family-need small{font-size:10px;color:#a1b0b9}
 .family-care-priority{border-left:2px solid #cca673;padding-left:9px;font-size:11px;color:#c5ced1;margin:0;line-height:1.5}
 .family-care-priority i{margin-right:6px;color:#cca673}
