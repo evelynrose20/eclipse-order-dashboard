@@ -7,6 +7,7 @@ const RANKS=Object.freeze({
  eclipse_attendant:[4,45,1.30],silken_thrall:[5,60,1.45],violet_keeper:[6,75,1.60],
  serpents_chosen:[7,90,1.80],eclipsed_consort:[8,100,2]
 });
+export const pregnancyTermDays=lineageCaseId=>lineageCaseId===null||lineageCaseId===undefined?90:4;
 const blank=()=>({cycle_opt_in:false,conception_opt_in:false,cycle_type:'heat',cycle_anchor:null,cycle_days:30,base_chance:20,pregnancy_status:'none',pregnancy_anchor:null,pregnancy_start_day:0,pregnancy_total_days:90,pregnancy_notes:'',shared_with_command:false});
 const fail=(status,error)=>({status,body:{error}});
 const ok=(body)=>({status:200,body});
@@ -162,7 +163,7 @@ export async function reproductionRoute(pool,req,path){
     VALUES(?,?,?,?,?,?,?,?,?,?)`,[id,b.event_key,actor.id,b.ic_event_date,value,chance,success,character.rank_code||null,status.phase,lineageId]);
    if(success){
     await db.execute(`UPDATE character_reproductive_profiles SET pregnancy_status='active',pregnancy_anchor=?,
-     pregnancy_start_day=0,pregnancy_total_days=90,pregnancy_notes='',lineage_case_id=? WHERE character_id=?`,[b.ic_event_date,lineageId,id]);
+     pregnancy_start_day=0,pregnancy_total_days=?,pregnancy_notes='',lineage_case_id=? WHERE character_id=?`,[b.ic_event_date,pregnancyTermDays(lineageId),lineageId,id]);
     if(lineageId!==null)await db.execute('UPDATE order_lineage_cases SET pregnancy_linked=1 WHERE id=? AND character_id=?',[lineageId,id]);
    }
    await db.execute('INSERT INTO character_reproductive_events(character_id,actor_account_id,action,summary) VALUES(?,?,?,?)',
