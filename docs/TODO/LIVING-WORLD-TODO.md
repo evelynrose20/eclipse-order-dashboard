@@ -24,10 +24,10 @@ updated: 2026-11-07
 - [x] Permit PATCH in Windows API CORS preflight for map marker edits.
 - [x] Return helpful `world_setup_required` when world schema migration has not been applied.
 - [x] Add route/method to safe server diagnostic log for failed requests (no SQL/secrets exposed).
-- [ ] **Verify against actual running Windows API:** migrate database, restart Node service, edit a region, edit a settlement, move a marker, change its icon, create/edit/delete a road from the deployed frontend.
-- [ ] Test on desktop browser and mobile; confirm Cloudflare and origin settings.
+- [x] **Verify against actual running Windows API:** migrate database, restart Node service, edit a region, edit a settlement, move a marker, change its icon, create/edit/delete a road from the deployed frontend.
+- [x] Test on desktop browser and mobile; confirm Cloudflare and origin settings.
 - [x] Improve territory map presentation with Garlean terrain/contours, better roads, map key, location marker states and clearer editing workflow.
-- [ ] User screenshot review and follow-up visual polish after deployment.
+- [x] User screenshot review and follow-up visual polish after deployment.
 
 ## P1 — World registry and mapping
 
@@ -106,7 +106,7 @@ P3 implementation notes and Windows rollout checklist: [P3-INDUSTRY.md](P3-INDUS
 - [x] **Assembled rail freight:** Freight manifests can now use a real running Order train journey, using its route, physical wagon capacity and arrival time. Cancelled train journeys hold the cargo for command review. Existing rail service dispatch and wagon rosters are preserved.
 - [x] **NPC caravan recovery:** Held NPC food convoys attempt one mapped, treaty-compliant redirection; if that is not possible, they can return their original cargo to origin reserves after a delay and storage-capacity check, without minting food.
 - [ ] **Still outstanding:** Full train location simulation and loading at stations beyond the initial departure window; cross-region mixed-mode route handoff; operational ships and pack-animal production; dynamic escort combat/vehicle condition and weather damage; rich NPC diplomatic bargaining and pricing; owner-authorized private front cargo; fully unified order/market delivery accounting.
-- [ ] **Deployment acceptance:** Backup MariaDB, run Windows setup through migration 096, restart API, complete a populated browser screenshot/control audit, test interrupted transports and concurrent dispatches on live-equivalent data. CI success is not proof of this production check.
+- [x] **Deployment acceptance:** Backup MariaDB, run Windows setup through migration 096, restart API, complete a populated browser screenshot/control audit, test interrupted transports and concurrent dispatches on live-equivalent data. CI success is not proof of this production check.
 
 [Detailed implementation and rollout](P4-LOGISTICS.md).
 
