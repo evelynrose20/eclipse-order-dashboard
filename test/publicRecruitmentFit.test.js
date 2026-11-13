@@ -14,9 +14,9 @@ test('recruitment fit appears before membership with a working anchor',()=>{
  assert.match(publicSite,/public-fit-not-for/);
 });
 
-test('recruitment fit welcomes Garleans and criminals but rejects heroic main-character play',()=>{
+test('recruitment fit welcomes imperial villain-faction characters but rejects heroic main-character play',()=>{
  assert.match(publicSite,/Garleans/);
- assert.match(publicSite,/criminals, smugglers, spies, mercenaries/);
+ assert.match(publicSite,/imperial officers, spies, magitek researchers/);
  assert.match(publicSite,/heroic Free Company/);
  assert.match(publicSite,/Warrior of Light/);
  assert.match(publicSite,/player/i);
