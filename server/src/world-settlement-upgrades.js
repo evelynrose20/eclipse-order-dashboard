@@ -24,7 +24,7 @@ export function upgradeEffects(upgrades=[]){
 }
 export function housingCapacity(settlement,upgrades=[]){return Number(settlement.housing_capacity||0)+upgradeEffects(upgrades).housing_bonus}
 export async function getSettlementUpgradeRecords(db,id,lock=false){
- const [rows]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=? ORDER BY id'+(lock?' FOR UPDATE':''),[id]);return rows;
+ const [rows]=await db.execute('SELECT u.*,COALESCE(t.teachers,0) AS teacher_count,COALESCE(t.support_staff,0) AS support_staff FROM world_settlement_upgrades u LEFT JOIN world_school_staffing t ON t.upgrade_id=u.id WHERE u.settlement_id=? ORDER BY u.id'+(lock?' FOR UPDATE':''),[id]);return rows;
 }
 export async function handleSettlementUpgrades(pool,req,path,actor){
  const fundMatch=/^\/world-admin\/settlements\/(\d+)\/upgrades\/projects\/(\d+)\/commit$/.exec(path);
