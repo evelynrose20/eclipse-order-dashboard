@@ -10,6 +10,10 @@ tags: [eclipse-order, documentation]
 > [!important] Source of truth
 > This `docs/` directory is the **single project documentation folder** for the Eclipse Order site, Windows API and living-world work. Open `docs/` as an [Obsidian](https://obsidian.md/) vault or synchronize it with a local Git clone. The root `README.md` (GitHub repository entrypoint) and root `AGENTS.md` (code contributor instructions) stay at repository root intentionally.
 
+## System handbook — how everything works
+
+**Start here for day-to-day dashboard gameplay:** [[System Guides/00-SYSTEM-HANDBOOK|System Handbook]]. It includes step-by-step settlement rebuilding, world ownership, civilian needs, industry, construction, power, logistics, diplomacy/NPCs, characters/events, accounts, the chamber, venue operations and Windows API troubleshooting. For a ruined or abandoned settlement, go directly to [[System Guides/01-SETTLEMENT-REBUILDING|How to rebuild a settlement]]. The [[System Guides/13-SYSTEM-DEPENDENCIES-AND-GAPS|system dependency map]] separates implemented behavior from unfinished integration.
+
 ## Continue the Living World project
 
 1. **[[LIVING-WORLD-WAR-COMMAND-MASTER-PLAN]]** — full design specification, gameplay architecture, safety and milestones.
