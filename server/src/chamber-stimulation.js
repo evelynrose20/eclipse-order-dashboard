@@ -42,7 +42,7 @@ export async function stimulationRoute(pool,req,path){
  const body=await readBody(req);
  if(!body||typeof body!=='object')return fail(400,'invalid_request');
  if(body.action==='set_labels'&&req.method==='POST'){
-  if(!['domina','high_command','handler'].includes(actor.account_role))return fail(403,'staff_required');
+  if(!mayConfigureChamberFluids(actor))return fail(403,'admin_required');
   const meter=safeLabel(body.meter_label),action=safeLabel(body.action_label);
   if(!validStimulationLabel(meter)||!validStimulationLabel(action))return fail(400,'invalid_stimulation_label');
   return transaction(pool,async db=>{
