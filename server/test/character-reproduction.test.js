@@ -94,3 +94,34 @@ test('unbound character has no active magical cycle even if legacy opt in remain
  const cycle=cycleStatus({...start,cycle_opt_in:true},false,'eclipsed_consort',asDate(22));
  assert.equal(cycle.active,false);
 });
+
+test('void lineage conception refuses to use an unauthorized research case',async()=>{
+ const {pool}=mock(actor,{conception_opt_in:1,pregnancy_status:'none',cycle_days:30,base_chance:20});
+ let wrote=false;
+ pool.getConnection=async()=>({beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},
+  execute:async(sql,args)=>{
+   if(sql.startsWith('SELECT * FROM character_conception_rolls'))return [[]];
+   if(sql.startsWith('SELECT * FROM character_reproductive_profiles'))return [[{conception_opt_in:1,pregnancy_status:'none'}]];
+   if(sql.includes('FROM order_lineage_cases lc')){assert.deepEqual(args,[4,character]);return [[]]}
+   wrote=true;return [[]];
+  }
+ });
+ const result=await reproductionRoute(pool,request('POST',{event_key:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  ic_event_date:'2026-11-10',lineage_case_id:4}),'/characters/'+character+'/reproduction/roll');
+ assert.equal(result.status,403);
+ assert.equal(result.body.error,'lineage_case_not_authorized');
+ assert.equal(wrote,false);
+});
+test('ordinary conception cannot replay a key recorded for a lineage trial',async()=>{
+ const {pool}=mock(actor,{conception_opt_in:1,pregnancy_status:'none'});
+ pool.getConnection=async()=>({beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},
+  execute:async sql=>{
+   if(sql.startsWith('SELECT * FROM character_conception_rolls'))return [[{id:11,lineage_case_id:3}]];
+   throw Error('Unexpected SQL '+sql);
+  }
+ });
+ const result=await reproductionRoute(pool,request('POST',{event_key:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  ic_event_date:'2026-11-10'}),'/characters/'+character+'/reproduction/roll');
+ assert.equal(result.status,409);
+ assert.equal(result.body.error,'conception_event_type_conflict');
+});
