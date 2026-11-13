@@ -14,6 +14,7 @@ export const LINEAGE_TRAITS=[
  {id:'stable_void_essence',name:'Stable voidsent essence',kind:'descendant'},
  {id:'dream_echo',name:'Inherited dream sensitivity',kind:'descendant'}
 ];
+export const DEFAULT_VOID_OFFSPRING_TRAITS=['violet_skin','umbral_aura','black_scales','pointed_tail','stable_void_essence'];
 export const TRAIT_NAMES=Object.fromEntries(LINEAGE_TRAITS.map(t=>[t.id,t.name]));
 export const LINEAGE_ROLES=['source','carrier','descendant'];
 export const LINEAGE_STAGES=['none','subtle','developing','stable'];
