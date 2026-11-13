@@ -317,6 +317,8 @@ async function main(){
   await pool.query(familySchool);
   const adultCivilians=await readFile(new URL('../sql/134_family_adult_civilians.sql',import.meta.url),'utf8');
   await pool.query(adultCivilians);
+  const schoolStaffing=await readFile(new URL('../sql/135_civic_school_staffing_and_enrollment.sql',import.meta.url),'utf8');
+  await pool.query(schoolStaffing);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
