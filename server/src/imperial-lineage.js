@@ -48,7 +48,10 @@ export async function lineageRoute(pool,req,path){
   if(typeof b?.allow_research!=='boolean')return fail(400,'invalid_research_permission');
   return tx(pool,async db=>{
    await db.execute('INSERT INTO character_lineage_permissions(character_id,allow_research) VALUES(?,?) ON DUPLICATE KEY UPDATE allow_research=VALUES(allow_research)',[consent[1],Number(b.allow_research)]);
-   if(!b.allow_research)await db.execute('UPDATE order_lineage_cases SET character_id=NULL,pregnancy_linked=0 WHERE character_id=?',[consent[1]]);
+   if(!b.allow_research){
+    await db.execute('UPDATE order_lineage_cases SET character_id=NULL,pregnancy_linked=0 WHERE character_id=?',[consent[1]]);
+    await db.execute('UPDATE character_reproductive_profiles SET lineage_case_id=NULL WHERE character_id=?',[consent[1]]);
+   }
    return ok({allow_research:b.allow_research});
   });
  }
