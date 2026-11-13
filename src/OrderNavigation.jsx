@@ -25,7 +25,7 @@ const GROUPS=[
 ];
 const DESCRIPTIONS={
  overview:'Your starting point',roster:'Browse the Order',sheet:'Details and progression',
- scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Approved member businesses and Order trade fronts',treasury:'Trade income, daily wages and completed mission pay',
+ scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Licensed enterprises, commerce and Order supply',treasury:'Trade income, daily wages and completed mission pay',
  chamber:'Aetheric extraction chamber and alchemical annex',
  'breeding-pit':'Brood incubation, nursery, strains and military transfers',
  'lineage-research':'Restricted heredity research and gestation studies',
@@ -60,7 +60,7 @@ export default function OrderNavigation({
   <aside className={'sidebar order-nav '+(open?'order-nav-open':'')} aria-label="Workspace sidebar">
    <div className="order-nav-brand">
     <span className="order-nav-brand-icon" aria-hidden="true"><OrderEmblem className="order-nav-emblem"/></span>
-    <div><strong>THE ECLIPSE ORDER</strong><small>SYNDICATE PORTAL</small></div>
+    <div><strong>THE ECLIPSE ORDER</strong><small>IMPERIAL COMMAND</small></div>
     <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}><i className="fa-solid fa-xmark"/></button>
    </div>
    <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Order command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
