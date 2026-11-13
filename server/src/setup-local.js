@@ -300,6 +300,8 @@ async function main(){
   await pool.query(tradeLedgerRepair);
   const rpStarterMarker=await readFile(new URL('../sql/127_rp_starter_preset_marker.sql',import.meta.url),'utf8');
   await pool.query(rpStarterMarker);
+  const rosaLoreCorrection=await readFile(new URL('../sql/128_rosa_imperial_lore_correction.sql',import.meta.url),'utf8');
+  await pool.query(rosaLoreCorrection);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
