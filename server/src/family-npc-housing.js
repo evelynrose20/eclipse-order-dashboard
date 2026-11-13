@@ -14,9 +14,13 @@ export async function findNpcHousing(db,settlementId,civilianId){
  const [[site]]=await db.execute('SELECT id,population,housing_capacity FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);
  if(!site)return {assigned:false,reason:'settlement_not_found'};
  const [buildings]=await db.execute("SELECT * FROM world_settlement_upgrades WHERE settlement_id=? AND category='housing' ORDER BY id FOR UPDATE",[settlementId]);
- const [homes]=await db.execute(`SELECT housing_upgrade_id,COUNT(*) AS residents FROM world_named_civilians
-   WHERE settlement_id=? AND housing_upgrade_id IS NOT NULL
-   GROUP BY housing_upgrade_id`,[settlementId]);
+ const [homes]=await db.execute(`SELECT nc.housing_upgrade_id,COUNT(*) AS residents
+   FROM world_named_civilians nc JOIN order_dependents d ON d.id=nc.dependent_id
+   WHERE nc.settlement_id=? AND nc.housing_upgrade_id IS NOT NULL
+   AND (CASE WHEN d.birth_date IS NOT NULL AND d.birth_date<=UTC_DATE()
+     THEN TIMESTAMPDIFF(YEAR,d.birth_date,UTC_DATE())
+     ELSE 18+TIMESTAMPDIFF(YEAR,DATE(nc.transitioned_at),UTC_DATE()) END)<350
+   GROUP BY nc.housing_upgrade_id`,[settlementId]);
  const occupied=new Map(homes.map(h=>[Number(h.housing_upgrade_id),Number(h.residents)]));
  const reserved=homes.reduce((n,h)=>n+Number(h.residents),0);
  const houseId=selectNpcHome(site,buildings,occupied,reserved);
