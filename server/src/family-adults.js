@@ -1,4 +1,4 @@
-import {findNpcHousing,NAMED_NPC_MAX_AGE,namedNpcAge,namedNpcAlive} from './family-npc-housing.js';
+import {findNpcHousing,findNpcEmployment,NAMED_NPC_MAX_AGE,namedNpcAge,namedNpcAlive} from './family-npc-housing.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const staff=a=>['domina','high_command','handler'].includes(a.account_role);
 const id=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -56,8 +56,9 @@ export async function adultFamilyRoute(pool,req,path,actor){
    if(!settlement){await db.rollback();return fail(404,'settlement_not_found')}
    const [result]=await db.execute('INSERT INTO world_named_civilians(dependent_id,settlement_id) VALUES(?,?)',[dependentId,settlementId]);
    const housing=await findNpcHousing(db,settlementId,result.insertId);
+   const employment=await findNpcEmployment(db,settlementId,result.insertId);
    await db.commit();
-   return ok({civilian_id:result.insertId,transitioned:true,housing});
+   return ok({civilian_id:result.insertId,transitioned:true,housing,employment});
   }catch(e){await db.rollback().catch(()=>{});if(e.code==='ER_DUP_ENTRY')return fail(409,'already_adult');throw e}
   finally{db.release()}
  }
@@ -71,7 +72,8 @@ export async function adultFamilyRoute(pool,req,path,actor){
   const db=await pool.getConnection();
   try{await db.beginTransaction();
    const housing=await findNpcHousing(db,adult.settlement_id,adult.id);
-   await db.commit();return ok(housing);
+   const employment=adult.employment_state==='seeking'?await findNpcEmployment(db,adult.settlement_id,adult.id):null;
+   await db.commit();return ok({...housing,employment});
   }catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}
  }
   const match=/^\/family\/adults\/(\d+)$/.exec(path);
@@ -108,7 +110,8 @@ export async function adultFamilyRoute(pool,req,path,actor){
        [settlementId,Number(row.settlement_id)===settlementId?row.housing_upgrade_id:null,
         facility,b.employment_state,b.wellbeing,b.public_update.trim(),civilianId]);
     const housing=await findNpcHousing(db,settlementId,civilianId);
-    await db.commit();return ok({updated:true,housing});
+    const employment=b.employment_state==='seeking'?await findNpcEmployment(db,settlementId,civilianId):null;
+    await db.commit();return ok({updated:true,housing,employment});
    }catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}
   }
  }
