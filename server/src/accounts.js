@@ -29,7 +29,9 @@ export async function accountRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor||actor.account_role!=='domina')return error(403,'forbidden');
  if(path==='/admin/accounts'&&req.method==='GET'){
-  await reconcileDiscordAccounts(pool);
+  // Refresh in the background; never delay the admin roster behind Discord's API.
+  void reconcileDiscordAccounts(pool).catch(e=>console.warn('[Discord access] Roster sync unavailable:',e?.code||e?.name||'unknown'));
+
   const [rows]=await pool.query(
    'SELECT a.id AS user_id,a.email,a.display_name,l.discord_username,a.account_role AS role,a.standing,a.syndicate_rank,a.is_active,a.approval_status,a.created_at FROM accounts a LEFT JOIN account_discord_links l ON l.account_id=a.id ORDER BY (a.approval_status="pending") DESC,a.created_at DESC'
   );
