@@ -173,8 +173,8 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
       <label className="wide">Inventory item
        <MaterialPicker options={civicItemOptions} value={stockItemSelection} onChange={chooseCivicItem} required placeholder="Choose a civilian supply item" ariaLabel="Choose a civilian supply item"/>
       </label>
-      {stockItemSelection&&<div className="wa-civic-selected-item wide"><i className="fa-solid fa-box" aria-hidden="true"/><div><strong>{movement.item_label}</strong><span>{civicStockById.has(movement.item_code)?'Existing settlement inventory · '+format(civicStockById.get(movement.item_code).quantity)+' units':'From the existing Order item catalog · Not currently stocked here'}</span></div></div>}
-      {stockItemSelection&&!civicStockById.has(stockItemSelection)&&<>
+      {stockItemSelection&&<div className="wa-civic-selected-item wide"><i className="fa-solid fa-box" aria-hidden="true"/><div><strong>{movement.item_label}</strong><span>{civicStockById.has(movement.item_code)?'Existing settlement inventory · '+format(civicStockById.get(movement.item_code).quantity)+' units':'Catalog item · Not currently stocked in this settlement'}</span></div></div>}
+      {stockItemSelection&&!civicStockById.has(movement.item_code)&&<>
        <label>Supply category<select value={movement.resource_kind} onChange={e=>setMovement(v=>({...v,resource_kind:e.target.value,food_group:e.target.value==='food'?'grain':''}))}>
         <option value="food">Food</option><option value="fuel">Heating fuel</option><option value="water">Clean water</option><option value="medicine">Medicine</option>
        </select></label>
