@@ -1,4 +1,5 @@
 import {checkGuildMember,guildConfiguration} from './discord-guild.js';
+import {revokeMissingDiscordMember} from './account-access.js';
 import {normalizeEmail,hashPassword,verifyPassword,generateToken,hashToken} from './credentials.js';
 
 const failures=new Map();
@@ -74,7 +75,13 @@ export async function resolveSession(pool,request,{allowUnlinked=false,checkMemb
  if(!account.discord_user_id)return null;
  const membership=await checkMembership(account.discord_user_id);
  if(membership==='member')return account;
- if(membership==='not_member')return null;
+ if(membership==='not_member'){
+  // Verified Discord departure / kick / ban: persist revocation, not just an HTTP denial.
+  // No revocation occurs on Discord API errors or membership screening.
+  const revoked=await revokeMissingDiscordMember(pool,account.id,{reason:'discord_membership_lost'});
+  if(revoked.status===409)return null; // Never deactivate the last active Domina automatically.
+  return null;
+ }
  if(membership==='screening')throw Object.assign(new Error('discord_membership_screening'),{status:403});
  // Fail closed without misrepresenting Discord outages or misconfiguration as expired sessions.
  throw Object.assign(new Error(membership==='guild_configuration_error'?'discord_guild_configuration_error':'discord_server_check_unavailable'),{status:503});
