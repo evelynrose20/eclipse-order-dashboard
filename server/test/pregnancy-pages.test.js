@@ -12,7 +12,8 @@ test('pregnancy and parenthood are independent dossier pages, with bound-only mo
  assert.match(dossier,/character\?\.collar_bound\?\[\{id:'binding-cycle'/);
  assert.match(dossier,/view="pregnancy"/);
  assert.match(dossier,/view="cycle"/);
- assert.match(dossier,/In development/);
+ assert.match(dossier,/active==='parenthood'&&personalRecord&&<FamilyCare/);
+ assert.doesNotMatch(dossier,/In development/);
 });
 test('pregnancy page supports unbound conception events and settings without a cycle',()=>{
  assert.match(client,/view='pregnancy'/);
