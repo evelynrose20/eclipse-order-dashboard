@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {normalizeEmail,hashPassword,validPassword} from './credentials.js';
 import {resolveSession} from './auth.js';
 import {checkGuildMember,invalidateGuildCache} from './discord-guild.js';
-import {revokeAccountAccess,revokeMissingDiscordMember} from './account-access.js';
+import {revokeAccountAccess,reconcileDiscordAccounts} from './account-access.js';
 
 const attempts=new Map();
 const WINDOW=60*60*1000;
@@ -29,15 +29,7 @@ export async function accountRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor||actor.account_role!=='domina')return error(403,'forbidden');
  if(path==='/admin/accounts'&&req.method==='GET'){
-  // Reconcile approved members when command opens the roster, including members
-  // who have not tried to sign in since being kicked or banned.
-  const [candidates]=await pool.execute("SELECT a.id,l.discord_user_id FROM accounts a JOIN account_discord_links l ON l.account_id=a.id WHERE a.is_active=1 AND a.approval_status='approved' ORDER BY a.created_at DESC LIMIT 200");
-  for(let i=0;i<candidates.length;i+=5){
-   await Promise.all(candidates.slice(i,i+5).map(async account=>{
-    const membership=await checkGuildMember(account.discord_user_id);
-    if(membership==='not_member')await revokeMissingDiscordMember(pool,account.id);
-   }));
-  }
+  await reconcileDiscordAccounts(pool);
   const [rows]=await pool.query(
    'SELECT a.id AS user_id,a.email,a.display_name,l.discord_username,a.account_role AS role,a.standing,a.syndicate_rank,a.is_active,a.approval_status,a.created_at FROM accounts a LEFT JOIN account_discord_links l ON l.account_id=a.id ORDER BY (a.approval_status="pending") DESC,a.created_at DESC'
   );
