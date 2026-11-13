@@ -1,5 +1,5 @@
 import React from 'react';
-import {LINEAGE_TRAITS,TRAIT_NAMES} from './lineageTraits.js';
+import {TRAIT_NAMES} from './lineageTraits.js';
 
 export const LINEAGE_TABS=[
  ['cases','Research cases','fa-flask'],
@@ -14,8 +14,8 @@ const traitList=(traits,empty='No markers recorded.')=><div className="lineage-m
 function CaseHead({entry,actions}){
  return <div className="lineage-card-head"><div><small>{entry.character_name||'Unlinked research case'} · {title(entry.result)}</small><h4>{entry.designation}</h4></div>{actions}</div>;
 }
-export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage,staff=false}){
- const gestures=cases.filter(c=>c.pregnancy_linked);
+export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage,onConceive,staff=false}){
+ const gestures=cases.filter(c=>c.pregnancy_linked||c.lineage_type==='voidsent'||c.may_conceive);
  const parents=cases.filter(c=>c.offspring_stage&&c.offspring_stage!=='not_recorded');
  return <div className="lineage-workspace">
   <nav className="lineage-tabs" aria-label="Imperial Lineage sections">
@@ -48,6 +48,7 @@ export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage
       {active&&entry.pregnancy_anchor&&<div className="lineage-progress" aria-label={'Gestation '+percent+' percent'}><span style={{width:percent+'%'}}/></div>}
       <p>Uses the character's established conception and pregnancy timeline. This research view records lineage-specific observations, not a second pregnancy.</p>
       <p>{entry.participant_note||'No lineage-specific gestation observations recorded.'}</p>
+      {onConceive&&entry.may_conceive&&!active&&<div className="lineage-action-row"><button type="button" onClick={()=>onConceive(entry)}><i className="fa-solid fa-dice-d20" aria-hidden="true"/> Record lineage conception</button></div>}
     </article>
   })}{!gestures.length&&<p className="lineage-empty">No research cases are linked to an active pregnancy. The normal pregnancy system remains separate.</p>}</div>}
   {tab==='parenthood'&&<div className="lineage-view-cards">{parents.map(entry=><article className="lineage-record" key={entry.id}>
