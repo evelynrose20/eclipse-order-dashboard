@@ -72,7 +72,7 @@ export async function lineageRoute(pool,req,path){
   return ok({cases:rows.map(row=>({
    id:row.id,project_id:row.project_id,character_id:row.character_id,character_name:row.character_name,
    may_conceive:row.lineage_type==='voidsent'&&row.subject_role==='carrier',
-   designation:row.designation,result:row.result,lineage_markers:row.lineage_markers,
+   designation:row.designation,result:row.result,lineage_markers:yes(row.void_revealed)?row.lineage_markers:'',
    lineage_type:yes(row.void_revealed)?row.lineage_type:'undisclosed',
    subject_role:row.subject_role,expression_stage:row.expression_stage,
    traits:yes(row.void_revealed)?(json(row.traits)||[]):(json(row.traits)||[]).filter(id=>['skin_tint','hair_shift','eye_glimmer'].includes(id)),offspring_stage:row.offspring_stage,
@@ -90,7 +90,10 @@ export async function lineageRoute(pool,req,path){
     lc.pregnancy_linked,lc.created_at,lc.lineage_type,lc.subject_role,lc.expression_stage,lc.traits,
     lc.offspring_stage,lc.offspring_traits,lc.participant_note,lc.parenthood_note,lc.void_revealed,
     c.character_name AS character_name,
-    IF(lc.pregnancy_linked=1 AND p.pregnancy_status='active',p.pregnancy_status,NULL) AS pregnancy_status
+    IF(lc.pregnancy_linked=1 AND p.pregnancy_status='active',p.pregnancy_status,NULL) AS pregnancy_status,
+    CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_anchor ELSE NULL END AS pregnancy_anchor,
+    CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_start_day ELSE NULL END AS pregnancy_start_day,
+    CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_total_days ELSE NULL END AS pregnancy_total_days
     FROM order_lineage_cases lc LEFT JOIN characters c ON c.id=lc.character_id
     LEFT JOIN character_reproductive_profiles p ON p.character_id=lc.character_id
     ORDER BY lc.id DESC LIMIT 250`);
@@ -132,7 +135,11 @@ export async function lineageRoute(pool,req,path){
     if(!permission?.allow_research)return fail(409,'character_research_not_authorized');
     if(b.pregnancy_linked){
      const [[pregnancy]]=await db.execute('SELECT pregnancy_status FROM character_reproductive_profiles WHERE character_id=?',[id]);
-     if(pregnancy?.pregnancy_status!=='active')return fail(409,'active_pregnancy_required');
+     if(pregnancy?.pregnancy_status!=='active'){
+      // Historical linked cases must remain editable after pregnancy has concluded.
+      const [[linked]]=edit?await db.execute('SELECT pregnancy_linked,character_id FROM order_lineage_cases WHERE id=?',[Number(edit[1])]):[[]];
+      if(!linked?.pregnancy_linked||linked.character_id!==id)return fail(409,'active_pregnancy_required');
+     }
     }
    }else if(b.pregnancy_linked)return fail(400,'pregnancy_requires_character');
    const args=[Number(b.project_id),id,b.designation.trim(),b.method,b.observations,b.lineage_markers,b.result,Number(b.pregnancy_linked),actor.id,
