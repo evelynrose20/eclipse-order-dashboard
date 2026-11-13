@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import './family-care.css';
+import {careNeeds,carePriority} from './familyCareNeeds.js';
 const stages=['newborn','infant','toddler','child'];
 const actions=[
  ['nursing','Nurse','fa-heart'],
@@ -22,6 +23,8 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
  useEffect(()=>{let mounted=true;Promise.all([request('/family'),request('/family/settings')]).then(([a,b])=>{if(mounted){setItems(a.dependents||[]);setSettings(b)}}).catch(e=>{if(mounted)setError(e.message)});return()=>{mounted=false}},[]);
  const visible=(items||[]).filter(c=>lineageCaseId===null||Number(c.lineage_case_id)===Number(lineageCaseId));
  const child=visible.find(c=>c.id===selected)||visible[0]||null;
+ const needs=child&&details?.dependent?.id===child.id?careNeeds(child,details.events||[]):[];
+ const attention=carePriority(needs);
  async function loadDetail(id){
   const [d,history]=await Promise.all([request('/family/'+id),request('/family/'+id+'/events')]);
   setDetails({...d,...history});
@@ -60,6 +63,11 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
        {child.is_guardian&&!readOnly&&<button type="button" onClick={openCaregivers}><i className="fa-solid fa-users"/> Household caregivers</button>}
       </header>
       <div className="family-stats"><div><small>Milk / formula available</small><strong>{child.milk_stock} servings</strong></div><div><small>Meals available</small><strong>{child.food_stock} servings</strong></div><div><small>Care stage</small><strong>{title(child.stage)}</strong></div></div>
+      <section className="family-needs" aria-label="Daily care needs">
+       <div className="family-needs-heading"><div><h4>Daily needs</h4><p>Needs gradually change between recorded care activities.</p></div><button type="button" onClick={()=>loadDetail(child.id).catch(e=>setError(e.message))} disabled={busy}><i className="fa-solid fa-rotate" aria-hidden="true"/> Refresh</button></div>
+       <div className="family-needs-grid">{needs.map(need=><div className="family-need" key={need.id}><div className="family-need-title"><span><i className={'fa-solid '+need.icon} aria-hidden="true"/> {need.label}</span><strong>{need.value}%</strong></div><div className="family-need-track" role="progressbar" aria-label={need.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={need.value}><span style={{width:need.value+'%'}}/></div><small>{need.status}</small></div>)}</div>
+       {attention&&<p className="family-care-priority"><i className="fa-solid fa-clipboard-check" aria-hidden="true"/> Next priority: {attention.label.toLowerCase()}. Use the care actions below to record it.</p>}
+      </section>
       <div className="family-controls">
        <h4>Daily care</h4>
        <div className="family-buttons">{actions.filter(([a])=>(['nursing','bottle'].includes(a)?['newborn','infant'].includes(child.stage):a==='meal'?['toddler','child'].includes(child.stage):true)).map(([id,label,icon])=><button key={id} type="button" disabled={busy||readOnly||(id==='nursing'&&!settings?.nursing_available)||(id==='bottle'&&!child.milk_stock)||(id==='meal'&&!child.food_stock)} onClick={()=>logCare(id)}><i className={'fa-solid '+icon}/> {label}</button>)}</div>
