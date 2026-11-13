@@ -94,6 +94,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
  if(req.method==='GET'&&section==='overview'){
   const data=await context(pool,id);if(!data)return fail(404,'settlement_not_found');
   const [shared_materials]=await pool.execute('SELECT m.id,m.name,m.category,COALESCE(s.quantity,0) AS quantity FROM fc_materials m LEFT JOIN fc_material_stock s ON s.material_id=m.id ORDER BY m.name');
+  const [city_builder_items]=await pool.execute('SELECT id,name,category,description,workshop_material_id FROM world_industry_items ORDER BY name');
   const cohorts=simulatedPopulationGroups(data.settlement);
   const worker_health=await workerHealthSnapshot(pool,id);
   const medicalSnapshot=civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades);
@@ -106,7 +107,7 @@ export async function handleCivicNeeds(pool,req,path,actor){
   const [aid_dispatches]=await pool.execute("SELECT d.*,DATE_FORMAT(d.due_date,'%Y-%m-%d') AS due_date FROM world_civic_aid_dispatches d JOIN world_civic_aid_contracts c ON c.id=d.contract_id WHERE c.settlement_id=? ORDER BY d.due_date DESC LIMIT 50",[id]);
   const [recent_movements]=await pool.execute('SELECT item_code,resource_kind,quantity_delta,reason,created_at FROM world_civic_movements WHERE settlement_id=? ORDER BY id DESC LIMIT 12',[id]);
   const [cycles]=await pool.execute('SELECT * FROM world_civic_cycles WHERE settlement_id=? ORDER BY cycle_date DESC LIMIT 18',[id]);
-  return ok({profile:data.profile,stock:data.stock,shared_materials,heating_assets:data.heatingAssets,cohorts,worker_health,health_preview,incidents,aid_contracts,aid_dispatches,cycles,recent_movements,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades),population_simulation:previewPopulationChange(data.settlement,data.upgrades,civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades).risk,!!data.settlement.simulation_enabled&&data.region_mode==='managed'&&!data.profile.paused&&['managed','detailed'].includes(data.profile.enabled_mode))});
+  return ok({profile:data.profile,stock:data.stock,shared_materials,city_builder_items,heating_assets:data.heatingAssets,cohorts,worker_health,health_preview,incidents,aid_contracts,aid_dispatches,cycles,recent_movements,preview:civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades),population_simulation:previewPopulationChange(data.settlement,data.upgrades,civicSimulationPreview(data.settlement,data.profile,data.stock,data.history,data.temperature_f,data.cycles,data.heatingAssets,data.upgrades).risk,!!data.settlement.simulation_enabled&&data.region_mode==='managed'&&!data.profile.paused&&['managed','detailed'].includes(data.profile.enabled_mode))});
  }
  if(req.method==='PUT'&&section==='profile'){
   const b=await body(req);
