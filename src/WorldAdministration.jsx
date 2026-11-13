@@ -93,7 +93,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
  const editZone=z=>{if(!activeRegion)return;setEditType('zone');setEditing(z?{...z}:zoneBlank(activeRegion.id))};
  const editRegion=r=>{setEditType('region');setEditing(r?{...r,temperature_f:cToF(r.temperature_c),weather_mode:r.weather_mode||'garlean_seasonal'}:{...regionBlank})};
  return <section className="wa-root">
-  <header className="wa-heading"><div><span>IMPERIAL ADMINISTRATION · NEW CASSIA & THE REALM</span><h2>World Administration</h2><p>Territories, NPC communities, civilian welfare, industrial sites and construction projects.</p></div></header>
+  <header className="wa-heading"><div><span>IMPERIAL ADMINISTRATION · NEW CASSIA & THE REALM</span><h2>World Administration</h2><p>Govern New Cassia’s imperial reconstruction: territories, independent NPC communities, civilian welfare, industry, and construction. Control and occupation are tracked separately.</p></div></header>
   {error&&<p role="alert" className="wa-error">{error}</p>}{notice&&<p role="status" className="wa-notice">{notice}</p>}
   {!data?<p className="wa-empty">Opening world records…</p>:<>
    <nav className="wa-tabs" aria-label="World administration sections">
