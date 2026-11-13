@@ -182,6 +182,8 @@
 .public-branch-card{min-width:0;border:1px solid #923943;background:linear-gradient(160deg,#202a33,#202a33);padding:28px 23px 22px}
 .public-branch-symbol{font-size:36px;color:#c6cfd0}
 .public-branch-card h3{font:500 32px/1.05 var(--imperial-heading, 'Arial Narrow', sans-serif);color:#e0e5e5;margin:14px 0 8px}
+/* Reserve the same title area in every branch card so a wrapped name like Golden Claws does not push its ranks lower. */
+.order-public .public-branch-card h3{min-height:2.3em}
 .public-branch-card>p{font-size:12px;line-height:1.65;min-height:80px;margin:0 0 16px}
 .public-branch-tiers{border-top:1px solid #384651;padding-top:8px}
 .public-branch-tiers>div{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid #3846516b;padding:11px 0}
@@ -224,10 +226,10 @@
 .public-estate-corner.top-right:after{top:-9px;right:18px}
 .public-estate-corner.bottom-left:after{bottom:-9px;left:18px}
 .public-estate-corner.bottom-right:after{bottom:-9px;right:18px}
-@media(max-width:1300px){.public-branch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-branch-card>p{min-height:0}.public-recruitment-link{letter-spacing:.09em}}
+@media(max-width:1300px){.public-branch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-recruitment-link{letter-spacing:.09em}}
 @media(max-width:1100px){.public-visit-grid{grid-template-columns:1fr 1fr;gap:30px}.public-estate-card{padding:35px 30px}.public-recruitment-link{font-size:9px}}
 @media(max-width:760px){.public-hero-location{margin-top:35px}.public-recruitment-link{display:none}.public-visit-grid,.public-other-standing{grid-template-columns:1fr}.public-branch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.public-estate-card{min-height:auto;padding:36px 30px 45px}.public-visit-mountain{margin-top:35px}}
-@media(max-width:525px){.public-branch-grid{grid-template-columns:1fr}.public-branch-card{padding:23px}.public-other-standing ol{columns:1}.public-hero-location{gap:12px}.public-hero-location>a{font-size:9px}.public-estate-card{gap:18px}}
+@media(max-width:525px){.public-branch-grid{grid-template-columns:1fr}.public-branch-card{padding:23px}.order-public .public-branch-card h3{min-height:0}.public-branch-card>p{min-height:0}.public-other-standing ol{columns:1}.public-hero-location{gap:12px}.public-hero-location>a{font-size:9px}.public-estate-card{gap:18px}}
 
 /* Bad End RP premise is intentionally prominent before membership. */
 .public-hero-bad-end{display:inline-flex;align-items:center;gap:9px;margin-top:19px;padding:10px 13px;border:1px solid #bd545c;background:#29343e8c;color:#e0e5e5;letter-spacing:.15em;font-size:10px;font-weight:800}
