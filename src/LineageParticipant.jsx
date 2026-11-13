@@ -38,7 +38,7 @@ export default function LineageParticipant({request,readOnly=false}){
   {error&&<p role="alert" className="lineage-error">{error.replaceAll('_',' ')}</p>}
   {outcome&&<p role="status" className="lineage-notice">{outcome}</p>}
   {records===null?<p className="lineage-empty">Opening personal lineage records…</p>:records.length===0?
-   <div className="lineage-empty">There are no research cases linked to your character. Your character owner must authorize lineage research before staff can associate a case. Research authorization can be withdrawn from the character's Pregnancy section.</div>:
+   <><div className="lineage-empty">There are no research cases linked to your character yet. The character owner can authorize or withdraw research access in their Pregnancy section.</div><LineageViews cases={[]} tab={tab} onTab={setTab}/></>:
    <><div className="lineage-participant-head"><label>Character<select value={current} onChange={e=>{setCharacter(e.target.value);setTab('cases')}}>{ids.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
     <p>{readOnly?'Player preview — records cannot be changed.':'These are your own authorized records. Private staff research and other characters are not visible.'}</p></div>
     <LineageViews cases={cases} tab={tab} onTab={setTab} onConceive={readOnly?null:entry=>{setOutcome('');setConception({...entry,eventKey:crypto.randomUUID()})}}/></>}
