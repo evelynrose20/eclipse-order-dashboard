@@ -31,3 +31,7 @@
 .lineage-trait-options input{width:auto;accent-color:#cca673}
 .lineage-form .lineage-check input{width:auto}
 @media(max-width:700px){.lineage-participant-head{flex-direction:column;align-items:stretch}.lineage-tabs button{flex:1 1 40%}}
+
+.lineage-form .lineage-trait-field{display:grid;gap:7px;grid-column:1/-1}
+.lineage-trait-field>strong{font-size:12px;font-weight:500;color:#b1bdc1}
+.lineage-action-row{display:flex;justify-content:flex-end;border-top:1px solid #405462;padding-top:9px}
