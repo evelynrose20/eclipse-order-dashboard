@@ -4,6 +4,7 @@ import http from 'node:http';
 import {createPool} from 'mysql2/promise';
 import {authRoute} from './auth.js';
 import {thrallsRoute} from './thralls.js';
+import {stimulationRoute} from './chamber-stimulation.js';
 import {breedingPitRoute} from './breeding-pit.js';
 import {recruitmentRoute} from './recruitment.js';
 import {venueRoute} from './venue.js';
@@ -127,6 +128,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
   else if(pathname.startsWith('/thralls/lineage')||/^\/characters\/[0-9a-f-]{36}\/lineage-consent$/.test(pathname))result=await lineageRoute(pool,req,pathname);
   else if(pathname==='/thralls/breeding-pit'||pathname==='/thralls/breeding-pit/actions'||/^\/thralls\/breeding-pit\/hosts\/[0-9a-f-]{36}$/.test(pathname))result=await breedingPitRoute(pool,req,pathname);
+  else if(pathname==='/thralls/chamber/stimulation')result=await stimulationRoute(pool,req,pathname);
   else if(pathname==='/thralls/chamber'||pathname==='/thralls/chamber/actions'||/^\/thralls\/characters\/[0-9a-f-]{36}\/contributions(?:\/enhancements)?$/.test(pathname))result=await thrallsRoute(pool,req,pathname);
   else if(pathname==='/fronts'||pathname.startsWith('/fronts/'))result=await frontsRoute(pool,req,pathname);
   else if(pathname==='/treasury'||pathname.startsWith('/treasury/'))result=await treasuryRoute(pool,req,pathname);
