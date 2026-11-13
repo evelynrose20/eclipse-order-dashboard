@@ -35,3 +35,17 @@ export function namedNpcAge(birthDate,transitioned,at=new Date()){
  return Math.max(origin?18:18,years+(origin?0:18));
 }
 export function namedNpcAlive(age){return age<NAMED_NPC_MAX_AGE}
+
+export async function settleUnhousedNamedCivilians(db,settlementId,limit=20){
+ const [pending]=await db.execute(`SELECT nc.id,d.birth_date,nc.transitioned_at FROM world_named_civilians nc
+  JOIN order_dependents d ON d.id=nc.dependent_id
+  WHERE nc.settlement_id=? AND nc.housing_upgrade_id IS NULL ORDER BY nc.id LIMIT ?`,[settlementId,limit]);
+ let assigned=0;
+ for(const npc of pending){
+  if(!namedNpcAlive(namedNpcAge(npc.birth_date,npc.transitioned_at)))continue;
+  const home=await findNpcHousing(db,settlementId,npc.id);
+  if(home.assigned)assigned++;
+  else break;
+ }
+ return assigned;
+}
