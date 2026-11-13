@@ -71,10 +71,11 @@ export async function lineageRoute(pool,req,path){
     ORDER BY lc.id DESC LIMIT 150`,[actor.id]);
   return ok({cases:rows.map(row=>({
    id:row.id,project_id:row.project_id,character_id:row.character_id,character_name:row.character_name,
+   may_conceive:row.lineage_type==='voidsent'&&row.subject_role==='carrier',
    designation:row.designation,result:row.result,lineage_markers:row.lineage_markers,
    lineage_type:yes(row.void_revealed)?row.lineage_type:'undisclosed',
    subject_role:row.subject_role,expression_stage:row.expression_stage,
-   traits:json(row.traits)||[],offspring_stage:row.offspring_stage,
+   traits:yes(row.void_revealed)?(json(row.traits)||[]):(json(row.traits)||[]).filter(id=>['skin_tint','hair_shift','eye_glimmer'].includes(id)),offspring_stage:row.offspring_stage,
    offspring_traits:yes(row.void_revealed)?(json(row.offspring_traits)||[]):[],
    participant_note:row.participant_note,parenthood_note:row.parenthood_note,
    pregnancy_linked:yes(row.pregnancy_linked),pregnancy_status:row.pregnancy_status,
