@@ -19,11 +19,12 @@ test('public identity is imperial, antagonist-oriented and not a criminal syndic
  assert.doesNotMatch(homepage,/criminal syndicate|criminal enterprise|criminal families|underworld|smugglers/i);
 });
 
-test('historical defaults recognize the Thirteenth household before Stormblood formal ranks',()=>{
- assert.match(chronicles,/The Household and the Thirteenth/);
- assert.match(chronicles,/Formal Order ranks did not exist in these early years/);
- assert.match(chronicles,/fully developed Eclipse Order/);
+test('current canon names Domina Rosa and retires obsolete origins',()=>{
+ assert.match(homepage,/Domina Rosa/);
+ assert.match(chronicles,/Imperial Foundations/);
+ assert.match(chronicles,/The Imperial Ambition/);
  assert.match(chronicles,/New Cassia serves as the Order’s administrative and military center/);
+ assert.doesNotMatch(homepage+chronicles,/Elira|Thirteenth|Yanxia/i);
 });
 
 test('member portal exposes enterprises but retains existing API and record identifiers',()=>{
