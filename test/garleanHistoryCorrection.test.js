@@ -7,21 +7,20 @@ const publicSite=read('src/PublicSite.jsx');
 const chapters=read('src/PublicChronicles.jsx');
 const archive=read('src/LoreArchive.jsx');
 const sql=read('server/sql/039_garlean_history_revision.sql');
-test('public history is an organizational account, not a leader profile',()=>{
+test('public history connects household origins with the later imperial Order',()=>{
  assert.match(publicSite,/AN ORDER/);
  assert.match(publicSite,/BUILT IN SHADOW/);
- assert.match(publicSite,/Born in Garlemald, the Eclipse Order/);
- assert.doesNotMatch(publicSite,/RULED BY ELIRA|personal history reaches back to the Thirteenth|forged beyond any throne/i);
+ assert.match(publicSite,/Elira’s household on the Thirteenth/);
+ assert.match(publicSite,/During Stormblood in Yanxia/);
  assert.match(publicSite,/New Cassia/);
 });
-test('the public chronicle contains no supernatural origins',()=>{
- assert.doesNotMatch(chapters,/Thirteenth|voidsent|voidrift|Flood of Darkness/);
- assert.match(chapters,/Battle of Carteneau/);
+test('public chronicle reflects Thirteenth household and uses stable era keys',()=>{
+ assert.match(chapters,/Thirteenth/);
+ assert.match(chapters,/Carteneau/);
  assert.match(chapters,/Dalamud/);
- assert.match(chapters,/Vy’lana/);
- assert.match(chapters,/born in Garlemald/);
+ assert.match(chapters,/formal ranks and branches in Yanxia/);
  assert.match(chapters,/const CHAPTERS=\['garlemald'/);
- assert.match(archive,/\['garlemald','Garlemald'\]/);
+ assert.match(archive,/\['garlemald','Origins & Garlean Ties'\]/);
 });
 test('migration corrects only original seed titles and preserves edited history',()=>{
  assert.match(sql,/id='origins-thirteenth' AND updated_by IS NULL/);
