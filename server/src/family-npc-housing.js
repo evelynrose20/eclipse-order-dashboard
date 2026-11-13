@@ -41,15 +41,41 @@ export function namedNpcAge(birthDate,transitioned,at=new Date()){
 export function namedNpcAlive(age){return age<NAMED_NPC_MAX_AGE}
 
 export async function settleUnhousedNamedCivilians(db,settlementId,limit=20){
- const [pending]=await db.execute(`SELECT nc.id,d.birth_date,nc.transitioned_at FROM world_named_civilians nc
+ const [pending]=await db.execute(`SELECT nc.id,nc.housing_upgrade_id,nc.employment_state,d.birth_date,nc.transitioned_at FROM world_named_civilians nc
   JOIN order_dependents d ON d.id=nc.dependent_id
-  WHERE nc.settlement_id=? AND nc.housing_upgrade_id IS NULL ORDER BY nc.id LIMIT ?`,[settlementId,limit]);
+  WHERE nc.settlement_id=? AND (nc.housing_upgrade_id IS NULL OR nc.employment_state IN ('seeking','between_jobs'))
+  ORDER BY nc.id LIMIT ?`,[settlementId,limit]);
  let assigned=0;
  for(const npc of pending){
   if(!namedNpcAlive(namedNpcAge(npc.birth_date,npc.transitioned_at)))continue;
-  const home=await findNpcHousing(db,settlementId,npc.id);
-  if(home.assigned)assigned++;
-  else break;
+  if(!npc.housing_upgrade_id){
+   const home=await findNpcHousing(db,settlementId,npc.id);
+   if(home.assigned)assigned++;
+  }
+  if(['seeking','between_jobs'].includes(npc.employment_state))await findNpcEmployment(db,settlementId,npc.id);
  }
  return assigned;
+}
+
+export async function findNpcEmployment(db,settlementId,civilianId){
+ const [[site]]=await db.execute('SELECT id,workforce FROM world_settlements WHERE id=? FOR UPDATE',[settlementId]);
+ if(!site||Number(site.workforce)<1)return {employed:false,reason:'no_local_workforce'};
+ const [workers]=await db.execute(`SELECT nc.workplace_facility_id,COUNT(*) AS workers
+   FROM world_named_civilians nc JOIN order_dependents d ON d.id=nc.dependent_id
+   WHERE nc.settlement_id=? AND nc.employment_state='employed'
+   AND (CASE WHEN d.birth_date IS NOT NULL AND d.birth_date<=UTC_DATE()
+     THEN TIMESTAMPDIFF(YEAR,d.birth_date,UTC_DATE())
+     ELSE 18+TIMESTAMPDIFF(YEAR,DATE(nc.transitioned_at),UTC_DATE()) END)<350
+   GROUP BY nc.workplace_facility_id`,[settlementId]);
+ const total=workers.reduce((n,w)=>n+Number(w.workers),0);
+ if(total>=Number(site.workforce))return {employed:false,reason:'no_existing_worker_slots'};
+ const employedByFacility=new Map(workers.map(w=>[Number(w.workplace_facility_id),Number(w.workers)]));
+ const [facilities]=await db.execute(`SELECT id,workforce FROM world_industry_facilities
+   WHERE settlement_id=? AND status='operational' AND workforce>0 ORDER BY id FOR UPDATE`,[settlementId]);
+ const match=facilities.find(f=>(employedByFacility.get(Number(f.id))||0)<Number(f.workforce));
+ if(!match)return {employed:false,reason:'no_operational_job'};
+ const [saved]=await db.execute(`UPDATE world_named_civilians SET employment_state='employed',
+  workplace_facility_id=? WHERE id=? AND settlement_id=? AND employment_state IN ('seeking','between_jobs')`,
+  [match.id,civilianId,settlementId]);
+ return {employed:saved.affectedRows>0,workplace_facility_id:match.id};
 }
