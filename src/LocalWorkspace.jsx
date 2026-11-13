@@ -109,7 +109,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['fronts','Order Enterprises','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ...(broodAccess?[['breeding-pit','Breeding Pit','◇']]:[]),
-  [['lineage-research','Imperial Lineage Project','◇']][0],
+  ['lineage-research','Imperial Lineage Project','◇'],
   ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
