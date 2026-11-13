@@ -132,7 +132,12 @@ export async function reproductionRoute(pool,req,path){
   try{
    await db.beginTransaction();
    const [[existing]]=await db.execute('SELECT * FROM character_conception_rolls WHERE character_id=? AND event_key=?',[id,b.event_key]);
-   if(existing){await db.commit();return ok({roll:existing,replayed:true})}
+   if(existing){
+    if((existing.lineage_case_id===null||existing.lineage_case_id===undefined?null:Number(existing.lineage_case_id))!==lineageId){
+     await db.rollback();return fail(409,'conception_event_type_conflict');
+    }
+    await db.commit();return ok({roll:existing,replayed:true})
+   }
    const [[current]]=await db.execute('SELECT * FROM character_reproductive_profiles WHERE character_id=? FOR UPDATE',[id]);
    if(lineageId!==null){
     const [[link]]=await db.execute(`SELECT lc.id FROM order_lineage_cases lc
@@ -141,7 +146,12 @@ export async function reproductionRoute(pool,req,path){
     if(!link){await db.rollback();return fail(403,'lineage_case_not_authorized')}
    }
    const [[afterLock]]=await db.execute('SELECT * FROM character_conception_rolls WHERE character_id=? AND event_key=?',[id,b.event_key]);
-   if(afterLock){await db.commit();return ok({roll:afterLock,replayed:true})}
+   if(afterLock){
+    if((afterLock.lineage_case_id===null||afterLock.lineage_case_id===undefined?null:Number(afterLock.lineage_case_id))!==lineageId){
+     await db.rollback();return fail(409,'conception_event_type_conflict');
+    }
+    await db.commit();return ok({roll:afterLock,replayed:true})
+   }
    const [[sameDay]]=await db.execute('SELECT id FROM character_conception_rolls WHERE character_id=? AND ic_event_date=? LIMIT 1',[id,b.ic_event_date]);
    if(sameDay){await db.rollback();return fail(409,'conception_event_already_recorded_today')}
    if(!current?.conception_opt_in){await db.rollback();return fail(403,'conception_roll_not_approved')}
