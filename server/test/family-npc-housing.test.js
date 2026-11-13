@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {selectNpcHome,namedNpcAge,namedNpcAlive,NAMED_NPC_MAX_AGE,findNpcHousing} from '../src/family-npc-housing.js';
+import {selectNpcHome,namedNpcAge,namedNpcAlive,NAMED_NPC_MAX_AGE,findNpcHousing,findNpcEmployment} from '../src/family-npc-housing.js';
 
 const building=(id,capacity,condition=100,status='operational')=>({
  id,category:'housing',status,condition_pct:condition,level:1,housing_bonus:capacity
@@ -41,4 +41,29 @@ test('housing search updates named civilian housing only, never settlement popul
  assert.equal(result.assigned,true);
  assert.equal(result.housing_upgrade_id,3);
  assert.ok(!calls.some(x=>/UPDATE world_settlements|INSERT INTO world_settlements/.test(x.sql)));
+});
+
+test('independent NPC applies for an existing operational job without inventing workers',async()=>{
+ const calls=[];
+ const db={execute:async(sql,args=[])=>{
+  calls.push({sql,args});
+  if(sql.startsWith('SELECT id,workforce FROM world_settlements'))return [[{id:2,workforce:3}]];
+  if(sql.includes('FROM world_named_civilians nc JOIN order_dependents'))return [[]];
+  if(sql.includes('FROM world_industry_facilities'))return [[{id:8,workforce:1}]];
+  if(sql.startsWith('UPDATE world_named_civilians'))return [{affectedRows:1}];
+  throw Error('unexpected '+sql);
+ }};
+ const result=await findNpcEmployment(db,2,19);
+ assert.equal(result.employed,true);
+ assert.equal(result.workplace_facility_id,8);
+ assert.ok(!calls.some(x=>/UPDATE world_settlements|UPDATE world_industry_facilities/.test(x.sql)));
+});
+test('named NPC cannot fabricate a job when an existing city has no workforce',async()=>{
+ const db={execute:async sql=>{
+  if(sql.startsWith('SELECT id,workforce FROM world_settlements'))return [[{id:2,workforce:0}]];
+  throw Error('should not assign job');
+ }};
+ const result=await findNpcEmployment(db,2,20);
+ assert.equal(result.employed,false);
+ assert.equal(result.reason,'no_local_workforce');
 });
