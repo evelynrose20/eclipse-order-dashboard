@@ -1,8 +1,9 @@
 import {resolveSession} from './auth.js';
+import {SCHOOL_ACTIVITIES,DEVELOPMENT_MILESTONES} from '../../src/familyLifeStages.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
-const ageStages=['newborn','infant','toddler','child'];
-const actions=['nursing','bottle','meal','comfort','hygiene','sleep','play','restock_milk','restock_food'];
+const ageStages=['newborn','infant','toddler','child','teen'];
+const actions=['nursing','bottle','meal','comfort','hygiene','sleep','play','restock_milk','restock_food',...Object.keys(SCHOOL_ACTIVITIES)];
 const clean=(v,max)=>typeof v==='string'&&v.trim().length<=max;
 const validDate=x=>!x||typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x+'T00:00:00Z'));
 const bool=x=>x===1||x===true;
@@ -76,7 +77,7 @@ export async function familyRoute(pool,req,path){
    [actor.id,b.name.trim(),b.birth_date||null,b.stage,linked,(b.notes||'').trim()]);
   return ok({id:result.insertId});
  }
- const m=/^\/family\/(\d+)(?:\/(assign|care|supplies|events))?$/.exec(path);
+ const m=/^\/family\/(\d+)(?:\/(assign|care|supplies|events|school|milestones))?$/.exec(path);
  if(!m)return fail(404,'family_action_not_found');
  const id=Number(m[1]),sub=m[2];
  const grant=await access(pool,actor,id);
@@ -94,7 +95,32 @@ export async function familyRoute(pool,req,path){
   await pool.execute('UPDATE order_dependents SET stage=?,notes=? WHERE id=?',[b.stage,(b.notes||'').trim(),id]);
   return ok({saved:true});
  }
- if(sub==='assign'&&req.method==='PUT'){
+ if(sub==='school'&&req.method==='PUT'){
+  if(!grant.guardian)return fail(403,'guardian_required');
+  if(!['child','teen'].includes(grant.row.stage))return fail(409,'school_stage_required');
+  const b=await read(req);
+  if(typeof b?.school_name!=='string'||b.school_name.length>120 ||
+    typeof b?.school_days!=='string'|| !/^[1-7](,[1-7]){0,6}$/.test(b.school_days) ||
+    new Set(b.school_days.split(',')).size!==b.school_days.split(',').length)return fail(400,'invalid_school_schedule');
+  await pool.execute('UPDATE order_dependents SET school_name=?,school_days=? WHERE id=?',
+    [b.school_name.trim(),b.school_days,id]);
+  return ok({saved:true});
+ }
+ if(sub==='milestones'&&req.method==='GET'){
+  const [rows]=await pool.execute('SELECT milestone_id,completed_at FROM order_dependent_milestones WHERE dependent_id=?',[id]);
+  return ok({milestones:rows});
+ }
+ if(sub==='milestones'&&req.method==='POST'){
+  if(!grant.guardian)return fail(403,'guardian_required');
+  const b=await read(req);
+  const milestone=DEVELOPMENT_MILESTONES.find(m=>m.id===b?.milestone_id);
+  if(!milestone||!milestone.stages.includes(grant.row.stage))return fail(400,'invalid_milestone');
+  if(b.complete===true)await pool.execute('INSERT IGNORE INTO order_dependent_milestones(dependent_id,milestone_id,completed_by) VALUES(?,?,?)',[id,milestone.id,actor.id]);
+  else if(b.complete===false)await pool.execute('DELETE FROM order_dependent_milestones WHERE dependent_id=? AND milestone_id=?',[id,milestone.id]);
+  else return fail(400,'invalid_milestone_state');
+  return ok({saved:true});
+ }
+  if(sub==='assign'&&req.method==='PUT'){
   if(!grant.guardian)return fail(403,'guardian_required');
   const b=await read(req);
   if(typeof b?.enabled!=='boolean'||typeof b?.account_id!=='string'||!/^[a-f0-9-]{36}$/i.test(b.account_id))return fail(400,'invalid_assignment');
@@ -119,7 +145,9 @@ export async function familyRoute(pool,req,path){
   if(!Number.isInteger(qty)||qty<1||qty>(restock?100:1))return fail(400,'invalid_quantity');
   if(restock&&!(b.detail||'').trim())return fail(400,'supply_source_required');
   if((b.action==='nursing'||b.action==='bottle')&&!['newborn','infant'].includes(grant.row.stage))return fail(409,'age_inappropriate_feeding');
-  if(b.action==='meal'&&!['toddler','child'].includes(grant.row.stage))return fail(409,'age_inappropriate_feeding');
+  if(b.action==='meal'&&!['toddler','child','teen'].includes(grant.row.stage))return fail(409,'age_inappropriate_feeding');
+  if(SCHOOL_ACTIVITIES[b.action]&&!SCHOOL_ACTIVITIES[b.action].stages.includes(grant.row.stage))return fail(409,'activity_not_available_for_stage');
+  if(['school','homework'].includes(b.action)&&!grant.row.school_name)return fail(409,'school_enrollment_required');
   if(b.action==='nursing'){
    const [[nursing]]=await pool.execute('SELECT nursing_available FROM order_caregiver_settings WHERE account_id=?',[actor.id]);
    if(!bool(nursing?.nursing_available))return fail(403,'caregiver_nursing_not_enabled');
