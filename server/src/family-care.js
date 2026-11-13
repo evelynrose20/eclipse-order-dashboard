@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {adultFamilyRoute} from './family-adults.js';
+import {schoolRoute,enrollDependentSchool} from './family-school-buildings.js';
 import {SCHOOL_ACTIVITIES,DEVELOPMENT_MILESTONES} from '../../src/familyLifeStages.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -30,6 +31,7 @@ async function transaction(pool,fn){
 export async function familyRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
+ if(path==='/family/schools'||/^\/family\/schools\/\d+$/.test(path))return schoolRoute(pool,req,path,actor);
  if(path==='/family/adults/registry'||path==='/family/adults'||path==='/family/settlements'||path==='/family/workplaces'||/^\/family\/adults\/\d+$/.test(path)||/^\/family\/\d+\/adulthood$/.test(path))return adultFamilyRoute(pool,req,path,actor);
  if(path==='/family/settings'){
   if(req.method==='GET'){
@@ -102,13 +104,7 @@ export async function familyRoute(pool,req,path){
  if(sub==='school'&&req.method==='PUT'){
   if(!grant.guardian)return fail(403,'guardian_required');
   if(!['child','teen'].includes(grant.row.stage))return fail(409,'school_stage_required');
-  const b=await read(req);
-  if(typeof b?.school_name!=='string'||b.school_name.length>120 ||
-    typeof b?.school_days!=='string'|| !/^[1-7](,[1-7]){0,6}$/.test(b.school_days) ||
-    new Set(b.school_days.split(',')).size!==b.school_days.split(',').length)return fail(400,'invalid_school_schedule');
-  await pool.execute('UPDATE order_dependents SET school_name=?,school_days=? WHERE id=?',
-    [b.school_name.trim(),b.school_days,id]);
-  return ok({saved:true});
+  return enrollDependentSchool(pool,req,actor,id);
  }
  if(sub==='milestones'&&req.method==='GET'){
   const [rows]=await pool.execute('SELECT milestone_id,completed_at FROM order_dependent_milestones WHERE dependent_id=?',[id]);
@@ -151,7 +147,14 @@ export async function familyRoute(pool,req,path){
   if((b.action==='nursing'||b.action==='bottle')&&!['newborn','infant'].includes(grant.row.stage))return fail(409,'age_inappropriate_feeding');
   if(b.action==='meal'&&!['toddler','child','teen'].includes(grant.row.stage))return fail(409,'age_inappropriate_feeding');
   if(SCHOOL_ACTIVITIES[b.action]&&!SCHOOL_ACTIVITIES[b.action].stages.includes(grant.row.stage))return fail(409,'activity_not_available_for_stage');
-  if(['school','homework'].includes(b.action)&&!grant.row.school_name)return fail(409,'school_enrollment_required');
+  if(['school','homework'].includes(b.action)){
+   if(!grant.row.school_upgrade_id)return fail(409,'school_enrollment_required');
+   const [[facility]]=await pool.execute(`SELECT u.id,u.category,u.status,u.condition_pct,u.level,u.template_id,u.effect_snapshot,
+       COALESCE(t.teachers,0) AS teacher_count FROM world_settlement_upgrades u
+       LEFT JOIN world_school_staffing t ON t.upgrade_id=u.id WHERE u.id=?`,[grant.row.school_upgrade_id]);
+   if(!facility||facility.category!=='school'||facility.status!=='operational'||Number(facility.teacher_count)<1)
+     return fail(409,'school_not_operational_or_staffed');
+  }
   if(b.action==='nursing'){
    const [[nursing]]=await pool.execute('SELECT nursing_available FROM order_caregiver_settings WHERE account_id=?',[actor.id]);
    if(!bool(nursing?.nursing_available))return fail(403,'caregiver_nursing_not_enabled');
