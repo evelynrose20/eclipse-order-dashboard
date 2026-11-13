@@ -10,7 +10,7 @@ export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,
  async function seekHome(person){
   setBusy(true);setError('');setNote('');
   try{const result=await request('/family/adults/'+person.id+'/seek-home',{method:'POST',body:{}});
-   await refresh();setNote(result.assigned?'A vacant home has been secured.':'No vacant housing is available in this settlement yet.');}
+   await refresh();setNote(result.assigned?'A vacant home has been secured.':'No vacant home is available yet. The resident will continue searching as settlement life progresses.');}
   catch(e){setError(e.message||'Unable to search for housing')}
   finally{setBusy(false)}
  }
@@ -46,11 +46,11 @@ export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,
    {!shown.length?<p className="family-hint">{admin?'No tracked civilians in this registry.':'No dependents have transitioned to adulthood yet.'}</p>:<div className="family-adult-grid">{shown.map(person=><article key={person.id}>
      <div className="family-adult-top"><div><small>REGISTERED CIVILIAN</small><h4>{person.name}</h4></div><span>{sentence(person.wellbeing)}</span></div>
      <div className="family-info-pair"><span>Residence</span><strong>{person.settlement_name}</strong></div>
-     <div className="family-info-pair"><span>Home</span><strong>{person.housing_name||'Seeking a home'}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Last home':'Home'}</span><strong>{person.housing_name||'Seeking a home'}</strong></div>
      <div className="family-info-pair"><span>Age</span><strong>{person.age} / {person.lifespan_years||350} years</strong></div>
      <div className="family-info-pair"><span>Life</span><strong>{sentence(person.lifecycle||'living')}</strong></div>
-     <div className="family-info-pair"><span>Employment</span><strong>{sentence(person.employment_state)}</strong></div>
-     <div className="family-info-pair"><span>Workplace</span><strong>{person.workplace_name||'Not assigned'}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Former employment':'Employment'}</span><strong>{sentence(person.employment_state)}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Last workplace':'Workplace'}</span><strong>{person.workplace_name||'Not assigned'}</strong></div>
      <p>{person.public_update||'No recent civilian update recorded.'}</p>
      <small>Last update: {new Date(person.updated_at).toLocaleDateString()}</small>
      {!readOnly&&person.lifecycle!=='deceased'&&!person.housing_upgrade_id&&<button type="button" disabled={busy} onClick={()=>seekHome(person)}><i className="fa-solid fa-house"/> Check available homes</button>}
