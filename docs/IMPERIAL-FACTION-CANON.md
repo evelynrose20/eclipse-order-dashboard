@@ -3,20 +3,18 @@
 Status: adopted narrative direction, November 2026. This document governs public-facing terminology and future content authoring; it is **not** a database migration or an automatic rewrite of players' records.
 
 ## Identity
-The Eclipse Order is an **independent Garlean-influenced imperial villain faction**, led by Domina Elira Sakurai from New Cassia in northern Ilsabard. It seeks territorial control, political authority, military capability, industrial reconstruction and a lasting empire under the Eclipse. It draws on Garlean traditions but does not claim to be the restored Garlean Empire or to possess universal legal legitimacy.
+The Eclipse Order is an **independent Garlean-influenced imperial villain faction**, led by Domina Rosa from New Cassia in northern Ilsabard. It seeks territorial control, political authority, military capability, industrial reconstruction and a lasting empire under the Eclipse. It draws on Garlean traditions but does not claim to be the restored Garlean Empire or to possess universal legal legitimacy.
 
 The Order promises stability, infrastructure, loyalty and protection to its subjects. Its imperial ambitions may involve coercion, occupations, conquest, harsh rule and conflict with neighbors. Villainy does not require every member to be personally cruel, and characters can disagree about tactics without changing the faction's antagonist premise. Avoid presenting the faction as a mafia, criminal syndicate, smuggling ring or a collection of illicit business fronts. Individuals may have criminal histories, but criminal enterprise is not the faction's defining institution.
 
 ## Historical continuity
-- **The Thirteenth:** Elira's original noble household and traditions predate the Order on the Source.
-- **Carteneau / ARR:** Elira reaches the Source amid the Calamity. Resources and household loyalties are informal; there are no formal Order ranks.
-- **Heavensward:** Garlean relationships, knowledge and imperial influence deepen.
-- **Stormblood:** The Eclipse Order fully develops its formal ranks and branches at its Yanxia headquarters.
-- **Shadowbringers:** The Order consolidates structure and its restrictive internal practices.
-- **Endwalker:** The Final Days damage the Order, which retreats into dormancy rather than becoming a heroic relief force.
-- **Dawntrail onward:** The Order fractures, then revives under Elira in New Cassia as an independent imperial power.
+- The Order is a Garlean-influenced imperial villain faction, not a criminal syndicate.
+- Its personal origin and exact founding chronology are **not established** in this document. Do not invent prior headquarters, supernatural origins, childhood history, or a formal founding era.
+- The Final Days and the fall of old powers provide the setting for an Order rebuilding its influence.
+- In the present era, **Domina Rosa** commands the Order from New Cassia in northern Ilsabard, where it pursues its own imperial ambitions.
+- The Fangs, Snakes, Golden Claws, and Household remain the Order's current branches. Their earlier formation dates should not be asserted without renewed canon approval.
 
-Do not retroactively assign formal Stormblood-era ranks to the ARR or Heavensward household.
+**Retired lore:** No Thirteenth origin or Yanxia headquarters/history is part of the Order's current canon. Historic database IDs and past migrations may still contain older labels for compatibility; these are not authoritative story text.
 
 ## World governance and gameplay
 New Cassia is the Order's administrative and military seat, not automatically a fully recognized sovereign state. Region, zone, settlement, and faction ownership remain represented by existing world-admin data. Use explicit control and occupation states: do not automatically convert every inhabited settlement into Order territory. NPC autonomy, military authority and DM approval rules remain in force. Population, housing, food, workforce, power grids, trains, airships, warehouses, construction, diplomacy, war commands, research, and civilian welfare systems are retained.
