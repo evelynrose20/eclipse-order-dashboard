@@ -84,7 +84,8 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
       </section>}
       {careTab==='learning'&&<section className="family-learning">
        <h4>Development & daily routine</h4>
-       {schoolStage&&<div className="family-school"><div><strong>{child.school_name||'School not assigned'}</strong><small>Class days: {(child.school_days||'1,2,3,4,5').split(',').map(n=>['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][Number(n)]).join(', ')}</small></div>
+       {schoolStage&&<div className="family-school"><div><strong>{child.school_name||'School not assigned'}</strong><small>Class days: {(child.school_days||'1,2,3,4,5').split(',').map(n=>['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][Number(n)]).join(', ')}</small>
+       {child.school_name&&<small className="family-schedule-status">{(child.school_days||'1,2,3,4,5').split(',').includes(String(new Date().getDay()||7))?'School scheduled today':'No school scheduled today'}</small>}</div>
        {child.is_guardian&&!readOnly&&<button type="button" onClick={()=>setDialog('school')}><i className="fa-solid fa-pen"/> Set school schedule</button>}</div>}
        <div className="family-skill-list">{Object.entries(SKILL_LABELS).map(([id,label])=><div key={id}><span>{label}</span><strong>{skillLevels[id]||0}/100</strong><div className="family-need-track"><span style={{width:(skillLevels[id]||0)+'%'}}/></div></div>)}</div>
        {!readOnly&&<div className="family-buttons">{Object.entries(SCHOOL_ACTIVITIES).filter(([,activity])=>activity.stages.includes(child.stage)).map(([id,activity])=><button key={id} type="button" disabled={busy||(['school','homework'].includes(id)&&!child.school_name)} onClick={()=>logCare(id)}>{activity.label}</button>)}</div>}
