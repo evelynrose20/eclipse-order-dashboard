@@ -1,4 +1,4 @@
-// Add school/teen care and learning without converting dependents into adult characters.
+-- Add school/teen care and learning without converting dependents into adult characters.
 USE eclipse_order;
 SET @school_col=(SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()
  AND TABLE_NAME='order_dependents' AND COLUMN_NAME='school_name');
