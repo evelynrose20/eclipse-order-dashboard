@@ -30,6 +30,24 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
   catch(e){setError(e.message==='civilian_storage_capacity_exceeded'?'Not enough food or water storage. Build or upgrade a Granary or Waterworks first.':e.message||'Action failed.');return null}finally{setBusy(false)}
  }
  if(!data)return <section className="wa-panel"><h3>{settlement.name} · Civilian needs</h3>{error?<p role="alert" className="wa-error">{error}</p>:<p>Loading civic records…</p>}</section>;
+ const civicStockById=new Map(data.stock.map(item=>[item.item_code,item]));
+ const civicItemOptions=[
+  ...data.stock.map(item=>({id:item.item_code,name:item.item_label,category:item.resource_kind,quantity:item.quantity,description:item.food_group?'Food group: '+item.food_group:'Already in settlement stock'})),
+  ...(data.shared_materials||[]).filter(item=>!civicStockById.has(item.id)).map(item=>({id:item.id,name:item.name,category:item.category||'Material',quantity:item.quantity??0,description:'Order item catalog'}))
+ ];
+ const inferEssentialKind=item=>{
+  const match=(String(item?.name||'')+' '+String(item?.category||'')).toLowerCase();
+  if(/ceruleum|fuel|coal|firewood|heating|oil/.test(match))return 'fuel';
+  if(/water|drinkable|hydration/.test(match))return 'water';
+  if(/medicine|medical|bandage|remedy|potion|tonic/.test(match))return 'medicine';
+  return 'food';
+ };
+ const chooseCivicItem=code=>{
+  const existing=civicStockById.get(code);
+  const catalogItem=(data.shared_materials||[]).find(item=>item.id===code);
+  setStockItemSelection(code);
+  setMovement(previous=>({...defaults,item_code:code,item_label:existing?.item_label||catalogItem?.name||'',resource_kind:existing?.resource_kind||inferEssentialKind(catalogItem),food_group:existing?.food_group||'grain',quantity_delta:previous.quantity_delta,reason:previous.reason}));
+ };
  const p=data.preview;
  const empty=Number(settlement.population)===0;
  const groups=[['city','City builder','fa-city'],['overview','Overview','fa-gauge-high'],['upgrades','Buildings & defenses','fa-building'],['supplies','Provisions','fa-boxes-stacked'],['people','Residents','fa-people-group'],['aid','Relief routes','fa-truck-medical'],['events','Civic events','fa-scroll'],['policy','Simulation','fa-sliders']];
@@ -123,7 +141,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     {data.stock.length?<div className="wa-civic-inventory-rows">{data.stock.map(item=><div className="wa-civic-inventory-row" key={item.item_code}>
      <span className="wa-civic-inventory-goods"><i className={'fa-solid '+({food:'fa-wheat-awn',fuel:'fa-fire-flame-simple',water:'fa-droplet',medicine:'fa-kit-medical'}[item.resource_kind]||'fa-box')} aria-hidden="true"/><span><strong>{item.item_label}</strong><small>{item.resource_kind}{item.food_group?' · '+item.food_group:''}</small></span></span>
      <strong className="wa-civic-inventory-amount">{format(item.quantity)} <small>units</small></strong>
-     {canEdit&&<button type="button" disabled={busy} onClick={()=>{setStockItemSelection(item.item_code);setMovement({...defaults,item_code:item.item_code,item_label:item.item_label,resource_kind:item.resource_kind,food_group:item.food_group||'',reason:''});setMovementDirection('remove');setStockCorrectionOpen(true)}}>Correct</button>}
+     {canEdit&&<button type="button" disabled={busy} onClick={()=>{chooseCivicItem(item.item_code);setMovementDirection('remove');setStockCorrectionOpen(true)}}>Correct</button>}
     </div>)}</div>:<div className="wa-civic-inventory-empty"><i className="fa-solid fa-box-open" aria-hidden="true"/><p>No supplies recorded for this settlement.</p><span>Deliver goods from the shared Workshop stores to establish civilian inventory.</span></div>}
    </div>
    {canEdit&&<section className="wa-civic-correction" aria-label="Manual civilian stock correction">
@@ -134,7 +152,9 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
      e.preventDefault();
      const amount=Number(movement.quantity_delta),delta=movementDirection==='remove'?-amount:amount;
      const existing=data.stock.find(item=>item.item_code===movement.item_code);
+     if(!stockItemSelection||!movement.item_label){setError('Choose a supply item from the inventory picker first.');return}
      if(!Number.isFinite(amount)||amount<=0||amount>1e9){setError('Enter a positive quantity to adjust.');return}
+     if(delta<0&&!existing){setError('This item is not in the settlement inventory yet.');return}
      if(existing&&delta<0&&amount>Number(existing.quantity)){setError('You cannot remove more than the stock currently recorded.');return}
      const payload={...movement,quantity_delta:delta,food_group:movement.resource_kind==='food'?movement.food_group:null};
      const result=await mutate('/stock','POST',payload,'Civilian stock correction recorded in the settlement ledger.');
@@ -142,19 +162,11 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     }}>
      <div className="wa-civic-correction-notice"><i className="fa-solid fa-circle-info" aria-hidden="true"/> To deliver real stock, use <strong>Move shared Order goods</strong> above. Corrections should not replace normal logistics.</div>
      <div className="wa-civic-correction-fields">
-      <label className="wide">Which item are you correcting?
-       <select value={stockItemSelection} onChange={e=>{
-        const code=e.target.value;setStockItemSelection(code);
-        const item=data.stock.find(x=>x.item_code===code);
-        setMovement(item?{...defaults,item_code:item.item_code,item_label:item.item_label,resource_kind:item.resource_kind,food_group:item.food_group||'',reason:''}:{...defaults});
-       }}>
-        <option value="">New item (manual record)</option>
-        {data.stock.map(item=><option key={item.item_code} value={item.item_code}>{item.item_label} · {format(item.quantity)} units</option>)}
-       </select>
+      <label className="wide">Inventory item
+       <MaterialPicker options={civicItemOptions} value={stockItemSelection} onChange={chooseCivicItem} required placeholder="Choose a civilian supply item" ariaLabel="Choose a civilian supply item"/>
       </label>
-      {!stockItemSelection&&<>
-       <label>Item name<input required maxLength="120" placeholder="e.g. Emergency ration crates" value={movement.item_label} onChange={e=>setMovement(v=>({...v,item_label:e.target.value}))}/></label>
-       <label>Inventory code<input required maxLength="75" pattern="[a-z0-9][a-z0-9_-]*" placeholder="e.g. emergency-rations" value={movement.item_code} onChange={e=>setMovement(v=>({...v,item_code:e.target.value}))}/></label>
+      {stockItemSelection&&<div className="wa-civic-selected-item wide"><i className="fa-solid fa-box" aria-hidden="true"/><div><strong>{movement.item_label}</strong><span>{civicStockById.has(stockItemSelection)?'Existing settlement inventory · '+format(civicStockById.get(stockItemSelection).quantity)+' units':'From the existing Order item catalog · Not currently stocked here'}</span></div></div>}
+      {stockItemSelection&&!civicStockById.has(stockItemSelection)&&<>
        <label>Supply category<select value={movement.resource_kind} onChange={e=>setMovement(v=>({...v,resource_kind:e.target.value,food_group:e.target.value==='food'?'grain':''}))}>
         <option value="food">Food</option><option value="fuel">Heating fuel</option><option value="water">Clean water</option><option value="medicine">Medicine</option>
        </select></label>
@@ -163,10 +175,10 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
       <label>Correction type<select value={movementDirection} onChange={e=>setMovementDirection(e.target.value)}>
        <option value="add">Increase recorded stock</option><option value="remove">Decrease recorded stock</option>
       </select></label>
-      <label>Quantity (units)<input required type="number" min=".001" max={movementDirection==='remove'&&stockItemSelection?data.stock.find(x=>x.item_code===stockItemSelection)?.quantity||0:1000000000} step=".001" value={movement.quantity_delta||''} placeholder="0.000" onChange={e=>setMovement(v=>({...v,quantity_delta:e.target.value}))}/></label>
-      <label className="wide">Reason and source<input required maxLength="180" placeholder="Why is this inventory being corrected?" value={movement.reason} onChange={e=>setMovement(v=>({...v,reason:e.target.value}))}/></label>
+      <label>Quantity (units)<input required type="number" min=".001" max={movementDirection==='remove'?civicStockById.get(stockItemSelection)?.quantity||0:1000000000} step=".001" value={movement.quantity_delta||''} placeholder="0.000" onChange={e=>setMovement(v=>({...v,quantity_delta:e.target.value}))}/></label>
+      <label className="wide">Reason and source<input required maxLength="180" placeholder="Document the correction or story event" value={movement.reason} onChange={e=>setMovement(v=>({...v,reason:e.target.value}))}/></label>
      </div>
-     <div className="wa-civic-correction-footer"><span>{movementDirection==='remove'?'Decreasing recorded inventory':'Increasing recorded inventory'} · This will be logged for review.</span><button className="wa-accent" type="submit" disabled={busy||!Number(movement.quantity_delta)}>{busy?'Recording…':'Confirm stock correction'}</button></div>
+     <div className="wa-civic-correction-footer"><span>{movementDirection==='remove'?'Decreasing recorded inventory':'Increasing recorded inventory'} · This will be logged for review.</span><button className="wa-accent" type="submit" disabled={busy||!stockItemSelection||!Number(movement.quantity_delta)}>{busy?'Recording…':'Confirm stock correction'}</button></div>
     </form>}
    </section>}
    <details className="wa-civic-movement-history"><summary><i className="fa-solid fa-clock-rotate-left" aria-hidden="true"/> Recent stock movements <span>{(data.recent_movements||[]).length}</span></summary>
