@@ -38,11 +38,11 @@ INSERT INTO world_logistics_warehouse_blueprints(id,name,description,icon,active
  (2,'Regional Storehouse','Regional reserves and civilian distribution','fa-building',1),
  (3,'Grand Imperial Warehouse','Strategic cargo vaults for the capital','fa-city',1)
  ON DUPLICATE KEY UPDATE id=VALUES(id);
--- Seed editable multi-level recipes using an existing construction material when available.
--- Commands may replace the ingredient list with any combination of real industrial goods.
+-- Seed deterministic structural iron, never whichever refined/supply item sorts first.
+-- Existing designs are preserved; corrective migration 130 handles legacy fish recipes.
 INSERT IGNORE INTO world_logistics_warehouse_blueprint_levels(blueprint_id,level_number,capacity_units,requirements)
 SELECT b.id,lv.level_number,CASE b.id WHEN 1 THEN 500 WHEN 2 THEN 2000 ELSE 6000 END*lv.level_number,
- IFNULL(JSON_ARRAY(JSON_OBJECT('item_id',(SELECT id FROM world_industry_items WHERE category IN ('refined','supply') ORDER BY id LIMIT 1),'quantity',CASE b.id WHEN 1 THEN 30 WHEN 2 THEN 100 ELSE 300 END*lv.level_number)),JSON_ARRAY())
+ IFNULL(JSON_ARRAY(JSON_OBJECT('item_id',(SELECT id FROM world_industry_items WHERE id='iron-ingot' LIMIT 1),'quantity',CASE b.id WHEN 1 THEN 30 WHEN 2 THEN 100 ELSE 300 END*lv.level_number)),JSON_ARRAY())
  FROM world_logistics_warehouse_blueprints b
  CROSS JOIN (SELECT 1 AS level_number UNION ALL SELECT 2 UNION ALL SELECT 3) lv
  WHERE b.id IN (1,2,3);
