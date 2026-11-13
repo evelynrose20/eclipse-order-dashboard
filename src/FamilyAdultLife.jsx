@@ -7,6 +7,13 @@ export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,
  useEffect(()=>{let alive=true;request('/family/adults').then(r=>{if(alive)setAdults(r.adults||[])}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[refreshKey]);
  const refresh=async()=>{const r=await request('/family/adults');setAdults(r.adults||[]);if(admin&&staff){const a=await request('/family/adults/registry');setRegistry(a.adults||[])}};
  const shown=(admin?registry:adults).filter(a=>lineageCaseId===null||Number(a.lineage_case_id)===Number(lineageCaseId));
+ async function seekHome(person){
+  setBusy(true);setError('');setNote('');
+  try{const result=await request('/family/adults/'+person.id+'/seek-home',{method:'POST',body:{}});
+   await refresh();setNote(result.assigned?'A vacant home has been secured.':'No vacant home is available yet. The resident will continue searching as settlement life progresses.');}
+  catch(e){setError(e.message||'Unable to search for housing')}
+  finally{setBusy(false)}
+ }
  async function openRegistry(){
   try{
    const [r,w,places]=await Promise.all([request('/family/adults/registry'),request('/family/workplaces'),request('/family/settlements')]);
@@ -32,18 +39,22 @@ export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,
   finally{setBusy(false)}
  }
  return <section className="family-adult-life">
-   <div className="family-adult-head"><div><span>FAMILY CONNECTIONS</span><h4>Adult civilian lives</h4><p>After adulthood, family members can keep up with settlement life and work without managing daily childcare.</p></div>
+   <div className="family-adult-head"><div><span>FAMILY CONNECTIONS</span><h4>Adult civilian lives</h4><p>Independent residents find homes and establish their own lives. Family can follow where they live and work throughout their long lives.</p></div>
    {staff&&!readOnly&&<button type="button" onClick={()=>admin?setAdmin(false):openRegistry()}>{admin?'My family':'Staff civilian registry'}</button>}</div>
    {error&&<p role="alert" className="lineage-error">{error.replaceAll('_',' ')}</p>}
    {note&&<p role="status" className="lineage-notice">{note}</p>}
    {!shown.length?<p className="family-hint">{admin?'No tracked civilians in this registry.':'No dependents have transitioned to adulthood yet.'}</p>:<div className="family-adult-grid">{shown.map(person=><article key={person.id}>
      <div className="family-adult-top"><div><small>REGISTERED CIVILIAN</small><h4>{person.name}</h4></div><span>{sentence(person.wellbeing)}</span></div>
      <div className="family-info-pair"><span>Residence</span><strong>{person.settlement_name}</strong></div>
-     <div className="family-info-pair"><span>Employment</span><strong>{sentence(person.employment_state)}</strong></div>
-     <div className="family-info-pair"><span>Workplace</span><strong>{person.workplace_name||'Not assigned'}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Last home':'Home'}</span><strong>{person.housing_name||'Seeking a home'}</strong></div>
+     <div className="family-info-pair"><span>Age</span><strong>{person.age} / {person.lifespan_years||350} years</strong></div>
+     <div className="family-info-pair"><span>Life</span><strong>{sentence(person.lifecycle||'living')}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Former employment':'Employment'}</span><strong>{sentence(person.employment_state)}</strong></div>
+     <div className="family-info-pair"><span>{person.lifecycle==='deceased'?'Last workplace':'Workplace'}</span><strong>{person.workplace_name||'Not assigned'}</strong></div>
      <p>{person.public_update||'No recent civilian update recorded.'}</p>
      <small>Last update: {new Date(person.updated_at).toLocaleDateString()}</small>
-     {staff&&!readOnly&&<button type="button" onClick={()=>edit(person)}>Update civilian status</button>}
+     {!readOnly&&person.lifecycle!=='deceased'&&!person.housing_upgrade_id&&<button type="button" disabled={busy} onClick={()=>seekHome(person)}><i className="fa-solid fa-house"/> Check available homes</button>}
+     {staff&&!readOnly&&person.lifecycle!=='deceased'&&<button type="button" onClick={()=>edit(person)}>Update civilian status</button>}
    </article>)}</div>}
    {selected&&draft&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setSelected(null)}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label="Update civilian status">
     <header><h3>{selected.name} · Civilian update</h3><button type="button" onClick={()=>setSelected(null)} disabled={busy} aria-label="Close"><i className="fa-solid fa-xmark"/></button></header>

@@ -1,3 +1,4 @@
+import {settleUnhousedNamedCivilians} from './family-npc-housing.js';
 import {npcMappedFarmOptions,assignNpcMappedFarm,autonomouslyAssignNpcFarm} from './world-npc-cargo.js';
 import {establishNpcSettlement} from './world-npc-founding.js';
 import {npcIndustryDevelopmentForDay} from './world-npc-economy.js';
@@ -287,6 +288,7 @@ export async function runSettlementSimulation(pool,now=new Date()){
    const result=ownership==='npc'?await applyNpcCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition):await applyOrderCycle(db,effectiveSite,effectiveState,now,key,temperature,weatherCondition);
    if(!result){await db.rollback();continue}
    if(ownership==='npc')result.province_development=await npcProvinceDevelopment(db,effectiveSite,key);
+   result.named_civilians_housed=await settleUnhousedNamedCivilians(db,id);
    await db.commit();
    results.push(result);
   }catch(error){await db.rollback().catch(()=>{});console.warn('[World simulation] Settlement cycle failed:',id,error?.code||error?.name||'error')}

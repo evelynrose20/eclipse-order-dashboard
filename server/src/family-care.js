@@ -32,7 +32,7 @@ export async function familyRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
  if(path==='/family/schools'||/^\/family\/schools\/\d+$/.test(path))return schoolRoute(pool,req,path,actor);
- if(path==='/family/adults/registry'||path==='/family/adults'||path==='/family/settlements'||path==='/family/workplaces'||/^\/family\/adults\/\d+$/.test(path)||/^\/family\/\d+\/adulthood$/.test(path))return adultFamilyRoute(pool,req,path,actor);
+ if(path==='/family/adults/registry'||path==='/family/adults'||path==='/family/settlements'||path==='/family/workplaces'||/^\/family\/adults\/\d+$/.test(path)||/^\/family\/adults\/\d+\/seek-home$/.test(path)||/^\/family\/\d+\/adulthood$/.test(path))return adultFamilyRoute(pool,req,path,actor);
  if(path==='/family/settings'){
   if(req.method==='GET'){
    const [[row]]=await pool.execute('SELECT nursing_available FROM order_caregiver_settings WHERE account_id=?',[actor.id]);
