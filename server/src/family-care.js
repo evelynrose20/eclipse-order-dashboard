@@ -1,4 +1,5 @@
 import {resolveSession} from './auth.js';
+import {adultFamilyRoute} from './family-adults.js';
 import {SCHOOL_ACTIVITIES,DEVELOPMENT_MILESTONES} from '../../src/familyLifeStages.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -13,12 +14,12 @@ async function household(pool,accountId){
  return r.length>0;
 }
 async function access(pool,actor,id){
- const [[row]]=await pool.execute(`SELECT d.*,EXISTS(
+ const [[row]]=await pool.execute(`SELECT d.*, EXISTS(SELECT 1 FROM world_named_civilians n WHERE n.dependent_id=d.id) AS graduated,EXISTS(
  SELECT 1 FROM order_dependent_caregivers a WHERE a.dependent_id=d.id AND a.account_id=?
  ) AS assigned FROM order_dependents d WHERE d.id=?`,[actor.id,id]);
  if(!row)return null;
  const guardian=row.guardian_account_id===actor.id;
- const helper=!!row.assigned&&await household(pool,actor.id);
+ const helper=!!row.assigned&&!row.graduated&&await household(pool,actor.id);
  return {row,guardian,helper,canCare:guardian||helper};
 }
 async function transaction(pool,fn){
@@ -29,6 +30,7 @@ async function transaction(pool,fn){
 export async function familyRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return fail(401,'not_authenticated');
+ if(path==='/family/adults'||path==='/family/settlements'||path==='/family/workplaces'||/^\/family\/adults\/\d+$/.test(path)||/^\/family\/\d+\/adulthood$/.test(path))return adultFamilyRoute(pool,req,path,actor);
  if(path==='/family/settings'){
   if(req.method==='GET'){
    const [[row]]=await pool.execute('SELECT nursing_available FROM order_caregiver_settings WHERE account_id=?',[actor.id]);
@@ -52,6 +54,7 @@ export async function familyRoute(pool,req,path){
  }
  if(path==='/family'&&req.method==='GET'){
   const [r]=await pool.execute(`SELECT d.*,a.display_name AS guardian_name,
+   EXISTS(SELECT 1 FROM world_named_civilians n WHERE n.dependent_id=d.id) AS graduated,
    (d.guardian_account_id=?) AS is_guardian
    FROM order_dependents d JOIN accounts a ON a.id=d.guardian_account_id
    WHERE d.guardian_account_id=? OR EXISTS (SELECT 1 FROM order_dependent_caregivers c
@@ -83,6 +86,7 @@ export async function familyRoute(pool,req,path){
  const grant=await access(pool,actor,id);
  if(!grant)return fail(404,'dependent_not_found');
  if(!grant.canCare)return fail(403,'caregiver_not_authorized');
+ if(grant.row.graduated && req.method!=='GET')return fail(409,'adult_civilian_no_childcare_actions');
  if(!sub&&req.method==='GET'){
   const [caregivers]=await pool.execute(`SELECT c.account_id,a.display_name FROM order_dependent_caregivers c
    JOIN accounts a ON a.id=c.account_id WHERE c.dependent_id=? ORDER BY a.display_name`,[id]);
