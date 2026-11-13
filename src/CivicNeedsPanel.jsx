@@ -182,7 +182,7 @@ export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,o
     </form>}
    </section>}
    <details className="wa-civic-movement-history"><summary><i className="fa-solid fa-clock-rotate-left" aria-hidden="true"/> Recent stock movements <span>{(data.recent_movements||[]).length}</span></summary>
-    {(data.recent_movements||[]).length?<div className="wa-civic-movement-list">{data.recent_movements.map((item,i)=><div key={i}><span><strong>{item.item_code}</strong><small>{item.reason}</small></span><span className={Number(item.quantity_delta)>=0?'positive':'negative'}>{Number(item.quantity_delta)>=0?'+':''}{format(item.quantity_delta)}</span><small>{new Date(item.created_at).toLocaleString()}</small></div>)}</div>:<p className="wa-hint">No recorded stock movements yet.</p>}
+    {(data.recent_movements||[]).length?<div className="wa-civic-movement-list">{data.recent_movements.map((item,i)=><div key={i}><span><strong>{civicStockById.get(item.item_code)?.item_label||(data.shared_materials||[]).find(material=>material.id===item.item_code)?.name||'Previously recorded supply'}</strong><small>{item.reason}</small></span><span className={Number(item.quantity_delta)>=0?'positive':'negative'}>{Number(item.quantity_delta)>=0?'+':''}{format(item.quantity_delta)}</span><small>{new Date(item.created_at).toLocaleString()}</small></div>)}</div>:<p className="wa-hint">No recorded stock movements yet.</p>}
    </details>
   </div>}
   {tab==='people'&&<div className="wa-civic-workspace">
