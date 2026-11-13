@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {schoolCapacity,educationPreview} from '../src/world-education.js';
 import {schoolRoute,enrollDependentSchool} from '../src/family-school-buildings.js';
 const guardian='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const request=body=>({async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify(body))}});
+const request=body=>({method:'PUT',async *[Symbol.asyncIterator](){yield Buffer.from(JSON.stringify(body))}});
 const school={id:3,settlement_id:1,category:'school',name:'Cassia Academy',status:'operational',condition_pct:100,level:2,template_id:null,teacher_count:2,support_staff:1,workforce:20,school_name:'Cassia Academy',enrolled:15};
 test('operational school capacity is limited by teacher staffing and building condition',()=>{
  assert.equal(schoolCapacity([school]),40);
