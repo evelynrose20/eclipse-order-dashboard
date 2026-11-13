@@ -55,7 +55,7 @@ function failedIP(key){
  ipFailures.set(key,!row||now-row.since>WINDOW_MS?{since:now,count:1}:{...row,count:row.count+1});
  if(ipFailures.size>4000)for(const [k,v] of ipFailures){if(now-v.since>WINDOW_MS||ipFailures.size>4000)ipFailures.delete(k)}
 }
-export async function resolveSession(pool,request,{allowUnlinked=false,checkMembership=checkGuildMember,configuration=guildConfiguration}={}){
+export async function resolveSession(pool,request,{allowUnlinked=false,checkMembership=checkGuildMember,configuration=guildConfiguration,revokeMissingMember=revokeMissingDiscordMember}={}){
  const token=authHeader(request);
  if(!token)return null;
  const [rows]=await pool.execute(
@@ -78,7 +78,7 @@ export async function resolveSession(pool,request,{allowUnlinked=false,checkMemb
  if(membership==='not_member'){
   // Verified Discord departure / kick / ban: persist revocation, not just an HTTP denial.
   // No revocation occurs on Discord API errors or membership screening.
-  const revoked=await revokeMissingDiscordMember(pool,account.id,{reason:'discord_membership_lost'});
+  const revoked=await revokeMissingMember(pool,account.id,{reason:'discord_membership_lost'});
   if(revoked.status===409)return null; // Never deactivate the last active Domina automatically.
   return null;
  }
