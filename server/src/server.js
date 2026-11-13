@@ -11,6 +11,7 @@ import {loreRoute} from './lore.js';
 import {faqRoute} from './faq.js';
 import {discordRoute} from './discord-oauth.js';
 import {accountRoute} from './accounts.js';
+import {reconcileDiscordAccounts} from './account-access.js';
 import {firstDominaRoute} from './first-domina.js';
 import {characterRoute} from './characters.js';
 import {reproductionRoute} from './character-reproduction.js';
@@ -235,14 +236,24 @@ const exchangeTick=async()=>{
  }catch(error){console.warn('[Merchant Exchange] Demand check unavailable:',error?.code||error?.name||'database_unavailable')}
  finally{exchangeTickRunning=false}
 };
+const membershipSync=async()=>{
+ if(!pool)return;
+ try{
+  const result=await reconcileDiscordAccounts(pool);
+  if(result.revoked)console.log('[Discord access] Revoked membership for',result.revoked,'departed accounts.');
+ }catch(error){console.warn('[Discord access] Membership synchronization unavailable:',error?.code||error?.name||'unknown')}
+};
+const membershipTimer=setInterval(()=>void membershipSync(),5*60*1000);
+membershipTimer.unref();
 const exchangeTimer=setInterval(()=>void exchangeTick(),15*60*1000);
 exchangeTimer.unref();
 const payrollTimer=setInterval(()=>void payrollTick(),60000);
 const settlementTimer=setInterval(()=>void settlementTick(),60000);
 settlementTimer.unref();
 payrollTimer.unref();
-if(pool){void payrollTick();void settlementTick();void exchangeTick()}
+if(pool){void payrollTick();void settlementTick();void exchangeTick();void membershipSync()}
 const close=async()=>{
+  clearInterval(membershipTimer);
   clearInterval(exchangeTimer);
   clearInterval(payrollTimer);
   clearInterval(settlementTimer);
