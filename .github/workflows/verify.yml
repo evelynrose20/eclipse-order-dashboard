@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - name: Install API dependencies
         run: npm install --prefix server --no-audit --no-fund
+      - name: Test Discord approval revocation and session protection
+        run: node --test server/test/account-access.test.js server/test/session-membership.test.js
       - name: Test settlement power and chamber rates
         run: node --test server/test/world-power.test.js
       - name: Test chamber extraction and fluid labels
