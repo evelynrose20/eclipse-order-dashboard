@@ -1,3 +1,4 @@
+import {checkGuildMember,guildConfiguration} from './discord-guild.js';
 // Revoke website access without deleting accounts, characters or audit history.
 export async function revokeAccountAccess(db,id,{actorId=null,reason='staff_removed'}={}){
  const [[target]]=await db.execute('SELECT id,account_role,is_active,approval_status FROM accounts WHERE id=? FOR UPDATE',[id]);
@@ -21,4 +22,26 @@ export async function revokeMissingDiscordMember(pool,id,{reason='discord_member
   return result;
  }catch(error){await db.rollback().catch(()=>{});throw error}
  finally{db.release()}
+}
+
+let reconciliationRunning=false;
+// Checks approved accounts even if they never make another API request.
+// Discord API failures and temporary screening do not deactivate accounts.
+export async function reconcileDiscordAccounts(pool,{checkMembership=checkGuildMember,limit=200}={}){
+ if(reconciliationRunning||!guildConfiguration(process.env))return {checked:0,revoked:0,skipped:true};
+ reconciliationRunning=true;
+ try{
+  const [accounts]=await pool.execute("SELECT a.id,l.discord_user_id FROM accounts a JOIN account_discord_links l ON l.account_id=a.id WHERE a.is_active=1 AND a.approval_status='approved' ORDER BY a.created_at DESC LIMIT ?",[limit]);
+  let revoked=0;
+  for(let i=0;i<accounts.length;i+=5){
+   const results=await Promise.all(accounts.slice(i,i+5).map(async account=>{
+    const status=await checkMembership(account.discord_user_id);
+    if(status!=='not_member')return false;
+    const result=await revokeMissingDiscordMember(pool,account.id);
+    return result.status===200&&!result.already_revoked;
+   }));
+   revoked+=results.filter(Boolean).length;
+  }
+  return {checked:accounts.length,revoked};
+ }finally{reconciliationRunning=false}
 }
