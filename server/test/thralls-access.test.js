@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial,canCollectForSource,validEnhancementTier} from '../src/thralls.js';
+import {mayConfigureChamberFluids,mayEnterThralls,canSeatCharacter,withinContributionLimit,lowerMaterialForAnatomy,simulatedCycleYield,availableChamberChannels,dailyCapacity,dailyBalance,chamberCycleDate,chamberNextReset,chamberElapsedTicks,chamberUtcSqlTime,validChamberFluidName,canMixLowerMaterial,canCollectForSource,validEnhancementTier} from '../src/thralls.js';
 
 test('staff can enter without rank queries',async()=>{
  let calls=0;
@@ -141,4 +141,13 @@ test('staff-managed enhancements independently raise daily capacities without by
  assert.equal(dailyCapacity('lower',{lower_anatomy:'vulva',lower_enhancement:4,upper_enhancement:0}),18);
  for(const n of [0,1,2,3,4])assert.equal(validEnhancementTier(n),true);
  for(const n of [-1,5,1.5,'2',null])assert.equal(validEnhancementTier(n),false);
+});
+
+
+test('fluid names and stimulation labels are Domina-admin-only',()=>{
+ assert.equal(mayConfigureChamberFluids({account_role:'domina'}),true);
+ for(const role of ['high_command','handler','member']){
+  assert.equal(mayConfigureChamberFluids({account_role:role}),false);
+ }
+ assert.equal(mayConfigureChamberFluids(null),false);
 });
