@@ -8,6 +8,12 @@ import DiscordAccessPage from './DiscordAccessPage.jsx';
 const API=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 const storageKey='eclipse-order-local-session';
 const ERROR_MESSAGES={
+ stimulation_not_ready:'The meter must reach 100 while the apparatus is running.',
+ stimulation_no_available_output:'No eligible active assembly has remaining daily production or free reservoir space.',
+ seated_character_required:'Only the player of the seated character can activate this control.',
+ invalid_stimulation_label:'Enter a label of 1–64 characters without line breaks.',
+ insufficient_power:'Not enough power is reaching the chamber to activate this control.',
+
  no_eggs_in_stock:'This brood strain has no eggs in storage. Cultivate a new batch first.',
  incubators_full:'All incubation spaces are occupied.',
  nursery_full:'The brood nursery is at capacity. Deploy mature units before hatching more.',
