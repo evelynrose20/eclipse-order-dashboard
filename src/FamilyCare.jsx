@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import './family-care.css';
+import FamilyAdultLife from './FamilyAdultLife.jsx';
 import {careNeeds,carePriority} from './familyCareNeeds.js';
 import {LIFE_STAGES,SCHOOL_ACTIVITIES,SKILL_LABELS,skillProgress,DEVELOPMENT_MILESTONES,apparentAge,suggestedStage} from './familyLifeStages.js';
 const stages=LIFE_STAGES.map(s=>s.id);
@@ -13,18 +14,20 @@ const actions=[
  ['play','Play / enrichment','fa-shapes']
 ];
 const title=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
-export default function FamilyCare({request,lineageCaseId=null,compact=false,readOnly=false}){
+export default function FamilyCare({request,lineageCaseId=null,compact=false,readOnly=false,staff=false}){
  const [items,setItems]=useState(null),[selected,setSelected]=useState(null),[details,setDetails]=useState(null);
  const [settings,setSettings]=useState(null),[household,setHousehold]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[dialog,setDialog]=useState('');
  const [draft,setDraft]=useState({name:'',stage:'newborn',birth_date:'',notes:''}),[supply,setSupply]=useState({action:'restock_milk',quantity:1,detail:''});
  const [school,setSchool]=useState({school_name:'',school_days:'1,2,3,4,5'}),[milestones,setMilestones]=useState([]);
  const [careTab,setCareTab]=useState('needs');
+ const [adultRefresh,setAdultRefresh]=useState(0),[settlements,setSettlements]=useState([]),[newHome,setNewHome]=useState('');
+
  const refresh=async()=>{
   const [list,opts]=await Promise.all([request('/family'),request('/family/settings')]);
   setItems(list.dependents||[]);setSettings(opts);
  };
  useEffect(()=>{let mounted=true;Promise.all([request('/family'),request('/family/settings')]).then(([a,b])=>{if(mounted){setItems(a.dependents||[]);setSettings(b)}}).catch(e=>{if(mounted)setError(e.message)});return()=>{mounted=false}},[]);
- const visible=(items||[]).filter(c=>lineageCaseId===null||Number(c.lineage_case_id)===Number(lineageCaseId));
+ const visible=(items||[]).filter(c=>!c.graduated&&(lineageCaseId===null||Number(c.lineage_case_id)===Number(lineageCaseId)));
  const child=visible.find(c=>c.id===selected)||visible[0]||null;
  const needs=child&&details?.dependent?.id===child.id?careNeeds(child,details.events||[]):[];
  const attention=carePriority(needs);
@@ -44,6 +47,22 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
  async function create(e){e.preventDefault();await perform(()=>request('/family',{method:'POST',body:{...draft,lineage_case_id:lineageCaseId}}),'Dependent registered.')}
  async function logCare(action){await perform(()=>request('/family/'+child.id+'/care',{method:'POST',body:{action,detail:''}}),'Care recorded.')}
  async function restock(e){e.preventDefault();await perform(()=>request('/family/'+child.id+'/supplies',{method:'POST',body:{...supply,quantity:Number(supply.quantity)}}),'Supplies recorded.')}
+ async function openAdulthood(){
+  setError('');
+  try{
+   const data=await request('/family/settlements');
+   setSettlements(data.settlements||[]);
+   setNewHome(String(data.settlements?.[0]?.id||''));
+   setDialog('adulthood');
+  }catch(e){setError(e.message||'Could not load settlements')}
+ }
+ async function graduate(e){
+  e.preventDefault();
+  if(!newHome||busy||!child)return;
+  await perform(()=>request('/family/'+child.id+'/adulthood',{method:'POST',body:{settlement_id:Number(newHome)}}),
+   'Adulthood recorded. This civilian remains in your family history.');
+  setAdultRefresh(v=>v+1);
+ }
  async function updateStage(stage){await perform(()=>request('/family/'+child.id,{method:'PUT',body:{stage,notes:child.notes||''}}),'Care stage updated.')}
  async function saveSchool(e){e.preventDefault();await perform(()=>request('/family/'+child.id+'/school',{method:'PUT',body:school}),'School arrangements saved.')}
  async function markMilestone(milestone,complete){await perform(()=>request('/family/'+child.id+'/milestones',{method:'POST',body:{milestone_id:milestone,complete}}),'Milestone updated.')}
@@ -71,7 +90,7 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
     <aside className="family-list">{visible.map(d=><button key={d.id} className={d.id===child?.id?'selected':''} type="button" onClick={()=>setSelected(d.id)}><strong>{d.name}</strong><small>{LIFE_STAGES.find(s=>s.id===d.stage)?.name||title(d.stage)} · {d.is_guardian?'Guardian':'Assigned caregiver'}</small></button>)}</aside>
     <div className="family-detail">
       <header><div><small>{LIFE_STAGES.find(s=>s.id===child.stage)?.name||title(child.stage)} · {child.is_guardian?'Guardian record':'Household care assignment'}</small><h3>{child.name}</h3>{age!==null&&<p className="family-age">Recorded age: {age} years{recommendation&&recommendation!==child.stage?' · Stage advancement available to guardian':''}</p>}</div>
-       {child.is_guardian&&!readOnly&&<button type="button" onClick={openCaregivers}><i className="fa-solid fa-users"/> Household caregivers</button>}
+       {child.is_guardian&&!readOnly&&<div className="family-actions"><button type="button" onClick={openCaregivers}><i className="fa-solid fa-users"/> Household caregivers</button>{child.stage==='teen'&&<button type="button" onClick={openAdulthood}><i className="fa-solid fa-city"/> Enter civilian adulthood</button>}</div>}
       </header>
       <div className="family-stats"><div><small>Milk / formula available</small><strong>{child.milk_stock} servings</strong></div><div><small>Meals available</small><strong>{child.food_stock} servings</strong></div><div><small>Life stage</small><strong>{LIFE_STAGES.find(s=>s.id===child.stage)?.name||title(child.stage)}</strong></div></div>
       <nav className="family-subtabs" aria-label="Childcare views">
@@ -105,9 +124,15 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
       <div className="family-events"><h4>Care log</h4>{(details?.events||[]).map(e=><div key={e.id}><strong>{title(e.action)}</strong><span>{e.display_name} · {new Date(e.created_at).toLocaleString()}</span>{e.detail&&<small>{e.detail}</small>}</div>)}{!details?.events?.length&&<p>No care has been recorded yet.</p>}</div>
     </div>
    </div>}
+  <FamilyAdultLife request={request} lineageCaseId={lineageCaseId} refreshKey={adultRefresh} staff={staff} readOnly={readOnly}/>
   <div className="family-self"><div><strong>Caregiver nursing availability</strong><p>Optional personal setting for fictional infant feeding care. Household status or physical attributes never enable this automatically.</p></div><button type="button" disabled={busy||readOnly||!settings} onClick={toggleNursing}>{settings?.nursing_available?'Available — disable':'Not available — enable'}</button></div>
-  {dialog&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setDialog('')}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label="Dependent care editor"><header><h3>{dialog==='new'?'Register dependent':dialog==='school'?'School arrangements':dialog==='supplies'?'Record supplies':'Household caregivers'}</h3><button disabled={busy} type="button" onClick={()=>setDialog('')} aria-label="Close"><i className="fa-solid fa-xmark"/></button></header>
+  {dialog&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setDialog('')}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label="Dependent care editor"><header><h3>{dialog==='new'?'Register dependent':dialog==='school'?'School arrangements':dialog==='adulthood'?'Enter civilian adulthood':dialog==='supplies'?'Record supplies':'Household caregivers'}</h3><button disabled={busy} type="button" onClick={()=>setDialog('')} aria-label="Close"><i className="fa-solid fa-xmark"/></button></header>
    {dialog==='new'&&<form className="lineage-form" onSubmit={create}><label>Dependent name<input required maxLength={120} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label>Age stage<select value={draft.stage} onChange={e=>setDraft({...draft,stage:e.target.value})}>{stages.map(s=><option key={s} value={s}>{title(s)}</option>)}</select></label><label>In-character birth date (optional)<input type="date" value={draft.birth_date} onChange={e=>setDraft({...draft,birth_date:e.target.value})}/></label><label className="full">Care notes<textarea maxLength={1000} value={draft.notes} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy}>Register</button></footer></form>}
+   {dialog==='adulthood'&&<form className="lineage-form" onSubmit={graduate}>
+    <p className="family-hint full">This ends daily dependent care and creates a named civilian connected to your family. Your adult's settlement and future workplace remain visible. Settlement population and employment totals are managed separately.</p>
+    <label className="full">Starting settlement<select required value={newHome} onChange={e=>setNewHome(e.target.value)}><option value="">Choose a settlement</option>{settlements.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+    <footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy||!newHome}>Confirm adulthood</button></footer>
+   </form>}
    {dialog==='school'&&<form className="lineage-form" onSubmit={saveSchool}><label className="full">School or academy<input maxLength={120} value={school.school_name} onChange={e=>setSchool({...school,school_name:e.target.value})} placeholder="Local school, tutors, academy…"/></label><label className="full">Class days<div className="family-weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,i)=>{const code=String(i+1);const selected=school.school_days.split(',').includes(code);return <label key={code}><input type="checkbox" checked={selected} onChange={e=>{const next=new Set(school.school_days.split(',').filter(Boolean));if(e.target.checked)next.add(code);else next.delete(code);setSchool({...school,school_days:[...next].sort().join(',')})}}/>{day}</label>})}</div></label><p className="family-hint full">School attendance is recorded through the daily activity panel; the schedule does not invent automatic attendance.</p><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy||!school.school_days}>Save schedule</button></footer></form>}
    {dialog==='supplies'&&<form className="lineage-form" onSubmit={restock}><label>Supply type<select value={supply.action} onChange={e=>setSupply({...supply,action:e.target.value})}><option value="restock_milk">Milk / formula</option><option value="restock_food">Food / meals</option></select></label><label>Servings acquired<input type="number" min="1" max="100" required value={supply.quantity} onChange={e=>setSupply({...supply,quantity:e.target.value})}/></label><label className="full">Where supplies came from<input maxLength={250} required value={supply.detail} onChange={e=>setSupply({...supply,detail:e.target.value})} placeholder="Household stores, personal purchase, delivered supplies…"/></label><p className="lineage-hint full">Record actual supplies acquired for this care record. This log does not automatically transfer goods from world warehouses.</p><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy}>Record supplies</button></footer></form>}
    {dialog==='caregivers'&&<div className="family-assignment">{household.length?household.map(m=><div key={m.id}><span>{m.display_name}</span><button type="button" disabled={busy} onClick={()=>toggleAssignment(m)}>{(details?.caregivers||[]).some(a=>a.account_id===m.id)?'Remove access':'Allow care'}</button></div>):<p>No eligible Household members found.</p>}<p>Assigned Household members may record feeding and care. They can enable nursing only for their own account.</p></div>}
