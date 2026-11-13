@@ -1,7 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import LineageViews from './LineageViews.jsx';
 import LineageParticipant from './LineageParticipant.jsx';
-import {LINEAGE_TRAITS,LINEAGE_ROLES,LINEAGE_STAGES,OFFSPRING_STAGES} from './lineageTraits.js';
+import {LINEAGE_TRAITS,LINEAGE_ROLES,LINEAGE_STAGES,OFFSPRING_STAGES,DEFAULT_VOID_OFFSPRING_TRAITS} from './lineageTraits.js';
 import './imperial-lineage.css';
 const blankProject={title:'',objective:'',status:'planned'};
 const blankCase={project_id:'',character_id:'',designation:'',method:'',observations:'',lineage_markers:'',result:'ongoing',pregnancy_linked:false,
@@ -56,7 +56,7 @@ export default function ImperialLineageProject({request,participantOnly=false,re
      <label>Case designation<input required maxLength={130} value={form.designation} onChange={e=>setForm({...form,designation:e.target.value})}/></label>
      <label>Authorized character<select value={form.character_id||''} onChange={e=>setForm({...form,character_id:e.target.value,pregnancy_linked:false})}><option value="">No character linked</option>{eligible.map(c=><option key={c.id} value={c.id}>{c.character_name}</option>)}</select></label>
      <label>Finding<select value={form.result} onChange={e=>setForm({...form,result:e.target.value})}>{['ongoing','inconclusive','promising','unsuccessful','confirmed'].map(x=><option key={x} value={x}>{stateName(x)}</option>)}</select></label>
-     <label>Research classification<select value={form.lineage_type||'standard'} onChange={e=>setForm({...form,lineage_type:e.target.value})}><option value="standard">Standard heredity</option><option value="voidsent">Voidsent lineage</option></select></label>
+     <label>Research classification<select value={form.lineage_type||'standard'} onChange={e=>setForm({...form,lineage_type:e.target.value,subject_role:'carrier',expression_stage:'none',traits:[],void_revealed:false,offspring_stage:e.target.value==='voidsent'?'anticipated':'not_recorded',offspring_traits:e.target.value==='voidsent'?[...DEFAULT_VOID_OFFSPRING_TRAITS]:[]})}><option value="standard">Standard heredity</option><option value="voidsent">Voidsent lineage</option></select></label>
      {form.lineage_type==='voidsent'&&<>
       <label>Subject role<select value={form.subject_role||'carrier'} onChange={e=>setForm({...form,subject_role:e.target.value,traits:[]})}>{LINEAGE_ROLES.map(x=><option key={x} value={x}>{stateName(x)}</option>)}</select></label>
       <label>Expression stage<select value={form.expression_stage||'none'} onChange={e=>setForm({...form,expression_stage:e.target.value})}>{LINEAGE_STAGES.map(x=><option key={x} value={x}>{stateName(x)}</option>)}</select></label>
