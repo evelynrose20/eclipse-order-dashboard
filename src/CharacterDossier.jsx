@@ -6,6 +6,7 @@ import CharacterEquipment from './CharacterEquipment.jsx';
 import ContributionPreferences from './ContributionPreferences.jsx';
 import BroodHostSettings from './BroodHostSettings.jsx';
 import CharacterReproduction from './CharacterReproduction.jsx';
+import FamilyCare from './FamilyCare.jsx';
 import {DOSSIER_TABS,dossierTabs,dossierSummary,isDossierRestricted,defaultDossierTab,canViewCharacterChamber} from './characterDossierRules.js';
 import './character-dossier.css';
 
@@ -78,7 +79,7 @@ export default function CharacterDossier({
     {active==='progression'&&!restricted&&<Chapter eyebrow="06 / JOURNEY" title="Progression" description="Levels and event-earned experience remain on the current system until the original RPG design replaces it."><div className="dossier-stats"><div><span>Current level</span><strong>{summary.level}</strong></div><div><span>Event XP</span><strong>{Number(summary.experience||0).toLocaleString()}</strong></div><div><span>Ability points</span><strong>{character.ability_points??0}</strong></div></div><div className="dossier-integrated"><CharacterProgression key={character.id} character={character} canCommand={canCommand} readOnly={playerPreview} request={request} onRefresh={onRefresh}/></div></Chapter>}
     {active==='binding-cycle'&&personalRecord&&character.collar_bound&&<CharacterReproduction key={character.id+'-cycle'} view="cycle" character={character} request={request} readOnly={!recordOwner} onPhaseChange={recordOwner?setPrivateCycle:undefined}/>}
     {active==='pregnancy'&&personalRecord&&<CharacterReproduction key={character.id+'-pregnancy'} view="pregnancy" character={character} request={request} readOnly={!recordOwner}/>}
-    {active==='parenthood'&&personalRecord&&<section className="dossier-parenthood"><div className="dossier-parenthood-mark"><i className="fa-solid fa-people-roof" aria-hidden="true"/></div><div><span>HOUSEHOLD RECORDS</span><h3>Parenthood</h3><p>Family relationships, guardianships, dependents, and household history will be managed here in a future update.</p><div className="dossier-parenthood-status">In development</div></div></section>}
+    {active==='parenthood'&&personalRecord&&<FamilyCare key={character.id+'-parenthood'} request={request} readOnly={!recordOwner} compact/>}
     {active==='brood-host'&&personalRecord&&character.collar_bound&&<BroodHostSettings key={character.id+'-brood'} character={character} request={request} userId={userId} readOnly={!recordOwner}/>}
     {active==='contributions'&&canViewChamber&&<ContributionPreferences key={character.id} character={character} request={request} userId={userId} readOnly={playerPreview}/>}
     {active==='legacy'&&!restricted&&<Chapter eyebrow="PRIMARY / CHARACTER SHEET" title="Classic character sheet" description="Your complete character sheet, with all existing details and mechanics. Explore the other dossier tabs whenever you like."><FullDndSheet character={character}/><div className="dossier-integrated"><CharacterEquipment character={character} request={request} canEquip={!playerPreview&&character.player_user_id===userId}/></div></Chapter>}
