@@ -28,7 +28,7 @@ export default function LineageParticipant({request,readOnly=false}){
    if(mounted)setRecords(result.cases||[]);
   }).catch(e=>{if(mounted)setError(e.message||'Unable to open lineage records')});
   return()=>{mounted=false};
- },[request]);
+ },[]);
  const ids=[...new Map((records||[]).map(x=>[x.character_id,x.character_name])).entries()];
  const current=character||ids[0]?.[0]||'';
  const cases=(records||[]).filter(x=>x.character_id===current);
