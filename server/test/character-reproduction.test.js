@@ -135,3 +135,11 @@ test('voidsent-origin pregnancies have 4 IC day term and ordinary conception rem
  assert.equal(pregnancyProgress(p,asDate(5)).due,true);
  assert.equal(pregnancyProgress({...p,pregnancy_total_days:pregnancyTermDays(null)},asDate(5)).due,false);
 });
+
+test('four-day schema migration replaces only pregnancy-term constraint without touching records',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const sql=await readFile(new URL('../sql/132_voidsent_four_day_gestation.sql',import.meta.url),'utf8');
+ assert.match(sql,/DROP CHECK chk_pregnancy_term/);
+ assert.match(sql,/CHECK\(pregnancy_total_days BETWEEN 4 AND 600\)/);
+ assert.doesNotMatch(sql,/\bUPDATE\s+character_reproductive_profiles\b|\bDELETE\s+FROM\b|\bDROP\s+TABLE\b/i);
+});
