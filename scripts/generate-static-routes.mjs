@@ -62,3 +62,16 @@ await writeFile(new URL('404.html', dist), render({
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map(page => `  <url><loc>${origin}${basePath}${page.route === '/' ? '/' : page.route + '/'}</loc></url>`).join('\n')}\n</urlset>\n`;
 await writeFile(new URL('sitemap.xml', dist), sitemap);
+
+// GitHub Pages with a custom domain serves this repository at the domain root.
+// Some upstream routing also exposes it at /eclipse-order-dashboard/. Publish
+// a matching entry point and sitemap in both locations so the submitted sitemap
+// URL does not 404 regardless of which public entry point is used.
+const nested = new URL('eclipse-order-dashboard/', dist);
+await mkdir(nested, { recursive: true });
+await writeFile(new URL('index.html', nested), render({
+  ...pages[0],
+  canonical: origin + basePath + '/',
+  indexable: true,
+}));
+await writeFile(new URL('sitemap.xml', nested), sitemap);
