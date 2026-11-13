@@ -26,3 +26,7 @@ A pregnancy and its post-conception state remain under the normal character cons
 ## Deployment
 
 **Migration 128 (128_lineage_paths.sql) is required on the Windows API database.** Back up MySQL and verify the backup can be restored, pull the corresponding server and frontend revision, run setup:local from the Windows API Control Center, and restart the API. Existing pregnancy and conception rows retain their existing status and default to no lineage case association. The migration is additive and rerunnable; GitHub does not apply it to the Windows server automatically.
+
+## Gestation timing
+
+A successful **voidsent-origin lineage conception** creates the normal consent-controlled pregnancy record with a **4 IC day** term. A normal conception event continues to create a **90 IC day (three-month)** term. The Lineage Gestation and character Pregnancy panels both read the term stored on the pregnancy, so they show the same progress; short gestation uses a day-based view rather than the normal weekly development display. Delivery is never automatic: the existing character owner/staff outcome process remains in place. Associating an ordinary pregnancy with a lineage case after conception does not retroactively shorten it. Existing records retain their current terms.
