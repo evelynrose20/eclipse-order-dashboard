@@ -45,7 +45,7 @@ export default function ImperialLineageProject({request,participantOnly=false,re
    </aside>
    <div className="lineage-detail">{project?<><div className="lineage-detail-head"><div><span>{stateName(project.status)} · RESEARCH PROGRAM</span><h3>{project.title}</h3><p>{project.objective||'No research objective recorded.'}</p></div><button type="button" onClick={()=>openProject(project)}><i className="fa-solid fa-pen"/> Manage program</button></div>
     <div className="lineage-list-head"><strong>Research cases <small>{cases.length}</small></strong><div><input aria-label="Filter research cases" placeholder="Find a case…" value={search} onChange={e=>setSearch(e.target.value)}/><button type="button" onClick={()=>openCase()}><i className="fa-solid fa-plus"/> Add case</button></div></div>
-    <LineageViews cases={cases.filter(c=>[c.designation,c.character_name,c.lineage_markers].join(' ').toLowerCase().includes(search.toLowerCase()))} tab={view} onTab={setView} staff onManage={openCase}/>
+    <LineageViews cases={cases.filter(c=>[c.designation,c.character_name,c.lineage_markers].join(' ').toLowerCase().includes(search.toLowerCase()))} tab={view} onTab={setView} staff onManage={openCase} request={request}/>
     </>:<p className="lineage-empty">Select a research program to inspect its cases.</p>}</div>
   </div>}
   {dialog&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setDialog(null)}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label={dialog==='project'?'Research program editor':'Research case editor'}>
