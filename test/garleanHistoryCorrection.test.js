@@ -7,18 +7,18 @@ const publicSite=read('src/PublicSite.jsx');
 const chapters=read('src/PublicChronicles.jsx');
 const archive=read('src/LoreArchive.jsx');
 const sql=read('server/sql/039_garlean_history_revision.sql');
-test('public history connects household origins with the later imperial Order',()=>{
+test('public history uses Rosa and current imperial canon',()=>{
  assert.match(publicSite,/AN ORDER/);
  assert.match(publicSite,/BUILT IN SHADOW/);
- assert.match(publicSite,/Elira’s household on the Thirteenth/);
- assert.match(publicSite,/During Stormblood in Yanxia/);
+ assert.match(publicSite,/Domina Rosa/);
  assert.match(publicSite,/New Cassia/);
+ assert.doesNotMatch(publicSite,/Elira|Thirteenth|Yanxia/i);
 });
-test('public chronicle reflects Thirteenth household and uses stable era keys',()=>{
- assert.match(chapters,/Thirteenth/);
- assert.match(chapters,/Carteneau/);
- assert.match(chapters,/Dalamud/);
- assert.match(chapters,/formally organized its branches and ranks in Yanxia/);
+test('public chronicle retires obsolete founding claims and keeps stable era keys',()=>{
+ assert.match(chapters,/Imperial Foundations/);
+ assert.match(chapters,/The Imperial Ambition/);
+ assert.match(chapters,/Domina|Rosa/);
+ assert.doesNotMatch(chapters,/Elira|Thirteenth|Yanxia/i);
  assert.match(chapters,/const CHAPTERS=\['garlemald'/);
  assert.match(archive,/\['garlemald','Origins & Garlean Ties'\]/);
 });
