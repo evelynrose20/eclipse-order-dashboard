@@ -19,6 +19,8 @@ export default function ThrallChamber({request}){
  const [inventoryFluid,setInventoryFluid]=useState('lacteal');
  const [drain,setDrain]=useState(null);
  const [showFluidNames,setShowFluidNames]=useState(false);
+ const [showMeterLabels,setShowMeterLabels]=useState(false);
+ const [meterLabels,setMeterLabels]=useState({meter_label:'Stimulation',action_label:'Activate'});
  const [fluidNames,setFluidNames]=useState({upper_fluid_name:'Breast Milk',lower_fluid_name:'Secondary Fluid'});
  const [seatChoice,setSeatChoice]=useState('');
  const load=async()=>{const next=await request('/thralls/chamber');setData(next);setError('');};
@@ -38,6 +40,13 @@ export default function ThrallChamber({request}){
   finally{setBusy(false)}
  }
  const machine=data?.machine;
+ const meter=data?.meter;
+ async function meterAction(action,fields={},success='Meter updated'){
+  setBusy(true);setError('');setNotice('');
+  try{await request('/thralls/chamber/stimulation',{method:'POST',body:{action,...fields}});await load();setNotice(success);return true}
+  catch(e){setError(e.message||'Unable to update stimulation controls');return false}
+  finally{setBusy(false)}
+ }
  const occupant=data?.seat;
  const eligibleRoster=(data?.roster||[]).filter(c=>Boolean(c.allow_seating));
  const selectedSeat=eligibleRoster.some(c=>c.id===seatChoice)?seatChoice:'';
@@ -121,6 +130,16 @@ export default function ThrallChamber({request}){
          </div>;
         }).slice(1)}
        </div>
+      </div>
+      <div className="chamber-stimulation">
+       <div className="chamber-stimulation-head"><div><small>CHARACTER-OPERATED CONTROL</small><h4>{machine.stimulation_meter_label||'Stimulation'}</h4></div><div className="chamber-stimulation-value"><strong>{Math.min(100,Math.max(0,Math.floor(Number(meter?.points||0))))}</strong><span>/ 100</span></div></div>
+       <div className="chamber-stimulation-track" role="progressbar" aria-valuenow={Math.min(100,Math.max(0,Number(meter?.points||0)))} aria-valuemin={0} aria-valuemax={100} aria-label={machine.stimulation_meter_label||'Stimulation'}><span style={{width:Math.min(100,Math.max(0,Number(meter?.points||0)))+'%'}}/></div>
+       <div className="chamber-stimulation-foot"><span>{meter?.ready?'Ready for seated character':meter?.rate_per_30_seconds?'+'+meter.rate_per_30_seconds+' points / 30s while assemblies run':'Activates while a configured assembly is running with power'}</span><span>{(meter?.active_channels||[]).length} connected assembly{meter?.active_channels?.length===1?'':'s'}</span></div>
+       <div className="chamber-stimulation-controls">
+        <button type="button" className="chamber-stimulation-trigger" disabled={busy||!meter?.ready||!meter?.can_trigger||machine.machine_status!=='running'||!(meter?.active_channels?.length)} onClick={()=>meterAction('trigger',{},'Manual stimulation activated and collection balances updated.')}>{machine.stimulation_action_label||'Activate'}</button>
+        {canConfigureFluids&&<button type="button" className="chamber-admin-config" disabled={busy} onClick={()=>{setMeterLabels({meter_label:machine.stimulation_meter_label||'Stimulation',action_label:machine.stimulation_action_label||'Activate'});setShowMeterLabels(true)}}><i className="fa-solid fa-pen-to-square"/> Edit control labels</button>}
+       </div>
+       <small className="chamber-helper">{meter?.can_trigger?'Only your button press activates this control; reaching 100 does not trigger it automatically.':'Only the player of the seated character can activate this control.'} Output is limited by available daily production and reservoir space.</small>
       </div>
       <div className="chamber-actions">
        <button disabled={!canManage||busy||machine.machine_status==='running'||!occupant?.character_id||!['upper','lower'].some(channel=>machine[channel+'_status']==='ready')} onClick={()=>act('set_status',{status:'running'},'Apparatus activated.')}><i className="fa-solid fa-play"/> Start</button>
@@ -216,6 +235,13 @@ export default function ThrallChamber({request}){
     })()}
    </section>}
    {view==='history'&&<section className="chamber-card"><div className="chamber-heading"><div><span>SECURE RECORDS</span><h3>Activity ledger</h3></div><i className="fa-solid fa-book"/></div>{!data.history.length?<div className="chamber-empty">No recorded activity yet.</div>:<div className="chamber-history">{data.history.map(h=><div key={h.id}><span className="chamber-history-icon"><i className="fa-solid fa-clock-rotate-left"/></span><div><strong>{title(h.action)}</strong><p>{h.detail}</p><small>{h.actor} · {stamp(h.created_at)}</small></div></div>)}</div>}</section>}
+   {showMeterLabels&&canConfigureFluids&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" aria-label="Edit stimulation labels" onSubmit={async e=>{e.preventDefault();if(await meterAction('set_labels',meterLabels,'Control labels updated.'))setShowMeterLabels(false)}}>
+    <div className="chamber-heading"><div><span>ADMIN / DISPLAY SETTINGS</span><h3>Stimulation control labels</h3></div><button type="button" onClick={()=>setShowMeterLabels(false)} aria-label="Close">✕</button></div>
+    <p className="chamber-helper">Change the name shown above the meter and on the character-operated button. Labels don't change the underlying meter or production rules.</p>
+    <label>Meter heading<input required maxLength="64" value={meterLabels.meter_label} onChange={e=>setMeterLabels(v=>({...v,meter_label:e.target.value}))}/></label>
+    <label>Action button<input required maxLength="64" value={meterLabels.action_label} onChange={e=>setMeterLabels(v=>({...v,action_label:e.target.value}))}/></label>
+    <div className="chamber-actions"><button type="button" onClick={()=>setShowMeterLabels(false)}>Cancel</button><button type="submit" disabled={busy||!meterLabels.meter_label.trim()||!meterLabels.action_label.trim()}>Save labels</button></div>
+   </form></div>}
    {showFluidNames&&canConfigureFluids&&<div className="chamber-overlay" role="presentation"><form className="chamber-dialog" aria-label="Edit collection fluid names" onSubmit={async e=>{e.preventDefault();if(await act('set_fluid_names',fluidNames,'Fluid names updated.'))setShowFluidNames(false)}}>
     <div className="chamber-heading"><div><span>ADMIN / CHAMBER SETTINGS</span><h3>Collection fluid names</h3></div><button type="button" onClick={()=>setShowFluidNames(false)} aria-label="Close">✕</button></div>
     <p className="chamber-helper">Names appear above each character's available fluid balance. Changing a name does not change existing quantities or extraction behavior.</p>
