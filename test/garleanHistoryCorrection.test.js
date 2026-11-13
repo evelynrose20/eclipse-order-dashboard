@@ -18,7 +18,7 @@ test('public chronicle reflects Thirteenth household and uses stable era keys',(
  assert.match(chapters,/Thirteenth/);
  assert.match(chapters,/Carteneau/);
  assert.match(chapters,/Dalamud/);
- assert.match(chapters,/formal ranks and branches in Yanxia/);
+ assert.match(chapters,/formally organized its branches and ranks in Yanxia/);
  assert.match(chapters,/const CHAPTERS=\['garlemald'/);
  assert.match(archive,/\['garlemald','Origins & Garlean Ties'\]/);
 });
