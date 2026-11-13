@@ -4,7 +4,7 @@ const sentence=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpper
 export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,readOnly=false,refreshKey=0}){
  const [adults,setAdults]=useState([]),[registry,setRegistry]=useState([]),[facilities,setFacilities]=useState([]);
  const [settlements,setSettlements]=useState([]),[selected,setSelected]=useState(null),[draft,setDraft]=useState(null),[error,setError]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[admin,setAdmin]=useState(false);
- useEffect(()=>{let alive=true;request('/family/adults').then(r=>{if(alive)setAdults(r.adults||[])}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[request,refreshKey]);
+ useEffect(()=>{let alive=true;request('/family/adults').then(r=>{if(alive)setAdults(r.adults||[])}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[refreshKey]);
  const refresh=async()=>{const r=await request('/family/adults');setAdults(r.adults||[]);if(admin&&staff){const a=await request('/family/adults/registry');setRegistry(a.adults||[])}};
  const shown=(admin?registry:adults).filter(a=>lineageCaseId===null||Number(a.lineage_case_id)===Number(lineageCaseId));
  async function openRegistry(){
