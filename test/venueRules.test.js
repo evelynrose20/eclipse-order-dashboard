@@ -9,10 +9,10 @@ const menu=read('src/VenueMenu.jsx');
 const roster=read('src/VenueRoster.jsx');
 const routeGenerator=read('scripts/generate-static-routes.mjs');
 
-test('venue rules have a first-class route and GitHub Pages direct entry point',()=>{
- assert.match(app,/path==='\/venue\/rules'/);
- assert.match(app,/return <VenueRules\/>/);
- assert.match(routeGenerator,/route: '\/venue\/rules'/);
+test('retired venue rules have no public route while old source stays archived',()=>{
+ assert.doesNotMatch(app,/path==='\/venue\/rules'/);
+ assert.doesNotMatch(app,/return <VenueRules\/>/);
+ assert.doesNotMatch(routeGenerator,/route: '\/venue\/rules'/);
  for(const source of [site,menu,roster])assert.match(source,/href="\/venue\/rules\/"/);
  assert.match(site,/Read the venue rules/);
 });
