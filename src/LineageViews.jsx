@@ -61,7 +61,7 @@ export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage
     <p>{entry.parenthood_note||'No lineage-specific parenthood observations recorded.'}</p>
     <small className="lineage-muted">Parenthood records do not create a child character or add anyone to adult character systems.</small>
    </article>)}{!parents.length&&<p className="lineage-empty">No lineage parenthood findings have been recorded yet.</p>}
-   {request&&<FamilyCare request={request} lineageCaseId={parents.find(c=>c.offspring_stage==='documented')?.id||null} compact readOnly={readOnly}/>}
+   {request&&parents.some(c=>c.offspring_stage==='documented')&&<FamilyCare request={request} lineageCaseId={parents.find(c=>c.offspring_stage==='documented').id} compact readOnly={readOnly}/>}
   </div>}
  </div>;
 }
