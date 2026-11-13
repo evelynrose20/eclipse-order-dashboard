@@ -1,6 +1,6 @@
 # Eclipse Order — FC roleplay and encounter ledger
 
-**Current narrative canon:** The Eclipse Order is an independent Garlean-influenced imperial villain faction, governed by Domina Elira Sakurai from New Cassia. It is not defined as a criminal syndicate. See [Imperial Faction Canon](docs/IMPERIAL-FACTION-CANON.md) for continuity, terminology and compatibility boundaries.
+**Current narrative canon:** The Eclipse Order is an independent Garlean-influenced imperial villain faction, governed by Domina Rosa from New Cassia. It is not defined as a criminal syndicate. See [Imperial Faction Canon](docs/IMPERIAL-FACTION-CANON.md) for continuity, terminology and compatibility boundaries.
 
 The Eclipse Order dashboard supports FC membership management, character dossiers, private out-of-character (OOC) preferences, binding requests, planned events, and tabletop-style encounters.
 
