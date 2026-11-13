@@ -1,5 +1,5 @@
 import {resolveSession} from './auth.js';
-import {mayEnterThralls,availableChamberChannels,dailyBalance,canMixLowerMaterial,canCollectForSource,lowerMaterialForAnatomy,chamberCycleDate,settleChamberProduction} from './thralls.js';
+import {mayEnterThralls,mayConfigureChamberFluids,availableChamberChannels,dailyBalance,canMixLowerMaterial,canCollectForSource,lowerMaterialForAnatomy,chamberCycleDate,settleChamberProduction} from './thralls.js';
 import {chamberPower} from './world-power.js';
 
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
