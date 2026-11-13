@@ -94,6 +94,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm install --prefix server --no-audit --no-fund
       - name: Verify migration 132 on MariaDB 10.11, including repeat setup
         env:
           ECLIPSE_CI_GESTATION_DB: '1'
