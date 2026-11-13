@@ -109,7 +109,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['fronts','Order Enterprises','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ...(broodAccess?[['breeding-pit','Breeding Pit','◇']]:[]),
-  ...(!playerPreview&&staff?[['lineage-research','Imperial Lineage Project','◇']]:[]),
+  ['lineage-research','Imperial Lineage Project','◇'],
   ['treasury','Order Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
@@ -183,7 +183,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='treasury'&&<Treasury request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='chamber'&&chamberAccess&&<ThrallChamber request={request}/>}
     {tab==='breeding-pit'&&broodAccess&&<BreedingPit request={request}/>}
-    {tab==='lineage-research'&&!playerPreview&&staff&&<ImperialLineageProject request={request}/>}
+    {tab==='lineage-research'&&<ImperialLineageProject request={request} participantOnly={playerPreview||!staff} readOnly={playerPreview}/>}
     {tab==='fronts'&&<Fronts request={request} characters={visibleCharacters} userId={profile.id} canManage={canManage(profile.role)||['gilded_talon','high_claw'].includes(profile.order_ranks?.golden_claws)} canApproveSite={canManage(profile.role)} readOnly={playerPreview}/>}
     {tab==='freight'&&admin&&<FreightLogistics request={request} onNavigate={setTab}/>}
     {tab==='trade'&&<TradeWorkspace request={request} characters={visibleCharacters.filter(c=>(c.player_user_id||c.player_account_id)===profile.id)} canManage={canManage(profile.role)} readOnly={playerPreview}/>}
