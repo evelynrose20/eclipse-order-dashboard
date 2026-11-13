@@ -59,6 +59,7 @@ export async function lineageRoute(pool,req,path){
   const [rows]=await pool.execute(`SELECT lc.id,lc.project_id,lc.designation,lc.result,lc.lineage_markers,lc.lineage_type,
     lc.subject_role,lc.expression_stage,lc.traits,lc.offspring_stage,lc.offspring_traits,lc.participant_note,
     lc.parenthood_note,lc.void_revealed,lc.pregnancy_linked,
+    CASE WHEN p.lineage_case_id=lc.id THEN 'lineage' WHEN lc.pregnancy_linked=1 THEN 'linked_existing' ELSE 'none' END AS conception_origin,
     c.id AS character_id,c.character_name,
     CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_status ELSE NULL END AS pregnancy_status,
     CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_anchor ELSE NULL END AS pregnancy_anchor,
@@ -78,7 +79,7 @@ export async function lineageRoute(pool,req,path){
    traits:yes(row.void_revealed)?(json(row.traits)||[]):(json(row.traits)||[]).filter(id=>['skin_tint','hair_shift','eye_glimmer'].includes(id)),offspring_stage:row.offspring_stage,
    offspring_traits:yes(row.void_revealed)?(json(row.offspring_traits)||[]):[],
    participant_note:row.participant_note,parenthood_note:row.parenthood_note,
-   pregnancy_linked:yes(row.pregnancy_linked),pregnancy_status:row.pregnancy_status,
+   pregnancy_linked:yes(row.pregnancy_linked),conception_origin:row.conception_origin,pregnancy_status:row.pregnancy_status,
    pregnancy_anchor:row.pregnancy_anchor,pregnancy_start_day:row.pregnancy_start_day,
    pregnancy_total_days:row.pregnancy_total_days
   }))});
@@ -89,6 +90,7 @@ export async function lineageRoute(pool,req,path){
   const [cases]=await pool.execute(`SELECT lc.id,lc.project_id,lc.character_id,lc.designation,lc.method,lc.observations,lc.lineage_markers,lc.result,
     lc.pregnancy_linked,lc.created_at,lc.lineage_type,lc.subject_role,lc.expression_stage,lc.traits,
     lc.offspring_stage,lc.offspring_traits,lc.participant_note,lc.parenthood_note,lc.void_revealed,
+    CASE WHEN p.lineage_case_id=lc.id THEN 'lineage' WHEN lc.pregnancy_linked=1 THEN 'linked_existing' ELSE 'none' END AS conception_origin,
     c.character_name AS character_name,
     IF(lc.pregnancy_linked=1 AND p.pregnancy_status='active',p.pregnancy_status,NULL) AS pregnancy_status,
     CASE WHEN lc.pregnancy_linked=1 THEN p.pregnancy_anchor ELSE NULL END AS pregnancy_anchor,
