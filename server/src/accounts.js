@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {normalizeEmail,hashPassword,validPassword} from './credentials.js';
 import {resolveSession} from './auth.js';
+import {checkGuildMember,invalidateGuildCache} from './discord-guild.js';
 
 const attempts=new Map();
 const WINDOW=60*60*1000;
@@ -19,6 +20,19 @@ const error=(status,reason)=>({status,body:{error:reason}});
 const allowedRoles=new Set(['domina','high_command','handler','member']);
 const allowedStanding=new Set(['initiate','associate','established','veteran']);
 const syndicateRanks=new Set(['domina','oyabun','kusushi','operative','kumi_in']);
+export async function revokeAccountAccess(db,id,{actorId=null,reason='staff_removed'}={}){
+ const [[target]]=await db.execute('SELECT id,account_role,is_active,approval_status FROM accounts WHERE id=? FOR UPDATE',[id]);
+ if(!target)return {status:404,error:'account_not_found'};
+ if(target.account_role==='domina'){
+  const [[remaining]]=await db.execute("SELECT COUNT(*) AS total FROM accounts WHERE account_role='domina' AND id<>? AND is_active=1 AND approval_status='approved'",[id]);
+  if(!Number(remaining.total))return {status:409,error:'cannot_remove_last_domina'};
+ }
+ await db.execute("UPDATE accounts SET is_active=0,approval_status='rejected' WHERE id=?",[id]);
+ await db.execute('UPDATE account_sessions SET revoked_at=UTC_TIMESTAMP() WHERE account_id=? AND revoked_at IS NULL',[id]);
+ await db.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',[actorId,'account_access_revoked','account',id,JSON.stringify({reason})]);
+ return {status:200};
+}
+
 
 export async function accountRoute(pool,req,path){
  if(!pool)return error(503,'database_unavailable');
@@ -38,6 +52,34 @@ export async function accountRoute(pool,req,path){
  if(path==='/admin/order-ranks'&&req.method==='GET'){
   const [ranks]=await pool.query('SELECT code,track,title,sort_order FROM order_rank_catalog ORDER BY FIELD(track,"leadership","membership","snakes","fangs","golden_claws","household","servitude"),sort_order');
   return {status:200,body:{ranks}};
+ }
+ const accessChange=/^\/admin\/accounts\/([0-9a-f-]{36})\/(remove-access|restore-access)$/.exec(path);
+ if(accessChange&&req.method==='POST'){
+  const [,id,operation]=accessChange;
+  if(id===actor.id)return error(403,'cannot_change_own_access');
+  const db=await pool.getConnection();
+  try{
+   await db.beginTransaction();
+   if(operation==='remove-access'){
+    const result=await revokeAccountAccess(db,id,{actorId:actor.id,reason:'staff_removed'});
+    if(result.status!==200){await db.rollback();return error(result.status,result.error)}
+   }else{
+    const [[target]]=await db.execute('SELECT id,account_role,approval_status FROM accounts WHERE id=? FOR UPDATE',[id]);
+    if(!target){await db.rollback();return error(404,'account_not_found')}
+    const [[link]]=await db.execute('SELECT discord_user_id FROM account_discord_links WHERE account_id=?',[id]);
+    if(!link){await db.rollback();return error(409,'discord_account_not_linked')}
+    invalidateGuildCache(link.discord_user_id);
+    const member=await checkGuildMember(link.discord_user_id,{useCache:false});
+    if(member!=='member'){
+     await db.rollback();
+     return error(member==='not_member'?409:503,member==='not_member'?'discord_not_in_server':'discord_server_check_unavailable');
+    }
+    await db.execute("UPDATE accounts SET is_active=1,approval_status='approved' WHERE id=?",[id]);
+    await db.execute('INSERT INTO audit_log(actor_account_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?)',[actor.id,'account_access_restored','account',id,JSON.stringify({reason:'staff_restore'})]);
+   }
+   await db.commit();
+   return {status:200,body:{status:'ok'}};
+  }catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}
  }
  const rankChange=/^\/admin\/accounts\/([0-9a-f-]{36})\/order-rank$/.exec(path);
  if(rankChange&&req.method==='POST'){
