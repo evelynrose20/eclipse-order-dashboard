@@ -34,15 +34,15 @@ test('venue edit routes are authenticated while public roster is not',async()=>{
  const result=await venueRoute({execute:async()=>{throw Error('should not query for authless user')}},{headers:{},method:'PUT'},'/venue/manage');
  assert.equal(result.status,401);
 });
-test('dashboard Venue Management is command-only and public roster uses the API',()=>{
+test('legacy venue management remains in code but is absent from live navigation',()=>{
  const workspace=read('src/LocalWorkspace.jsx');
  const nav=read('src/OrderNavigation.jsx');
  const editor=read('src/VenueManagement.jsx');
  const publicRoster=read('src/VenueRoster.jsx');
  const server=read('server/src/server.js');
- assert.match(workspace,/VenueManagement request=\{request\}/);
- assert.match(workspace,/canManage\(profile.role\).*venue-management/);
- assert.match(nav,/venue-management/);
+ assert.doesNotMatch(workspace,/VenueManagement request=\{request\}/);
+ assert.doesNotMatch(workspace,/venue-management/);
+ assert.doesNotMatch(nav,/venue-management/);
  assert.match(editor,/\/venue\/manage/);
  assert.match(editor,/\/venue\/upload/);
  assert.match(publicRoster,/\/venue\/public/);
