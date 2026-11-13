@@ -4,7 +4,7 @@ const id=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const states=['seeking','employed','between_jobs','retired'];
 const conditions=['settled','adjusting','needs_support'];
 async function body(req){const parts=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>3000)return null;parts.push(chunk)}try{return JSON.parse(Buffer.concat(parts).toString())}catch{return null}}
-const projection=`SELECT nc.id,nc.dependent_id,d.name, d.guardian_account_id,nc.settlement_id,
+const projection=`SELECT nc.id,nc.dependent_id,d.name, d.guardian_account_id,d.lineage_case_id,nc.settlement_id,
  s.name AS settlement_name,nc.workplace_facility_id,f.name AS workplace_name,
  nc.employment_state,nc.wellbeing,nc.public_update,nc.transitioned_at,nc.updated_at
  FROM world_named_civilians nc JOIN order_dependents d ON d.id=nc.dependent_id
@@ -20,7 +20,12 @@ export async function adultFamilyRoute(pool,req,path,actor){
   const [rows]=await pool.execute("SELECT id,name,settlement_id,status FROM world_industry_facilities WHERE settlement_id IS NOT NULL AND status='operational' ORDER BY name LIMIT 250");
   return ok({workplaces:rows});
  }
- if(path==='/family/adults'&&req.method==='GET'){
+ if(path==='/family/adults/registry'&&req.method==='GET'){
+  if(!staff(actor))return fail(403,'staff_required');
+  const [rows]=await pool.execute(projection+' ORDER BY nc.id DESC LIMIT 250');
+  return ok({adults:rows});
+ }
+  if(path==='/family/adults'&&req.method==='GET'){
   // Family members see only the adulthood outcomes for their own dependents.
   // Household assignments expire for access purposes at adulthood.
   const [rows]=await pool.execute(projection+' WHERE d.guardian_account_id=? ORDER BY nc.id DESC',[actor.id]);
