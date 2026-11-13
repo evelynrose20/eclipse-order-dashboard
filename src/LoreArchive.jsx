@@ -38,7 +38,7 @@ export default function LoreArchive({request,admin=false}){
  };
  return <div className={'lore-root '+(admin?'lore-internal':'lore-public')}>
   {!admin&&<nav className="lore-exit"><a href="./"><i className="fa-solid fa-book-open"/> The Eclipse Order</a><a href="./#history">Return to the Order</a><a href="?portal">Member sign-in</a></nav>}
-  <header className="lore-hero"><span className="lore-kicker">THE ECLIPSE ORDER · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>From its Garlean beginnings through the Calamity, the Yanxia operations and the Order’s return to New Cassia.</p><div className="lore-hero-mark" aria-hidden="true"><i className="fa-solid fa-book-open"/></div></header>
+  <header className="lore-hero"><span className="lore-kicker">THE ECLIPSE ORDER · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>From Elira’s household on the Thirteenth through Garlean ties, the Order’s formal founding in Yanxia, and its imperial rebirth in New Cassia.</p><div className="lore-hero-mark" aria-hidden="true"><i className="fa-solid fa-book-open"/></div></header>
   {error&&<div className="lore-error" role="alert">{error}</div>}{notice&&<p className="lore-notice" role="status">{notice}</p>}
   <div className="lore-layout">
    <aside className="lore-index"><div className="lore-index-head"><span>THE ARCHIVES</span>{editing&&<button type="button" onClick={make}>+ New entry</button>}</div>
