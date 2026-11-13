@@ -103,9 +103,10 @@ export async function adultFamilyRoute(pool,req,path,actor){
    const db=await pool.getConnection();
    try{
     await db.beginTransaction();
-    await db.execute(`UPDATE world_named_civilians SET settlement_id=?,housing_upgrade_id=CASE WHEN settlement_id=? THEN housing_upgrade_id ELSE NULL END,
+    await db.execute(`UPDATE world_named_civilians SET settlement_id=?,housing_upgrade_id=?,
        workplace_facility_id=?,employment_state=?,wellbeing=?,public_update=? WHERE id=?`,
-       [settlementId,settlementId,facility,b.employment_state,b.wellbeing,b.public_update.trim(),civilianId]);
+       [settlementId,Number(row.settlement_id)===settlementId?row.housing_upgrade_id:null,
+        facility,b.employment_state,b.wellbeing,b.public_update.trim(),civilianId]);
     const housing=await findNpcHousing(db,settlementId,civilianId);
     await db.commit();return ok({updated:true,housing});
    }catch(e){await db.rollback().catch(()=>{});throw e}finally{db.release()}
