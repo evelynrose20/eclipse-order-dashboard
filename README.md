@@ -1,5 +1,7 @@
 # Eclipse Order — FC roleplay and encounter ledger
 
+**Current narrative canon:** The Eclipse Order is an independent Garlean-influenced imperial villain faction, governed by Domina Elira Sakurai from New Cassia. It is not defined as a criminal syndicate. See [Imperial Faction Canon](docs/IMPERIAL-FACTION-CANON.md) for continuity, terminology and compatibility boundaries.
+
 The Eclipse Order dashboard supports FC membership management, character dossiers, private out-of-character (OOC) preferences, binding requests, planned events, and tabletop-style encounters.
 
 ## Current architecture
@@ -62,7 +64,7 @@ The member portal uses **Discord exclusively**: there are no email/password sign
 - Receive **XP only through completed FC events**: authorized GMs select an eligible participant and record a one-time award per character/event.
 - Spend earned progression points through the character dossier. New characters do not start with a full allotment of earned points.
 
-The Order's normal syndicate ranks are **Domina, Oyabun, Kusushi, Operative, and Kumi-in / Initiate**. Account permissions and bound-character ranks are separate.
+Legacy documentation identifies the Order's older member ranks as **Domina, Oyabun, Kusushi, Operative, and Kumi-in / Initiate**. Account permissions and bound-character ranks are separate.
 
 **No shop, wallet, paychecks, purchases, or ration-claiming economy is part of the current dashboard.** Old database tables and historical migration files may remain to preserve records, but they are not active player features.
 
