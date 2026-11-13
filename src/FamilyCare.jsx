@@ -5,7 +5,10 @@ const actions=[
  ['nursing','Nurse','fa-heart'],
  ['bottle','Bottle feed','fa-bottle-water'],
  ['meal','Serve meal','fa-utensils'],
- ['comfort','Comfort / care','fa-hands-holding-child']
+ ['comfort','Comfort / care','fa-hands-holding-child'],
+ ['hygiene','Bath / change','fa-soap'],
+ ['sleep','Settle to sleep','fa-moon'],
+ ['play','Play / enrichment','fa-shapes']
 ];
 const title=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function FamilyCare({request,lineageCaseId=null,compact=false,readOnly=false}){
