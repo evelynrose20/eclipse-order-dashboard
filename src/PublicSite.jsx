@@ -108,10 +108,10 @@ export default function PublicSite(){
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
      <h1>AN ORDER<br/><span className="imperial-headline-line">BUILDING AN <em>EMPIRE.</em></span></h1>
-     <p className="public-hero-subtitle">A Garlean-born syndicate of intelligence, criminal enterprise and hard-won loyalties. From the shadows of the Empire to the streets of New Cassia, the Eclipse Order builds its own power.</p>
+     <p className="public-hero-subtitle">From the ashes of Garlemald, the Eclipse Order rises with ambitions of its own. Under Domina Elira Sakurai, this imperial villain faction pursues territory, political authority, magitek strength, and an empire in New Cassia.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className="public-button-ghost"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our Discord <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
-     <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · THE UNDERWORLD</span><span>03 · NEW CASSIA</span></div>
+     <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · IMPERIAL ASCENDANCY</span><span>03 · NEW CASSIA</span></div>
      <div className="public-hero-location"><span>THE GOBLET · WARD 5 · PLOT 41</span><a href="#membership" className={'public-recruitment-'+(recruitment||'unknown')}><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a></div>
     </div>
     <div className="public-scroll-cue" aria-hidden="true"><span>ENTER THE DOSSIER</span><i/></div>
@@ -119,7 +119,7 @@ export default function PublicSite(){
    <section className="public-section public-introduction" id="about">
     <div className="public-section-inner">
      <SectionTag number="01">THE ORDER</SectionTag>
-     <div className="public-intro-grid"><div><h2>NO BANNERS.<br/><em>NO SAVIORS.</em></h2></div><div className="public-intro-copy"><p className="public-lead">The Eclipse Order is a clandestine syndicate within the world of Final Fantasy XIV. Its members live by uneasy loyalties, quiet ambition, and the belief that power is rarely handed to those who deserve it.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
+     <div className="public-intro-grid"><div><h2>NO BANNERS.<br/><em>NO SAVIORS.</em></h2></div><div className="public-intro-copy"><p className="public-lead">The Eclipse Order is a Garlean-influenced imperial villain faction within Final Fantasy XIV. Beneath the Domina, its members pursue unity, authority, and power—even when their ambitions put them at odds with the realm.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
      <div className="public-principles">
       <article><span>Ⅰ</span><h3>Consequences matter</h3><p>The decisions characters make leave an impression on the people and stories around them.</p></article>
       <article><span>Ⅱ</span><h3>Every role has weight</h3><p>Not everyone commands an army. Intelligence, diplomacy, artistry, and quiet loyalty all have their place.</p></article>
@@ -131,7 +131,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="02">A HISTORY WRITTEN IN SHADOW</SectionTag>
      <div className="public-history-grid"><div className="public-history-art" aria-hidden="true"><div className="public-history-seal"><Mark/><span>THE ECLIPSE<br/>ENDURES</span></div><span className="public-art-caption">THE SERPENT · THE ECLIPSE · THE OATH</span></div>
-      <div><h2>AN ORDER<br/><em>BUILT IN SHADOW.</em></h2><p className="public-lead">Born in Garlemald, the Eclipse Order grew where imperial influence and the criminal underworld met. Information, trade, coercion and carefully chosen alliances became its instruments of power.</p><p>Its reach eventually extended into Yanxia, where the syndicate organized its branches and formal ranks during Stormblood. Those eastern operations were one chapter of a Garlean organization, never its origin.</p><p>The Final Days shattered much of what the Order had built. After years of silence and scattered loyalties, its return to New Cassia marks a new struggle for influence in Ilsabard.</p><div className="public-history-quote">GARLEMALD / YANXIA / NEW CASSIA</div></div>
+      <div><h2>AN ORDER<br/><em>BUILT IN SHADOW.</em></h2><p className="public-lead">The Order’s oldest traditions descend from Elira’s household on the Thirteenth. On the Source, those loyalties survived through informal household ties and later Garlean connections, shaping an imperial outlook rather than a criminal enterprise.</p><p>During Stormblood in Yanxia, the Eclipse Order fully took shape with formal ranks and organized branches. Earlier eras relied on household loyalty, not established Order ranks; Yanxia was the birthplace of its formal structure, not of Elira’s household.</p><p>The Final Days shattered much of the Order’s strength and forced it into dormancy. Its rebirth in New Cassia begins an independent imperial project of reconstruction, military expansion, diplomacy, and contested rule.</p><div className="public-history-quote">THE THIRTEENTH / GARLEMALD / YANXIA / NEW CASSIA</div></div>
      </div>
     </div>
    </section>
@@ -205,7 +205,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="08">FIND THE ORDER</SectionTag>
      <div className="public-visit-grid">
-      <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is the Order’s renewed seat of power and the center of its growing ambitions.</p><p>Here, Garlean remnants, criminal families and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
+      <div className="public-visit-story"><h2>From Ilsabard.<br/><em>Into the shadows.</em></h2><p className="public-lead">New Cassia in Ilsabard is the Order’s renewed seat of power and the center of its growing ambitions.</p><p>Here, imperial loyalists, rival governments, contested settlements, and uneasy allies shape new stories. Our Eorzean estate remains the place to meet us in Final Fantasy XIV; New Cassia is part of our roleplay setting.</p>
        <a href="?lore" className="public-text-link">Explore the Order’s chronicles <span aria-hidden="true">↗</span></a>
        <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>NEW CASSIA · ILSABARD</strong><small>THE ORDER’S IN-CHARACTER HOME</small></div></div>
       </div>
@@ -228,7 +228,7 @@ export default function PublicSite(){
        <h3><span className="public-fit-symbol" aria-hidden="true"><i className="fa-solid fa-check"/></span>You'll fit here if —</h3>
        <ul>
         <li>You enjoy playing <strong>Garleans</strong>, former imperial officers, defectors, or people still loyal to a fallen cause.</li>
-        <li>Your character belongs among <strong>criminals, smugglers, spies, mercenaries, or other dangerous company.</strong></li>
+        <li>Your character belongs among <strong>imperial officers, spies, magitek researchers, diplomats, soldiers, or ambitious civilians.</strong></li>
         <li>You prefer schemes, intrigue, and hard bargains over being the hero who saves the realm.</li>
         <li>You like stories where choices have consequences, loyalties can fracture, and not every ending is happy.</li>
         <li>You want to build a character with a history and ambitions of their own, not borrow the spotlight from FFXIV's main cast.</li>
@@ -241,13 +241,13 @@ export default function PublicSite(){
         <li>You're looking for a <strong>heroic Free Company</strong> devoted to saving the realm and defeating every villain.</li>
         <li>You want your character to be the <strong>Warrior of Light</strong>, a main-story hero, or the center of everyone else's story.</li>
         <li>You expect your character to win every confrontation or escape every consequence.</li>
-        <li>You want a nightclub or venue-first group rather than an ongoing criminal syndicate storyline.</li>
+        <li>You want a nightclub or venue-first group rather than an ongoing imperial campaign and character-driven storyline.</li>
         <li>You don't enjoy darker themes, morally compromised characters, or collaborative storytelling with real stakes.</li>
        </ul>
       </article>
      </div>
      <aside className="public-fit-lore">
-      <p><strong>ON CHARACTERS AND LORE.</strong> We bend lore; we don't break it. Original Garlean characters, underworld figures, and morally grey outsiders are welcome. Bring your own story, not the realm's main cast. The Order isn't here to make everyone a villain, but it isn't a home for would-be saviors either.</p>
+      <p><strong>ON CHARACTERS AND LORE.</strong> We bend lore; we don't break it. Original Garlean characters, imperial loyalists, former enemies, and morally complex outsiders are welcome. Bring your own story, not the realm's main cast. The Order is an antagonist faction, but individual members may have sincere ideals and conflicting loyalties; it is not a home for would-be saviors.</p>
      </aside>
      <div className="public-fit-invitation"><p>Sound like your sort of trouble?</p><a href="#membership" className="public-text-link">Find your place in the Order <span aria-hidden="true">↗</span></a></div>
     </div>
