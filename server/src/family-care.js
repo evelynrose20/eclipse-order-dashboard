@@ -2,7 +2,7 @@ import {resolveSession} from './auth.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const positive=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const ageStages=['newborn','infant','toddler','child'];
-const actions=['nursing','bottle','meal','comfort','restock_milk','restock_food'];
+const actions=['nursing','bottle','meal','comfort','hygiene','sleep','play','restock_milk','restock_food'];
 const clean=(v,max)=>typeof v==='string'&&v.trim().length<=max;
 const validDate=x=>!x||typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x+'T00:00:00Z'));
 const bool=x=>x===1||x===true;
