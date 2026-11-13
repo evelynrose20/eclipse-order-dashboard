@@ -1,5 +1,6 @@
 import React from 'react';
 import {TRAIT_NAMES} from './lineageTraits.js';
+import FamilyCare from './FamilyCare.jsx';
 
 export const LINEAGE_TABS=[
  ['cases','Research cases','fa-flask'],
@@ -14,7 +15,7 @@ const traitList=(traits,empty='No markers recorded.')=><div className="lineage-m
 function CaseHead({entry,actions}){
  return <div className="lineage-card-head"><div><small>{entry.character_name||'Unlinked research case'} · {title(entry.result)}</small><h4>{entry.designation}</h4></div>{actions}</div>;
 }
-export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage,onConceive,staff=false}){
+export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage,onConceive,request,readOnly=false,staff=false}){
  const gestures=cases.filter(c=>c.pregnancy_linked||c.lineage_type==='voidsent'||c.may_conceive);
  const parents=cases.filter(c=>c.offspring_stage&&c.offspring_stage!=='not_recorded');
  return <div className="lineage-workspace">
@@ -59,6 +60,8 @@ export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage
     {traitList(entry.offspring_traits,entry.lineage_type==='undisclosed'?'Hereditary markers have not been disclosed.':'No hereditary markers recorded.')}
     <p>{entry.parenthood_note||'No lineage-specific parenthood observations recorded.'}</p>
     <small className="lineage-muted">Parenthood records do not create a child character or add anyone to adult character systems.</small>
-   </article>)}{!parents.length&&<p className="lineage-empty">No lineage parenthood findings have been recorded yet.</p>}</div>}
+   </article>)}{!parents.length&&<p className="lineage-empty">No lineage parenthood findings have been recorded yet.</p>}
+   {request&&<FamilyCare request={request} lineageCaseId={parents.find(c=>c.offspring_stage==='documented')?.id||null} compact readOnly={readOnly}/>}
+  </div>}
  </div>;
 }
