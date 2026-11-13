@@ -142,3 +142,20 @@
 @media(prefers-reduced-motion:reduce){.chamber-batch-white-fluid,.chamber-batch-white-fluid .chamber-fluid-wave{transition:none;animation:none}}
 
 .chamber-power-readout{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:11px 13px;background:#17282e;border:1px solid #4c665d;font-size:11px;color:#c6d9d4;margin-bottom:10px}.chamber-power-readout i{color:#e6cb91}.chamber-power-readout strong{color:#f6e4bb;letter-spacing:.06em}
+
+/* Owner-operated stimulation control: charge accrues automatically; activation is manual. */
+.chamber-stimulation{display:grid;gap:12px;margin:18px 0;padding:19px;border:1px solid #926c83;background:linear-gradient(130deg,#281922,#201922 58%,#2c1b2b);border-radius:13px;box-shadow:inset 0 1px 0 #eeb9d61c}
+.chamber-stimulation-head{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.chamber-stimulation-head small{display:block;color:#c8a2b4;font-size:10px;letter-spacing:.12em;font-weight:750}
+.chamber-stimulation-head h4{font-family:Georgia,serif;font-weight:600;font-size:21px;color:#f0d4e2;margin:5px 0 0}
+.chamber-stimulation-value{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums;color:#c9a2b3}
+.chamber-stimulation-value strong{font-size:30px;color:#f6d3e4}
+.chamber-stimulation-track{height:15px;border:1px solid #946b83;background:#100e19;border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 5px #0008}
+.chamber-stimulation-track>span{display:block;height:100%;min-width:0;background:linear-gradient(90deg,#80345c,#c76a9b,#f5adcd);box-shadow:0 0 15px #e47bad7d;transition:width .4s ease}
+.chamber-stimulation-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:11px;color:#d8b5ca}
+.chamber-stimulation-controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.chamber-stimulation-trigger{background:#ad5b8d!important;border:1px solid #eba5c8!important;color:#1d101e!important;min-height:41px;padding:10px 18px!important;font-weight:800!important;border-radius:7px;cursor:pointer}
+.chamber-stimulation-trigger:disabled{opacity:.42;cursor:not-allowed}
+.chamber-stimulation .chamber-helper{font-size:11px;color:#bba5af;line-height:1.5}
+@media(max-width:600px){.chamber-stimulation{padding:12px}.chamber-stimulation-head h4{font-size:18px}.chamber-stimulation-value strong{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.chamber-stimulation-track>span{transition:none}}
