@@ -302,6 +302,8 @@ async function main(){
   await pool.query(rpStarterMarker);
   const rosaLoreCorrection=await readFile(new URL('../sql/128_rosa_imperial_lore_correction.sql',import.meta.url),'utf8');
   await pool.query(rosaLoreCorrection);
+  const manualMeter=await readFile(new URL('../sql/129_chamber_manual_stimulation.sql',import.meta.url),'utf8');
+  await pool.query(manualMeter);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
