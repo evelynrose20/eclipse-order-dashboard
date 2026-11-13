@@ -304,6 +304,9 @@ async function main(){
   await pool.query(rosaLoreCorrection);
   const manualMeter=await readFile(new URL('../sql/129_chamber_manual_stimulation.sql',import.meta.url),'utf8');
   await pool.query(manualMeter);
+  const warehouseFoodFix=await readFile(new URL('../sql/130_fix_warehouse_food_blueprints.sql',import.meta.url),'utf8');
+  await pool.query(warehouseFoodFix);
+  console.log('Warehouse construction blueprints checked for incorrect food-based seed recipes (130).');
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
