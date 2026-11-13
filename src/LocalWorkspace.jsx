@@ -105,7 +105,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
   ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣']]:[]),
-  ['fronts','Order Fronts','♛'],
+  ['fronts','Order Enterprises','♛'],
   ...(chamberAccess?[['chamber','Extraction Chamber','◇']]:[]),
   ...(broodAccess?[['breeding-pit','Breeding Pit','◇']]:[]),
   ...(!playerPreview&&staff?[['lineage-research','Imperial Lineage Project','◇']]:[]),
@@ -158,7 +158,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
     {tab==='members'&&!playerPreview&&profile.role==='domina'&&<>
      <div className="eo-toolbar"><h2>Pending membership requests ({pending.length})</h2><button className="btn secondary" onClick={()=>load().catch(err=>setMessage(err.message))}>Refresh</button></div>
      {!pending.length?<div className="panel"><p>No pending account requests.</p></div>:pending.map(m=><article className="eo-member" key={m.user_id}><div><strong>{m.display_name}</strong><small>{memberIdentity(m)}</small><span>Requested {new Date(m.created_at).toLocaleDateString()}</span></div><div className="eo-actions"><button className="eo-primary" disabled={busy} onClick={()=>act(m.user_id,'approve')}>Approve</button><button disabled={busy} onClick={()=>{if(window.confirm('Reject this membership request?'))act(m.user_id,'reject')}}>Reject</button></div></article>)}
-     <h2 className="eo-member-title">Approved accounts</h2><p className="muted">Syndicate rank reflects a member's place in the Order. Access permissions govern staff duties, while binding ranks belong to individual characters.</p>
+     <h2 className="eo-member-title">Approved accounts</h2><p className="muted">Order standing reflects a member's place in the faction. Access permissions govern staff duties, while binding ranks belong to individual characters.</p>
      {active.map(m=><article className="eo-member" key={m.user_id}><div><strong>{memberIdentity(m)}</strong><small>{m.role==='domina'?'Order leadership':'Order member'}</small></div><div className="eo-actions"><label>Website access<select value={m.role} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'role',{role:e.target.value})}>{ROLE_OPTIONS.map(role=><option value={role} key={role}>{ACCOUNT_ROLES[role]?.label||role}</option>)}</select></label>{['leadership','membership','snakes','fangs','golden_claws','household'].map(track=><label key={track}>{({leadership:'Order leadership',membership:'Membership standing',snakes:'The Snakes',fangs:'The Fangs',golden_claws:'The Golden Claws',household:'The Household'})[track]}<select value={m.order_ranks?.[track]||''} disabled={busy||m.user_id===profile.id} onChange={e=>act(m.user_id,'order-rank',{track,code:e.target.value})}><option value="">Not assigned</option>{rankCatalog.filter(r=>r.track===track).map(r=><option value={r.code} key={r.code}>{r.title}</option>)}</select></label>)}</div></article>)}
     </>}
     {tab==='roster'&&<>
