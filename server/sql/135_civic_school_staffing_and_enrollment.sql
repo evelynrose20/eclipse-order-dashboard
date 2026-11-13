@@ -19,6 +19,11 @@ SET @school_building_fk=(SELECT IF(COUNT(*)=0,
  AND TABLE_NAME='order_dependents' AND CONSTRAINT_NAME='fk_dependent_school_building');
 PREPARE school_building_stmt FROM @school_building_fk;
 EXECUTE school_building_stmt; DEALLOCATE PREPARE school_building_stmt;
-CREATE INDEX IF NOT EXISTS ix_dependent_school_building ON order_dependents(school_upgrade_id);
+SET @school_building_idx=(SELECT IF(COUNT(*)=0,
+ 'CREATE INDEX ix_dependent_school_building ON order_dependents(school_upgrade_id)',
+ 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE()
+ AND TABLE_NAME='order_dependents' AND INDEX_NAME='ix_dependent_school_building');
+PREPARE school_building_stmt FROM @school_building_idx;
+EXECUTE school_building_stmt; DEALLOCATE PREPARE school_building_stmt;
 INSERT INTO schema_migrations(version) VALUES('135_civic_school_staffing_and_enrollment')
  ON DUPLICATE KEY UPDATE version=VALUES(version);
