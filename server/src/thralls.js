@@ -1,5 +1,6 @@
 import {resolveSession} from './auth.js';
 import {chamberPower} from './world-power.js';
+import {settleStimulation} from './chamber-stimulation.js';
 
 const forbidden=(status,error)=>({status,body:{error}});
 
@@ -102,7 +103,7 @@ async function seatRoster(pool,actor){
 }
 
 // Settle elapsed production on reads; no manual collection action is required.
-async function settleChamberProduction(pool){
+export async function settleChamberProduction(pool){
  const power=await chamberPower(pool);
  const cn=await pool.getConnection();
  try{
@@ -213,7 +214,7 @@ export async function thrallsRoute(pool,req,path){
    const [[previous]]=await cn.execute('SELECT lower_anatomy FROM order_thrall_contribution_preferences WHERE character_id=? FOR UPDATE',[id]);
    if(seat.character_id===id&&(!next.allow_seating||(previous&&previous.lower_anatomy!==next.lower_anatomy))){
     await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='offline',lower_status='offline',revision=revision+1 WHERE id=1");
-    await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
+    await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL,stimulation_points=0,stimulation_last_at=NULL WHERE id=1');
     await cn.execute('INSERT INTO order_thrall_chamber_log(actor_id,action,detail) VALUES(?,?,?)',[actor.id,'release','Player withdrew chair permission; character released']);
    }
    await cn.execute('INSERT INTO order_thrall_contribution_preferences(character_id,allow_upper,allow_lower,allow_seating,gender_identity,lower_anatomy,lactation_state) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE allow_upper=VALUES(allow_upper),allow_lower=VALUES(allow_lower),allow_seating=VALUES(allow_seating),gender_identity=VALUES(gender_identity),lower_anatomy=VALUES(lower_anatomy),lactation_state=VALUES(lactation_state)',[id,Number(next.allow_upper),Number(next.allow_lower),Number(next.allow_seating),next.gender_identity,next.lower_anatomy,next.lactation_state]);
@@ -223,11 +224,12 @@ export async function thrallsRoute(pool,req,path){
  if(!await mayEnterThralls(pool,actor))return forbidden(403,'access_denied');
  if(path==='/thralls/chamber'&&req.method==='GET'){
   await settleChamberProduction(pool);
+  await settleStimulation(pool);
   const power=await chamberPower(pool);
   const [[machine]]=await pool.execute('SELECT * FROM order_thrall_chamber WHERE id=1');
   const [batches]=await pool.execute('SELECT b.id,b.material,b.material_type,b.quantity,b.drained_total,b.classification,b.notes,b.source_character_id,COALESCE(b.source_name,c.character_name,\'Unattributed / legacy\') AS source_name,b.created_at FROM order_thrall_chamber_batches b LEFT JOIN characters c ON c.id=b.source_character_id ORDER BY b.id DESC LIMIT 200');
   const [history]=await pool.execute('SELECT l.id,l.action,l.detail,l.created_at,a.display_name AS actor FROM order_thrall_chamber_log l JOIN accounts a ON a.id=l.actor_id ORDER BY l.id DESC LIMIT 50');
-  const [[seat]]=await pool.execute('SELECT s.character_id,s.seated_at,s.upper_recorded,s.lower_recorded,c.character_name AS name FROM order_thrall_seat s LEFT JOIN characters c ON c.id=s.character_id WHERE s.id=1');
+  const [[seat]]=await pool.execute('SELECT s.character_id,s.seated_at,s.upper_recorded,s.lower_recorded,s.stimulation_points,c.character_name AS name,c.player_account_id AS owner_id FROM order_thrall_seat s LEFT JOIN characters c ON c.id=s.character_id WHERE s.id=1');
   let daily=null;
   const collection_health={};
   const now=new Date(),cycle=chamberCycleDate(now);
@@ -254,7 +256,9 @@ export async function thrallsRoute(pool,req,path){
   }
   const can_manage=await manager(pool,actor);
   const roster=can_manage?await seatRoster(pool,actor):[];
-  return ok({machine,power,batches,history,seat,daily,collection_health,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
+  const activeStim=seat?.character_id&&machine.machine_status==='running'&&power.rate.amount>0?['upper','lower'].filter(ch=>machine[ch+'_status']==='active'&&daily?.[ch]?.maximum>0):[];
+  const meter={points:Number(seat?.stimulation_points||0),ready:Number(seat?.stimulation_points||0)>=100,active_channels:activeStim,can_trigger:Boolean(seat?.character_id&&seat.owner_id===actor.id),rate_per_30_seconds:activeStim.length*2};
+  return ok({machine,power,batches,history,seat,daily,collection_health,meter,roster,can_manage,can_configure_fluids:mayConfigureChamberFluids(actor),can_release:can_manage||(seat?.character_id&&roster.length===0&&(await pool.execute('SELECT 1 FROM characters WHERE id=? AND player_account_id=?',[seat.character_id,actor.id]))[0].length>0)});
  }
  if(path!=='/thralls/chamber/actions'||req.method!=='POST')return forbidden(404,'not_found');
  const canOperate=await manager(pool,actor);
@@ -266,6 +270,7 @@ export async function thrallsRoute(pool,req,path){
  if(!canOperate&&action!=='release')return forbidden(403,'household_or_staff_required');
  // Persist elapsed output before a stop, decant, or per-assembly state change.
  await settleChamberProduction(pool);
+  await settleStimulation(pool);
  const cn=await pool.getConnection();
  try{
   await cn.beginTransaction();
@@ -290,19 +295,20 @@ export async function thrallsRoute(pool,req,path){
    const [rows]=await cn.execute("SELECT c.character_name,c.collar_bound,p.allow_seating,p.lower_anatomy FROM characters c JOIN order_thrall_contribution_preferences p ON p.character_id=c.id LEFT JOIN character_order_ranks r ON r.character_id=c.id LEFT JOIN order_rank_catalog cat ON cat.code=r.rank_code WHERE c.id=? AND (c.collar_bound=1 OR cat.track='servitude' OR c.player_account_id=?) FOR UPDATE",[data.character_id,actor.id]);
    const character=rows[0];
    if(!canSeatCharacter(machine,seat,character))return await rollback(cn,'character_has_not_opted_in');
-   await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1',[data.character_id,actor.id]);
+   await cn.execute('UPDATE order_thrall_seat SET character_id=?,seated_at=UTC_TIMESTAMP(),placed_by=?,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL,stimulation_points=0,stimulation_last_at=NULL WHERE id=1',[data.character_id,actor.id]);
    await cn.execute("UPDATE order_thrall_chamber SET upper_status='offline',lower_status='offline' WHERE id=1");
    detail='Seated '+character.character_name+' with recorded player permission';
   }else if(action==='release'){
    if(!seat.character_id)return await rollback(cn,'chair_empty');
    await cn.execute("UPDATE order_thrall_chamber SET machine_status='offline',upper_status='offline',lower_status='offline' WHERE id=1");
-   await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL WHERE id=1');
+   await cn.execute('UPDATE order_thrall_seat SET character_id=NULL,seated_at=NULL,placed_by=NULL,upper_recorded=0,lower_recorded=0,upper_last_cycle_at=NULL,lower_last_cycle_at=NULL,stimulation_points=0,stimulation_last_at=NULL WHERE id=1');
    detail='Released the seated character; machine set offline';
   }else if(action==='set_status'){
    const allowed=['offline','standby','running','maintenance'];
    if(!allowed.includes(data.status))return await rollback(cn,'invalid_status');
    if(data.status==='running'&&!seat.character_id)return await rollback(cn,'chair_empty');
    if(data.status==='running'&&!['upper','lower'].some(channel=>machine[channel+'_status']==='ready'))return await rollback(cn,'prepare_at_least_one_assembly');
+   await cn.execute('UPDATE order_thrall_seat SET stimulation_last_at=NULL WHERE id=1');
    updates=['machine_status=?'];values=[data.status];detail='System status changed to '+data.status;
    // Only manually prepared assemblies start; the other assembly remains independent.
    if(data.status==='running'){
@@ -325,6 +331,7 @@ export async function thrallsRoute(pool,req,path){
    const nextStatus=status==='ready'&&machine.machine_status==='running'?'active':status;
    if(nextStatus==='active'&&machine[channel+'_status']!=='active')
     await cn.execute('UPDATE order_thrall_seat SET '+channel+'_last_cycle_at=UTC_TIMESTAMP(3) WHERE id=1');
+   await cn.execute('UPDATE order_thrall_seat SET stimulation_last_at=NULL WHERE id=1');
    updates=[channel+'_status=?'];values=[nextStatus];detail=channel+' assembly set to '+nextStatus;
   }else if(action==='run_cycle'){
    const channel=data.channel;
