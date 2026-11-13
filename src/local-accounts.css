@@ -96,3 +96,11 @@
 .eo-recruitment-status-limited{border-color:#b18b51;color:#e7c58f;background:#3a3025}
 .eo-recruitment-status-closed{border-color:#bd545c;color:#df8584;background:#29343e}
 .eo-recruitment-saved{color:#c0e4cb;font-size:12px}
+
+/* Account revocation: clearly separated from ranks and protected by confirmation. */
+.eo-member .eo-revoke-access{border:1px solid #a95e69;background:#42272e;color:#f3cdd0;white-space:nowrap;font-weight:700}
+.eo-member .eo-revoke-access:hover:not(:disabled){background:#67323a;border-color:#d88890}
+.eo-member .eo-revoke-access i{margin-right:7px}
+.eo-revoked-accounts{margin-top:20px}
+.eo-revoked-accounts>summary{cursor:pointer;font-size:15px;font-weight:800;color:#e5d6d8}
+.eo-revoked-accounts>.eo-member{margin-top:9px}
