@@ -2,15 +2,20 @@ import {settlementDemographics} from './world-demographics.js';
 
 const bounded=n=>Math.min(100,Math.max(0,Math.floor(Number(n)||0)));
 /** School places are supplied by completed, maintained civic school structures. */
-export function schoolCapacity(upgrades=[]){
+export function schoolCapacity(upgrades=[],applyStaff=true){
  return upgrades.reduce((sum,u)=>{
   if(u.category!=='school'||u.status!=='operational')return sum;
+  const physical=schoolPhysicalCapacity(u);
+  const staffed=applyStaff&&u.teacher_count!==undefined?Number(u.teacher_count)*20:physical;
+  return sum+Math.min(physical,Math.max(0,staffed));
+ },0);
+}
+function schoolPhysicalCapacity(u){
   if(u.template_id){
    const saved=typeof u.effect_snapshot==='string'?JSON.parse(u.effect_snapshot):u.effect_snapshot;
-   if(saved?.key==='school_places')return sum+Math.floor((Number(saved.per_level)||0)*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
+   if(saved?.key==='school_places')return Math.floor((Number(saved.per_level)||0)*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
   }
-  return sum+Math.floor(25*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
- },0);
+  return Math.floor(25*Math.max(1,Number(u.level)||1)*bounded(u.condition_pct)/100);
 }
 export function educationPreview(settlement,upgrades=[],state={}){
  const d=settlementDemographics(settlement);
