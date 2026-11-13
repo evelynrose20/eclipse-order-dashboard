@@ -141,7 +141,7 @@ test('four-day schema migration replaces only pregnancy-term constraint without 
  const sql=await readFile(new URL('../sql/132_voidsent_four_day_gestation.sql',import.meta.url),'utf8');
  assert.match(sql,/DROP CHECK chk_pregnancy_term/);
  assert.match(sql,/DROP CONSTRAINT chk_pregnancy_term/);
- assert.match(sql,/LOCATE\\('MariaDB', VERSION\\(\\)\\)/);
+ assert.ok(sql.includes("LOCATE('MariaDB', VERSION())"));
  assert.match(sql,/CHECK\(pregnancy_total_days BETWEEN 4 AND 600\)/);
  assert.doesNotMatch(sql,/\bUPDATE\s+character_reproductive_profiles\b|\bDELETE\s+FROM\b|\bDROP\s+TABLE\b/i);
 });
