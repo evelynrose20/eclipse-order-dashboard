@@ -16,3 +16,25 @@
 .family-care-priority i{margin-right:6px;color:#cca673}
 @media(max-width:850px){.family-needs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.family-needs-grid{grid-template-columns:1fr}}
+
+.family-age{margin:7px 0 0;color:#a1b0b9;font-size:11px}
+.family-subtabs{display:flex;flex-wrap:wrap;gap:5px;padding-bottom:10px;border-bottom:1px solid #405462}
+.family-subtabs button{font-size:11px;flex:1 1 auto;text-align:center}
+.family-subtabs button.selected{background:#293a45;color:#f1dabc;border-color:#cca673}
+.family-learning{display:grid;gap:12px;background:#16232d;border:1px solid #405462;padding:12px}
+.family-learning h4{margin:0;color:#e7e9e7;font-size:14px}
+.family-school{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#101f2a;border:1px solid #405462;padding:10px}
+.family-school>div{display:grid;gap:5px}
+.family-school small{color:#a1b0b9;font-size:11px}
+.family-skill-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.family-skill-list>div{display:grid;grid-template-columns:1fr auto;gap:6px;background:#101f2a;border:1px solid #405462;padding:10px;font-size:11px}
+.family-skill-list>div>strong{font-variant-numeric:tabular-nums;color:#debf8c}
+.family-skill-list .family-need-track{grid-column:1/-1}
+.family-skill-list .family-need-track span{display:block;background:#cca673;height:100%}
+.family-milestone-list{display:grid;gap:6px}
+.family-milestone-list>div{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#101f2a;padding:9px;border:1px solid #405462;font-size:12px}
+.family-milestone-list i{color:#cca673;margin-right:7px}
+.family-weekdays{display:flex;flex-wrap:wrap;gap:10px}
+.family-weekdays label{display:flex;align-items:center;gap:5px}
+.family-weekdays input{width:auto}
+@media(max-width:650px){.family-school{flex-direction:column;align-items:stretch}.family-subtabs button{flex:1 1 45%}}

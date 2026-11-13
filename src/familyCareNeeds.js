@@ -6,11 +6,23 @@ export const CARE_NEEDS=[
  {id:'hygiene',label:'Hygiene',icon:'fa-soap',actions:['hygiene'],recovery:90,decayHours:30},
  {id:'rest',label:'Rest',icon:'fa-moon',actions:['sleep'],recovery:90,decayHours:24}
 ];
+const SCHOOL_NEEDS=[
+ {id:'fun',label:'Fun',icon:'fa-shapes',actions:['play','creative','athletics'],recovery:90,decayHours:36},
+ {id:'social',label:'Social',icon:'fa-user-group',actions:['friends','comfort','play'],recovery:90,decayHours:36},
+ {id:'learning',label:'Education',icon:'fa-book-open',actions:['school','homework','reading','mathematics','tutoring'],recovery:90,decayHours:48}
+];
+const TEEN_NEED={id:'independence',label:'Independence',icon:'fa-compass',actions:['independence','creative'],recovery:90,decayHours:48};
 export const CARE_ACTIVITY_NEED=Object.fromEntries(CARE_NEEDS.flatMap(n=>n.actions.map(a=>[a,n.id])));
 export function careNeeds(dependent,events=[],now=new Date()){
  const nowMs=new Date(now).getTime();
  const createdMs=new Date(dependent?.created_at||now).getTime();
- return CARE_NEEDS.map(need=>{
+ const stage=dependent?.stage;
+ const base=CARE_NEEDS.map(need=>need.id==='comfort'&&['child','teen'].includes(stage)
+  ? {...need,label:'Well-being',actions:['comfort','friends']} : need);
+ const configured=stage==='child'?[...base,...SCHOOL_NEEDS]:stage==='teen'?[...base,...SCHOOL_NEEDS,TEEN_NEED]
+  :stage==='toddler'?[...base,{id:'fun',label:'Play',icon:'fa-shapes',actions:['play'],recovery:90,decayHours:36}]
+  :base;
+ return configured.map(need=>{
   const last=events.find(e=>need.actions.includes(e.action));
   const timestamp=new Date(last?.created_at||createdMs).getTime();
   const elapsed=Math.max(0,(nowMs-(Number.isFinite(timestamp)?timestamp:nowMs))/3600000);
