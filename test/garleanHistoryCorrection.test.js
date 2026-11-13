@@ -18,7 +18,7 @@ test('public chronicle retires obsolete founding claims and keeps stable era key
  assert.match(chapters,/Imperial Foundations/);
  assert.match(chapters,/The Imperial Ambition/);
  assert.match(chapters,/Domina|Rosa/);
- assert.doesNotMatch(chapters,/Elira|Thirteenth|Yanxia/i);
+ assert.doesNotMatch(chapters.replaceAll('origins-thirteenth','').replaceAll('yanxia-order',''),/Elira|Thirteenth|Yanxia/i);
  assert.match(chapters,/const CHAPTERS=\['garlemald'/);
  assert.match(archive,/\['garlemald','Origins & Garlean Ties'\]/);
 });
