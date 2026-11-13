@@ -27,8 +27,8 @@ test('pregnancy page supports unbound conception events and settings without a c
 test('three IC months is the new default without changing older records',()=>{
  assert.match(client,/total_days:90/);
  assert.match(api,/pregnancy_total_days:90/);
- assert.match(api,/pregnancy_total_days=\\?/);
- assert.match(api,/pregnancyTermDays\\(lineageId\\)/);
+ assert.ok(api.includes('pregnancy_total_days=?'));
+ assert.ok(api.includes('pregnancyTermDays(lineageId)'));
  assert.equal(pregnancyTermDays(null),90);
  assert.equal(pregnancyTermDays(1),4);
  const sql=readFileSync(new URL('../sql/115_pregnancy_ninety_day_default.sql',import.meta.url),'utf8');
