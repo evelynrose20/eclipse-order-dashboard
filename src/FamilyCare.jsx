@@ -16,7 +16,7 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
   const [list,opts]=await Promise.all([request('/family'),request('/family/settings')]);
   setItems(list.dependents||[]);setSettings(opts);
  };
- useEffect(()=>{let mounted=true;Promise.all([request('/family'),request('/family/settings')]).then(([a,b])=>{if(mounted){setItems(a.dependents||[]);setSettings(b)}}).catch(e=>{if(mounted)setError(e.message)});return()=>{mounted=false}},[request]);
+ useEffect(()=>{let mounted=true;Promise.all([request('/family'),request('/family/settings')]).then(([a,b])=>{if(mounted){setItems(a.dependents||[]);setSettings(b)}}).catch(e=>{if(mounted)setError(e.message)});return()=>{mounted=false}},[]);
  const visible=(items||[]).filter(c=>lineageCaseId===null||Number(c.lineage_case_id)===Number(lineageCaseId));
  const child=visible.find(c=>c.id===selected)||visible[0]||null;
  async function loadDetail(id){
