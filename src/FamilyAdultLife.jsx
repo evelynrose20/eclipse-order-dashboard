@@ -3,14 +3,14 @@ import React,{useEffect,useState} from 'react';
 const sentence=x=>String(x||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,readOnly=false,refreshKey=0}){
  const [adults,setAdults]=useState([]),[registry,setRegistry]=useState([]),[facilities,setFacilities]=useState([]);
- const [selected,setSelected]=useState(null),[draft,setDraft]=useState(null),[error,setError]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[admin,setAdmin]=useState(false);
+ const [settlements,setSettlements]=useState([]),[selected,setSelected]=useState(null),[draft,setDraft]=useState(null),[error,setError]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[admin,setAdmin]=useState(false);
  useEffect(()=>{let alive=true;request('/family/adults').then(r=>{if(alive)setAdults(r.adults||[])}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[request,refreshKey]);
  const refresh=async()=>{const r=await request('/family/adults');setAdults(r.adults||[]);if(admin&&staff){const a=await request('/family/adults/registry');setRegistry(a.adults||[])}};
  const shown=(admin?registry:adults).filter(a=>lineageCaseId===null||Number(a.lineage_case_id)===Number(lineageCaseId));
  async function openRegistry(){
   try{
-   const [r,w]=await Promise.all([request('/family/adults/registry'),request('/family/workplaces')]);
-   setRegistry(r.adults||[]);setFacilities(w.workplaces||[]);setAdmin(true);setError('');
+   const [r,w,places]=await Promise.all([request('/family/adults/registry'),request('/family/workplaces'),request('/family/settlements')]);
+   setRegistry(r.adults||[]);setFacilities(w.workplaces||[]);setSettlements(places.settlements||[]);setAdmin(true);setError('');
   }catch(e){setError(e.message||'Unable to load civilian registry')}
  }
  function edit(adult){
@@ -48,6 +48,7 @@ export default function FamilyAdultLife({request,lineageCaseId=null,staff=false,
    {selected&&draft&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setSelected(null)}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label="Update civilian status">
     <header><h3>{selected.name} · Civilian update</h3><button type="button" onClick={()=>setSelected(null)} disabled={busy} aria-label="Close"><i className="fa-solid fa-xmark"/></button></header>
     <form className="lineage-form" onSubmit={save}>
+     <label className="full">Residence settlement<select value={draft.settlement_id} onChange={e=>setDraft({...draft,settlement_id:e.target.value,workplace_facility_id:'',employment_state:draft.employment_state==='employed'?'seeking':draft.employment_state})}>{settlements.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
      <label>Employment<select value={draft.employment_state} onChange={e=>setDraft({...draft,employment_state:e.target.value,workplace_facility_id:e.target.value==='employed'?draft.workplace_facility_id:''})}>
       {['seeking','employed','between_jobs','retired'].map(x=><option key={x} value={x}>{sentence(x)}</option>)}</select></label>
      <label>Well-being<select value={draft.wellbeing} onChange={e=>setDraft({...draft,wellbeing:e.target.value})}>{['settled','adjusting','needs_support'].map(x=><option key={x} value={x}>{sentence(x)}</option>)}</select></label>
