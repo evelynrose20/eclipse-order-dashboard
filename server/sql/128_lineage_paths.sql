@@ -37,4 +37,14 @@ SET @l128=(SELECT IF(COUNT(*)=0,
  'ALTER TABLE order_lineage_cases ADD COLUMN parenthood_note VARCHAR(1200) NOT NULL DEFAULT ''''',
  'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='order_lineage_cases' AND COLUMN_NAME='parenthood_note');
 PREPARE s128 FROM @l128; EXECUTE s128; DEALLOCATE PREPARE s128;
+-- A lineage trial uses the SAME consent-qualified D100 and pregnancy record as ordinary conception,
+-- but retains its source case so normal and voidsent outcomes cannot be confused.
+SET @l128=(SELECT IF(COUNT(*)=0,
+ 'ALTER TABLE character_reproductive_profiles ADD COLUMN lineage_case_id BIGINT UNSIGNED NULL',
+ 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='character_reproductive_profiles' AND COLUMN_NAME='lineage_case_id');
+PREPARE s128 FROM @l128; EXECUTE s128; DEALLOCATE PREPARE s128;
+SET @l128=(SELECT IF(COUNT(*)=0,
+ 'ALTER TABLE character_conception_rolls ADD COLUMN lineage_case_id BIGINT UNSIGNED NULL',
+ 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='character_conception_rolls' AND COLUMN_NAME='lineage_case_id');
+PREPARE s128 FROM @l128; EXECUTE s128; DEALLOCATE PREPARE s128;
 INSERT INTO schema_migrations(version) VALUES('128_lineage_paths') ON DUPLICATE KEY UPDATE version=VALUES(version);
