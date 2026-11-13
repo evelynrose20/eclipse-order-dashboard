@@ -5,12 +5,12 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=read('App.jsx'),publicSite=read('src/PublicSite.jsx'),venue=read('src/VenueSite.jsx'),menu=read('src/VenueMenu.jsx'),status=read('src/VenueStatus.jsx'),styles=read('src/venue-site.css'),routes=read('scripts/generate-static-routes.mjs');
 
-test('venue is a public page that leaves Discord login and dashboard routing intact',()=>{
- assert.match(app,/path==='\/venue'/);
- assert.match(app,/return <VenueSite\/>/);
+test('retired venue pages are not public routes or homepage promotions',()=>{
+ assert.doesNotMatch(app,/path==='\/venue'/);
+ assert.doesNotMatch(app,/return <VenueSite\/>/);
  assert.match(app,/if\(memberRoute\)return <LocalAccounts\/>/);
- assert.match(publicSite,/href="\/venue"/);
- assert.match(publicSite,/<VenueStatus compact\/>/);
+ assert.doesNotMatch(publicSite,/href="\/venue"/);
+ assert.doesNotMatch(publicSite,/<VenueStatus compact\/>/);
 });
 
 test('weekly venue nights advertise the correct schedule and separate ERP rules',()=>{
@@ -43,10 +43,10 @@ test('the venue includes the Carrd menu, seasonal travel lore, and accessible na
  assert.match(styles,/@media\(max-width:590px\)/);
 });
 
-test('full menu has its own direct Pages route, separate from venue landing page',()=>{
- assert.match(app,/path==='\/venue\/menu'/);
- assert.match(app,/return <VenueMenu\/>/);
- assert.match(routes,/route: '\/venue\/menu'/);
+test('retired venue menu is retained as inactive legacy code without a public entrypoint',()=>{
+ assert.doesNotMatch(app,/path==='\/venue\/menu'/);
+ assert.doesNotMatch(app,/return <VenueMenu\/>/);
+ assert.doesNotMatch(routes,/route: '\/venue\/menu'/);
  assert.match(venue,/href="\/venue\/menu\/"/);
  assert.doesNotMatch(venue,/SIGNATURES\.map|FOOD_MENU\.map|DESSERT_MENU\.map/);
  assert.match(menu,/SIGNATURES\.map/);
