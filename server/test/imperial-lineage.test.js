@@ -70,3 +70,49 @@ test('staff cannot link a character without its distinct research authorization'
  assert.equal(result.body.error,'character_research_not_authorized');
  assert.ok(!writes.some(w=>w.sql.startsWith('INSERT INTO order_lineage_cases')));
 });
+
+test('member lineage endpoint only queries owned, consented character records',async()=>{
+ const {pool}=poolFor('member');
+ let sqlText='';
+ pool.execute=async(sql,args=[])=>{
+  if(sql.startsWith('SELECT a.id'))return [[{id:uuid,account_role:'member'}]];
+  if(sql.includes('FROM order_lineage_cases lc')&&sql.includes('JOIN characters c ON')){
+   sqlText=sql;
+   assert.deepEqual(args,[uuid]);
+   return [[{id:10,project_id:2,character_id:charId,character_name:'Thrall 001',
+    designation:'Trial One',result:'ongoing',lineage_type:'voidsent',subject_role:'carrier',
+    expression_stage:'subtle',lineage_markers:'CLASSIFIED SECRET',traits:['skin_tint','void_aether_trace'],
+    offspring_traits:['black_scales'],offspring_stage:'anticipated',participant_note:'Minor pigment shift',
+    parenthood_note:'Lineage under observation',void_revealed:0,pregnancy_linked:0,pregnancy_status:null}]];
+  }
+  throw new Error('Unexpected SQL '+sql);
+ };
+ const response=await lineageRoute(pool,req('GET'),'/thralls/lineage/my');
+ assert.equal(response.status,200);
+ assert.match(sqlText,/c.player_account_id=\?/);
+ assert.match(sqlText,/perm.allow_research=1/);
+ assert.equal(response.body.cases.length,1);
+ assert.equal(response.body.cases[0].lineage_type,'undisclosed');
+ assert.equal(response.body.cases[0].lineage_markers,'');
+ assert.deepEqual(response.body.cases[0].traits,['skin_tint']);
+ assert.deepEqual(response.body.cases[0].offspring_traits,[]);
+ assert.equal(response.body.cases[0].may_conceive,true);
+ assert.equal(response.body.cases[0].method,undefined);
+ assert.equal(response.body.cases[0].observations,undefined);
+});
+test('source characters cannot receive descendant physical markers',async()=>{
+ const {pool,writes}=poolFor('high_command');
+ const response=await lineageRoute(pool,req('POST',{
+  project_id:1,character_id:null,designation:'Void source study',
+  method:'',observations:'',lineage_markers:'',result:'ongoing',pregnancy_linked:false,
+  lineage_type:'voidsent',subject_role:'source',traits:['black_scales']
+ }),'/thralls/lineage/cases');
+ assert.equal(response.status,400);
+ assert.equal(writes.length,0);
+});
+test('lineage research migration leaves established pregnancies in place',()=>{
+ const sql=readFileSync(new URL('../sql/128_lineage_paths.sql',import.meta.url),'utf8');
+ assert.match(sql,/ADD COLUMN lineage_case_id BIGINT UNSIGNED NULL/);
+ assert.match(sql,/ALTER TABLE order_lineage_cases ADD COLUMN traits JSON NULL/);
+ assert.doesNotMatch(sql,/DELETE FROM|DROP TABLE/i);
+});
