@@ -45,7 +45,7 @@ export default function LineageViews({cases=[],tab='cases',onTab=()=>{},onManage
     const percent=Math.min(100,Math.round(100*days/Math.max(1,total)));
     return <article className="lineage-record" key={entry.id}><CaseHead entry={entry}/>
       <div className="lineage-info-grid"><div><small>Lineage gestation</small><strong>{active?'Active pregnancy':'No active pregnancy'}</strong></div>
-      <div><small>Tracking</small><strong>{active&&entry.pregnancy_anchor?days+' / '+total+' IC days':'Existing character record'}</strong></div></div>
+      <div><small>{total===4?'Accelerated term':'Tracking'}</small><strong>{active&&entry.pregnancy_anchor?days+' / '+total+' IC days':'Existing character record'}</strong></div></div>
       {active&&entry.pregnancy_anchor&&<div className="lineage-progress" aria-label={'Gestation '+percent+' percent'}><span style={{width:percent+'%'}}/></div>}
       <p>{entry.conception_origin==='lineage'?'Lineage trial conception — recorded against this case.':entry.conception_origin==='linked_existing'?'An existing pregnancy was associated with this case.':'This research view uses the ordinary consent-controlled conception rules, while tracking the lineage outcome separately.'}</p>
       <p>{entry.participant_note||'No lineage-specific gestation observations recorded.'}</p>
