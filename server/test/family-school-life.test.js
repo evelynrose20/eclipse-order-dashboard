@@ -17,6 +17,9 @@ function mock(actor=id,options={}){
   if(sql.includes('FROM account_order_ranks'))return [[{member:1}]];
   if(sql.startsWith('SELECT milestone_id'))return [[{milestone_id:'school_started'}]];
   if(sql.startsWith('SELECT milk_stock'))return [[{milk_stock:2,food_stock:2}]];
+  if(sql.startsWith('SELECT id,guardian_account_id,stage'))return [[dependent]];
+  if(sql.includes('FROM world_settlement_upgrades u'))return [[{id:3,name:'Cassia Academy',category:'school',status:'operational',condition_pct:100,level:2,teacher_count:2,enrolled:0}]];
+  if(sql.includes('SELECT COUNT(*) AS n'))return [[{n:0}]];
   return [[]];
  };
  return {calls,pool:{execute,getConnection:async()=>({execute,beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{}})}};
@@ -42,15 +45,15 @@ test('school activities develop skills, only relevant needs show for teen',()=>{
 });
 test('school schedule requires guardian and only school/teen stage',async()=>{
  const visitor=mock(helper);
- const forbidden=await familyRoute(visitor.pool,request('PUT',{school_name:'School',school_days:'1,2,3'}),'/family/10/school');
+ const forbidden=await familyRoute(visitor.pool,request('PUT',{school_upgrade_id:3,school_days:'1,2,3'}),'/family/10/school');
  assert.equal(forbidden.status,403);
  const infant=mock(id,{stage:'infant'});
- const wrongAge=await familyRoute(infant.pool,request('PUT',{school_name:'School',school_days:'1,2,3'}),'/family/10/school');
+ const wrongAge=await familyRoute(infant.pool,request('PUT',{school_upgrade_id:3,school_days:'1,2,3'}),'/family/10/school');
  assert.equal(wrongAge.status,409);
  const guardian=mock();
- const valid=await familyRoute(guardian.pool,request('PUT',{school_name:'Cassia School',school_days:'1,3,5'}),'/family/10/school');
+ const valid=await familyRoute(guardian.pool,request('PUT',{school_upgrade_id:3,school_days:'1,3,5'}),'/family/10/school');
  assert.equal(valid.status,200);
- const dup=await familyRoute(guardian.pool,request('PUT',{school_name:'Cassia School',school_days:'1,1'}),'/family/10/school');
+ const dup=await familyRoute(guardian.pool,request('PUT',{school_upgrade_id:3,school_days:'1,1'}),'/family/10/school');
  assert.equal(dup.status,400);
 });
 test('school attendance requires enrollment and appropriate age',async()=>{

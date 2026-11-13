@@ -82,7 +82,7 @@ async function ensureNpcRows(pool){
 }
 async function applyNpcCycle(db,site,state,now,key,weather,weatherCondition='clear'){
  const pop=Number(site.population),beforeStability=Number(site.civil_stability);
- const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]);
+ const [upgrades]=await db.execute('SELECT u.*,COALESCE(t.teachers,0) AS teacher_count FROM world_settlement_upgrades u LEFT JOIN world_school_staffing t ON t.upgrade_id=u.id WHERE u.settlement_id=?',[site.id]);
  const priorHealth=await workerHealthSnapshot(db,site.id);
  const healthy=Math.max(0,Number(site.workforce||0)-priorHealth.sick_workers-priorHealth.injured_workers);
  const outcome=npcSupplyCycle({...site,...state,upgrades,healthy_workforce:healthy,temperature_f:weather});
@@ -198,7 +198,7 @@ async function applyOrderCycle(db,site,state,now,key,temperature,weatherConditio
  if(previous)return null;
  const [stock]=await db.execute('SELECT * FROM world_civic_stock WHERE settlement_id=? ORDER BY item_code FOR UPDATE',[site.id]);
  const [heater]=await db.execute('SELECT * FROM world_civic_heating_assets WHERE settlement_id=?',[site.id]);
- const [upgrades]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=?',[site.id]);
+ const [upgrades]=await db.execute('SELECT u.*,COALESCE(t.teachers,0) AS teacher_count FROM world_settlement_upgrades u LEFT JOIN world_school_staffing t ON t.upgrade_id=u.id WHERE u.settlement_id=?',[site.id]);
  const [history]=await db.execute('SELECT resource_kind,food_group,quantity_delta FROM world_civic_movements WHERE settlement_id=? AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)',[site.id]);
  const [[count]]=await db.execute('SELECT COUNT(*) AS n FROM world_civic_cycles WHERE settlement_id=?',[site.id]);
  const preview=civicSimulationPreview(site,profile,stock,history,temperature,Number(count.n),heater,upgrades);
@@ -311,7 +311,7 @@ export async function settlementSimulationRoute(pool,req,path,actor){
    LEFT JOIN world_industry_sites site ON site.id=r.site_id LEFT JOIN world_settlements marker ON marker.id=r.map_settlement_id`);
   const [healthStates]=await pool.execute('SELECT settlement_id,sick_workers,injured_workers FROM world_settlement_worker_health');
   const [educationStates]=await pool.execute('SELECT settlement_id,attainment FROM world_settlement_education');
-  const [infrastructure]=await pool.execute('SELECT * FROM world_settlement_upgrades');
+  const [infrastructure]=await pool.execute('SELECT u.*,COALESCE(t.teachers,0) AS teacher_count FROM world_settlement_upgrades u LEFT JOIN world_school_staffing t ON t.upgrade_id=u.id');
   const [templateProjects]=await pool.execute("SELECT p.id,p.settlement_id,p.upgrade_id,p.template_id,p.target_level,p.status,p.progress,p.labor_required,u.name FROM world_civic_building_projects p JOIN world_settlement_upgrades u ON u.id=p.upgrade_id WHERE p.owner_kind='npc' ORDER BY p.id DESC");
   const [projects]=await pool.execute("SELECT id,settlement_id,kind,name,status,progress,DATE_FORMAT(started_on,'%Y-%m-%d') AS started_on,DATE_FORMAT(finished_on,'%Y-%m-%d') AS finished_on FROM world_npc_construction ORDER BY id DESC");
   const [history]=await pool.execute("SELECT id,settlement_id,cycle_key,DATE_FORMAT(cycle_date,'%Y-%m-%d') AS cycle_date,origin,population_before,population_after,workforce_after,condition_before,condition_after,food_units,water_units,fuel_units,medicine_units,development_points,event_type,headline FROM world_settlement_sim_history ORDER BY id DESC LIMIT 300");

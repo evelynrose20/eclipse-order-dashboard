@@ -2,6 +2,7 @@ import MaterialPicker from './MaterialPicker.jsx';
 import React,{useEffect,useState} from 'react';
 import './world-industry.css';
 import CivicTemplateManager from './CivicTemplateManager.jsx';
+import SchoolStaffingPanel from './SchoolStaffingPanel.jsx';
 const kinds=[
  ['housing','Housing','Adds residential capacity'],
  ['defense','Defenses','Walls, watchtowers and fortifications'],
@@ -87,6 +88,7 @@ export default function SettlementUpgradesPanel({settlement,request,onChanged,ma
    <header><span>{kinds.find(x=>x[0]===u.category)?.[1]||title(u.category)}</span><span className={'wa-upgrade-status is-'+u.status}>{title(u.status)}</span></header>
    <strong>{u.name}</strong><p>{u.notes||'No notes.'}</p>
    <div className="wa-upgrade-details"><span>Level {u.level}</span>{u.template_id&&<span>Effective: +{Math.floor(Number(snapshot(u.effect_snapshot).per_level||0)*Number(u.level)*(u.status==='operational'?Number(u.condition_pct)/100:u.status==='damaged'?Number(u.condition_pct)/200:0))} {effectText(snapshot(u.effect_snapshot).key)}</span>}{data.projects?.some(p=>Number(p.upgrade_id)===Number(u.id)&&p.status==='active')&&<span>Upgrade in progress</span>}<span>Condition {u.condition_pct}%</span>{u.housing_bonus>0&&<span>+{fmt(u.housing_bonus)} places</span>}{u.service_bonus>0&&<span>+{u.service_bonus} services</span>}{u.defense_bonus>0&&<span>+{u.defense_bonus} defense</span>}{u.status==='building'&&<span>{Number(u.construction_progress||0)}% constructed</span>}</div>
+   {u.category==='school'&&<SchoolStaffingPanel school={u} request={request}/>}
    <footer><button type="button" onClick={()=>editRecord(u)}>Manage</button><button type="button" disabled={busy} onClick={()=>{if(window.confirm('Delete '+u.name+'? Existing residents must remain housed.'))save('DELETE','/'+u.id,null,'Structure removed.')}}>Remove</button></footer>
   </article>;
  return <div className="wa-upgrades">

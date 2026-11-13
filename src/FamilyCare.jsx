@@ -18,7 +18,7 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
  const [items,setItems]=useState(null),[selected,setSelected]=useState(null),[details,setDetails]=useState(null);
  const [settings,setSettings]=useState(null),[household,setHousehold]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[dialog,setDialog]=useState('');
  const [draft,setDraft]=useState({name:'',stage:'newborn',birth_date:'',notes:''}),[supply,setSupply]=useState({action:'restock_milk',quantity:1,detail:''});
- const [school,setSchool]=useState({school_name:'',school_days:'1,2,3,4,5'}),[milestones,setMilestones]=useState([]);
+ const [school,setSchool]=useState({school_upgrade_id:'',school_days:'1,2,3,4,5'}),[schoolChoices,setSchoolChoices]=useState([]),[milestones,setMilestones]=useState([]);
  const [careTab,setCareTab]=useState('needs');
  const [adultRefresh,setAdultRefresh]=useState(0),[settlements,setSettlements]=useState([]),[newHome,setNewHome]=useState('');
 
@@ -35,7 +35,7 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
   const [d,history,marks]=await Promise.all([request('/family/'+id),request('/family/'+id+'/events'),request('/family/'+id+'/milestones')]);
   setDetails({...d,...history});
   setMilestones(marks.milestones||[]);
-  setSchool({school_name:d.dependent?.school_name||'',school_days:d.dependent?.school_days||'1,2,3,4,5'});
+  setSchool({school_upgrade_id:String(d.dependent?.school_upgrade_id||''),school_days:d.dependent?.school_days||'1,2,3,4,5'});
  }
  useEffect(()=>{if(child)loadDetail(child.id).catch(e=>setError(e.message));else setDetails(null)},[child?.id]);
  async function perform(work,text){
@@ -64,7 +64,8 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
   setAdultRefresh(v=>v+1);
  }
  async function updateStage(stage){await perform(()=>request('/family/'+child.id,{method:'PUT',body:{stage,notes:child.notes||''}}),'Care stage updated.')}
- async function saveSchool(e){e.preventDefault();await perform(()=>request('/family/'+child.id+'/school',{method:'PUT',body:school}),'School arrangements saved.')}
+ async function saveSchool(e){e.preventDefault();await perform(()=>request('/family/'+child.id+'/school',{method:'PUT',body:{school_upgrade_id:school.school_upgrade_id?Number(school.school_upgrade_id):null,school_days:school.school_days}}),'School arrangements saved.')}
+ async function openSchool(){setError('');try{const r=await request('/family/schools');setSchoolChoices(r.schools||[]);setDialog('school')}catch(e){setError(e.message||'Unable to load local schools')}}
  async function markMilestone(milestone,complete){await perform(()=>request('/family/'+child.id+'/milestones',{method:'POST',body:{milestone_id:milestone,complete}}),'Milestone updated.')}
  const schoolStage=child&&['child','teen'].includes(child.stage);
  const age=child?apparentAge(child.birth_date):null;
@@ -105,9 +106,9 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
        <h4>Development & daily routine</h4>
        {schoolStage&&<div className="family-school"><div><strong>{child.school_name||'School not assigned'}</strong><small>Class days: {(child.school_days||'1,2,3,4,5').split(',').map(n=>['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][Number(n)]).join(', ')}</small>
        {child.school_name&&<small className="family-schedule-status">{(child.school_days||'1,2,3,4,5').split(',').includes(String(new Date().getDay()||7))?'School scheduled today':'No school scheduled today'}</small>}</div>
-       {child.is_guardian&&!readOnly&&<button type="button" onClick={()=>setDialog('school')}><i className="fa-solid fa-pen"/> Set school schedule</button>}</div>}
+       {child.is_guardian&&!readOnly&&<button type="button" onClick={openSchool}><i className="fa-solid fa-pen"/> Set school schedule</button>}</div>}
        <div className="family-skill-list">{Object.entries(SKILL_LABELS).map(([id,label])=><div key={id}><span>{label}</span><strong>{skillLevels[id]||0}/100</strong><div className="family-need-track"><span style={{width:(skillLevels[id]||0)+'%'}}/></div></div>)}</div>
-       {!readOnly&&<div className="family-buttons">{Object.entries(SCHOOL_ACTIVITIES).filter(([,activity])=>activity.stages.includes(child.stage)).map(([id,activity])=><button key={id} type="button" disabled={busy||(['school','homework'].includes(id)&&!child.school_name)} onClick={()=>logCare(id)}>{activity.label}</button>)}</div>}
+       {!readOnly&&<div className="family-buttons">{Object.entries(SCHOOL_ACTIVITIES).filter(([,activity])=>activity.stages.includes(child.stage)).map(([id,activity])=><button key={id} type="button" disabled={busy||(['school','homework'].includes(id)&&!child.school_upgrade_id)} onClick={()=>logCare(id)}>{activity.label}</button>)}</div>}
        {!['child','teen'].includes(child.stage)&&<p className="family-hint">Early learning and play activities are available here. School schedules unlock at school age.</p>}
       </section>}
       {careTab==='milestones'&&<section className="family-learning">
@@ -133,7 +134,8 @@ export default function FamilyCare({request,lineageCaseId=null,compact=false,rea
     <label className="full">Starting settlement<select required value={newHome} onChange={e=>setNewHome(e.target.value)}><option value="">Choose a settlement</option>{settlements.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
     <footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy||!newHome}>Confirm adulthood</button></footer>
    </form>}
-   {dialog==='school'&&<form className="lineage-form" onSubmit={saveSchool}><label className="full">School or academy<input maxLength={120} value={school.school_name} onChange={e=>setSchool({...school,school_name:e.target.value})} placeholder="Local school, tutors, academy…"/></label><label className="full">Class days<div className="family-weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,i)=>{const code=String(i+1);const selected=school.school_days.split(',').includes(code);return <label key={code}><input type="checkbox" checked={selected} onChange={e=>{const next=new Set(school.school_days.split(',').filter(Boolean));if(e.target.checked)next.add(code);else next.delete(code);setSchool({...school,school_days:[...next].sort().join(',')})}}/>{day}</label>})}</div></label><p className="family-hint full">School attendance is recorded through the daily activity panel; the schedule does not invent automatic attendance.</p><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy||!school.school_days}>Save schedule</button></footer></form>}
+   {dialog==='school'&&<form className="lineage-form" onSubmit={saveSchool}><label className="full">Existing school building<select value={school.school_upgrade_id} onChange={e=>setSchool({...school,school_upgrade_id:e.target.value})}><option value="">Not enrolled</option>{schoolChoices.filter(x=>x.available_seats>0||String(x.id)===school.school_upgrade_id).map(x=><option key={x.id} value={x.id}>{x.name} · {x.settlement_name} · {x.available_seats} places available · {x.teacher_count} teachers</option>)}</select></label>
+     <p className="family-hint full">A school must be operational and staffed, with an available place. Buildings and staffing are managed from the settlement's Education structures.</p><label className="full">Class days<div className="family-weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,i)=>{const code=String(i+1);const selected=school.school_days.split(',').includes(code);return <label key={code}><input type="checkbox" checked={selected} onChange={e=>{const next=new Set(school.school_days.split(',').filter(Boolean));if(e.target.checked)next.add(code);else next.delete(code);setSchool({...school,school_days:[...next].sort().join(',')})}}/>{day}</label>})}</div></label><p className="family-hint full">School attendance is recorded through the daily activity panel; the schedule does not invent automatic attendance.</p><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy||!school.school_days}>Save schedule</button></footer></form>}
    {dialog==='supplies'&&<form className="lineage-form" onSubmit={restock}><label>Supply type<select value={supply.action} onChange={e=>setSupply({...supply,action:e.target.value})}><option value="restock_milk">Milk / formula</option><option value="restock_food">Food / meals</option></select></label><label>Servings acquired<input type="number" min="1" max="100" required value={supply.quantity} onChange={e=>setSupply({...supply,quantity:e.target.value})}/></label><label className="full">Where supplies came from<input maxLength={250} required value={supply.detail} onChange={e=>setSupply({...supply,detail:e.target.value})} placeholder="Household stores, personal purchase, delivered supplies…"/></label><p className="lineage-hint full">Record actual supplies acquired for this care record. This log does not automatically transfer goods from world warehouses.</p><footer><button type="button" onClick={()=>setDialog('')}>Cancel</button><button type="submit" disabled={busy}>Record supplies</button></footer></form>}
    {dialog==='caregivers'&&<div className="family-assignment">{household.length?household.map(m=><div key={m.id}><span>{m.display_name}</span><button type="button" disabled={busy} onClick={()=>toggleAssignment(m)}>{(details?.caregivers||[]).some(a=>a.account_id===m.id)?'Remove access':'Allow care'}</button></div>):<p>No eligible Household members found.</p>}<p>Assigned Household members may record feeding and care. They can enable nursing only for their own account.</p></div>}
   </section></div>}

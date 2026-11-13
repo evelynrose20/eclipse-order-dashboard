@@ -158,3 +158,32 @@ jobs:
           ECLIPSE_CI_FAMILY_ADULTS_DB: '1'
           ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
         run: node --test server/test/family-adults-mariadb.integration.test.js
+
+  mariadb-civic-school-staffing:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test-only-password
+          MARIADB_DATABASE: eclipse_order
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -ptest-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --prefix server --no-audit --no-fund
+      - name: Verify civic school migration 135 on MariaDB
+        env:
+          ECLIPSE_CI_SCHOOL_BUILDINGS_DB: '1'
+          ECLIPSE_CI_MYSQL_PASSWORD: test-only-password
+        run: node --test server/test/family-school-buildings-mariadb.integration.test.js
