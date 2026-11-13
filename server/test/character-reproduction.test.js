@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cycleStatus,conceptionChance,pregnancyProgress,reproductionRoute} from '../src/character-reproduction.js';
+import {cycleStatus,conceptionChance,pregnancyProgress,pregnancyTermDays,reproductionRoute} from '../src/character-reproduction.js';
 const start={cycle_opt_in:true,conception_opt_in:true,cycle_anchor:'2026-11-01',cycle_days:30,base_chance:20};
 const asDate=day=>new Date('2026-11-'+String(day).padStart(2,'0')+'T12:00:00Z');
 test('all eight bound ranks are distinct and increase peak intensity and fictional odds',()=>{
@@ -124,4 +124,14 @@ test('ordinary conception cannot replay a key recorded for a lineage trial',asyn
   ic_event_date:'2026-11-10'}),'/characters/'+character+'/reproduction/roll');
  assert.equal(result.status,409);
  assert.equal(result.body.error,'conception_event_type_conflict');
+});
+
+test('voidsent-origin pregnancies have 4 IC day term and ordinary conception remains 90 days',()=>{
+ assert.equal(pregnancyTermDays(12),4);
+ assert.equal(pregnancyTermDays(null),90);
+ assert.equal(pregnancyTermDays(undefined),90);
+ const p={pregnancy_status:'active',pregnancy_anchor:'2026-11-01',pregnancy_start_day:0,pregnancy_total_days:pregnancyTermDays(12)};
+ assert.equal(pregnancyProgress(p,asDate(4)).due,false);
+ assert.equal(pregnancyProgress(p,asDate(5)).due,true);
+ assert.equal(pregnancyProgress({...p,pregnancy_total_days:pregnancyTermDays(null)},asDate(5)).due,false);
 });
