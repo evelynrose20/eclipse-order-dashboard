@@ -76,9 +76,9 @@ export async function lineageRoute(pool,req,path){
    designation:row.designation,result:row.result,lineage_markers:yes(row.void_revealed)?row.lineage_markers:'',
    lineage_type:yes(row.void_revealed)?row.lineage_type:'undisclosed',
    subject_role:row.subject_role,expression_stage:row.expression_stage,
-   traits:yes(row.void_revealed)?(json(row.traits)||[]):(json(row.traits)||[]).filter(id=>['skin_tint','hair_shift','eye_glimmer'].includes(id)),offspring_stage:row.offspring_stage,
+   traits:yes(row.void_revealed)?(json(row.traits)||[]):(json(row.traits)||[]).filter(id=>['skin_tint','hair_shift','eye_glimmer'].includes(id)),offspring_stage:yes(row.void_revealed)?row.offspring_stage:'not_recorded',
    offspring_traits:yes(row.void_revealed)?(json(row.offspring_traits)||[]):[],
-   participant_note:row.participant_note,parenthood_note:row.parenthood_note,
+   participant_note:row.participant_note,parenthood_note:yes(row.void_revealed)?row.parenthood_note:'',
    pregnancy_linked:yes(row.pregnancy_linked),conception_origin:row.conception_origin,pregnancy_status:row.pregnancy_status,
    pregnancy_anchor:row.pregnancy_anchor,pregnancy_start_day:row.pregnancy_start_day,
    pregnancy_total_days:row.pregnancy_total_days
