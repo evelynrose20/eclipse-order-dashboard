@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import GestationDevelopment from './GestationDevelopment.jsx';
+import FamilyCare from './FamilyCare.jsx';
 import './character-reproduction.css';
 
 const today=()=>new Date().toISOString().slice(0,10);
@@ -82,7 +83,9 @@ export default function CharacterReproduction({character,request,readOnly=false,
     <nav className="repro-subnav" aria-label="Pregnancy sections">
      <button type="button" className={subview==='overview'?'selected':''} onClick={()=>setSubview('overview')} aria-pressed={subview==='overview'}><i className="fa-solid fa-clipboard-list" aria-hidden="true"/> Pregnancy record</button>
      <button type="button" className={subview==='events'?'selected':''} onClick={()=>setSubview('events')} aria-pressed={subview==='events'}><i className="fa-solid fa-dice" aria-hidden="true"/> Conception events</button>
+     <button type="button" className={subview==='parenthood'?'selected':''} onClick={()=>setSubview('parenthood')} aria-pressed={subview==='parenthood'}><i className="fa-solid fa-hands-holding-child" aria-hidden="true"/> Parenthood & Care</button>
     </nav>
+    {subview==='parenthood'&&<FamilyCare request={request} compact readOnly={readOnly}/>}
     {subview==='overview'&&<div className="repro-panel">
      {profile.pregnancy_status==='active'?<>
       <div className="repro-compact-grid">

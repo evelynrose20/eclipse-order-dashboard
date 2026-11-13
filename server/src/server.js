@@ -17,6 +17,7 @@ import {firstDominaRoute} from './first-domina.js';
 import {characterRoute} from './characters.js';
 import {reproductionRoute} from './character-reproduction.js';
 import {lineageRoute} from './imperial-lineage.js';
+import {familyRoute} from './family-care.js';
 import {transitionRoute} from './transitions.js';
 import {profileRoute} from './profiles.js';
 import {encounterRoute} from './encounters.js';
@@ -126,6 +127,7 @@ const server=http.createServer(async(req,res)=>{
   else if(pathname==='/progression/classes'&&req.method==='GET')result={status:200,body:{point_budget:POINT_BUDGET,score_cost:SCORE_COST}};
   else if(pathname==='/classes'||pathname.startsWith('/classes/'))result=await classRoute(pool,req,pathname);
   else if(pathname==='/auth/setup-domina'||pathname==='/auth/setup-status')result=await firstDominaRoute(pool,req,pathname,{publicEnabled:isPublic,allowedOrigin});
+  else if(pathname==='/family'||pathname.startsWith('/family/'))result=await familyRoute(pool,req,pathname);
   else if(pathname.startsWith('/thralls/lineage')||/^\/characters\/[0-9a-f-]{36}\/lineage-consent$/.test(pathname))result=await lineageRoute(pool,req,pathname);
   else if(pathname==='/thralls/breeding-pit'||pathname==='/thralls/breeding-pit/actions'||/^\/thralls\/breeding-pit\/hosts\/[0-9a-f-]{36}$/.test(pathname))result=await breedingPitRoute(pool,req,pathname);
   else if(pathname==='/thralls/chamber/stimulation')result=await stimulationRoute(pool,req,pathname);

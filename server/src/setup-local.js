@@ -309,6 +309,8 @@ async function main(){
   console.log('Warehouse construction blueprints checked for incorrect food-based seed recipes (130).');
   const lineagePaths=await readFile(new URL('../sql/128_lineage_paths.sql',import.meta.url),'utf8');
   await pool.query(lineagePaths);
+  const dependentCare=await readFile(new URL('../sql/131_dependent_family_care.sql',import.meta.url),'utf8');
+  await pool.query(dependentCare);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');

@@ -38,10 +38,10 @@ export default function LineageParticipant({request,readOnly=false}){
   {error&&<p role="alert" className="lineage-error">{error.replaceAll('_',' ')}</p>}
   {outcome&&<p role="status" className="lineage-notice">{outcome}</p>}
   {records===null?<p className="lineage-empty">Opening personal lineage records…</p>:records.length===0?
-   <><div className="lineage-empty">There are no research cases linked to your character yet. The character owner can authorize or withdraw research access in their Pregnancy section.</div><LineageViews cases={[]} tab={tab} onTab={setTab}/></>:
+   <><div className="lineage-empty">There are no research cases linked to your character yet. The character owner can authorize or withdraw research access in their Pregnancy section.</div><LineageViews cases={[]} tab={tab} onTab={setTab} request={request} readOnly={readOnly}/></>:
    <><div className="lineage-participant-head"><label>Character<select value={current} onChange={e=>{setCharacter(e.target.value);setTab('cases')}}>{ids.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
     <p>{readOnly?'Player preview — records cannot be changed.':'These are your own authorized records. Private staff research and other characters are not visible.'}</p></div>
-    <LineageViews cases={cases} tab={tab} onTab={setTab} onConceive={readOnly?null:entry=>{setOutcome('');setConception({...entry,eventKey:crypto.randomUUID()})}}/></>}
+    <LineageViews cases={cases} tab={tab} onTab={setTab} request={request} readOnly={readOnly} onConceive={readOnly?null:entry=>{setOutcome('');setConception({...entry,eventKey:crypto.randomUUID()})}}/></>}
   {conception&&<div className="lineage-modal-mask" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setConception(null)}}><section className="lineage-modal" role="dialog" aria-modal="true" aria-label="Record lineage conception">
      <header><h3>Lineage conception · {conception.designation}</h3><button type="button" disabled={busy} onClick={()=>setConception(null)} aria-label="Close"><i className="fa-solid fa-xmark"/></button></header>
      <form className="lineage-form" onSubmit={submitConception}>
