@@ -508,3 +508,12 @@
 .wa-civic-movement-list .positive{color:#9fd1ae;font-weight:800}.wa-civic-movement-list .negative{color:#e4a4a3;font-weight:800}
 @media(max-width:880px){.wa-civic-inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.wa-civic-inventory-summary,.wa-civic-correction-fields{grid-template-columns:1fr}.wa-civic-correction-header{align-items:stretch;flex-direction:column}.wa-civic-inventory-row{flex-wrap:wrap}.wa-civic-movement-list>div{grid-template-columns:1fr auto}.wa-civic-movement-list>div>small:last-child{grid-column:1/-1}}
+
+/* Shared material picker replaces developer-facing inventory codes. */
+.wa-civic-correction-fields .eo-material-picker{width:100%;min-width:0}
+.wa-civic-correction-fields .eo-material-trigger{width:100%;min-height:58px}
+.wa-civic-selected-item{display:flex;align-items:center;gap:12px;background:#223844;border:1px solid #496477;padding:12px 14px;border-radius:4px}
+.wa-civic-selected-item>i{color:#d9b38c;font-size:18px}
+.wa-civic-selected-item>div{display:grid;gap:5px;min-width:0}
+.wa-civic-selected-item strong{font-size:12px;color:#f1e8da}
+.wa-civic-selected-item span{font-size:11px;color:#b9c8d1}
