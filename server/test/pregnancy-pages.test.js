@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {pregnancyProgress,conceptionChance,cycleStatus} from '../src/character-reproduction.js';
+import {pregnancyProgress,pregnancyTermDays,conceptionChance,cycleStatus} from '../src/character-reproduction.js';
 const client=readFileSync(new URL('../../src/CharacterReproduction.jsx',import.meta.url),'utf8');
 const dossier=readFileSync(new URL('../../src/CharacterDossier.jsx',import.meta.url),'utf8');
 const api=readFileSync(new URL('../src/character-reproduction.js',import.meta.url),'utf8');
@@ -27,7 +27,10 @@ test('pregnancy page supports unbound conception events and settings without a c
 test('three IC months is the new default without changing older records',()=>{
  assert.match(client,/total_days:90/);
  assert.match(api,/pregnancy_total_days:90/);
- assert.match(api,/pregnancy_total_days=90/);
+ assert.match(api,/pregnancy_total_days=\\?/);
+ assert.match(api,/pregnancyTermDays\\(lineageId\\)/);
+ assert.equal(pregnancyTermDays(null),90);
+ assert.equal(pregnancyTermDays(1),4);
  const sql=readFileSync(new URL('../sql/115_pregnancy_ninety_day_default.sql',import.meta.url),'utf8');
  assert.match(sql,/ALTER COLUMN pregnancy_total_days SET DEFAULT 90/);
  assert.doesNotMatch(sql,/UPDATE character_reproductive_profiles/);
