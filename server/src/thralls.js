@@ -21,7 +21,7 @@ export async function mayEnterThralls(pool,actor){
 
 
 const ok=body=>({status:200,body});
-const mayConfigureChamberFluids=actor=>['domina','high_command','handler'].includes(actor.account_role);
+export const mayConfigureChamberFluids=actor=>actor?.account_role==='domina';
 async function manager(pool,actor){
  if(['domina','high_command','handler'].includes(actor.account_role))return true;
  const [rows]=await pool.execute("SELECT 1 FROM account_order_ranks WHERE account_id=? AND track='household' LIMIT 1",[actor.id]);
