@@ -450,3 +450,61 @@
 .power-blueprint-card strong{font-size:13px;color:#f0e8e7}
 .power-blueprint-card span{font-size:11px;color:#bfcbd0}
 .power-blueprint-description{grid-column:1/-1}
+
+/* Civilian stock ledger: guided corrections, not a substitute for logistics. */
+.wa-civic-inventory-workspace{gap:18px}
+.wa-civic-inventory-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wa-civic-inventory-summary-card{border:1px solid #415767;background:linear-gradient(145deg,#223340,#192733);padding:15px;display:grid;gap:9px;min-width:0;border-radius:4px}
+.wa-civic-inventory-summary-card>span{font-size:11px;color:#b8c9d2;font-weight:750}
+.wa-civic-inventory-summary-card>span i{color:#cda987;margin-right:7px}
+.wa-civic-inventory-summary-card strong{font-size:24px;color:#f5e5cd;font-variant-numeric:tabular-nums}
+.wa-civic-inventory-summary-card strong small{font-size:10px;font-weight:500;color:#aebdc8}
+.wa-civic-inventory-summary-card>small{color:#9fb2bd;font-size:11px}
+.wa-civic-inventory-list{border:1px solid #425867;background:#172631;border-radius:4px;overflow:hidden}
+.wa-civic-inventory-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;border-bottom:1px solid #405565;background:#243541}
+.wa-civic-inventory-list-head h4{margin:0;color:#f0e1ce;font-size:14px}
+.wa-civic-inventory-list-head span{font-size:11px;color:#afbec8}
+.wa-civic-inventory-rows{display:grid}
+.wa-civic-inventory-row{display:flex;align-items:center;gap:15px;padding:12px 15px;border-bottom:1px solid #334957}
+.wa-civic-inventory-row:last-child{border-bottom:0}
+.wa-civic-inventory-goods{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.wa-civic-inventory-goods>i{display:grid;place-items:center;background:#2b404b;border:1px solid #4e6470;border-radius:4px;width:38px;height:38px;flex:none;color:#dfb58d}
+.wa-civic-inventory-goods>span{display:grid;gap:4px;min-width:0}
+.wa-civic-inventory-goods strong{font-size:12px;color:#ebebeb;overflow-wrap:anywhere}
+.wa-civic-inventory-goods small{font-size:10px;color:#adc0c9;text-transform:capitalize}
+.wa-civic-inventory-amount{white-space:nowrap;color:#f0e0c7;font-size:16px;font-variant-numeric:tabular-nums}
+.wa-civic-inventory-amount small{font-size:10px;font-weight:500;color:#a7b9c2}
+.wa-civic-inventory-row button{border:1px solid #647783;background:#293c49;color:#e4e7e5;border-radius:4px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:11px}
+.wa-civic-inventory-empty{padding:28px;display:grid;justify-items:center;text-align:center;gap:7px}
+.wa-civic-inventory-empty i{font-size:25px;color:#99a9b4}
+.wa-civic-inventory-empty p{font-weight:750;color:#e2e8e7;margin:0}
+.wa-civic-inventory-empty span{font-size:11px;color:#abbbc5}
+.wa-civic-correction{border:1px solid #4b5f6c;border-radius:4px;background:#1b2a36;overflow:hidden}
+.wa-civic-correction-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 17px}
+.wa-civic-correction-header>div{min-width:0}
+.wa-civic-correction-header h4{font-size:15px;margin:5px 0;color:#f1dfc8}
+.wa-civic-correction-header p{max-width:830px;font-size:11px;line-height:1.6;color:#b4c3cd;margin:0}
+.wa-civic-correction-header button{flex:none;cursor:pointer;border:1px solid #73818a;background:#2c3c48;color:#f0e3dc;border-radius:4px;padding:10px 14px;font-size:11px;font-weight:800}
+.wa-civic-correction-header button i{margin-right:7px}
+.wa-civic-correction-form{border-top:1px solid #485c6b;background:#16242f;padding:18px;display:grid;gap:17px}
+.wa-civic-correction-notice{font-size:12px;line-height:1.55;color:#d9c9af;padding:11px 14px;border-left:3px solid #bd9c71;background:#292f34}
+.wa-civic-correction-notice i{margin-right:8px}
+.wa-civic-correction-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.wa-civic-correction-fields label{min-width:0;display:grid;gap:7px;color:#c9d5d9;font-weight:750;font-size:11px}
+.wa-civic-correction-fields label.wide{grid-column:1/-1}
+.wa-civic-correction-fields input,.wa-civic-correction-fields select{box-sizing:border-box;width:100%;min-height:40px;border:1px solid #516575;background:#0d1b26;color:#f1ece8;border-radius:4px;padding:9px 11px}
+.wa-civic-correction-fields input:focus-visible,.wa-civic-correction-fields select:focus-visible{outline:2px solid #b59b7c;outline-offset:2px}
+.wa-civic-correction-footer{border-top:1px solid #3b505e;padding-top:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.wa-civic-correction-footer span{font-size:11px;color:#b7c8d1}
+.wa-civic-correction-footer button{padding:11px 17px;border:1px solid #a88979;background:#66484a;color:#f7e9e5;border-radius:4px;cursor:pointer;font-weight:800}
+.wa-civic-correction-footer button:disabled{opacity:.5;cursor:not-allowed}
+.wa-civic-movement-history{border:1px solid #425867;background:#182731;border-radius:4px;overflow:hidden}
+.wa-civic-movement-history summary{display:flex;align-items:center;gap:9px;cursor:pointer;padding:13px 15px;color:#e6d7bf;font-size:12px;font-weight:750}
+.wa-civic-movement-history summary>span{margin-left:auto;color:#a5bbc5}
+.wa-civic-movement-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(125px,auto);align-items:center;gap:16px;border-top:1px solid #344856;padding:10px 15px;font-size:11px}
+.wa-civic-movement-list>div>span:first-child{display:grid;gap:4px;min-width:0}
+.wa-civic-movement-list strong{color:#e5e6e4;overflow-wrap:anywhere}
+.wa-civic-movement-list small{color:#a9bac3;overflow-wrap:anywhere}
+.wa-civic-movement-list .positive{color:#9fd1ae;font-weight:800}.wa-civic-movement-list .negative{color:#e4a4a3;font-weight:800}
+@media(max-width:880px){.wa-civic-inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.wa-civic-inventory-summary,.wa-civic-correction-fields{grid-template-columns:1fr}.wa-civic-correction-header{align-items:stretch;flex-direction:column}.wa-civic-inventory-row{flex-wrap:wrap}.wa-civic-movement-list>div{grid-template-columns:1fr auto}.wa-civic-movement-list>div>small:last-child{grid-column:1/-1}}
