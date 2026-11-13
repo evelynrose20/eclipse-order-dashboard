@@ -20,6 +20,10 @@ tags: [systems, handbook, staff, guide]
 - **[[11-VENUE-AND-PUBLIC-SITE]]** — public pages, recruitment and venue operations.
 - **[[12-OPERATIONS-AND-TROUBLESHOOTING]]** — Windows API, migrations, deployment and diagnosis.
 - **[[13-SYSTEM-DEPENDENCIES-AND-GAPS]]** — shared materials, automation boundaries, known gaps and terminology.
+- **[[14-MILITARY-AND-MAGITEK]]** — castrums, readiness, ammunition, transports and equipment.
+- **[[15-FRONTS-TRADE-AND-TREASURY]]** — fronts, contracts, treasury, funds and NPC deals.
+- **[[16-POPULATION-WORKERS-AND-EDUCATION]]** — residents, worker health, schools and labor availability.
+- **[[17-FAMILY-CARE-AND-SPECIALIST-CHARACTERS]]** — dependent care, specialist RP projects and privacy.
 
 ## What a settlement needs
 
