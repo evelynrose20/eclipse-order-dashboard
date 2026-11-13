@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS order_dependent_care_events (
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
  dependent_id BIGINT UNSIGNED NOT NULL,
  actor_account_id CHAR(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
- action ENUM('nursing','bottle','meal','comfort','restock_milk','restock_food') NOT NULL,
+ action ENUM('nursing','bottle','meal','comfort','hygiene','sleep','play','restock_milk','restock_food') NOT NULL,
  quantity SMALLINT UNSIGNED NOT NULL DEFAULT 1,
  detail VARCHAR(250) NOT NULL DEFAULT '',
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
