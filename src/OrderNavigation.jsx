@@ -19,13 +19,13 @@ const GROUPS=[
  {id:'activities',name:'OPERATIONS',hint:'Events and encounters'},
  {id:'world',name:'WORLD & TERRITORY',hint:'Regions and settlements'},
  {id:'economy',name:'INDUSTRY & LOGISTICS',hint:'Trade and production'},
- {id:'thralls',name:'THRALLS',hint:'Restricted chambers'},
+ {id:'thralls',name:'IMPERIAL RESEARCH',hint:'Restricted R&D facilities'},
  {id:'community',name:'COMMUNITY',hint:'Profiles and connections'},
  {id:'administration',name:'IMPERIAL ADMINISTRATION',hint:'Staff and records'}
 ];
 const DESCRIPTIONS={
  overview:'Your starting point',roster:'Browse the Imperium',sheet:'Details and progression',
- scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Licensed enterprises, commerce and Order supply',treasury:'Trade income, daily wages and completed mission pay',
+ scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Licensed enterprises, commerce and imperial supply',treasury:'Imperial treasury records',
  chamber:'Aetheric extraction chamber and alchemical annex',
  'breeding-pit':'Brood incubation, nursery, strains and military transfers',
  'lineage-research':'Restricted heredity research and gestation studies',
@@ -63,7 +63,7 @@ export default function OrderNavigation({
     <div><strong>IMPERIUM NOCTIS</strong><small>IMPERIAL COMMAND</small></div>
     <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}><i className="fa-solid fa-xmark"/></button>
    </div>
-   <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Order command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
+   <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Imperial command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
    <label className="order-nav-search"><span className="order-nav-search-mark" aria-hidden="true"><i className="fa-solid fa-magnifying-glass"/></span><input type="search" aria-label="Find a page" placeholder="Find a page…" value={filter} onChange={e=>setFilter(e.target.value)}/>{filter&&<button type="button" onClick={()=>setFilter('')} aria-label="Clear navigation search"><i className="fa-solid fa-xmark"/></button>}</label>
    <nav className="order-nav-groups" aria-label="Primary navigation">
     {groups.length===0&&<p className="order-nav-empty">No matching pages.</p>}
