@@ -4,6 +4,19 @@ tags: [world, restoration, guide]
 ---
 # Settlement rebuilding — step by step
 
+## New command workflow (November 2026)
+
+Open **World Administration → select Region and Zone → Rebuilding**, or use **Rebuild settlement** in a settlement dossier. This is the central restoration dashboard for an existing site; it reads the same civic, industrial, power and warehouse records used everywhere else.
+
+1. Select the settlement. The summary shows territorial state, controlling faction, civilians, workforce, and critical repairs. Switch between **Everything / Buildings / Industry / Power / Warehouses** to see individual assets.
+2. For an Order-controlled **Destroyed** or **Abandoned** location, use **Begin rebuilding**. This only changes the settlement's territorial state and records the action. It does not grant materials, housing, equipment, or fuel.
+3. Under **Buildings**, a damaged or destroyed **template-backed** structure can now start a **funded repair** directly, retaining its previous level; an operational building can start a **level upgrade**. Legacy non-template structures remain visible but need separate staff review instead of receiving imaginary recipes.
+4. For each active civic project, inspect its exact material requirement, shared stock and labor progress. **Commit available** debits existing FC stock through the same locked endpoint as Civilian Welfare. For detailed blueprint selection, choose **Open building editor**; this now opens directly on the Buildings tab.
+5. Under **Industry**, review affected factories/farms and their projects, then open **Industry & Projects** for their native material and labor controls. For power, open **Power Grid** for generator blueprint projects and stock-backed fuel delivery. For warehouses, open the existing **Freight → Warehouses** screen.
+6. After individual systems are working, review warnings and separately decide whether the map's territorial condition should change to Secure. There is no free “Finish All” action, and an empty checklist is not automatic story authorization.
+
+The overview has **no separate construction stock or progress database**; it is a shared view over the existing records. Civic buildings have the most complete direct repair/upgrade controls in the overview; industry, generators, and warehouses still use their existing specialized actions.
+
 ## First: what does Rebuilding mean?
 
 A settlement has a **territorial state** (Peaceful, Secure, Contested, Occupied, Liberated, Rebuilding, Abandoned, Destroyed). This describes its world/map condition; it is **not** a percent-complete master reconstruction job. Buildings and industrial facilities each have their own conditions, active construction projects, materials, and workforce requirements.
