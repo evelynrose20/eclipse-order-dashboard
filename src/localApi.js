@@ -4,7 +4,7 @@ import {contextualApiError} from './apiErrors.js';
 const BASE=(import.meta.env.VITE_ECLIPSE_API_URL||'').replace(/\/+$/,'');
 export async function localRequest(path,{method='GET',body}={}){
  const token=sessionStorage.getItem('eclipse-order-local-session');
- if(!token)throw new Error('Sign in to your Eclipse Order account.');
+ if(!token)throw new Error('Sign in to your Imperium Noctis account.');
  let response;
  try{response=await fetch(BASE+path,{
   method,headers:{Authorization:'Bearer '+token,...(body!==undefined?{'Content-Type':'application/json'}:{})},
