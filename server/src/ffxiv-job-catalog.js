@@ -1,4 +1,4 @@
-// FFXIV-inspired tabletop interpretations for the Eclipse Order.
+// FFXIV-inspired tabletop interpretations for the Imperium Noctis.
 // Job names and combat archetypes reflect FFXIV; ability effects and 1–20 pacing
 // are original lightweight adaptations, not copied level-100 action text.
 // The six retired starter templates remain available for existing characters.
