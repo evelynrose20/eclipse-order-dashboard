@@ -25,7 +25,7 @@ Other network failures (Windows service stopped, stale frontend URL, Cloudflare 
 5. Restart the **Windows Node API service**; updating GitHub Pages alone cannot fix API CORS methods or MySQL schema.
 6. On the Windows host, confirm `http://127.0.0.1:3182/health` and `/ready` using your established local checks.
 7. From the actual deployed web origin, test editing a region, settlement, icon/marker, and road. Inspect the browser Network panel for the `OPTIONS` preflight and the subsequent `PATCH`/ `PUT` request.
-8. If failures remain, check the Windows service log for `[Eclipse Order API] Request failed: METHOD PATH CODE`. Share only the method, path and sanitized code; never share tokens, database passwords, request bodies or private member data.
+8. If failures remain, check the Windows service log for `[Imperium Noctis API] Request failed: METHOD PATH CODE`. Share only the method, path and sanitized code; never share tokens, database passwords, request bodies or private member data.
 
 ## Security considerations
 
