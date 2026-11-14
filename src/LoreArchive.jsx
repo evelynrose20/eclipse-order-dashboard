@@ -33,11 +33,11 @@ export default function LoreArchive({request,admin=false}){
   setSaving(true);setError('');setNotice('');
   try{
    await request('/lore'+(entries.some(x=>x.id===payload.id)?'/'+payload.id:''),{method:entries.some(x=>x.id===payload.id)?'PUT':'POST',body:payload});
-   setDraft(null);await load();setSelected(payload.id);setNotice('Entry saved to the Order’s chronicle.');
+   setDraft(null);await load();setSelected(payload.id);setNotice('Entry saved to the Imperium’s chronicle.');
   }catch(err){setError(err.message||'This entry could not be saved.')}finally{setSaving(false)}
  };
  return <div className={'lore-root '+(admin?'lore-internal':'lore-public')}>
-  {!admin&&<nav className="lore-exit"><a href="./"><i className="fa-solid fa-book-open"/> Imperium Noctis</a><a href="./#history">Return to the Order</a><a href="?portal">Member sign-in</a></nav>}
+  {!admin&&<nav className="lore-exit"><a href="./"><i className="fa-solid fa-book-open"/> Imperium Noctis</a><a href="./#history">Return to Imperium Noctis</a><a href="?portal">Member sign-in</a></nav>}
   <header className="lore-hero"><span className="lore-kicker">IMPERIUM NOCTIS · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>Explore Imperium Noctis’s Garlean-influenced ambitions, the upheaval of the Final Days, and its imperial resurgence under Domina Rosa in New Cassia.</p><div className="lore-hero-mark" aria-hidden="true"><i className="fa-solid fa-book-open"/></div></header>
   {error&&<div className="lore-error" role="alert">{error}</div>}{notice&&<p className="lore-notice" role="status">{notice}</p>}
   <div className="lore-layout">
@@ -53,7 +53,7 @@ export default function LoreArchive({request,admin=false}){
      <label>Title<input required maxLength={160} value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
      <div className="lore-editor-grid"><label>Era<select value={draft.era} onChange={e=>setDraft({...draft,era:e.target.value})}>{ERAS.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label>Record type<select value={draft.kind} onChange={e=>setDraft({...draft,kind:e.target.value})}>{TYPES.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label></div>
      <label>Short introduction<textarea rows={3} maxLength={420} value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})}/></label>
-     <label>Chapter text<textarea rows={13} maxLength={16000} value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})} placeholder="Write the Order's history here. Separate paragraphs with a blank line."/></label>
+     <label>Chapter text<textarea rows={13} maxLength={16000} value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})} placeholder="Write the Imperium's history here. Separate paragraphs with a blank line."/></label>
      <div className="lore-editor-grid"><label>Display order<input type="number" min={-10000} max={10000} value={draft.sort_order} onChange={e=>setDraft({...draft,sort_order:e.target.value})}/></label><label className="lore-publish"><input type="checkbox" checked={!!draft.published} onChange={e=>setDraft({...draft,published:e.target.checked})}/> Publish to the public archive</label></div>
      <div className="lore-editor-actions"><button type="submit" disabled={saving}>{saving?'Saving…':'Save entry'}</button><button type="button" onClick={()=>setDraft(null)}>Cancel</button></div>
     </form>:entry?<article className="lore-reading"><span className="lore-kicker">{label(ERAS,entry.era)} / {label(TYPES,entry.kind)}</span><div className="lore-reading-head"><h2>{entry.title}</h2>{editing&&<button type="button" onClick={()=>edit(entry)}>Edit entry</button>}</div>{entry.summary&&<p className="lore-lead">{entry.summary}</p>}<div className="lore-text">{paragraphs(entry.body).map((p,i)=><p key={i}>{p}</p>)}</div>{admin&&!entry.published&&<p className="lore-private">This entry is visible to Order leadership until it is published.</p>}</article>:<div className="lore-empty lore-reading">{data?'The archives are awaiting their first record.':'Opening the chronicles…'}</div>}
