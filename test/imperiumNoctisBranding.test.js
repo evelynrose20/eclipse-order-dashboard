@@ -19,7 +19,7 @@ test('all primary public and member entry points show Imperium Noctis',()=>{
  for(const source of [homepage,portal,login,index,routes,enterprises])
   assert.doesNotMatch(source,/The Eclipse Order|THE ECLIPSE ORDER|Eclipse Order|ECLIPSE ORDER/);
  assert.match(index,/"name": "Imperium Noctis"/);
- assert.match(enterprises,/A licensed enterprise supporting the Imperium Noctis/);
+ assert.match(enterprises,/A licensed enterprise supporting Imperium Noctis/);
 });
 
 test('rebrand keeps website and ownership identifiers compatible',()=>{
