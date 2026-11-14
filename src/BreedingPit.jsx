@@ -141,7 +141,7 @@ export default function BreedingPit({request}){
  async function registerOwnedHost(){
   if(!registerHost)return;
   setBusy(true);setError('');setNotice('');
-  try{await request('/thralls/breeding-pit/hosts/'+registerHost,{method:'PUT',body:{allow_incubation:true}});await reload();setChairHost(registerHost);setRegisterHost('');setNotice('Thrall registered. Select a brood strain and begin the incubation.')}
+  try{await request('/thralls/breeding-pit/hosts/'+registerHost,{method:'PUT',body:{allow_incubation:true}});await reload();setChairHost(registerHost);setRegisterHost('');setNotice('Specimen host registered. Select a brood strain and begin the incubation.')}
   catch(e){setError(e.message||'Unable to register character')}finally{setBusy(false)}
  }
  if(!data&&!error)return <section className="brood-root"><div className="brood-panel">Opening the Brood Pit…</div></section>;
@@ -153,7 +153,7 @@ export default function BreedingPit({request}){
   {notice&&<div className="brood-success" role="status">{notice}</div>}
   {data&&<>
    <div className="brood-metrics">
-    <div><span>ACTIVE INCUBATIONS</span><strong>{running.length} <small>/ {data.capacity.incubators}</small></strong><small>Registered thrall hosts</small></div>
+    <div><span>ACTIVE INCUBATIONS</span><strong>{running.length} <small>/ {data.capacity.incubators}</small></strong><small>Registered specimen hosts</small></div>
     <div><span>NURSERY CAPACITY</span><strong>{activeTotal} <small>/ {data.capacity.nursery}</small></strong><small>Undeployed creatures</small></div>
     <div><span>MATURE BROODS</span><strong>{readyCohorts.reduce((s,c)=>s+Number(c.quantity),0)}</strong><small>Available for army transfer</small></div>
     <div><span>REGISTERED STRAINS</span><strong>{strains.length}</strong><small>Distinct brood lines</small></div>
@@ -167,9 +167,9 @@ export default function BreedingPit({request}){
    {tab==='incubation'&&<div className="brood-panel">
     <div className="brood-heading"><div><small>01 / DEVELOPMENT</small><h3>Incubation Registry</h3><p>An organic incubation suite where registered hosts sustain the developing brood. Watch the throne and cross-section monitors as each clutch matures.</p></div>{data.can_manage&&<button type="button" className="brood-primary" onClick={openAssignment} disabled={running.length>=data.capacity.incubators||!availableHosts.length}><i className="fa-solid fa-plus"/> Begin incubation</button>}</div>
     <section className="brood-chair-assignment" aria-label="Assign thrall to incubation chair">
-      <div className="brood-chair-assignment-head"><div><span>THRONE CONTROL / HOST ASSIGNMENT</span><h4><i className="fa-solid fa-user-lock"/> Assign a thrall to the chair</h4><p>Choose a registered, unoccupied bound thrall, then select an egg strain to begin incubation.</p></div><span className="brood-tag pending">{availableHosts.length} available</span></div>
-      {data.can_manage&&availableHosts.length>0&&<div className="brood-chair-inputs"><label>Available thrall<select value={assignedHost?.id||availableHosts[0]?.id||''} onChange={e=>setChairHost(e.target.value)}>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><button type="button" className="brood-primary" disabled={busy||running.length>=data.capacity.incubators} onClick={openAssignment}><i className="fa-solid fa-chair"/> Place in throne / begin incubation</button></div>}
-      {availableHosts.length===0&&<div className="brood-chair-empty"><i className="fa-solid fa-circle-info"/><div><strong>No available thralls registered</strong><p>{running.length?'Thralls already hosting an active incubation are unavailable for another.':'Register an eligible bound character below, then assign them to the throne.'}</p></div></div>}
+      <div className="brood-chair-assignment-head"><div><span>THRONE CONTROL / HOST ASSIGNMENT</span><h4><i className="fa-solid fa-user-lock"/> Assign a specimen host to the chair</h4><p>Choose a registered, unoccupied bound specimen, then select an egg strain to begin incubation.</p></div><span className="brood-tag pending">{availableHosts.length} available</span></div>
+      {data.can_manage&&availableHosts.length>0&&<div className="brood-chair-inputs"><label>Available specimen<select value={assignedHost?.id||availableHosts[0]?.id||''} onChange={e=>setChairHost(e.target.value)}>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><button type="button" className="brood-primary" disabled={busy||running.length>=data.capacity.incubators} onClick={openAssignment}><i className="fa-solid fa-chair"/> Place in throne / begin incubation</button></div>}
+      {availableHosts.length===0&&<div className="brood-chair-empty"><i className="fa-solid fa-circle-info"/><div><strong>No available specimens registered</strong><p>{running.length?'Specimens already hosting an active incubation are unavailable for another.':'Register an eligible bound character below, then assign them to the throne.'}</p></div></div>}
       {ownedUnregistered.length>0&&<div className="brood-register-owner"><label>Register one of your bound characters<select value={registerHost} onChange={e=>setRegisterHost(e.target.value)}><option value="">Choose your character</option>{ownedUnregistered.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><button type="button" disabled={busy||!registerHost} onClick={registerOwnedHost}>Register for incubation</button></div>}
       <small className="brood-assignment-footnote">Character registration is controlled by the character's player. Other bound characters must be registered from their Character Dossier → Brood Pit tab.</small>
     </section>
@@ -182,8 +182,8 @@ export default function BreedingPit({request}){
     <div className="brood-projects">{incubations.map(item=>{
      const pct=progress(item.started_at,item.ready_at,now),ready=pct===100;
      return <article className="brood-project" key={item.id}>
-      <div className="brood-project-top"><div><small>PROJECT #{item.id} · {item.incubation_mode==='vat'?'LEGACY VAT RECORD':'THRALL INCUBATION'}</small><h4>{item.strain_name}</h4></div><span className={'brood-tag '+badge(item.status)}>{item.status==='incubating'&&ready?'Ready to hatch':tidy(item.status)}</span></div>
-      <p className="brood-muted">{item.incubation_mode==='host'?'Thrall host: '+(item.host_name||'Unknown character'):'Historical growth-vat project'}</p>
+      <div className="brood-project-top"><div><small>PROJECT #{item.id} · {item.incubation_mode==='vat'?'LEGACY VAT RECORD':'SPECIMEN INCUBATION'}</small><h4>{item.strain_name}</h4></div><span className={'brood-tag '+badge(item.status)}>{item.status==='incubating'&&ready?'Ready to hatch':tidy(item.status)}</span></div>
+      <p className="brood-muted">{item.incubation_mode==='host'?'Specimen host: '+(item.host_name||'Unknown character'):'Historical growth-vat project'}</p>
       {item.status==='incubating'&&<><div className="brood-progress"><span style={{width:pct+'%'}}/></div><div className="brood-progress-caption"><span>{pct}% developed</span><span>{ready?'Mature egg': 'Hatch window: '+date(item.ready_at)}</span></div></>}
       {item.notes&&<p className="brood-project-notes">{item.notes}</p>}
       {item.status==='incubating'&&data.can_manage&&<div className="brood-actions"><button disabled={busy||!ready||data.capacity.nursery_used>=data.capacity.nursery} onClick={()=>run('hatch',{incubation_id:Number(item.id)},'Hatchlings transferred to nursery life support.')}>Transfer brood to nursery</button><button className="danger" disabled={busy} onClick={()=>run('cancel',{incubation_id:Number(item.id)},'Incubation cancelled; egg returned to stock.')}>Cancel</button></div>}
@@ -229,8 +229,8 @@ export default function BreedingPit({request}){
     <div className="brood-heading"><div><small>BROOD PIT / OPERATIONS</small><h3>{dialog==='project'?'Begin incubation':dialog==='strain'?'Register brood strain':'Transfer to army'}</h3></div><button type="button" className="brood-close" onClick={()=>setDialog('')} aria-label="Close dialog"><i className="fa-solid fa-xmark"/></button></div>
     {dialog==='project'&&<>
      <label>Brood strain<select value={initial} onChange={e=>setProject(p=>({...p,strain_id:e.target.value}))} required>{strains.map(s=><option key={s.id} value={s.id} disabled={!Number(s.egg_stock)}>{s.name} · {s.egg_stock} eggs</option>)}</select></label>
-     <p className="brood-muted">Incubation method: Registered bound thrall</p>
-     <label>Assigned thrall<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered bound thrall</option>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
+     <p className="brood-muted">Incubation method: Registered bound specimen</p>
+     <label>Assigned specimen<select required value={project.host_character_id} onChange={e=>setProject(p=>({...p,host_character_id:e.target.value}))}><option value="">Choose a registered bound specimen</option>{availableHosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
      <label>Project notes<textarea rows={3} maxLength={800} value={project.notes} onChange={e=>setProject(p=>({...p,notes:e.target.value}))}/></label>
     </>}
     {dialog==='strain'&&<>
