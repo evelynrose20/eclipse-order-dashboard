@@ -24,7 +24,7 @@ const signed = n => (n>=0?'+':'')+n;
 export function LimitedSheet({character}){
   return <section className="panel bound-sheet">
     <div className="bound-heading"><div className="bound-emblem"><i className="fa-solid fa-link"/></div><div><div className="eyebrow">ARCANE COLLAR · BOUND RECORD</div><h2>{character.name}</h2><p>{character.rank}</p></div></div>
-    <p className="bound-intro">Your character is under a magical binding. The Order's system displays only the details the collar allows you to perceive. This seal affects only the character's knowledge, never the player's choices or boundaries.</p>
+    <p className="bound-intro">Your character is under a magical binding. The Imperium's registry displays only the details the collar allows you to perceive. This seal affects only the character's knowledge, never the player's choices or boundaries.</p>
     <div className="limited-grid">
       <div><small>CHARACTER</small><strong>{character.name}</strong></div>
       <div><small>ROLE</small><strong>{character.specialty||'Unassigned'}</strong></div>
@@ -85,6 +85,6 @@ export function MemberDirectory({members,currentRole,onChangeRole,onChangeStandi
       onChange={e=>onChangeRole(m,e.target.value)}>
       {Object.entries(ACCOUNT_ROLES).filter(([key])=>currentRole==='domina'||(!['domina','high_command'].includes(key))).map(([key,value])=><option value={key} key={key}>{value.label}</option>)}
       </select></td></tr>)}</tbody></table></div>
-    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to the Order. The Imperatrix approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
+    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to Imperium Noctis. The Imperatrix approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
   </section>;
 }
