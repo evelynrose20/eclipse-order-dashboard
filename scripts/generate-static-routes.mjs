@@ -13,8 +13,8 @@ const basePath = '/eclipse-order-dashboard';
 const pages = [
   {
     route: '/',
-    title: 'The Eclipse Order | FFXIV Garlean Roleplay FC',
-    description: 'Discover The Eclipse Order, a Garlean-aligned Final Fantasy XIV roleplay free company. Explore New Cassia, our story, recruitment, and events.',
+    title: 'Imperium Noctis | FFXIV Garlean Roleplay FC',
+    description: 'Discover Imperium Noctis, a Garlean-aligned Final Fantasy XIV roleplay free company. Explore New Cassia, our story, recruitment, and events.',
   },
 ];
 
@@ -44,8 +44,8 @@ for (const page of pages) {
 }
 
 const privateHtml = render({
-  title: 'Eclipse Order Member Portal',
-  description: 'Private member access for The Eclipse Order.',
+  title: 'Imperium Noctis Member Portal',
+  description: 'Private member access for Imperium Noctis.',
   canonical: '',
   indexable: false,
 });
@@ -54,8 +54,8 @@ for (const route of ['portal', 'app']) {
   await writeFile(new URL(`${route}/index.html`, dist), privateHtml);
 }
 await writeFile(new URL('404.html', dist), render({
-  title: 'Page Not Found | The Eclipse Order',
-  description: 'The requested Eclipse Order page could not be found.',
+  title: 'Page Not Found | Imperium Noctis',
+  description: 'The requested Imperium Noctis page could not be found.',
   canonical: '',
   indexable: false,
 }));
