@@ -1,4 +1,4 @@
--- Eclipse Order: opt-in member-visible RP profiles and kink lists.
+-- Imperium Noctis: opt-in member-visible RP profiles and kink lists.
 -- Forward migration. Apply after profile-encounters.sql and prior migrations.
 -- This is personal player data; NOTHING is public by default.
 -- No direct browser SELECT/UPDATE privilege exists on this table.
