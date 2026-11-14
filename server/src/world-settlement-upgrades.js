@@ -76,7 +76,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
    if(upgradeId){
     const [[record]]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE id=? AND settlement_id=? FOR UPDATE',[upgradeId,id]);
     if(!record)return fail(404,'upgrade_not_found');
-    if(!record.template_id||record.status!==(repairMatch?'damaged':'operational'))return fail(409,repairMatch?'building_not_damaged':'building_not_ready_for_upgrade');
+    if(!record.template_id||(repairMatch?!['damaged','destroyed'].includes(record.status):record.status!=='operational'))return fail(409,repairMatch?'building_not_damaged':'building_not_ready_for_upgrade');
     upgrade=record;
    }
    const templateId=upgrade?.template_id||b.template_id;
