@@ -15,7 +15,7 @@ const legacyCodes=['violet_keeper','serpents_chosen','eclipsed_consort'];
 test('five public specimen grades map to stable catalog codes without deleting legacy records',()=>{
  assert.equal(SERVITUDE_RANKS.length,5);
  for(let i=0;i<activeCodes.length;i++){
-  assert.match(hierarchy,new RegExp("('"+activeCodes[i]+"','servitude'"));
+  assert.ok(hierarchy.includes("('"+activeCodes[i]+"','servitude'"),activeCodes[i]);
   assert.ok(classification.includes("WHEN '"+activeCodes[i]+"' THEN '"+SERVITUDE_RANKS[i]+"'"));
  }
  for(const code of legacyCodes)assert.ok(hierarchy.includes("('"+code+"','servitude'"),code);
