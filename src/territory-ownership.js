@@ -13,7 +13,7 @@ export function ownershipOf(settlement,localGovernmentId,factions=[]){
  const government=localGovernmentId||null;
  if(!owner)return {kind:'unclaimed',owner:null,label:'Unclaimed',color:'#8b949e'};
  const color=factions.find(f=>f.id===owner)?.map_color||factionColor(owner);
- if(owner==='eclipse-order')return {kind:government===owner?'local':'order',owner,label:'Eclipse Order',color};
+ if(owner==='eclipse-order')return {kind:government===owner?'local':'order',owner,label:'Imperium Noctis',color};
  if(government&&owner===government)return {kind:'local',owner,label:'Local government',color};
  return {kind:government?'foreign':'independent',owner,label:government?'Outside faction':'Independent faction',color};
 }
@@ -22,7 +22,7 @@ export function mapOwnershipLegend(settlements,localGovernmentId,factions){
  for(const site of settlements||[]){
   const o=ownershipOf(site,localGovernmentId,factions);
   const id=o.owner||'unclaimed';
-  if(!items.has(id))items.set(id,{id,name:factions?.find(f=>f.id===id)?.name||(id==='unclaimed'?'Unclaimed':id==='eclipse-order'?'Eclipse Order':id),color:o.color,kind:o.kind,count:0});
+  if(!items.has(id))items.set(id,{id,name:factions?.find(f=>f.id===id)?.name||(id==='unclaimed'?'Unclaimed':id==='eclipse-order'?'Imperium Noctis':id),color:o.color,kind:o.kind,count:0});
   items.get(id).count++;
  }
  return [...items.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
