@@ -1,7 +1,7 @@
-# Eclipse Order Dashboard — Mandatory UI/UX Design Rules
+# Imperium Noctis Dashboard — Mandatory UI/UX Design Rules
 
 **Status:** Required for all future frontend work  
-**Applies to:** The authenticated Eclipse Order dashboard, including World Administration, Industry & Projects, maps, diplomacy, settlement management, military systems, economy, crafting, and staff tools.  
+**Applies to:** The authenticated Imperium Noctis dashboard, including World Administration, Industry & Projects, maps, diplomacy, settlement management, military systems, economy, crafting, and staff tools.  
 **Reference implementation:** `src/imperial-theme.css`, `src/world-administration.css`, `src/world-industry.css`, `src/portal-controls.css`, `src/order-navigation.css`.  
 **Anti-reference:** The original `src/military-installations.css` purple-panel treatment is **not** a visual precedent.  
 **Design direction:** An immersive **Garlean / New Cassia imperial command interface** that is polished, readable, responsive, consistent, and feels like a strategy game instead of an administrative form.
