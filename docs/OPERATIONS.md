@@ -1,4 +1,4 @@
-# Eclipse Order — operations and release checks
+# Imperium Noctis — operations and release checks
 
 ## Supported deployment
 
