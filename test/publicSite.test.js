@@ -14,11 +14,11 @@ test('public homepage is the default and existing member portal remains separate
  assert.match(site,/href="\?portal"/);
  assert.doesNotMatch(site,/href="\/portal"/);
 });
-test('public website includes original Order identity, sections, and accessible interactions',()=>{
+test('public website includes imperial command identity, sections, and accessible interactions',()=>{
  for(const section of ['about','history','ranks','roleplay','conduct','visit','membership','questions']){
   assert.match(site,new RegExp('id="'+section+'"'));
  }
- for(const rank of ['Domina','Grand Viper','Inner Council','The Snakes','The Fangs','The Golden Claws','The Household','Freshscales','Voidscales']){
+ for(const rank of ['Imperatrix','Praefectus Imperii','Consilium Imperiale','Garlean Shadows','The Legions','Officium Aerarii','R&D','Tiro','Civis']){
   assert.ok(site.includes(rank),rank);
  }
  assert.equal(SERVITUDE_RANKS.length,8);
@@ -64,10 +64,11 @@ test('recruitment is noticeable both in site header and hero while navigation re
 });
 test('public site uses the newer branch hierarchy instead of obsolete five-rank hierarchy',()=>{
  assert.match(site,/ORDER_BRANCHES/);
- for(const name of ['Hatchling','Coil','Whisper','Shadowkeeper','High Serpent','Fangling','Fangmaster','High Fang','Gilding','Goldkeeper','High Claw','Keeper’s Apprentice','High Steward']){
-  if(name==='Gilding')continue;
+ for(const name of ['Tiro Umbrae','Speculator','Explorator','Frumentarius','Magister Umbrae','Miles','Optio','Centurio','Legatus','Scriba','Quaestor','Procurator','Discipulus Technicus','Magister Technicus']){
   assert.ok(site.includes(name),name);
  }
  assert.doesNotMatch(site,/Five ranks\.|Oyabun|Kusushi|Kumi-in/);
  assert.match(site,/SERVITUDE_RANKS/);
+ assert.match(site,/imperial-coc-branches/);
+ assert.match(site,/imperial-coc-fork/);
 });
