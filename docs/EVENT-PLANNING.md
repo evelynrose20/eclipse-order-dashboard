@@ -1,4 +1,4 @@
-# Eclipse Order — events, roster and XP
+# Imperium Noctis — events, roster and XP
 
 The event planner is implemented in the Windows/MySQL codebase. This guide documents the current workflow, not an unpublished draft PR.
 
