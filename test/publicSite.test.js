@@ -18,7 +18,7 @@ test('public website includes imperial command identity, sections, and accessibl
  for(const section of ['about','history','ranks','roleplay','conduct','visit','membership','questions']){
   assert.match(site,new RegExp('id="'+section+'"'));
  }
- for(const rank of ['Imperatrix','Praefectus Imperii','Consilium Imperiale','Garlean Shadows','The Legions','Officium Aerarii','R&D','Tiro','Civis']){
+ for(const rank of ['Imperatrix','Consul','Senatus Imperialis','Garlean Shadows','The Legions','Officium Aerarii','R&D','Peregrinus','Civis']){
   assert.ok(site.includes(rank),rank);
  }
  assert.equal(SERVITUDE_RANKS.length,8);
@@ -64,7 +64,7 @@ test('recruitment is noticeable both in site header and hero while navigation re
 });
 test('public site uses the newer branch hierarchy instead of obsolete five-rank hierarchy',()=>{
  assert.match(site,/ORDER_BRANCHES/);
- for(const name of ['Tiro Umbrae','Speculator','Explorator','Frumentarius','Magister Umbrae','Miles','Optio','Centurio','Legatus','Scriba','Quaestor','Procurator','Discipulus Technicus','Magister Technicus']){
+ for(const name of ['Eques','Notarius','Frumentarius','Primus Frumentarius','Legionarius','Optio','Centurio','Primus Pilus','Legatus Legionis','Compulsor','Aedilis','Quaestor','Architectus','Architectus Veteranus','Architectus Magiteci','Primus Architectus Magiteci']){
   assert.ok(site.includes(name),name);
  }
  assert.doesNotMatch(site,/Five ranks\.|Oyabun|Kusushi|Kumi-in/);
