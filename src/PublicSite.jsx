@@ -83,7 +83,7 @@ export default function PublicSite(){
   return()=>{active=false;controller.abort();document.removeEventListener('visibilitychange',onVisible)};
  },[]);
  useEffect(()=>{
-  document.title='The Eclipse Order — A Final Fantasy XIV Roleplay Free Company';
+  document.title='Imperium Noctis — A Final Fantasy XIV Roleplay Free Company';
   const handleEscape=e=>{if(e.key==='Escape'){setLetterOpen(false);setMenuOpen(false)}};
   window.addEventListener('keydown',handleEscape);
   return()=>window.removeEventListener('keydown',handleEscape);
@@ -94,7 +94,7 @@ export default function PublicSite(){
  return <div className="order-public">
   <a href="#content" className="public-skip">Skip to content</a>
   <header className="public-header">
-   <a href="#home" className="public-brand" aria-label="The Eclipse Order home" onClick={closeMenu}><Mark/><span><strong>THE ECLIPSE ORDER</strong><small>NEW CASSIA · ILSABARD</small></span></a>
+   <a href="#home" className="public-brand" aria-label="Imperium Noctis home" onClick={closeMenu}><Mark/><span><strong>IMPERIUM NOCTIS</strong><small>NEW CASSIA · ILSABARD</small></span></a>
    <nav aria-label="Public site" className={'public-nav '+(menuOpen?'open':'')}>{NAV.map(([id,title])=><a key={id} href={'#'+id} onClick={closeMenu}>{title}</a>)}<a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>Join Discord</a><a className="public-mobile-portal" href="?portal">Member sign-in</a></nav>
    <div className="public-header-actions"><a className={'public-recruitment-link public-recruitment-'+(recruitment||'unknown')} href="#membership"><span className="public-status-dot" aria-hidden="true"/> {recruitmentLabel}</a><a className="public-header-discord" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-discord" aria-hidden="true"/> Join Discord</a><a className="public-portal-link" href="?portal">Member sign-in</a>{applicationsAccepted&&<a className="public-top-cta" href="?portal">Request membership <span aria-hidden="true">↗</span></a>}</div>
    <button className="public-menu-toggle" type="button" onClick={()=>setMenuOpen(x=>!x)} aria-expanded={menuOpen} aria-label={menuOpen?'Close navigation':'Open navigation'}>{menuOpen?'✕':'☰'}</button>
@@ -103,12 +103,12 @@ export default function PublicSite(){
    <section className="public-hero" id="home">
     <div className="public-hero-geometry" aria-hidden="true">
      <div className="imperial-architecture"><span className="imperial-structure imperial-structure-left"/><span className="imperial-structure imperial-structure-center"/><span className="imperial-structure imperial-structure-right"/><span className="imperial-crown"/><span className="imperial-spire"/><span className="imperial-gate"/><span className="imperial-citadel-crest"><i className="fa-solid fa-chess-rook"/></span><span className="imperial-cityline"/></div>
-     <span className="imperial-vertical-copy">ILSABARD · NEW CASSIA · THE ECLIPSE ORDER</span>
+     <span className="imperial-vertical-copy">ILSABARD · NEW CASSIA · IMPERIUM NOCTIS</span>
     </div>
     <div className="public-hero-content">
      <span className="public-kicker"><span className="public-kicker-line"/> NEW CASSIA · ILSABARD <span className="imperial-kicker-number">01 / THE ORDER</span></span>
      <h1>AN ORDER<br/><span className="imperial-headline-line">BUILDING AN <em>EMPIRE.</em></span></h1>
-     <p className="public-hero-subtitle">From the ashes of Garlemald, the Eclipse Order rises with ambitions of its own. Under Domina Rosa, this imperial villain faction pursues territory, political authority, magitek strength, and an empire in New Cassia.</p>
+     <p className="public-hero-subtitle">From the ashes of Garlemald, the Imperium Noctis rises with ambitions of its own. Under Domina Rosa, this imperial villain faction pursues territory, political authority, magitek strength, and an empire in New Cassia.</p>
      <div className="public-hero-cta"><a href="#about" className="public-button-primary">Discover the Order <span aria-hidden="true">↗</span></a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className="public-button-ghost"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our Discord <span aria-hidden="true">↗</span></a><button type="button" className="public-button-ghost" onClick={()=>setLetterOpen(true)}>Read the invitation <span aria-hidden="true">◇</span></button></div>
      <div className="public-hero-bad-end"><span aria-hidden="true">◆</span> BAD END FC / 18+ / CONSEQUENCE-DRIVEN ROLEPLAY</div>
      <div className="public-hero-notes"><span>01 · IMPERIAL REMNANTS</span><span>02 · IMPERIAL ASCENDANCY</span><span>03 · NEW CASSIA</span></div>
@@ -119,7 +119,7 @@ export default function PublicSite(){
    <section className="public-section public-introduction" id="about">
     <div className="public-section-inner">
      <SectionTag number="01">THE ORDER</SectionTag>
-     <div className="public-intro-grid"><div><h2>NO BANNERS.<br/><em>NO SAVIORS.</em></h2></div><div className="public-intro-copy"><p className="public-lead">The Eclipse Order is a Garlean-influenced imperial villain faction within Final Fantasy XIV. Beneath the Domina, its members pursue unity, authority, and power—even when their ambitions put them at odds with the realm.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
+     <div className="public-intro-grid"><div><h2>NO BANNERS.<br/><em>NO SAVIORS.</em></h2></div><div className="public-intro-copy"><p className="public-lead">Imperium Noctis is a Garlean-influenced imperial villain faction within Final Fantasy XIV. Beneath the Domina, its members pursue unity, authority, and power—even when their ambitions put them at odds with the realm.</p><p>Our roleplay is character-driven and continuous. The Order is a setting for intrigue, alliances, personal conflicts, dangerous expeditions, and the small moments that make a family out of people who never expected to belong anywhere.</p><a className="public-text-link" href="#roleplay">How our stories work <span aria-hidden="true">↗</span></a></div></div>
      <div className="public-principles">
       <article><span>Ⅰ</span><h3>Consequences matter</h3><p>The decisions characters make leave an impression on the people and stories around them.</p></article>
       <article><span>Ⅱ</span><h3>Every role has weight</h3><p>Not everyone commands an army. Intelligence, diplomacy, artistry, and quiet loyalty all have their place.</p></article>
@@ -131,7 +131,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="02">A HISTORY WRITTEN IN SHADOW</SectionTag>
      <div className="public-history-grid"><div className="public-history-art" aria-hidden="true"><div className="public-history-seal"><Mark/><span>THE ECLIPSE<br/>ENDURES</span></div><span className="public-art-caption">THE SERPENT · THE ECLIPSE · THE OATH</span></div>
-      <div><h2>AN ORDER<br/><em>BUILT IN SHADOW.</em></h2><p className="public-lead">The Eclipse Order draws on Garlean imperial traditions, military discipline, and the determination to establish its own authority in northern Ilsabard. Its loyalty to the Domina and its ambitions for New Cassia define the faction.</p><p>The Order’s Fangs, Snakes, and Golden Claws serve its imperial ambitions through military command, intelligence, diplomacy, commerce, and reconstruction. Its present organization is centered on the rebuilding of New Cassia.</p><p>The Final Days shattered much of the Order’s strength and forced it into dormancy. Its rebirth in New Cassia begins an independent imperial project of reconstruction, military expansion, diplomacy, and contested rule.</p><div className="public-history-quote">GARLEAN LEGACY / NEW CASSIA / IMPERIAL REBIRTH</div></div>
+      <div><h2>AN ORDER<br/><em>BUILT IN SHADOW.</em></h2><p className="public-lead">Imperium Noctis draws on Garlean imperial traditions, military discipline, and the determination to establish its own authority in northern Ilsabard. Its loyalty to the Domina and its ambitions for New Cassia define the faction.</p><p>The Order’s Fangs, Snakes, and Golden Claws serve its imperial ambitions through military command, intelligence, diplomacy, commerce, and reconstruction. Its present organization is centered on the rebuilding of New Cassia.</p><p>The Final Days shattered much of the Order’s strength and forced it into dormancy. Its rebirth in New Cassia begins an independent imperial project of reconstruction, military expansion, diplomacy, and contested rule.</p><div className="public-history-quote">GARLEAN LEGACY / NEW CASSIA / IMPERIAL REBIRTH</div></div>
      </div>
     </div>
    </section>
@@ -174,7 +174,7 @@ export default function PublicSite(){
    <section className="public-section public-activities" id="activities" aria-labelledby="public-activities-heading">
     <div className="public-section-inner">
      <SectionTag number="05 / FIELD OPERATIONS">LIFE WITHIN THE ORDER</SectionTag>
-     <div className="public-section-heading"><div><h2 id="public-activities-heading">More than a title.<br/><em>A world to take part in.</em></h2></div><p>From campaigns in the field to quiet deals behind closed doors, Eclipse Order events give members different ways to shape our shared story.</p></div>
+     <div className="public-section-heading"><div><h2 id="public-activities-heading">More than a title.<br/><em>A world to take part in.</em></h2></div><p>From campaigns in the field to quiet deals behind closed doors, Imperium Noctis events give members different ways to shape our shared story.</p></div>
      <div className="public-activities-grid">{FC_ACTIVITIES.map(activity=><article className="public-activity-card" key={activity.title}><div className="public-activity-top"><span className="public-activity-symbol" aria-hidden="true"><i className={'fa-solid '+activity.icon}/></span><span className="public-activity-category">FC EVENTS</span></div><h3>{activity.title}</h3><strong>{activity.subtitle}</strong><p>{activity.description}</p></article>)}</div>
      <div className="public-activities-after"><div><h3>Your character matters beyond events.</h3><p>Character-led roleplay, expeditions, intrigue, trade, crafting, and the Order’s ongoing story connect what happens between major events. Not every member needs to be a fighter to have a place here.</p><small>Event dates and participation details are shared through our community channels; no fixed schedule is promised here.</small></div><a className="public-button-primary" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-discord" aria-hidden="true"/> Join our community <span aria-hidden="true">↗</span></a></div>
     </div>
@@ -183,7 +183,7 @@ export default function PublicSite(){
     <div className="public-section-inner">
      <SectionTag number="06">THE NATURE OF THE ORDER</SectionTag>
      <div className="public-bad-end-layout">
-      <div><div className="public-bad-end-label"><span aria-hidden="true">✦</span> ADULT ROLEPLAY · BAD END FC</div><h2>Not every story<br/><em>ends in freedom.</em></h2><p className="public-lead">The Eclipse Order is a Bad End-focused Free Company. This is a core part of our storytelling, not a hidden twist.</p></div>
+      <div><div className="public-bad-end-label"><span aria-hidden="true">✦</span> ADULT ROLEPLAY · BAD END FC</div><h2>Not every story<br/><em>ends in freedom.</em></h2><p className="public-lead">Imperium Noctis is a Bad End-focused Free Company. This is a core part of our storytelling, not a hidden twist.</p></div>
       <div className="public-bad-end-explanation">
        <h3>What a Bad End means here</h3>
        <p>Characters can lose power, freedom, status, and even their lives. Captivity, servitude, coercion, betrayal, and permanent consequences can be part of the in-character world. Being defeated may shape a character’s future rather than return them to the way things were.</p>
@@ -209,7 +209,7 @@ export default function PublicSite(){
        <a href="?lore" className="public-text-link">Explore the Order’s chronicles <span aria-hidden="true">↗</span></a>
        <div className="public-visit-mountain"><span aria-hidden="true">⌁</span><div><strong>NEW CASSIA · ILSABARD</strong><small>THE ORDER’S IN-CHARACTER HOME</small></div></div>
       </div>
-      <aside className="public-estate-card" aria-label="The Eclipse Order in-game estate address">
+      <aside className="public-estate-card" aria-label="Imperium Noctis in-game estate address">
        <span className="public-estate-corner top-left" aria-hidden="true"/><span className="public-estate-corner top-right" aria-hidden="true"/><span className="public-estate-corner bottom-left" aria-hidden="true"/><span className="public-estate-corner bottom-right" aria-hidden="true"/>
        <div className="public-estate-eyebrow">THE ORDER · IN THE REALM</div>
        {ESTATE.map(([label,value])=><div className="public-estate-field" key={label}><small>{label}</small><strong>{value}</strong></div>)}
@@ -272,7 +272,7 @@ export default function PublicSite(){
      </div>
     </div>
    </section>
-   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>The Eclipse Order</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#activities">FC Activities</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Join Discord</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} The Eclipse Order</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
+   <footer className="public-footer"><div className="public-footer-upper"><div><Mark/><h2>Imperium Noctis</h2><p>Under the eclipse, our stories endure.</p></div><div><span>EXPLORE</span><a href="#about">The Order</a><a href="#history">Our History</a><a href="#ranks">Hierarchy</a><a href="#roleplay">Roleplay</a><a href="#activities">FC Activities</a><a href="#bad-end">Bad End RP</a><a href="#visit">Visit Us</a><a href="#who-fits">Who Fits In</a><a href="#chronicles">Chronicles</a></div><div><span>ENTER</span><a href="#membership">Membership</a><a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Join Discord</a><a href="?portal">Member sign-in</a><a href="#questions">Questions</a></div></div><div className="public-footer-lower"><span>© {new Date().getFullYear()} Imperium Noctis</span><span>A Final Fantasy XIV roleplay community. FINAL FANTASY XIV © SQUARE ENIX. Not affiliated with Square Enix.</span><a href="#home">Back to the top ↑</a></div></footer>
   </main>
   {letterOpen&&<div className="public-letter-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLetterOpen(false)}}><div className="public-letter" role="dialog" aria-modal="true" aria-labelledby="invitation-title"><button type="button" aria-label="Close invitation" className="public-letter-close" onClick={()=>setLetterOpen(false)}>✕</button><Mark/><span className="public-letter-kicker">A LETTER WITHOUT A SIGNATURE</span><h2 id="invitation-title">To the one who found this.</h2><p>Rumors have a way of reaching the people they are meant for. Perhaps you followed one here. Perhaps you had nowhere else to turn. The Order does not care how the first thread came into your hands.</p><p>What matters is what you do with it.</p><p>There is a place for those who understand the cost of loyalty, and for those willing to learn. But understand this: nothing worth carrying comes without weight.</p><p className="public-letter-signoff">— Beneath the Eclipse</p><button type="button" className="public-button-primary" onClick={()=>{setLetterOpen(false);document.querySelector('#about')?.scrollIntoView({behavior:'smooth'})}}>Read the Order’s story <span aria-hidden="true">↗</span></button></div></div>}
  </div>;
