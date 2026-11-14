@@ -23,7 +23,7 @@ test('current canon names Domina Rosa and retires obsolete origins',()=>{
  assert.match(homepage,/Domina Rosa/);
  assert.match(chronicles,/Imperial Foundations/);
  assert.match(chronicles,/The Imperial Ambition/);
- assert.match(chronicles,/New Cassia serves as the Order’s administrative and military center/);
+ assert.match(chronicles,/New Cassia serves as the Imperium’s administrative and military center/);
  assert.doesNotMatch(homepage+chronicles.replaceAll('origins-thirteenth','').replaceAll('yanxia-order',''),/Elira|Thirteenth|Yanxia/i);
 });
 
