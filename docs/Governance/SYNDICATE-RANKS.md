@@ -28,7 +28,7 @@ The four operational branches descend from imperial command:
 - Existing accounts keep their assigned rank codes. No automatic promotions, demotions or role transfers occur.
 - `account_role='domina'` and related API permission checks remain unchanged. **Imperatrix** is the new visible title; it is not a permissions migration.
 - The original `domina`, `grand_viper`, and other catalog codes stay intact as internal identifiers.
-- Officium Aerarii's historical `gilded_talon` / `high_claw` access rules still apply to the renamed Quaestor / Procurator until a separate permissions review.
+- Officium Aerarii's historical `gilded_talon` / `high_claw` access rules still apply to the renamed Aedilis / Quaestor until a separate permissions review.
 - The legacy `syndicate_rank` field and older `syndicateRanks.js` code are for compatibility only.
 - No changes to consent or the Bound Path.
 
