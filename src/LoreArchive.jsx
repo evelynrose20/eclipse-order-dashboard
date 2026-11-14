@@ -37,8 +37,8 @@ export default function LoreArchive({request,admin=false}){
   }catch(err){setError(err.message||'This entry could not be saved.')}finally{setSaving(false)}
  };
  return <div className={'lore-root '+(admin?'lore-internal':'lore-public')}>
-  {!admin&&<nav className="lore-exit"><a href="./"><i className="fa-solid fa-book-open"/> The Eclipse Order</a><a href="./#history">Return to the Order</a><a href="?portal">Member sign-in</a></nav>}
-  <header className="lore-hero"><span className="lore-kicker">THE ECLIPSE ORDER · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>Explore the Eclipse Order’s Garlean-influenced ambitions, the upheaval of the Final Days, and its imperial resurgence under Domina Rosa in New Cassia.</p><div className="lore-hero-mark" aria-hidden="true"><i className="fa-solid fa-book-open"/></div></header>
+  {!admin&&<nav className="lore-exit"><a href="./"><i className="fa-solid fa-book-open"/> Imperium Noctis</a><a href="./#history">Return to the Order</a><a href="?portal">Member sign-in</a></nav>}
+  <header className="lore-hero"><span className="lore-kicker">IMPERIUM NOCTIS · THE WRITTEN RECORD</span><h1>Chronicles of <em>the Eclipse.</em></h1><p>Explore the Imperium Noctis’s Garlean-influenced ambitions, the upheaval of the Final Days, and its imperial resurgence under Domina Rosa in New Cassia.</p><div className="lore-hero-mark" aria-hidden="true"><i className="fa-solid fa-book-open"/></div></header>
   {error&&<div className="lore-error" role="alert">{error}</div>}{notice&&<p className="lore-notice" role="status">{notice}</p>}
   <div className="lore-layout">
    <aside className="lore-index"><div className="lore-index-head"><span>THE ARCHIVES</span>{editing&&<button type="button" onClick={make}>+ New entry</button>}</div>
@@ -59,6 +59,6 @@ export default function LoreArchive({request,admin=false}){
     </form>:entry?<article className="lore-reading"><span className="lore-kicker">{label(ERAS,entry.era)} / {label(TYPES,entry.kind)}</span><div className="lore-reading-head"><h2>{entry.title}</h2>{editing&&<button type="button" onClick={()=>edit(entry)}>Edit entry</button>}</div>{entry.summary&&<p className="lore-lead">{entry.summary}</p>}<div className="lore-text">{paragraphs(entry.body).map((p,i)=><p key={i}>{p}</p>)}</div>{admin&&!entry.published&&<p className="lore-private">This entry is visible to Order leadership until it is published.</p>}</article>:<div className="lore-empty lore-reading">{data?'The archives are awaiting their first record.':'Opening the chronicles…'}</div>}
    </main>
   </div>
-  {!admin&&<footer className="lore-footer"><span>THE ECLIPSE ORDER · ILSABARD · NEW CASSIA</span><a href="./#visit">In-game estate address</a></footer>}
+  {!admin&&<footer className="lore-footer"><span>IMPERIUM NOCTIS · ILSABARD · NEW CASSIA</span><a href="./#visit">In-game estate address</a></footer>}
  </div>;
 }
