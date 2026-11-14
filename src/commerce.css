@@ -86,7 +86,7 @@
 @media(max-width:550px){.eo-trade-hero{padding:21px}.eo-trade-overview{grid-template-columns:1fr}.eo-trade-payoff{flex-direction:column;align-items:flex-start}.eo-trade-route-reward{font-size:14px}}
 
 
-/* Eclipse Order merchant exchange — dense, readable, responsive buy-side market */
+/* Imperium Noctis merchant exchange — dense, readable, responsive buy-side market */
 .eo-exchange{--mx-bg:#202a33;--mx-panel:#202a33;--mx-line:#384651;--mx-accent:#c6cfd0;--mx-muted:#b1bdc1;display:grid;gap:16px;color:#e0e5e5;max-width:100%;min-width:0}
 .eo-exchange button{cursor:pointer}
 .eo-exchange button:disabled{opacity:.46;cursor:not-allowed}
