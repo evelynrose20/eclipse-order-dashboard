@@ -1,8 +1,8 @@
-# Eclipse Order — FC roleplay and encounter ledger
+# Imperium Noctis — FC roleplay and encounter ledger
 
-**Current narrative canon:** The Eclipse Order is an independent Garlean-influenced imperial villain faction, governed by Domina Rosa from New Cassia. It is not defined as a criminal syndicate. See [Imperial Faction Canon](docs/IMPERIAL-FACTION-CANON.md) for continuity, terminology and compatibility boundaries.
+**Current narrative canon:** Imperium Noctis is an independent Garlean-influenced imperial villain faction, governed by Domina Rosa from New Cassia. It is not defined as a criminal syndicate. See [Imperial Faction Canon](docs/IMPERIAL-FACTION-CANON.md) for continuity, terminology and compatibility boundaries.
 
-The Eclipse Order dashboard supports FC membership management, character dossiers, private out-of-character (OOC) preferences, binding requests, planned events, and tabletop-style encounters.
+Imperium Noctis dashboard supports FC membership management, character dossiers, private out-of-character (OOC) preferences, binding requests, planned events, and tabletop-style encounters.
 
 ## Current architecture
 
@@ -14,11 +14,11 @@ A successful frontend deployment only verifies static assets. It does not run My
 
 ## Public website and member portal
 
-The site now opens on a **public landing page** describing The Eclipse Order's lore, hierarchy, roleplay, expectations, and membership request process. Visitors do not need to sign in to read it. The existing member dashboard and account registration/login are still available via the **Member sign-in** / **Request membership** links.
+The site now opens on a **public landing page** describing Imperium Noctis's lore, hierarchy, roleplay, expectations, and membership request process. Visitors do not need to sign in to read it. The existing member dashboard and account registration/login are still available via the **Member sign-in** / **Request membership** links.
 
 Because GitHub Pages does not automatically rewrite arbitrary deep URLs to the app shell, public links use the safe **`?portal`** query route (for example `https://<deployed-site>/?portal`). Hosting environments with SPA fallback also accept `/portal`. Both paths preserve the existing Windows/MySQL authentication and dashboard; the query path is the reliable option for static GitHub Pages deployments. The public homepage itself requires no API response or database access.
 
-The new public site has original Eclipse Order copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
+The new public site has original Imperium Noctis copy and visual design inspired structurally by an external FC reference, not that FC's characters, locations, mechanics, or assets. No recruitment location, estate address, Discord invitation, or privacy-sensitive member data is invented or exposed. Customize operational facts before publicly promoting the page.
 
 ## Discord member verification diagnostics
 
@@ -37,7 +37,7 @@ This returns the configured `guild_name` and `guild_id`, membership status, and 
 
 ## Discord-only sign-in and membership verification
 
-The member portal uses **Discord exclusively**: there are no email/password sign-in or registration routes. A member must be in The Eclipse Order's configured Discord guild, pass membership screening, and have an **approved** Order account. A Discord identity by itself cannot grant moderator access or change character ownership, syndicate ranks, or RP roles.
+The member portal uses **Discord exclusively**: there are no email/password sign-in or registration routes. A member must be in Imperium Noctis's configured Discord guild, pass membership screening, and have an **approved** Order account. A Discord identity by itself cannot grant moderator access or change character ownership, syndicate ranks, or RP roles.
 
 **Deployment and configuration (private Windows server):**
 
@@ -53,7 +53,7 @@ The member portal uses **Discord exclusively**: there are no email/password sign
 
 **Security:** server-side bot guild membership is checked at Discord OAuth completion and checked on existing authenticated API sessions with a short cache. Unavailable Discord membership checks fail closed; 404 means the user is not in the guild; Discord membership screening is not treated as complete access. Users may choose whether to authorize joining through Discord. The server does not use Discord email, an invite link, or public profile to establish account ownership. Existing opaque session tokens are issued only to approved accounts. The old password login, password registration and local password-based first-account setup are disabled.
 
-**Bad End FC notice:** the public website and Discord sign-in page identify The Eclipse Order as an adult Bad End-focused RP community, explaining lasting fictional consequences including character death, captivity and servitude, while making out-of-character player consent and safety paramount.
+**Bad End FC notice:** the public website and Discord sign-in page identify Imperium Noctis as an adult Bad End-focused RP community, explaining lasting fictional consequences including character death, captivity and servitude, while making out-of-character player consent and safety paramount.
 
 ## Member experience
 
