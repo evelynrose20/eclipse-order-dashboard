@@ -1,4 +1,4 @@
--- Eclipse Order: planned FC events, applications, party approval, new bound rank names.
+-- Imperium Noctis: planned FC events, applications, party approval, new bound rank names.
 -- Requirements: existing profile-encounters.sql and battlemap-dice.sql.
 -- Back up database first. Run as one SQL Editor query.
 begin;
