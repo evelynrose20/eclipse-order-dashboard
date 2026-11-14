@@ -36,7 +36,7 @@ export default function MilitaryInstallationsPanel({request}){
  ]:[];
  const editor=dialog==='edit';
  return <section className="military-panel">
-  <header className="military-hero"><div><span>THE ECLIPSE ORDER / STRATEGIC COMMAND</span><h3>Military Installations</h3><p>Oversee castrums, defenses, troops, war stores and stationed magitek.</p></div><button type="button" onClick={()=>{setForm(blank());setDialog('create')}}>+ Establish installation</button></header>
+  <header className="military-hero"><div><span>IMPERIUM NOCTIS / STRATEGIC COMMAND</span><h3>Military Installations</h3><p>Oversee castrums, defenses, troops, war stores and stationed magitek.</p></div><button type="button" onClick={()=>{setForm(blank());setDialog('create')}}>+ Establish installation</button></header>
   {error&&<p className="wa-error" role="alert">{error}</p>}{notice&&<p className="wa-notice" role="status">{notice}</p>}
   {!data?<p>Loading installation records…</p>:<>
    <div className="military-metrics"><div><small>Installations</small><strong>{number(list.length)}</strong></div><div><small>Stationed troops</small><strong>{number(list.reduce((n,x)=>n+(x.garrison||[]).reduce((a,b)=>a+Number(b.quantity),0),0))}</strong></div><div><small>Stationed magitek</small><strong>{number(list.reduce((n,x)=>n+(x.magitek||[]).reduce((a,b)=>a+Number(b.quantity),0),0))}</strong></div><div><small>Damaged / lost</small><strong>{list.filter(x=>x.operational_ready===false||x.state!=='operational').length}</strong></div></div>
