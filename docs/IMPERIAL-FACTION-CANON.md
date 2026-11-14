@@ -1,9 +1,9 @@
-# Eclipse Order — Imperial Faction Canon and Implementation Rules
+# Imperium Noctis — Imperial Faction Canon and Implementation Rules
 
 Status: adopted narrative direction, November 2026. This document governs public-facing terminology and future content authoring; it is **not** a database migration or an automatic rewrite of players' records.
 
 ## Identity
-The Eclipse Order is an **independent Garlean-influenced imperial villain faction**, led by Domina Rosa from New Cassia in northern Ilsabard. It seeks territorial control, political authority, military capability, industrial reconstruction and a lasting empire under the Eclipse. It draws on Garlean traditions but does not claim to be the restored Garlean Empire or to possess universal legal legitimacy.
+Imperium Noctis is an **independent Garlean-influenced imperial villain faction**, led by Domina Rosa from New Cassia in northern Ilsabard. It seeks territorial control, political authority, military capability, industrial reconstruction and a lasting empire under the Eclipse. It draws on Garlean traditions but does not claim to be the restored Garlean Empire or to possess universal legal legitimacy.
 
 The Order promises stability, infrastructure, loyalty and protection to its subjects. Its imperial ambitions may involve coercion, occupations, conquest, harsh rule and conflict with neighbors. Villainy does not require every member to be personally cruel, and characters can disagree about tactics without changing the faction's antagonist premise. Avoid presenting the faction as a mafia, criminal syndicate, smuggling ring or a collection of illicit business fronts. Individuals may have criminal histories, but criminal enterprise is not the faction's defining institution.
 
