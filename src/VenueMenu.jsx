@@ -61,10 +61,10 @@ function MenuPhoto({name}) {
 
 function VenueMark(){return <span className="venue-mark" aria-hidden="true"><OrderEmblem className="venue-order-emblem"/></span>}
 export default function VenueMenu(){
- useEffect(()=>{document.title='The Menu — The Midnight Eclipse';return()=>{document.title='The Eclipse Order — A Final Fantasy XIV Roleplay Free Company'}},[]);
+ useEffect(()=>{document.title='The Menu — The Midnight Eclipse';return()=>{document.title='Imperium Noctis — A Final Fantasy XIV Roleplay Free Company'}},[]);
  return <div className="midnight-venue venue-menu-page">
   <a className="venue-skip" href="#venue-menu-main">Skip to menu</a>
-  <header className="venue-header"><a className="venue-brand" href="/venue/"><VenueMark/><span>THE MIDNIGHT <em>ECLIPSE</em><small>AN ECLIPSE ORDER VENUE</small></span></a>
+  <header className="venue-header"><a className="venue-brand" href="/venue/"><VenueMark/><span>THE MIDNIGHT <em>ECLIPSE</em><small>AN IMPERIUM NOCTIS VENUE</small></span></a>
    <nav aria-label="Menu navigation"><a href="/venue/">Venue home</a><a href="#menu">Drinks</a><a href="#food">Food</a><a href="#desserts">Desserts</a><a href="/venue/#travel">Travel & location</a><a href="/venue/rules/">Venue Rules</a></nav>
   </header>
   <main id="venue-menu-main">
@@ -90,6 +90,6 @@ export default function VenueMenu(){
    </div></section>
 
   </main>
-  <footer className="venue-footer"><div><VenueMark/><span>THE MIDNIGHT ECLIPSE<small>AN ECLIPSE ORDER VENUE</small></span></div><div><a href="/venue/">Back to the venue</a><a href="/">The Eclipse Order</a><a href="/venue/rules/">Venue Rules</a><a href="#venue-menu-main">Back to top ↑</a></div><small>Menu prices are in-character gil only. Not affiliated with Square Enix.</small></footer>
+  <footer className="venue-footer"><div><VenueMark/><span>THE MIDNIGHT ECLIPSE<small>AN IMPERIUM NOCTIS VENUE</small></span></div><div><a href="/venue/">Back to the venue</a><a href="/">Imperium Noctis</a><a href="/venue/rules/">Venue Rules</a><a href="#venue-menu-main">Back to top ↑</a></div><small>Menu prices are in-character gil only. Not affiliated with Square Enix.</small></footer>
  </div>;
 }
