@@ -34,11 +34,11 @@ import './imperial-theme.css';
 
 const memberIdentity=member=>{
  const label=String(member?.discord_username||member?.display_name||'').trim();
- return label&&!/^discord-\d+@members\.eclipse\.invalid$/i.test(label)?label:'Order member';
+ return label&&!/^discord-\d+@members\.eclipse\.invalid$/i.test(label)?label:'Imperial member';
 };
 const memberMonogram=memberIdentityValue=>memberIdentityValue.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('')||'EO';
 const primaryOrderRank=profile=>['leadership','snakes','fangs','golden_claws','household','membership']
- .map(track=>profile?.order_rank_titles?.[track]).find(Boolean)||'Order member';
+ .map(track=>profile?.order_rank_titles?.[track]).find(Boolean)||'Imperial member';
 const ROLE_OPTIONS=['member','handler','high_command','domina'];
 const field=(label,value,update)=> <label className="field"><span>{label}</span><input value={value??''} onChange={e=>update(e.target.value)}/></label>;
 const canManage=role=>role==='domina'||role==='high_command';
@@ -96,7 +96,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ['overview','Overview','◈'],
   ['roster','Character roster','▦'],
   ['sheet','Character dossiers','◇'],
-  ...(!playerPreview&&profile.role==='domina'?[['members','Order accounts','♛']]:[]),
+  ...(!playerPreview&&profile.role==='domina'?[['members','Imperial accounts','♛']]:[]),
   ...(!playerPreview?[['governance','Governance','♛']]:[]),
   ['encounters','Encounters & dice','⚄'],
   ['events','Events & signups','◷'],
@@ -104,7 +104,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
   // Industry & Projects is the sole permanent construction navigation entry.
   ['factions','Factions & diplomacy','✧'],
   ['world','World Administration','▧'],
-  ['lore','Order Chronicles','✦'],
+  ['lore','Imperial Chronicles','✦'],
   ['workshop','Workshop & Garden','♧'],
   ['trade','Trade Routes','♜'],
   ...(!playerPreview&&canManage(profile.role)?[['freight','Logistics & Freight','▣']]:[]),
@@ -113,11 +113,11 @@ export default function LocalWorkspace({profile,request,onLogout}){
   ...(broodAccess?[['breeding-pit','Breeding Pit','◇']]:[]),
   ['lineage-research','Imperial Lineage Project','◇'],
   ['family','Family & Care','♡'],
-  ['treasury','Order Treasury','◈'],
+  ['treasury','Imperial Treasury','◈'],
   ['profile','My RP preferences','♡'],
   ['directory','Member RP profiles','♧'],
   ['transitions','Binding requests','◇'],
-  ['settings','Order rules','⚙']
+  ['settings','Imperial regulations','⚙']
  ];
  const act=async(id,action,payload={})=>{
   setBusy(true);setMessage('');
@@ -152,7 +152,7 @@ export default function LocalWorkspace({profile,request,onLogout}){
    <header className="topbar"><button type="button" className="order-nav-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}>☰</button><div className="breadcrumb">{getNavSection(tab)} <span>/</span> {navigation.find(n=>n[0]===tab)?.[1]}</div><div className="top-actions">{staff&&<button type="button" className={'view-switch '+(playerPreview?'preview-active':'')} aria-pressed={playerPreview} onClick={changeView}>{playerPreview?'Return to staff view':'Preview player view'}</button>}<span className="local-status"><span className="pulse"/> Ledger available</span><button className="mini-btn" onClick={onLogout}>Sign out</button></div></header>
    <div className={"content"+(tab==='encounters'?" encounter-content":"")}>
     {playerPreview&&<div className="player-preview-banner" role="status"><strong>Player View · Read-only preview</strong><span>Showing member navigation and your own linked characters. Your staff login and server permissions are unchanged; use a separate member account to verify real access restrictions.</span></div>}
-    {tab!=='encounters'&&<div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'IMPERIAL OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Order at a glance.'):tab==='members'?'Approve membership requests; manage imperial appointments and separate website permissions.':tab==='chamber'?'Operate the permanent magitek installation and maintain its collection and alchemical records.':tab==='breeding-pit'?'Cultivate voidspawn strains, oversee incubation, raise broods and prepare units for deployment.':tab==='lineage-research'?'Study Garlean heredity, research cases and gestation observations.':tab==='family'?'Manage children, feeding and Household childcare assignments.':'Manage the Imperium’s records and activities.'}</p></div></div>}
+    {tab!=='encounters'&&<div className="page-intro"><div><div className="eyebrow">{playerPreview?'MEMBER PORTAL':'IMPERIAL OPERATIONS'}</div><h1>{navigation.find(n=>n[0]===tab)?.[1]}</h1><p>{tab==='overview'?(playerPreview?'Your character records, events and RP profile at a glance.':'Your Imperium at a glance.'):tab==='members'?'Approve membership requests; manage imperial appointments and separate website permissions.':tab==='chamber'?'Operate the permanent magitek installation and maintain its collection and alchemical records.':tab==='breeding-pit'?'Cultivate voidspawn strains, oversee incubation, raise broods and prepare units for deployment.':tab==='lineage-research'?'Study Garlean heredity, research cases and gestation observations.':tab==='family'?'Manage children, feeding and Household childcare assignments.':'Manage the Imperium’s records and activities.'}</p></div></div>}
     {message&&<div className="alert" role="status">{message}</div>}
     {tab==='overview'&&<>
      <div className="eo-summary"><div><strong>{visibleCharacters.length}</strong><span>Visible characters</span></div>{!playerPreview&&profile.role==='domina'&&<div><strong>{pending.length}</strong><span>Pending accounts</span></div>}{!playerPreview&&<div><strong>{active.length||(profile.role==='domina'?0:'—')}</strong><span>Approved members</span></div>}</div>
