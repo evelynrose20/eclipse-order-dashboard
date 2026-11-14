@@ -29,8 +29,8 @@ const fmt=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:3});
 const date=v=>v?new Date(v).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
 const readable=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
 const equipmentFor={road:['transport','armored_vehicle'],rail:['locomotive'],air:['airship','capital_airship']};
-export default function FreightLogistics({request,onNavigate}){
- const [data,setData]=useState(null),[tab,setTab]=useState('command'),[dialog,setDialog]=useState(''),[manifest,setManifest]=useState(initialManifest());
+export default function FreightLogistics({request,onNavigate,initialTab='command'}){
+ const [data,setData]=useState(null),[tab,setTab]=useState(initialTab),[dialog,setDialog]=useState(''),[manifest,setManifest]=useState(initialManifest());
  const [contract,setContract]=useState(initialContract());
  const [civic,setCivic]=useState({item_id:'',resource_kind:'food',food_group:''});
  const [autoVehicle,setAutoVehicle]=useState({});
