@@ -2,7 +2,7 @@
 aliases: [System Handbook, Dashboard Game Guide]
 tags: [systems, handbook, staff, guide]
 ---
-# Eclipse Order — System Handbook
+# Imperium Noctis — System Handbook
 
 **Purpose:** A practical guide to what the live dashboard does, how its systems connect, and where actions actually happen. These are operating instructions, not a proposed feature list. Verified from the repository on **13 November 2026**; the live Windows database may be on an older revision.
 
