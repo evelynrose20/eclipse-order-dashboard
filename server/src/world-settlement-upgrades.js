@@ -1,5 +1,5 @@
 import {civicInfrastructureEffects,civilianStorageCapacity} from './world-civic-building-templates.js';
-import {getCivicTemplates,beginCivicTemplateProject} from './world-civic-template-projects.js';
+import {getCivicTemplates,beginCivicTemplateProject,civicRepairEligible} from './world-civic-template-projects.js';
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
 const categories=['housing','defense','clinic','water','food_storage','insulation','public_works','school'];
 const statuses=['planned','building','operational','damaged','destroyed'];
@@ -76,7 +76,7 @@ export async function handleSettlementUpgrades(pool,req,path,actor){
    if(upgradeId){
     const [[record]]=await db.execute('SELECT * FROM world_settlement_upgrades WHERE id=? AND settlement_id=? FOR UPDATE',[upgradeId,id]);
     if(!record)return fail(404,'upgrade_not_found');
-    if(!record.template_id||(repairMatch?!['damaged','destroyed'].includes(record.status):record.status!=='operational'))return fail(409,repairMatch?'building_not_damaged':'building_not_ready_for_upgrade');
+    if(!record.template_id||(repairMatch?!civicRepairEligible(record.status):record.status!=='operational'))return fail(409,repairMatch?'building_not_damaged':'building_not_ready_for_upgrade');
     upgrade=record;
    }
    const templateId=upgrade?.template_id||b.template_id;
