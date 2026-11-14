@@ -1,0 +1,66 @@
+import React,{useEffect,useMemo,useState} from 'react';
+
+const fmt=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1});
+const title=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());
+const fraction=(n,d)=>Math.max(0,Math.min(100,Math.round(100*Number(n||0)/Math.max(1,Number(d||0)))));
+const critical=status=>['damaged','destroyed','ruined','captured','abandoned'].includes(status);
+function Progress({done,total,label}){return <div className="wa-rebuild-progress" role="progressbar" aria-label={label||'Project progress'} aria-valuemin={0} aria-valuemax={Number(total)||1} aria-valuenow={Math.min(Number(done)||0,Number(total)||1)}><span style={{width:fraction(done,total)+'%'}}/></div>}
+export default function SettlementRebuildingPanel({request,settlements=[],selectedId,onSelect,onNavigate,onChanged}){
+ const [id,setId]=useState(String(selectedId||'')),[data,setData]=useState(null),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[view,setView]=useState('all');
+ const ordered=useMemo(()=>settlements.slice().sort((a,b)=>a.name.localeCompare(b.name)),[settlements]);
+ useEffect(()=>{setId(String(selectedId&&settlements.some(s=>String(s.id)===String(selectedId))?selectedId:ordered[0]?.id||''))},[selectedId,settlements.map(s=>s.id).join(',')]);
+ async function reload(target=id){if(!target)return;setLoading(true);setError('');try{setData(await request('/world-admin/settlements/'+target+'/rebuilding'))}catch(e){setError(e.message||'Unable to load rebuilding dossier');setData(null)}finally{setLoading(false)}}
+ useEffect(()=>{setData(null);setNotice('');void reload(id)},[id]);
+ const navigate=(section)=>onNavigate?.(section,id);
+ async function perform(path,body,success){
+  setBusy(true);setError('');setNotice('');
+  try{await request(path,{method:'POST',body});await reload();await onChanged?.();setNotice(success)}
+  catch(e){setError(e.message||'Project action failed')}
+  finally{setBusy(false)}
+ }
+ const root='/world-admin/settlements/'+id+'/upgrades';
+ const sections=[
+  ['all','Everything','fa-layer-group'],
+  ['civic','Buildings','fa-building'],
+  ['industry','Industry','fa-industry'],
+  ['power','Power','fa-bolt'],
+  ['warehouses','Warehouses','fa-warehouse']
+ ];
+ const projects=data?[...data.civicProjects.filter(p=>['active','paused'].includes(p.status)).map(p=>({...p,kind:'civic',name:p.building_name||'Building project'})),...data.industryProjects.filter(p=>['active','paused','planned'].includes(p.status)).map(p=>({...p,kind:'industry',name:p.name||p.facility_name})),...data.powerProjects.filter(p=>p.status==='active').map(p=>({...p,kind:'power',name:p.blueprint_name}))]:[];
+ const show=kind=>view==='all'||view===kind;
+ return <section className="wa-rebuild">
+  <header className="wa-rebuild-header"><div><span className="wa-kicker">IMPERIAL RESTORATION COMMAND</span><h2>Settlement Reconstruction</h2><p>Track damaged infrastructure, fund actual construction projects, and restore buildings one by one. The map's Rebuilding status does not automatically finish construction.</p></div><button type="button" disabled={loading||busy||!id} onClick={()=>reload()}><i className="fa-solid fa-rotate" aria-hidden="true"/> Refresh assessment</button></header>
+  <div className="wa-rebuild-location"><label>Settlement
+   <select value={id} onChange={e=>{setId(e.target.value);onSelect?.(e.target.value)}}><option value="" disabled>Choose a settlement</option>{ordered.map(s=><option key={s.id} value={s.id}>{s.name} · {title(s.strategic_state)}</option>)}</select></label>
+   <button type="button" onClick={()=>navigate('map')} disabled={!id}>View on map</button>
+  </div>
+  {error&&<p className="wa-error" role="alert">{error}</p>}{notice&&<p className="wa-notice" role="status">{notice}</p>}
+  {loading&&!data?<p className="wa-rebuild-empty">Inspecting settlement infrastructure…</p>:data&&<React.Fragment>
+   <div className="wa-rebuild-identity"><div><small>TERRITORIAL CONDITION</small><strong>{title(data.settlement.strategic_state)}</strong><span>{data.settlement.controlling_faction_id==='eclipse-order'?'Order-controlled':data.settlement.controlling_faction_id?'Controlled by another faction':'Unclaimed — control required'}</span></div><div><small>CIVILIAN STABILITY</small><strong>{fmt(data.settlement.civil_stability)}%</strong><span>Unrest {fmt(data.settlement.unrest)}%</span></div><div><small>WORKERS</small><strong>{fmt(data.settlement.workforce)}</strong><span>{fmt(data.settlement.population)} residents</span></div><div><small>OPEN PROJECTS</small><strong>{projects.length}</strong><span>Labor progression is project-specific</span></div></div>
+   <div className="wa-rebuild-readiness"><div><h3>{data.assessment.operationallyReady?'No tracked blockers':'Restoration priorities'}</h3><p>{data.assessment.completionMessage}</p></div><span>{data.assessment.risks.length} warnings</span></div>
+   {!!data.assessment.risks.length&&<div className="wa-rebuild-alerts">{data.assessment.risks.map((r,i)=><div key={i}><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"/>{r}</div>)}</div>}
+   <div className="wa-rebuild-metrics">{[['Civic buildings',data.assessment.damagedCivic,'fa-house'],['Industrial sites',data.assessment.damagedIndustry,'fa-industry'],['Power stations',data.assessment.damagedPower,'fa-bolt'],['Warehouses offline',data.assessment.unfinishedWarehouses,'fa-warehouse']].map(([label,n,icon])=><div key={label}><i className={'fa-solid '+icon} aria-hidden="true"/><span>{label}</span><strong>{n}</strong><small>Require attention</small></div>)}</div>
+   <nav className="wa-rebuild-tabs" aria-label="Reconstruction layers">{sections.map(([key,name,icon])=><button key={key} type="button" className={view===key?'active':''} aria-pressed={view===key} onClick={()=>setView(key)}><i className={'fa-solid '+icon} aria-hidden="true"/> {name}</button>)}</nav>
+   {show('civic')&&<section className="wa-rebuild-category"><div className="wa-rebuild-category-heading"><div><h3>Buildings & civilian services</h3><p>Repair damaged buildings at their existing level. New construction and upgrades require the building template workflow.</p></div><button onClick={()=>navigate('civil')}>Open building editor</button></div>
+    <div className="wa-rebuild-assets">{data.buildings.map(b=>{
+     const jobs=data.civicProjects.filter(p=>Number(p.upgrade_id)===Number(b.id)&&['active','paused'].includes(p.status));
+     return <article key={b.id} className="wa-rebuild-asset"><div className="wa-rebuild-asset-head"><i className="fa-solid fa-building" aria-hidden="true"/><div><strong>{b.name}</strong><small>{title(b.category)} · Level {b.level}</small></div><span data-state={b.status}>{title(b.status)}</span></div>
+      <div className="wa-rebuild-condition"><span>Condition {b.condition_pct}%</span><Progress done={b.condition_pct} total={100} label={b.name+' condition'}/></div>
+      {jobs.map(p=><div key={p.id} className="wa-rebuild-project"><span>{title(p.project_kind)} · Level {p.target_level} · {p.materials_paid?'Funded':'Needs materials'}</span><Progress done={p.progress} total={p.labor_required}/><small>{fmt(p.progress)} / {fmt(p.labor_required)} labor</small>
+       {p.needs?.map(n=><div className="wa-rebuild-requirement" key={n.material_id}><span>{n.material_name||n.material_id}: {fmt(n.committed_qty)} / {fmt(n.required_qty)} · available {fmt(n.available_qty)}</span>{p.owner_kind==='order'&&p.status==='active'&&Number(n.committed_qty)<Number(n.required_qty)&&<button type="button" disabled={busy||Number(n.available_qty)<1} onClick={()=>perform(root+'/projects/'+p.id+'/commit',{material_id:n.material_id,quantity:Math.min(Math.max(0,Number(n.required_qty)-Number(n.committed_qty)),Math.floor(Number(n.available_qty)))},'Material committed to the existing civic project.')}>Commit available</button>}</div>)}
+      </div>)}
+      {critical(b.status)&&!jobs.length&&<button className="wa-rebuild-fix" onClick={()=>navigate('civil')}>Open repair options</button>}
+     </article>
+    })}{!data.buildings.length&&<p className="wa-rebuild-empty">No civic buildings recorded. Choose a building template to begin construction.</p>}</div>
+   </section>}
+   {show('industry')&&<section className="wa-rebuild-category"><div className="wa-rebuild-category-heading"><div><h3>Factories, farms & industrial sites</h3><p>Repair machinery, restore destroyed facilities, and supply their individual project materials.</p></div><button onClick={()=>navigate('industry')}>Open Industry & Projects</button></div>
+    <div className="wa-rebuild-assets">{data.industry.map(f=><article className="wa-rebuild-asset" key={f.id}><div className="wa-rebuild-asset-head"><i className="fa-solid fa-industry"/><div><strong>{f.name}</strong><small>Level {f.level} · {fmt(f.workforce)} assigned workers</small></div><span data-state={f.status}>{title(f.status)}</span></div><div className="wa-rebuild-condition"><span>Equipment {fmt(f.equipment_condition)}%</span><Progress done={f.equipment_condition} total={100}/></div>{data.industryProjects.filter(p=>Number(p.facility_id)===Number(f.id)&&['active','paused','planned'].includes(p.status)).map(p=><div className="wa-rebuild-project" key={p.id}><strong>{p.name}</strong><Progress done={p.progress} total={p.labor_required}/><small>{fmt(p.progress)} / {fmt(p.labor_required)} labor · {title(p.status)}</small>{p.needs?.map(n=><small key={n.item_id}>{n.material_name||n.item_id}: {fmt(n.committed_qty)} / {fmt(n.required_qty)} committed</small>)}</div>)}<button className="wa-rebuild-fix" onClick={()=>navigate('industry')}>Manage industrial repair</button></article>)}{!data.industry.length&&<p className="wa-rebuild-empty">No directly attached industrial facilities. Review mapped sites separately in Industry & Projects.</p>}</div>
+   </section>}
+   {show('power')&&<section className="wa-rebuild-category"><div className="wa-rebuild-category-heading"><div><h3>Generators & electrical infrastructure</h3><p>Condition, fuel and project progress are independent. Repairing a generator doesn't automatically refill its fuel.</p></div><button onClick={()=>navigate('power')}>Open Power Grid</button></div>
+    <div className="wa-rebuild-assets">{data.power.map(p=><article className="wa-rebuild-asset" key={p.id}><div className="wa-rebuild-asset-head"><i className="fa-solid fa-bolt"/><div><strong>{p.name}</strong><small>{p.model} · Level {p.level}</small></div><span data-state={p.status}>{title(p.status)}</span></div><div className="wa-rebuild-condition"><span>Condition {p.condition_pct}%</span><Progress done={p.condition_pct} total={100}/></div><small>Fuel: {fmt(p.fuel_units)} · {p.fuel_per_day?fmt(Number(p.fuel_units)/Number(p.fuel_per_day))+' days':'Burn rate unavailable'}</small>{data.powerProjects.filter(j=>Number(j.plant_id)===Number(p.id)&&j.status==='active').map(j=><div className="wa-rebuild-project" key={j.id}><strong>{title(j.action)} · {j.blueprint_name}</strong><Progress done={j.progress} total={j.labor_required}/><small>Labor {fmt(j.progress)} / {fmt(j.labor_required)}</small><small>Iron: {fmt(j.iron_committed)} / {fmt(j.iron_required)} · Timber: {fmt(j.timber_committed)} / {fmt(j.timber_required)}</small></div>)}<button className="wa-rebuild-fix" onClick={()=>navigate('power')}>Open restoration controls</button></article>)}{!data.power.length&&<p className="wa-rebuild-empty">No installed power plant. Construct one from Power Grid blueprints.</p>}</div>
+   </section>}
+   {show('warehouses')&&<section className="wa-rebuild-category"><div className="wa-rebuild-category-heading"><div><h3>Warehouses & stores</h3><p>Commission buildings through real blueprint recipes and local construction stock.</p></div><button onClick={()=>navigate('logistics')}>Open warehouse management</button></div><div className="wa-rebuild-assets">{data.warehouses.map(w=><article className="wa-rebuild-asset" key={w.id}><div className="wa-rebuild-asset-head"><i className="fa-solid fa-warehouse"/><div><strong>{w.name}</strong><small>{title(w.tier)} · {fmt(w.capacity_units)} capacity</small></div><span data-state={w.state}>{title(w.state)}</span></div>{w.state!=='operational'&&<small>Requires construction or commissioning in Logistics & Warehouses.</small>}<button className="wa-rebuild-fix" onClick={()=>navigate('logistics')}>Manage warehouse</button></article>)}{!data.warehouses.length&&<p className="wa-rebuild-empty">No warehouses in this settlement.</p>}</div></section>}
+   <footer className="wa-rebuild-footer"><p><strong>Completion:</strong> This dashboard assesses tracked work; it does not auto-settle faction ownership or mark the territory Secure. Review territorial condition after recovery.</p><button type="button" onClick={()=>navigate('map')}>Review territorial state</button></footer>
+  </React.Fragment>}
+ </section>;
+}
