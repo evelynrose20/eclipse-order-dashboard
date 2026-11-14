@@ -13,7 +13,6 @@ if(!token||!validId(guildId)||!validId(channelId)){
  console.error('Configure DISCORD_BOT_TOKEN, DISCORD_GUILD_ID and DISCORD_EVENT_ANNOUNCEMENT_CHANNEL_ID in server/.env');
  process.exit(1);
 }
-const HORIZON_DAYS=35;
 const DAY=86400000;
 const directory=path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'.eclipse-order'),'EclipseOrder','EventBot');
 fs.mkdirSync(directory,{recursive:true});
@@ -50,7 +49,7 @@ function occurrences(event,now=Date.now()){
  if(!start)return [];
  const rule=event.recurrenceRule;
  if(!rule||rule.frequency!==2){
-  if(start.getTime()<now-DAY)return [];
+  if((event.scheduledEndAt||start).getTime()<now)return [];
   return [{key:occurrenceKey(event.id,start),start,end:event.scheduledEndAt}];
  }
  const anchor=new Date(rule.start||start);
@@ -58,17 +57,17 @@ function occurrences(event,now=Date.now()){
  const interval=Math.max(1,Number(rule.interval)||1);
  const step=7*DAY*interval;
  const duration=event.scheduledEndAt?Math.max(0,event.scheduledEndAt.getTime()-start.getTime()):null;
- const horizon=now+HORIZON_DAYS*DAY;
  const startIndex=Math.max(0,Math.floor((now-DAY-anchor.getTime())/step));
  const result=[];
  for(let i=startIndex;i<startIndex+30;i++){
   if(rule.count!=null&&i>=rule.count)break;
   const time=anchor.getTime()+i*step;
-  if(time>horizon)break;
   if(rule.end&&time>new Date(rule.end).getTime())break;
-  if(time<now-DAY)continue;
+  const endTime=duration===null?time:time+duration;
+  if(endTime<now)continue;
   const instance=new Date(time);
-  result.push({key:occurrenceKey(event.id,instance),start:instance,end:duration===null?null:new Date(time+duration)});
+  result.push({key:occurrenceKey(event.id,instance),start:instance,end:duration===null?null:new Date(endTime)});
+  break; // Only the next occurrence of a repeating event is announced.
  }
  return result;
 }
@@ -124,44 +123,59 @@ async function announcementChannel(){
  if(!channel?.isTextBased()||!('send' in channel))throw new Error('Destination must be a text channel that the bot can write in');
  return channel;
 }
+// Only one public message per event series. Existing per-week RSVP votes remain
+// separate; old messages from the earlier multi-post implementation are removed.
 async function upsert(event,occurrence){
- const key=occurrence.key;
- return serialized(key,async()=>{
+ return serialized(event.id,async()=>{
   const channel=await announcementChannel();
-  // Migrate the original single-message format, preserving existing RSVPs for
-  // the nearest occurrence only, without copying them to every future week.
-  if(!state.messages[key]&&state.messages[event.id]){
-   state.messages[key]=state.messages[event.id];
-   delete state.messages[event.id];
-   if(state.votes[event.id]){
-    state.votes[key]={...state.votes[event.id],...state.votes[key]};
-    delete state.votes[event.id];
-   }
+  const existingKeys=Object.keys(state.messages).filter(k=>k===event.id||parseKey(k)?.id===event.id);
+  let keepKey=event.id;
+  let messageId=state.messages[keepKey];
+  if(!messageId&&existingKeys.length){
+   // Keep the announcement for the currently displayed/nearest date if possible.
+   const preferred=existingKeys.includes(occurrence.key)?occurrence.key:existingKeys.sort((x,y)=>{
+    const xa=parseKey(x)?.seconds||0,ya=parseKey(y)?.seconds||0;
+    return Math.abs(xa-occurrence.start.getTime()/1000)-Math.abs(ya-occurrence.start.getTime()/1000);
+   })[0];
+   messageId=state.messages[preferred];
+   state.messages[keepKey]=messageId;
    persist();
   }
-  const messageId=state.messages[key];
+  // Clean up the accidental flood, keeping only the single retained message.
+  for(const key of existingKeys){
+   if(key===keepKey)continue;
+   const redundantId=state.messages[key];
+   if(redundantId&&redundantId!==messageId){
+    try{await (await channel.messages.fetch(redundantId)).delete()}
+    catch(error){if(error.code!==10008){console.error('Cannot remove duplicate event announcement',key,error.message);continue}}
+   }
+   delete state.messages[key];
+   // Do NOT delete state.votes[key]: these are specific to the dated occurrence.
+   persist();
+  }
   const body=payload(event,occurrence);
   if(messageId){
    try{const existing=await channel.messages.fetch(messageId);await existing.edit(body);return}
    catch(error){if(error.code!==10008)throw error}
   }
   const message=await channel.send(body);
-  state.messages[key]=message.id;
+  state.messages[keepKey]=message.id;
   persist();
-  console.log('Posted event occurrence',key,event.name);
+  console.log('Posted single event announcement',event.id,event.name);
  });
 }
 async function remove(key){
- return serialized(key,async()=>{
+ const id=parseKey(key)?.id||key;
+ return serialized(id,async()=>{
   if(state.messages[key]){
    try{
     const channel=await announcementChannel();
-    const message=await channel.messages.fetch(state.messages[key]);
+    const message=await channel.messages.fetch(state.messages[id]);
     await message.delete();
    }catch(error){if(error.code!==10008&&error.code!==10003)throw error}
   }
   delete state.messages[key];
-  delete state.votes[key];
+  // Keep historical per-occurrence RSVP responses in local storage.
   persist();
  });
 }
@@ -177,7 +191,7 @@ async function reconcile(){
   for(const event of events.values()){
    if(event.status!==1&&event.status!==2)continue;
    for(const item of occurrences(event)){
-    keep.add(item.key);
+    keep.add(event.id);
     jobs.push([event,item]);
    }
   }
@@ -190,7 +204,7 @@ async function reconcile(){
     try{await remove(key)}catch(error){console.error('Failed to remove',key,error.message)}
    }
   }
-  console.log('Scheduled occurrences:',keep.size);
+  console.log('Active event announcements:',keep.size);
  }catch(error){console.error('Discord event reconciliation failed:',error.message)}
  finally{reconciling=false}
 }
@@ -216,17 +230,17 @@ client.on(Events.InteractionCreate,async interaction=>{
  const [,id,seconds,choice]=match;
  const key=id+':'+seconds;
  await interaction.deferReply({ephemeral:true});
- if(!state.messages[key]){
-  await interaction.editReply('That occurrence is no longer on the upcoming calendar.');
+ if(!state.messages[id]){
+  await interaction.editReply('That event is no longer announced.');
   return;
  }
  try{
-  await serialized(key,async()=>{
+  await serialized(id,async()=>{
    const guild=await client.guilds.fetch(guildId);
    const event=await guild.scheduledEvents.fetch(id);
    if(!event||![1,2].includes(event.status))throw Error('Event has ended or been removed');
-   const occurrence=occurrences(event).find(item=>item.key===key);
-   if(!occurrence)throw Error('This date is no longer available');
+   const occurrence=occurrences(event)[0];
+   if(!occurrence||occurrence.key!==key)throw Error('This date is no longer available');
    const previous=votesFor(key);
    const updated={...previous};
    if(updated[interaction.user.id]===choice)delete updated[interaction.user.id];
