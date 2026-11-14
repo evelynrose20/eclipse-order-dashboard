@@ -41,5 +41,16 @@ UPDATE order_council_offices SET title='Praetor'
 UPDATE order_council_offices SET title='Praefectus'
  WHERE code='internal' AND title='Praefectus Civium';
 
+-- Update only the untouched default narrative text, never a member-edited charter.
+-- Senatus Imperialis is the displayed chamber name, not an automatic Senate activation.
+UPDATE order_governance_charter
+ SET charter_text=REPLACE(charter_text,
+ 'The Consilium Imperiale serves until the Senate is convened.',
+ 'The Senatus Imperialis is the imperial governing chamber. Existing Council rules remain in effect until the optional Senate is convened.')
+ WHERE id=1 AND revision=1 AND updated_by IS NULL
+ AND title='Imperium Noctis Charter'
+ AND charter_text LIKE 'Under Imperatrix Rosa, Imperium Noctis is governed by its appointed chamber.%'
+ AND charter_text LIKE '%The Consilium Imperiale serves until the Senate is convened.%';
+
 INSERT INTO schema_migrations(version) VALUES('136_garlean_ranks_and_senate_name')
 ON DUPLICATE KEY UPDATE version=VALUES(version);
