@@ -32,7 +32,7 @@ const ORDER_BRANCHES=[
  {name:'Garlean Shadows',short:'INTELLIGENCE',symbol:'fa-user-secret',summary:'Intelligence, reconnaissance, counterintelligence, and covert operations.',ranks:['Tiro Umbrae','Speculator','Explorator','Frumentarius','Magister Umbrae'],lead:'Magister Umbrae'},
  {name:'The Legions',short:'MILITARY',symbol:'fa-shield-halved',summary:'Legion command, territorial defense, security, and campaign operations.',ranks:['Tiro','Miles','Optio','Centurio','Legatus'],lead:'Legatus'},
  {name:'Officium Aerarii',short:'TREASURY & COMMERCE',symbol:'fa-coins',summary:'Treasury, trade, procurement, enterprise licensing, and supply.',ranks:['Discipulus','Scriba','Negotiator','Quaestor','Procurator'],lead:'Procurator'},
- {name:'Research & Development',short:'R&D · MAGITEK',symbol:'fa-flask',summary:'Magitek engineering, scientific research, technical innovation, and industrial design.',ranks:['Discipulus Technicus','Artifex','Machinator','Magister Technicus'],lead:'Magister Technicus'}
+ {name:'R&D',short:'IMPERIAL RESEARCH · MAGITEK',symbol:'fa-flask',summary:'Magitek engineering, scientific research, technical innovation, and industrial design.',ranks:['Discipulus Technicus','Artifex','Machinator','Magister Technicus'],lead:'Magister Technicus'}
 ];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const MODES=[
