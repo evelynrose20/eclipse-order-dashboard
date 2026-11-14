@@ -113,11 +113,11 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
    {chosen?<main className="eo-fronts-detail">
     <div className="eo-fronts-detail-cover">
      <div className="eo-fronts-signage" aria-hidden="true"><i className={"fa-solid fa-"+(SYMBOLS[chosen.category]||"building")}/></div>
-     <div><span>{CATEGORIES[chosen.category]||'Order Enterprise'} · {chosen.location}</span><h3>{chosen.name}</h3><p>{chosen.description||'A licensed enterprise supporting the Eclipse Order.'}</p></div>
+     <div><span>{CATEGORIES[chosen.category]||'Order Enterprise'} · {chosen.location}</span><h3>{chosen.name}</h3><p>{chosen.description||'A licensed enterprise supporting the Imperium Noctis.'}</p></div>
      <span className={'eo-fronts-status '+chosen.status}>{chosen.status}</span>
     </div>
     <div className="eo-fronts-ownership">
-     <div><span>OPERATED BY</span><strong>{chosen.ownership==='order'?'The Eclipse Order':chosen.owner_name||'Member character'}</strong></div>
+     <div><span>OPERATED BY</span><strong>{chosen.ownership==='order'?'Imperium Noctis':chosen.owner_name||'Member character'}</strong></div>
      {manage&&<div><span>ENTERPRISE CASH RESERVE</span><strong>{gil(chosen.balance)}</strong></div>}
      {manage&&<div><span>ORDER TRADE SHARE</span><strong>{chosen.order_share_percent}%</strong></div>}
     </div>
