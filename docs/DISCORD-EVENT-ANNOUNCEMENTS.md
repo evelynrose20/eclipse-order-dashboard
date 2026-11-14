@@ -16,3 +16,11 @@ These three buttons store **announcement-local** responses and update the embed 
 Bot data is stored privately at `%LOCALAPPDATA%\\EclipseOrder\\EventBot\\announcements.json`, outside the repository. It contains event-message IDs and Discord user IDs for responses. Back it up if you need to preserve RSVP counts. The control center writes each process's stdout and stderr to its existing local logs folder. The bot runs under the signed-in Windows user; the host needs to stay awake and have outbound Discord connectivity. Changing the destination channel after posting requires clearing the prior message mapping carefully, or existing updates cannot find the old posts.
 
 If the bot fails to start, check for missing `server/.env` IDs, an invalid bot token, missing `discord.js`, or channel permissions. The bot is independent of the HTTP API and does **not** need a new MySQL migration or Cloudflare route. Existing scheduled events are imported on startup.
+
+## Far-future events and recurring weekly attendance
+
+Non-recurring Discord Scheduled Events are announced regardless of how many days away they are, including events 20+ days ahead. Weekly (and every-other-week) Discord event recurrences produce separate announcements for each upcoming occurrence within a rolling **35-day window**. As time passes, newly upcoming weeks appear automatically during the five-minute synchronization. Each dated occurrence has independent Accepted/Declined/Tentative responses and shows member names under each response. Responses do not automatically carry from one Friday to the next. Clicking the same response again removes it.
+
+Names are rendered as non-pinging Discord member mentions. Discord's native Interested subscriber count is not the same as the bot RSVP count. The bot does not claim to import native Interested into Accepted. The occurrence generator supports Discord's weekly recurrence rules; events using other recurring frequencies are published for their currently scheduled instance only, until those frequencies are implemented. This is a channel announcement service, not an attendance enforcement system.
+
+Existing single-event announcements and RSVPs are migrated to the nearest upcoming occurrence during reconciliation. The bot stores RSVP user IDs locally in its data file.
