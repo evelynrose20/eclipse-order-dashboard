@@ -1,3 +1,4 @@
+import {housingCapacity} from './world-settlement-upgrades.js';
 // Read-only recovery dossier. Every row links to an existing authoritative project;
 // nothing here grants free stock, workforce, levels or territorial control.
 const ok=body=>({status:200,body}),fail=(status,error)=>({status,body:{error}});
@@ -30,7 +31,7 @@ export async function rebuildingDossier(pool,id){
  if(!Number.isSafeInteger(id)||id<1)return fail(400,'invalid_settlement');
  const [[settlement]]=await pool.execute('SELECT id,name,region_id,zone_id,controlling_faction_id,strategic_state,population,workforce,unrest,civil_stability,housing_capacity FROM world_settlements WHERE id=?',[id]);
  if(!settlement)return fail(404,'settlement_not_found');
- const [buildings]=await pool.execute('SELECT id,name,category,status,condition_pct,level,template_id,construction_progress FROM world_settlement_upgrades WHERE settlement_id=? ORDER BY category,name,id',[id]);
+ const [buildings]=await pool.execute('SELECT * FROM world_settlement_upgrades WHERE settlement_id=? ORDER BY category,name,id',[id]);
  const [civicProjects]=await pool.execute("SELECT p.id,p.upgrade_id,p.project_kind,p.status,p.owner_kind,p.progress,p.labor_required,p.materials_paid,p.target_level,b.name AS building_name FROM world_civic_building_projects p LEFT JOIN world_settlement_upgrades b ON b.id=p.upgrade_id WHERE p.settlement_id=? ORDER BY p.id DESC",[id]);
  const [civicNeeds]=await pool.execute('SELECT n.project_id,n.material_id,m.name AS material_name,n.required_qty,n.committed_qty,COALESCE(stock.quantity,0) AS available_qty FROM world_civic_project_needs n JOIN world_civic_building_projects p ON p.id=n.project_id LEFT JOIN fc_materials m ON m.id=n.material_id LEFT JOIN fc_material_stock stock ON stock.material_id=n.material_id WHERE p.settlement_id=? ORDER BY n.project_id,n.material_id',[id]);
  const [industry]=await pool.execute('SELECT id,name,status,equipment_condition,level,workforce,template_id,site_id FROM world_industry_facilities WHERE settlement_id=? ORDER BY name,id',[id]);
@@ -39,11 +40,11 @@ export async function rebuildingDossier(pool,id){
  const [power]=await pool.execute('SELECT id,name,model,level,status,condition_pct,fuel_units,fuel_per_day,rated_output FROM world_power_plants WHERE settlement_id=? ORDER BY name,id',[id]);
  const [powerProjects]=await pool.execute("SELECT p.id,p.plant_id,p.action,p.status,p.progress,p.labor_required,p.iron_required,p.iron_committed,p.timber_required,p.timber_committed,b.name AS blueprint_name FROM world_power_projects p JOIN world_power_blueprints b ON b.id=p.blueprint_id WHERE p.settlement_id=? ORDER BY p.id DESC",[id]);
  const [warehouses]=await pool.execute('SELECT id,name,state,tier,capacity_units,construction_item_id,construction_quantity FROM world_logistics_warehouses WHERE settlement_id=? ORDER BY name,id',[id]);
- const housingCapacity=number(settlement.housing_capacity)+buildings.filter(b=>b.category==='housing'&&b.status==='operational').reduce((n,b)=>n+0,0);
+ const effectiveHousing=housingCapacity(settlement,buildings);
  const output={settlement,buildings,industry,power,warehouses,
   civicProjects:civicProjects.map(p=>({...p,needs:civicNeeds.filter(n=>number(n.project_id)===number(p.id))})),
   industryProjects:industryProjects.map(p=>({...p,needs:industryNeeds.filter(n=>number(n.project_id)===number(p.id))})),
-  powerProjects,housingCapacity};
+  powerProjects,housingCapacity:effectiveHousing};
  return ok({...output,assessment:rebuildingAssessment(output)});
 }
 export async function worldRebuildingRoute(pool,req,path,actor){
