@@ -1,4 +1,4 @@
-# Eclipse Order hierarchy — MySQL canonical ranks
+# Imperium Noctis hierarchy — MySQL canonical ranks
 
 The Order's current hierarchy is stored in `order_rank_catalog`, with separate member and character assignments. This replaces the five-title model **for new in-character rank assignments**.
 
