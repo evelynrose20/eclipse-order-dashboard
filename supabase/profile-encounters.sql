@@ -1,4 +1,4 @@
--- Eclipse Order: player-profile content preferences and encounter tracker.
+-- Imperium Noctis: player-profile content preferences and encounter tracker.
 -- Apply AFTER SETUP-ALL.sql. Do not re-run old combined setup after this migration.
 -- Preferences belong to the PLAYER, not a character or scene.
 -- No IDs, dates of birth, or identity documents are stored here.
