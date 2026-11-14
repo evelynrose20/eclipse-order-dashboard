@@ -1,4 +1,4 @@
-# Eclipse Order: character sheets and Order hierarchy
+# Imperium Noctis: character sheets and Order hierarchy
 
 This is a stacked integration branch. **Do not merge it into main until Supabase is set up and the account permissions have been tested.**
 
