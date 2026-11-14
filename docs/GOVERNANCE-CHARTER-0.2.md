@@ -4,14 +4,14 @@
 
 ## Finalized decisions
 
-- **IC hierarchy:** Imperatrix Rosa → Praefectus Imperii → Consilium Imperiale → Garlean Shadows / The Legions / Officium Aerarii / R&D. See [Imperial CoC](Governance/SYNDICATE-RANKS.md). Membership (Tiro → Civis) is separate; the Bound Path is unchanged.
-- **Council:** five established voting seats: Imperatrix (chair), Magister Militum, Quaestor Aerarii, Legatus Diplomaticus, Praefectus Civium. Each occupant has at most one vote, even if holding multiple offices.
+- **IC hierarchy:** Imperatrix Rosa → Consul → Senatus Imperialis → Garlean Shadows / The Legions / Officium Aerarii / R&D. See [Imperial CoC](Governance/SYNDICATE-RANKS.md). Membership (Peregrinus → Civis) is separate; the Bound Path is unchanged.
+- **Council:** five established voting seats: Imperatrix (chair), Legatus Augustus, Quaestor, Praetor, Praefectus. Each occupant has at most one vote, even if holding multiple offices.
 - **Appointment:** Imperatrix appoints Council officers. No fixed term: until resignation, removal or departure. Office history survives changes.
 - **Voting:** quorum 3 of the founding 5 seats. Ordinary motions pass when voting closes and yes votes outnumber no votes, with quorum. Major motions require **4 yes votes**. Reserved motions require **4 yes votes plus Imperatrix ratification**.
 - **Vacancies:** established seat count stays five and **thresholds do not fall** when vacant. Three occupied seats cannot pass a major motion. Imperatrix must fill vacancies to recover capacity.
 - **Ratification:** seven calendar days from formal presentation of passed reserved motion. No reply returns motion for Council review; **never automatic approval**. A refusal also returns it for review.
 - **Reserved matters:** charter changes; creation/dissolution of permanent Council voting offices; major treaties, territorial changes, major central asset commitments, constitutional hierarchy changes and dissolution of major divisions. Ordinary Council decisions do not require Imperatrix ratification.
-- **Office scopes:** Magister Militum handles operations; Quaestor Aerarii handles enterprise policy and business licensing; Legatus Diplomaticus handles diplomacy; Praefectus Civium coordinates membership/internal IC affairs. Additional specialist appointments must be scoped.
+- **Office scopes:** Legatus Augustus handles operations; Quaestor handles enterprise policy and business licensing; Praetor handles diplomacy; Praefectus coordinates membership/internal IC affairs. Additional specialist appointments must be scoped.
 - **IC/OOC separation:** council decisions govern the *fictional imperial faction*, not OOC moderation, consent records, account ownership, privacy or security permissions.
 
 ## Authority matrix (proposed defaults)
@@ -20,10 +20,10 @@
 |---|---|---|---|
 | Ordinary membership | Recruitment office | Recruitment reviewer | No |
 | Servitude-story admission | IC introduction officer | OOC consent/eligibility reviewer | No |
-| Routine licensed enterprise | Quaestor Aerarii / delegated officer | Independent economic reviewer | No |
+| Routine licensed enterprise | Quaestor / delegated officer | Independent economic reviewer | No |
 | Strategic enterprise | Commerce + senior review | Economic administration | Sometimes |
 | Major enterprise / reserved investment | Council; Imperatrix if reserved | Financial + economic administration | Yes |
-| Ordinary event | Magister Militum / delegated director | Assigned Event Director | No |
+| Ordinary event | Legatus Augustus / delegated director | Assigned Event Director | No |
 | Significant faction operation | Council | Faction Steward / GM | Yes |
 | Major treaty or territorial change | Council + Imperatrix ratification | Authorized World Steward | Yes |
 | Class rules / spell balancing | No IC council mandate | Assigned OOC rules reviewers | No |
