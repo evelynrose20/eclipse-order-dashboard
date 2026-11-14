@@ -1,11 +1,11 @@
--- Eclipse Order encounter map and dice migration (REPAIRED).
+-- Imperium Noctis encounter map and dice migration (REPAIRED).
 -- Requires supabase/profile-encounters.sql. Make a database backup first.
 -- All new tables have RLS enabled; clients access them only through checked RPC functions.
 -- This migration can be re-run if an earlier run was rolled back.
 begin;
 
 
--- Eclipse Order: battle map and streamlined adult-only onboarding.
+-- Imperium Noctis: battle map and streamlined adult-only onboarding.
 -- Requires profile-encounters.sql already installed. Run once in Supabase SQL Editor.
 -- Profile age declaration controls encounter access. No ID scans/documents.
 -- Staff are still responsible for appropriate community moderation.
