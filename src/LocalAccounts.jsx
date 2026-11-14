@@ -25,7 +25,7 @@ const ERROR_MESSAGES={
  incubation_already_resolved:'This incubation was already hatched or cancelled.',
  cohort_not_mature:'The brood must finish maturing before military transfer.',
  cohort_already_deployed:'This brood cohort was already assigned to the military.',
- installation_not_operational:'Choose an operational Eclipse Order military installation.',
+ installation_not_operational:'Choose an operational Imperium Noctis military installation.',
  strain_exists:'A brood strain with this name already exists.',
  command_required:'Domina or High Command authorization is required for military transfer.',
 
@@ -146,7 +146,7 @@ export default function LocalAccounts(){
  if(!profile&&accessIssue)return <DiscordAccessPage reason={reason} busy={busy} adult={adult} onAdultChange={setAdult} onRetry={()=>start('login')} onJoin={()=>start('join')} onBack={()=>{setReason('');setMessage('');const u=new URL(window.location.href);u.searchParams.delete('access');window.history.replaceState(null,'',u.pathname+u.search)}}/>;
  if(profile)return <LocalWorkspace profile={profile} request={async(path,options={})=>{try{return await request(path,{...options,token})}catch(error){if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setProfile(null);setMessage(ERROR_MESSAGES.not_authenticated)}throw error}}} onLogout={logout}/>;
  return <div className="eo-local">
-  <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>ECLIPSE ORDER</strong><small>MEMBERSHIP LEDGER</small></div></header>
+  <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>IMPERIUM NOCTIS</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
     {token&&<button type="button" className="eo-primary" onClick={()=>{setMessage('');setSessionRetry(n=>n+1)}}>Retry connection</button>}
    <span className="eo-eyebrow">THE ORDER AWAITS</span>
