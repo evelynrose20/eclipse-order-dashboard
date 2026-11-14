@@ -1,4 +1,4 @@
-# Eclipse Order API manager maintenance helpers. Only runs in local Windows user process.
+# Imperium Noctis API manager maintenance helpers. Only runs in local Windows user process.
 $script:checking=$null
 $script:checkOut=$null
 $script:checkErr=$null
