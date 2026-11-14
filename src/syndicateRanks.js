@@ -1,4 +1,4 @@
-// Eclipse Order's official in-character syndicate hierarchy.
+// Imperium Noctis's official in-character syndicate hierarchy.
 // These titles are independent of technical account permissions and fictional binding ranks.
 export const SYNDICATE_RANKS=[
  {id:'domina',label:'Domina',description:'Supreme Leader / Head of Syndicate'},
