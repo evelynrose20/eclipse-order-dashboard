@@ -1,4 +1,4 @@
-# Testing the Eclipse Order with zero real players
+# Testing the Imperium Noctis with zero real players
 
 You can detect many failures **before** having a player community.
 
