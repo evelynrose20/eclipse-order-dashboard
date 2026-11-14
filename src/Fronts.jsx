@@ -92,7 +92,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
  };
  return <section className="eo-fronts">
   <header className="eo-fronts-hero">
-   <div><span>THE GOLDEN CLAWS · COMMERCIAL NETWORK</span><h2>Imperial Enterprises</h2><p>Businesses sanctioned by the Imperium. Two approvals establish a license; the Merchant Exchange funds their books through fulfilled trade.</p></div>
+   <div><span>OFFICIUM AERARII · COMMERCIAL NETWORK</span><h2>Imperial Enterprises</h2><p>Businesses sanctioned by the Imperium. Two approvals establish a license; the Merchant Exchange funds their books through fulfilled trade.</p></div>
    <div className="eo-fronts-hero-mark" aria-hidden="true"><i className="fa-solid fa-store"/></div>
   </header>
   {error&&<div className="alert" role="alert">{error.replaceAll('_',' ')}</div>}
@@ -156,7 +156,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
     </div>}
    </main>:<section className="eo-fronts-detail eo-fronts-empty"><strong>Explore the Imperium's network</strong><p>Select an enterprise or submit an application to establish a new licensed business.</p></section>}
   </div>
-  {application&&<div className="eo-fronts-modal-mask"><section className="eo-fronts-modal" role="dialog" aria-modal="true" aria-label="Apply for an Order enterprise"><header><div><span>THE GOLDEN CLAWS · LICENSE REQUEST</span><h3>Establish an Enterprise</h3></div><button type="button" onClick={()=>setApplication(null)} aria-label="Close">×</button></header>
+  {application&&<div className="eo-fronts-modal-mask"><section className="eo-fronts-modal" role="dialog" aria-modal="true" aria-label="Apply for an Order enterprise"><header><div><span>OFFICIUM AERARII · LICENSE REQUEST</span><h3>Establish an Enterprise</h3></div><button type="button" onClick={()=>setApplication(null)} aria-label="Close">×</button></header>
    <p>All businesses operating under the Imperium require separate in-character and website approval. Submitting this form does not authorize operations.</p>
    <label>Operating name<input maxLength={110} value={application.name} onChange={e=>setApplication({...application,name:e.target.value})}/></label>
    <div className="eo-fronts-fields"><label>Business category<select value={application.category} onChange={e=>setApplication({...application,category:e.target.value})}>{Object.entries(CATEGORIES).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>Location<input maxLength={150} value={application.location} placeholder="Ward, district, settlement…" onChange={e=>setApplication({...application,location:e.target.value})}/></label></div>
