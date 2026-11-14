@@ -1,4 +1,4 @@
-// Eclipse Order governance design prototype.
+// Imperium Noctis governance design prototype.
 // PURE RULES ONLY: not connected to login, live accounts, MySQL or game actions.
 // Safe to exercise with fabricated members before activating any governance feature.
 
