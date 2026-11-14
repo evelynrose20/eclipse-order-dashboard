@@ -1,4 +1,4 @@
-# Eclipse Order — long-term platform foundation and safe rollout
+# Imperium Noctis — long-term platform foundation and safe rollout
 
 **Status: approved direction + design proposals; NOT implemented by this PR.**
 
