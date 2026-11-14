@@ -19,7 +19,7 @@ The four operational branches descend from imperial command:
 
 **Membership standing:** Peregrinus → Civis (a faction-specific use of Garlean non-citizen and citizen terminology, not an OOC rights classification). Membership standing is independent of branch appointment.
 
-**Aan and Specimen Classification:** *Aan* is a Garlean social-status designation associated with the Empire's lowest subject class, including but not limited to enslaved people; it is not itself one of the five research grades. Imperium Noctis may record an Aan as a research specimen without conflating social status with research assignment. Five research grades: Specimen I — Receptus; II — Registratus; III — Observatus; IV — Probatus; V — Praecipuus. These are faction-specific Latin-inspired research labels, not canonical Garlean military ranks. Three retired servitude codes remain in the database strictly to preserve historical character assignments until individually reviewed. Existing consent and technical access rules are unchanged.
+**Aan and Specimen Classification:** *Aan* is a Garlean social-status designation associated with the Empire's lowest subject class, including but not limited to enslaved people; it is not itself one of the five research grades. Imperium Noctis may record an Aan as a research specimen without conflating social status with research assignment. Five neutral research grades: Specimen Grade I, Specimen Grade II, Specimen Grade III, Specimen Grade IV and Specimen Grade V. These are internal research designations, not canonical Garlean ranks. Three retired servitude codes remain in the database strictly to preserve historical character assignments until individually reviewed. Existing consent and technical access rules are unchanged.
 
 ## Compatibility and permissions
 
@@ -34,6 +34,6 @@ The four operational branches descend from imperial command:
 
 ## Deployment
 
-Pull `main`, back up the MariaDB database, then run `npm run setup:local` in `server/` and restart the Windows API. Migration `134_imperial_command_hierarchy.sql` updates only the canonical catalog's non-servitude titles.
+Pull `main`, back up the MariaDB database, then run `npm run setup:local` in `server/` and restart the Windows API. Migration `138_plain_specimen_grades.sql` replaces the invented specimen display titles without changing stable rank codes or assignments. Run it after the existing setup migrations.
 
 A public static deployment cannot update stored ranks. Do not remove or rename existing rank codes, track identifiers, account roles or character-bound values.
