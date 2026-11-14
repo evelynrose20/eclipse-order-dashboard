@@ -574,3 +574,8 @@
 .wa-rebuild-footer p{font-size:11px;color:#b9c7cf;max-width:800px;line-height:1.7;margin:0}
 @media(max-width:950px){.wa-rebuild-identity,.wa-rebuild-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.wa-rebuild-identity,.wa-rebuild-metrics,.wa-rebuild-assets{grid-template-columns:1fr}.wa-rebuild-readiness{align-items:flex-start;flex-direction:column}.wa-rebuild-header{padding:15px}}
+
+.wa-rebuild-start{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;border:1px solid #977965;background:#303138;padding:16px}
+.wa-rebuild-start strong{color:#f2e1cb;font-size:14px}
+.wa-rebuild-start p{margin:6px 0 0;max-width:730px;color:#d0c5bd;font-size:11px;line-height:1.7}
+.wa-rebuild-start button{border-color:#ad8f76;background:#674d45;color:#f6eee5}
