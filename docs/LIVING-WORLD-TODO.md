@@ -4,7 +4,7 @@ aliases:
 tags: [eclipse-order, living-world, roadmap]
 ---
 
-# Eclipse Order — Living World TODO
+# Imperium Noctis — Living World TODO
 
 > [!important] Status verification
 > This checklist restores the living-world task index referenced by the documentation vault. The authoritative requirements are in [[LIVING-WORLD-WAR-COMMAND-MASTER-PLAN]]. These checkboxes are **not** claims that existing features are unfinished: verify each item against the latest code and live Windows API before changing its status. Do not rebuild or reset existing implementations.
