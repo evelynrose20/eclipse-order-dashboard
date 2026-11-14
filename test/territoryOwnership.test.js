@@ -28,7 +28,7 @@ test('ownership legend preserves actual faction names and counts',()=>{
 });
 
 test('custom faction colors are used for local, foreign, Order and legend markers',()=>{
- const factions=[{id:'veyrholm-compact',name:'Veyrholm',map_color:'#116699'},{id:'ashen-veil',name:'Ashen Veil',map_color:'#cc3344'},{id:'eclipse-order',name:'Eclipse Order',map_color:'#daa520'}];
+ const factions=[{id:'veyrholm-compact',name:'Veyrholm',map_color:'#116699'},{id:'ashen-veil',name:'Ashen Veil',map_color:'#cc3344'},{id:'eclipse-order',name:'Imperium Noctis',map_color:'#daa520'}];
  assert.equal(ownershipOf({controlling_faction_id:'veyrholm-compact'},'veyrholm-compact',factions).color,'#116699');
  assert.equal(ownershipOf({controlling_faction_id:'ashen-veil'},'veyrholm-compact',factions).color,'#cc3344');
  assert.equal(ownershipOf({controlling_faction_id:'eclipse-order'},null,factions).color,'#daa520');
