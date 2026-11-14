@@ -27,7 +27,7 @@ const ERROR_MESSAGES={
  cohort_already_deployed:'This brood cohort was already assigned to the military.',
  installation_not_operational:'Choose an operational Imperium Noctis military installation.',
  strain_exists:'A brood strain with this name already exists.',
- command_required:'Domina or High Command authorization is required for military transfer.',
+ command_required:'Imperatrix or High Command authorization is required for military transfer.',
 
  not_authenticated:'Your session has expired. Sign in again.',
  chair_must_be_offline:'The apparatus must be Offline before a character can be seated.',

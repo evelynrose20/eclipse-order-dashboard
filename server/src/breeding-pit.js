@@ -128,7 +128,7 @@ export async function breedingPitRoute(pool,req,path){
    if(existing)return fail(409,'host_already_incubating');
    const [row]=await db.execute('INSERT INTO order_brood_incubations(strain_id,host_character_id,incubation_mode,started_at,ready_at,notes,created_by) VALUES(?,?,?,NOW(),DATE_ADD(NOW(),INTERVAL ? DAY),?,?)',[strain.id,hostId,'host',strain.incubation_days,body.notes,actor.id]);
    await db.execute('UPDATE order_brood_strains SET egg_stock=egg_stock-1 WHERE id=?',[strain.id]);
-   await log(db,actor,'incubate','Started '+strain.name+' thrall incubation #'+row.insertId);
+   await log(db,actor,'incubate','Started '+strain.name+' specimen incubation #'+row.insertId);
    return ok({saved:true,id:row.insertId});
   }
   if(action==='cancel'||action==='hatch'){

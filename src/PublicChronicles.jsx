@@ -61,10 +61,10 @@ export default function PublicChronicles(){
       state==='unavailable'?<article><span className="imperial-record-kicker">THE FOUNDING RECORD</span><h3>{current?.title||'Imperium Noctis remembers.'}</h3>{current?.summary&&<p className="imperial-record-lead">{current.summary}</p>}<div className="imperial-record-text">{excerpts(current?.body).map((p,i)=><p key={i}>{p}</p>)}</div><small className="imperial-chronicles-stale">The complete chronicle is available when the Imperium’s archives reopen.</small></article>:
       current?<article key={current.id}><span className="imperial-record-kicker">{eraName(current.era)} · ORDER CHRONICLE</span><h3>{current.title}</h3>{current.summary&&<p className="imperial-record-lead">{current.summary}</p>}<div className="imperial-record-text">{excerpts(current.body).map((p,i)=><p key={i}>{p}</p>)}</div></article>:
       <p className="imperial-chronicles-message">The record awaits its first published chapter.</p>}
-     {newCassia&&<aside className="imperial-cassia-feature"><span>THE ORDER'S PRESENT HOME</span><h4>{newCassia.title}</h4><p>{newCassia.summary||newCassia.body}</p><button type="button" onClick={()=>setSelected(newCassia.id)}>Read the New Cassia record <span aria-hidden="true">↗</span></button></aside>}
+     {newCassia&&<aside className="imperial-cassia-feature"><span>THE IMPERIUM'S PRESENT HOME</span><h4>{newCassia.title}</h4><p>{newCassia.summary||newCassia.body}</p><button type="button" onClick={()=>setSelected(newCassia.id)}>Read the New Cassia record <span aria-hidden="true">↗</span></button></aside>}
     </div>
    </div>
-   <div className="imperial-chronicles-footer"><span>THE RECORD BELONGS TO THE ORDER.</span><a href="?lore">Explore the full archives <span aria-hidden="true">↗</span></a></div>
+   <div className="imperial-chronicles-footer"><span>THE RECORD BELONGS TO THE IMPERIUM.</span><a href="?lore">Explore the full archives <span aria-hidden="true">↗</span></a></div>
   </div>
  </section>;
 }

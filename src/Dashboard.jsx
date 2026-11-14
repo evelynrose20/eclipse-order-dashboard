@@ -20,7 +20,7 @@ const OLD_RANKS = {
   'Rank I: Unbroken':'Rank I: Fresh Intake / Unbroken',
   'Rank II: Indentured':'Rank II: Initiate / Indentured',
   'Rank III: Specialized':'Rank III: Trusted / Specialized',
-  'Rank IV: Elite':'Rank IV: Elite / Favor of the Domina'
+  'Rank IV: Elite':'Rank IV: Elite / Favor of the Imperatrix'
 };
 const canonicalRank = rank => OLD_RANKS[rank] || rank;
 const BOUND_RANKS = Object.keys(RANKS).filter(k=>k!=='Unbound: Free');
@@ -131,7 +131,7 @@ export default function Dashboard() {
   useEffect(() => {if (!selectedId || !characters.some(c=>c.id===selectedId)) setSelectedId(characters[0]?.id ?? null);},[characters,selectedId]);
   const selected = characters.find(c=>c.id===selectedId) || null;
   const filtered = useMemo(() => characters.filter(c => Boolean(c.collar_bound)===(rosterGroup==='bound') && (rankFilter==='all' || c.rank===rankFilter) && [c.name,c.player,c.owner,c.specialty].join(' ').toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)),[characters,rankFilter,search,rosterGroup]);
-  const topRank = characters.filter(c=>c.collar_bound && ['Rank III: Trusted / Specialized','Rank IV: Elite / Favor of the Domina'].includes(c.rank)).length;
+  const topRank = characters.filter(c=>c.collar_bound && ['Rank III: Trusted / Specialized','Rank IV: Elite / Favor of the Imperatrix'].includes(c.rank)).length;
   const warn = message => {setNotice(message);window.setTimeout(()=>setNotice(''),4200);};
   async function saveCharacter(e, candidate=editor) {
     e.preventDefault();

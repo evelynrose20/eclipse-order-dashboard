@@ -95,7 +95,7 @@ export async function senatePoliticsRoute(pool,req,path){
    tallies:election?.phase==='confirmation'||['complete','cancelled'].includes(election?.phase)?tallies:[],
    coalitions:coalitions.map(c=>({...c,parties:coalitionMembers.filter(m=>m.coalition_id===c.id)})),
    bills:bills.map(b=>({...b,yes:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='yes')?.n||0),no:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='no')?.n||0),abstain:Number(votes.find(v=>Number(v.bill_id)===Number(b.id)&&v.vote==='abstain')?.n||0)})),
-   heads:[{head_number:1,title:'Domina',holder:chair[0]?.display_name||'Vacant'},...headRows.map(h=>({head_number:h.head_number,title:h.title,holder:h.holder||null,account_id:h.account_id}))],
+   heads:[{head_number:1,title:'Imperatrix',holder:chair[0]?.display_name||'Vacant'},...headRows.map(h=>({head_number:h.head_number,title:h.title,holder:h.holder||null,account_id:h.account_id}))],
    history:auditRows});
  }
  // No live write action may occur before the Senate is actually convened.
@@ -241,7 +241,7 @@ export async function senatePoliticsRoute(pool,req,path){
      await db.execute('UPDATE order_senate_seats SET account_id=?,party_id=?,appointed_at=UTC_TIMESTAMP() WHERE seat_number=?',[r.candidate_id,r.party_id,r.seat_number]);
     }
     await db.execute('UPDATE order_senate_elections SET phase="complete",completed_at=UTC_TIMESTAMP() WHERE id=?',[electionId]);
-    await audit(db,actor.id,'election_investiture','election:'+electionId,'15 elected places, Domina-confirmed');
+    await audit(db,actor.id,'election_investiture','election:'+electionId,'15 elected places, Imperatrix-confirmed');
     return ok({invested:true});
    }
   });

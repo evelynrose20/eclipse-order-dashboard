@@ -21,7 +21,7 @@ export async function senateRoute(pool,req,path){
   const [seats]=await pool.execute('SELECT s.seat_number,s.account_id,a.display_name AS holder FROM order_senate_seats s LEFT JOIN accounts a ON a.id=s.account_id ORDER BY s.seat_number');
   const [appointedHeads]=await pool.execute('SELECT h.head_number,h.title,h.account_id,a.display_name AS holder FROM order_senate_heads h LEFT JOIN accounts a ON a.id=h.account_id ORDER BY h.head_number');
   const [chair]=await pool.execute('SELECT id,display_name FROM accounts WHERE account_role="domina" AND is_active=1 AND approval_status="approved" ORDER BY id LIMIT 1');
-  const heads=[{head_number:1,title:'Domina',account_id:chair[0]?.id||null,holder:chair[0]?.display_name||null},...appointedHeads];
+  const heads=[{head_number:1,title:'Imperatrix',account_id:chair[0]?.id||null,holder:chair[0]?.display_name||null},...appointedHeads];
   const [bills]=await pool.execute('SELECT b.*,a.display_name AS sponsor_name FROM order_senate_bills b JOIN accounts a ON a.id=b.sponsor_id ORDER BY b.id DESC LIMIT 120');
   const [ballots]=await pool.execute('SELECT v.bill_id,v.account_id,v.vote FROM order_senate_ballots v JOIN order_senate_bills b ON b.id=v.bill_id ORDER BY b.id DESC LIMIT 5000');
   const [electorate]=await pool.execute('SELECT e.bill_id,e.account_id FROM order_senate_electorate e JOIN order_senate_bills b ON b.id=e.bill_id ORDER BY b.id DESC LIMIT 5000');
