@@ -127,7 +127,7 @@ export default function Workshop({request,characters=[],canManage=false,readOnly
  const nav=[['garden','The Garden','seedling'],['gather','Expeditions','mountain'],['craft','The Workshop','hammer'],['stores','FC Stores','boxes-stacked']];
  return <section className="fc-workshop fc-play">
   <header className="fc-play-banner">
-   <div><span className="fc-play-eyebrow">THE ECLIPSE ORDER · ESTATE GROUNDS</span><h2>The Order's Living Workshop</h2><p>Raise the garden together. Venture into the wilds. Bring every resource home to the same storeroom.</p></div>
+   <div><span className="fc-play-eyebrow">IMPERIUM NOCTIS · ESTATE GROUNDS</span><h2>The Order's Living Workshop</h2><p>Raise the garden together. Venture into the wilds. Bring every resource home to the same storeroom.</p></div>
    <div className="fc-play-seal" aria-hidden="true"><i className="fa-solid fa-leaf"/><small>EO</small></div>
   </header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
