@@ -16,7 +16,7 @@ test('complete published timeline is embedded in the homepage, not linked away a
  assert.match(chronicles,/id:'new-cassia'/);
 });
 test('homepage keeps chronological section numbering around the inserted lore section',()=>{
- for(const [number,label] of [['01','THE ORDER'],['02','A HISTORY WRITTEN IN SHADOW'],['04','THE ORDER OF THE SERPENT'],['05','HOW WE ROLEPLAY'],['06','THE NATURE OF THE ORDER'],['07','BEYOND THE MASK'],['08','FIND THE ORDER'],['09',"WHO WE'RE LOOKING FOR"],['11','QUESTIONS BEFORE THE OATH']])
+ for(const [number,label] of [['01','IMPERIUM NOCTIS'],['02','A HISTORY WRITTEN IN SHADOW'],['04','THE IMPERIAL BRANCHES'],['05','HOW WE ROLEPLAY'],['06','THE NATURE OF THE IMPERIUM'],['07','BEYOND THE MASK'],['08','FIND IMPERIUM NOCTIS'],['09',"WHO WE'RE LOOKING FOR"],['11','QUESTIONS BEFORE THE OATH']])
   assert.ok(homepage.includes('<SectionTag number="'+number+'">'+label+'</SectionTag>'),label);
  assert.match(chronicles,/public-section-tag"><span>03<\/span>/);
  assert.match(homepage,/<SectionTag number="10">\{recruitment/);
