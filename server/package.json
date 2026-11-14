@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Windows-only loopback bootstrap for the Eclipse Order self-hosted API",
+  "description": "Windows-only loopback bootstrap for the Imperium Noctis self-hosted API",
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --watch --env-file=.env src/server.js",
