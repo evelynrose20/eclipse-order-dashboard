@@ -21,18 +21,18 @@ const GROUPS=[
  {id:'economy',name:'INDUSTRY & LOGISTICS',hint:'Trade and production'},
  {id:'thralls',name:'THRALLS',hint:'Restricted chambers'},
  {id:'community',name:'COMMUNITY',hint:'Profiles and connections'},
- {id:'administration',name:'ORDER MANAGEMENT',hint:'Staff and records'}
+ {id:'administration',name:'IMPERIAL ADMINISTRATION',hint:'Staff and records'}
 ];
 const DESCRIPTIONS={
- overview:'Your starting point',roster:'Browse the Order',sheet:'Details and progression',
+ overview:'Your starting point',roster:'Browse the Imperium',sheet:'Details and progression',
  scenes:'Battle maps and dice',encounters:'Combat and battle maps',events:'Schedule and attend',construction:'Collaborative long-form construction and restoration',factions:'Allies, rivals and diplomacy',workshop:'Shared stores, crafting and garden',trade:'Faction and settlement delivery contracts',freight:'Mapped cargo movements, trade agreements and supply lines',fronts:'Licensed enterprises, commerce and Order supply',treasury:'Trade income, daily wages and completed mission pay',
  chamber:'Aetheric extraction chamber and alchemical annex',
  'breeding-pit':'Brood incubation, nursery, strains and military transfers',
  'lineage-research':'Restricted heredity research and gestation studies',
  profile:'Preferences and boundaries',directory:'Member introductions',
  transitions:'Character requests',members:'Roles and applications',
- governance:'The Order’s governing chamber and charter',
- settings:'Rules and records',lore:'The Order’s history, figures and places',world:'Territories, climate, civilians and supplies'
+ governance:'The Imperium’s governing chamber and charter',
+ settings:'Rules and records',lore:'The Imperium’s history, figures and places',world:'Territories, climate, civilians and supplies'
 };
 
 export const getNavSection=(id)=>GROUPS.find(g=>g.id===SECTION_MAP[id])?.name||'WORKSPACE';
