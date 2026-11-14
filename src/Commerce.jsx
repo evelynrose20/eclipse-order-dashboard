@@ -139,7 +139,7 @@ export default function Commerce({request,characters=[],canManage=false,readOnly
  }
  return <section className="eo-exchange">
   <header className="eo-exchange-head">
-   <div className="eo-exchange-brand"><span className="eo-exchange-sigil" aria-hidden="true">✥</span><div><span>THE ECLIPSE ORDER</span><h2>Merchant Exchange</h2><p>Workshop and garden markets · foreign demand · diplomatic standing</p></div></div>
+   <div className="eo-exchange-brand"><span className="eo-exchange-sigil" aria-hidden="true">✥</span><div><span>IMPERIUM NOCTIS</span><h2>Merchant Exchange</h2><p>Workshop and garden markets · foreign demand · diplomatic standing</p></div></div>
    <div className="eo-exchange-head-actions"><span className="eo-exchange-live"><span/> ORDER NETWORK</span>{canManage&&!readOnly&&<button type="button" onClick={()=>setCreateDraft(draftNew())}>+ Post buy order</button>}</div>
   </header>
   {error&&<p className="alert" role="alert">{error.replaceAll('_',' ')}</p>}
