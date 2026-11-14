@@ -1,4 +1,4 @@
-# Eclipse Order — battle maps and encounter dice
+# Imperium Noctis — battle maps and encounter dice
 
 Battle maps and server-verified encounter dice are implemented in the Windows/MySQL member portal. The feature originated in the historical Supabase implementation; the old PostgreSQL SQL Editor troubleshooting steps are not part of the current Windows deployment.
 
