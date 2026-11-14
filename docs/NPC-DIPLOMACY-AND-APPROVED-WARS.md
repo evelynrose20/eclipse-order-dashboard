@@ -57,7 +57,7 @@ battle/peace/capture outcomes still returned for separate command approval.
 World Administration → Territorial Map now offers two map views:
 - **Faction control** (default) adds a persistent owner chip, faction color and
   zone-local-government comparison on each mapped settlement. It distinguishes
-  the local governing faction, an outside/occupying faction, the Eclipse Order,
+  the local governing faction, an outside/occupying faction, the Imperium Noctis,
   an independent faction and unclaimed sites. A per-zone ownership legend
   summarizes how many locations each faction currently controls.
 - **Condition** highlights the pre-existing civic/strategic state (secure,
