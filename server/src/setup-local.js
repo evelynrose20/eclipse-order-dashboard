@@ -321,6 +321,8 @@ async function main(){
   await pool.query(imperialCouncilTitles);
   const garleanRankTitles=await readFile(new URL('../sql/136_garlean_ranks_and_senate_name.sql',import.meta.url),'utf8');
   await pool.query(garleanRankTitles);
+  const specimenClassification=await readFile(new URL('../sql/137_specimen_classification.sql',import.meta.url),'utf8');
+  await pool.query(specimenClassification);
   const [[count]]=await pool.query('SELECT COUNT(*) AS n FROM accounts');
   if(Number(count.n)>0){console.log('Schema ready. Existing accounts were not changed.');return;}
   console.log('Database schema ready. First authenticate with Discord and use the local owner promotion command.');
