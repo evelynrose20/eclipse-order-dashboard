@@ -4,6 +4,9 @@ import {createProgression,classArmor,skillProficiencyCount,MAX_SKILL_PROFICIENCI
 import {loadClassCatalog,schoolSlots} from './class-catalog.js';
 
 const commands=new Set(['domina','high_command']);
+// Old catalog codes remain available to read historical assignments, but only
+// these five specimen grades may be assigned going forward.
+const SPECIMEN_CODES=['unmarked','marked_thrall','bound_serpent','eclipse_attendant','silken_thrall'];
 const limit=(s,max)=>typeof s==='string'?s.trim().slice(0,max):'';
 const U=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ranks=new Map([
@@ -36,7 +39,7 @@ export async function characterRoute(pool,req,path){
  const actor=await resolveSession(pool,req);
  if(!actor)return err(401,'not_authenticated');
  if(path==='/characters/servitude-ranks'&&req.method==='GET'){
-  const [rows]=await pool.query("SELECT code,title,sort_order FROM order_rank_catalog WHERE track='servitude' ORDER BY sort_order");
+  const [rows]=await pool.query("SELECT code,title,sort_order FROM order_rank_catalog WHERE track='servitude' AND code IN ('unmarked','marked_thrall','bound_serpent','eclipse_attendant','silken_thrall') ORDER BY sort_order");
   return {status:200,body:{ranks:rows}};
  }
  if(path==='/characters'&&req.method==='GET'){
@@ -147,7 +150,7 @@ export async function characterRoute(pool,req,path){
  if(promotion&&req.method==='POST'){
   if(!commands.has(actor.account_role))return err(403,'command_required');
   const data=await payload(req),rankId=data?.rank;
-  if(typeof rankId!=='string'||!rankId||rankId.length>48)return err(400,'invalid_rank');
+  if(typeof rankId!=='string'||!SPECIMEN_CODES.includes(rankId))return err(400,'invalid_rank');
   const cn=await pool.getConnection();
   try{
    await cn.beginTransaction();
