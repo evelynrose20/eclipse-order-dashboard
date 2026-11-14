@@ -44,23 +44,23 @@ const ERROR_MESSAGES={
  decant_lower_reservoir_first:'The lower reservoir holds a different collection type. Decant or clear it before recording this type.',
  invalid_contribution_preferences:'Check the character gender, anatomy, category permissions and maximum quantities.',
 
- discord_login_not_configured:'Discord sign-in has not been configured yet. Contact Order command.',
- discord_not_in_server:'Your Discord account was not found in the Order’s configured server. If you are already a member, contact Order command to check the server connection.',
+ discord_login_not_configured:'Discord sign-in has not been configured yet. Contact Imperial command.',
+ discord_not_in_server:'Your Discord account was not found in the Imperium’s configured server. If you are already a member, contact Imperial command to check the server connection.',
  discord_membership_screening:'Finish the Discord server’s membership screening, then sign in again.',
- discord_server_check_unavailable:'The Order could not verify Discord membership. Please try again later.',
- discord_guild_configuration_error:'The Order’s Discord server connection is misconfigured. This is not proof you left the server.',
- discord_join_denied:'Discord server access was not authorized. You can try again or contact Order command.',
+ discord_server_check_unavailable:'Imperium Noctis could not verify Discord membership. Please try again later.',
+ discord_guild_configuration_error:'Imperium Noctis’s Discord server connection is misconfigured. This is not proof you left the server.',
+ discord_join_denied:'Discord server access was not authorized. You can try again or contact Imperial command.',
  discord_denied:'Discord authorization was cancelled.',
  discord_expired_request:'Your Discord sign-in expired. Please try again.',
  discord_invalid_callback:'Discord did not return a valid authorization. Try again.',
  discord_ticket_expired:'Your Discord sign-in expired. Please try again.',
- discord_identity_taken:'This Discord account is already linked to another Order account.',
- discord_account_conflict:'There is an issue with this Discord account. Please contact Order command.',
+ discord_identity_taken:'This Discord account is already linked to another Imperium Noctis account.',
+ discord_account_conflict:'There is an issue with this Discord account. Please contact Imperial command.',
  discord_unavailable:'Discord could not verify your identity right now. Try again later.',
  discord_only_login:'Please sign in using Discord.',
  discord_only_registration:'Membership requests begin with Discord.',
- account_not_approved:'The Order has not approved your membership.',
- recruitment_closed:'The Order is not accepting new membership applications at present.',
+ account_not_approved:'Imperium Noctis has not approved your membership.',
+ recruitment_closed:'Imperium Noctis is not accepting new membership applications at present.',
  too_many_attempts:'Too many attempts. Try again later.',
  rail_route_invalid_fields:'Check both station selections, the service name and the journey duration.',
  rail_route_order_stops_only:'Internal trains may serve Order-controlled settlements and active Order fronts only.',
@@ -83,7 +83,7 @@ const ERROR_MESSAGES={
 async function request(path,{method='GET',token,body}={}){
  let response;
  try{response=await fetch(API+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'})}
- catch{throw new Error('The Order ledger is temporarily unavailable. Try again later.')}
+ catch{throw new Error('The Imperial ledger is temporarily unavailable. Try again later.')}
  const data=response.status===204?{}:await response.json().catch(()=>({}));
  if(!response.ok){const error=new Error(ERROR_MESSAGES[data.error]||data.message||data.error||'Request failed ('+response.status+')');error.status=response.status;error.code=data.error;throw error;}
  return data;
@@ -123,7 +123,7 @@ export default function LocalAccounts(){
   if(!ticket)return;
   setBusy(true);
   request('/auth/discord/complete',{method:'POST',body:{ticket}}).then(result=>{
-   if(result.status==='pending'){setReason('pending');setMessage('Your Discord is connected, but we could not find an approved Order account linked to it.');return}
+   if(result.status==='pending'){setReason('pending');setMessage('Your Discord is connected, but we could not find an approved Imperium Noctis account linked to it.');return}
    if(result.access_token){sessionStorage.setItem(storageKey,result.access_token);setToken(result.access_token)}
   }).catch(e=>{setMessage(e.message);const match=Object.keys(ERROR_MESSAGES).find(key=>ERROR_MESSAGES[key]===e.message);if(['discord_not_in_server','discord_membership_screening','discord_server_check_unavailable','discord_guild_configuration_error'].includes(match)){setReason(match);const url=new URL(window.location.href);url.searchParams.set('portal','');url.searchParams.set('access',match);window.history.replaceState(null,'',url.pathname+url.search)}}).finally(()=>setBusy(false));
  },[]);
@@ -134,7 +134,7 @@ export default function LocalAccounts(){
    if(!active)return;
    setProfile(null);
    if(error.status===401){sessionStorage.removeItem(storageKey);setToken('');setMessage(ERROR_MESSAGES.not_authenticated)}
-   else setMessage(error.message||'The Order ledger is temporarily unavailable. Try again later.');
+   else setMessage(error.message||'The Imperial ledger is temporarily unavailable. Try again later.');
   });
   return()=>{active=false};
  },[token,sessionRetry]);
@@ -149,18 +149,18 @@ export default function LocalAccounts(){
   <header className="eo-local-head"><div><span className="eo-mark"><OrderEmblem className="eo-login-emblem"/></span><strong>IMPERIUM NOCTIS</strong><small>MEMBERSHIP LEDGER</small></div></header>
   <main className="eo-auth-card eo-discord-only">
     {token&&<button type="button" className="eo-primary" onClick={()=>{setMessage('');setSessionRetry(n=>n+1)}}>Retry connection</button>}
-   <span className="eo-eyebrow">THE ORDER AWAITS</span>
-   <h1>Enter the Order</h1>
-   <p>Sign in with Discord to enter the Order. Your existing membership and characters will be here once your accounts are connected.</p>
-   <div className="eo-bad-end-note"><strong>A Bad End Roleplay Free Company</strong><p>The Order’s story explores captivity, power, loss of agency, and lasting consequences. Characters can face severe outcomes, including death or enforced service. Player consent and out-of-character boundaries always take priority.</p></div>
+   <span className="eo-eyebrow">THE IMPERIUM AWAITS</span>
+   <h1>Enter Imperium Noctis</h1>
+   <p>Sign in with Discord to enter the Imperium. Your existing membership and characters will be here once your accounts are connected.</p>
+   <div className="eo-bad-end-note"><strong>A Bad End Roleplay Free Company</strong><p>Imperium Noctis’s story explores captivity, power, loss of agency, and lasting consequences. Characters can face severe outcomes, including death or enforced service. Player consent and out-of-character boundaries always take priority.</p></div>
    <label className="eo-check eo-discord-consent"><input type="checkbox" checked={adult} onChange={e=>setAdult(e.target.checked)}/><span>I confirm I am at least 18 and understand the Bad End RP premise and the importance of consent.</span></label>
    {message&&<p className="eo-message" role="status">{message}</p>}
    <div className="eo-discord-login">
     <button className="eo-discord-button" type="button" disabled={busy||!adult} onClick={()=>start('login')}>{busy?'Connecting…':'Continue with Discord'}</button>
-    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&recruitment!=='closed'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Order’s Discord</button>}
+    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&recruitment!=='closed'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Imperium’s Discord</button>}
     {recruitment==='closed'&&<p className="eo-membership-wait">Recruitment is closed. Existing Order members may still sign in.</p>}
-    {reason==='pending'&&<p className="eo-membership-wait">Already have an Order account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New membership requests require approval from Order leadership.</p>}
-    <small>Members of the Order can enter using their connected Discord account.</small>
+    {reason==='pending'&&<p className="eo-membership-wait">Already have an Imperium Noctis account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New membership requests require approval from Order leadership.</p>}
+    <small>Members of the Imperium can enter using their connected Discord account.</small>
    </div>
    <a className="eo-link" href="./">Return to the public website</a>
   </main>
