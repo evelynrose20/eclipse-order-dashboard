@@ -1,4 +1,4 @@
-# Governance of the Eclipse Order
+# Governance of the Imperium Noctis
 
 The Order has one governing chamber at a time.
 
