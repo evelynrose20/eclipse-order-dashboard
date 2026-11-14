@@ -13,7 +13,7 @@ const ranks=new Map([
  ['Rank I: Fresh Intake / Unbroken','rank_i'],
  ['Rank II: Initiate / Indentured','rank_ii'],
  ['Rank III: Trusted / Specialized','rank_iii'],
- ['Rank IV: Elite / Favor of the Domina','rank_iv']
+ ['Rank IV: Elite / Favor of the Imperatrix','rank_iv']
 ]);
 const labels=Object.fromEntries([...ranks].map(([name,id])=>[id,name]));
 async function payload(req){
