@@ -1,11 +1,11 @@
-# ECLIPSE ORDER — Living World, Imperial Administration & War Command
+# IMPERIUM NOCTIS — Living World, Imperial Administration & War Command
 **Authoritative cross-chat project brief (2026-11-07).** This file preserves the design decisions and implementation roadmap. In a fresh conversation ask: **"Read docs/LIVING-WORLD-WAR-COMMAND-MASTER-PLAN.md in evelynrose20/eclipse-order-dashboard and continue the implementation from the roadmap."**
 
 **Working task checklist:** [[LIVING-WORLD-TODO]] (Obsidian) or [Living World TODO](LIVING-WORLD-TODO.md) (GitHub).
 **Vault home:** [Documentation index](00-START-HERE.md).
 
 ## Vision
-Build the Eclipse Order's FFXIV/Garlean RP into a configurable persistent living world, not a separate strategy game. New Cassia sits at the center of a regional and eventually realm-scale territorial, civilian, industrial, political and military simulation. Events, dice encounters, construction, crafting, trades, fronts, factions, settlements, and the Senate change shared world state. **Player-led RP generates outcomes; authorized DMs confirm significant outcomes.** Noncombat members can meaningfully contribute. Campaigns may last weeks or months.
+Build the Imperium Noctis's FFXIV/Garlean RP into a configurable persistent living world, not a separate strategy game. New Cassia sits at the center of a regional and eventually realm-scale territorial, civilian, industrial, political and military simulation. Events, dice encounters, construction, crafting, trades, fronts, factions, settlements, and the Senate change shared world state. **Player-led RP generates outcomes; authorized DMs confirm significant outcomes.** Noncombat members can meaningfully contribute. Campaigns may last weeks or months.
 
 ## Hard requirements
 1. **Data-driven world builder, no code changes for ordinary content.** User creates custom regions, zones, maps, settlements, sites, industries, facilities, resources, production recipes, fleets, convoys, military formations, vehicles, event chains, objective dependencies and rule templates through an administrative editor. New example content: voidsent-infested ore mine; ceruleum drilling + processing plant with a multi-event capture/repair/production storyline. Reusable templates + individual instances. Feature extension may still require code for fundamentally novel mechanics.
@@ -70,7 +70,7 @@ Read this file first; also inspect latest schema and src/WorldAdministration.jsx
 - Still to implement: true territory ownership polygons, terrain elevation and impassable mountain ranges with pathfinding, new site types and proper simulated settlement population/industry/war flows.
 
 ## Update — Site conditions and railway/road cartography (2026-11-07)
-- **Ownership is not a condition.** A territory can legally belong to the Eclipse Order through the controlling/governing faction reference while its site condition is **Secure**, **Abandoned**, **Destroyed**, **Occupied**, **Contested**, etc. The Order's own holdings are not automatically occupied. True territory polygons/borders remain future work.
+- **Ownership is not a condition.** A territory can legally belong to the Imperium Noctis through the controlling/governing faction reference while its site condition is **Secure**, **Abandoned**, **Destroyed**, **Occupied**, **Contested**, etc. The Order's own holdings are not automatically occupied. True territory polygons/borders remain future work.
 - Settlement conditions `secure`, `abandoned`, and `destroyed` are added by idempotent schema migration `044_world_site_conditions.sql`, retaining all existing states and ownership references.
 - Route creation now has a draft stage: select endpoints, place manual bends, review and explicitly save or cancel; clicking the second site must not immediately create an unwanted line. Existing routes are selected through a route registry; edits to bends/type/name are saved explicitly. Rail routes draw recognizable sleepers and twin rails instead of dotted roads. Routes remain visual; no automated transport movement yet.
 - Further road upgrades: shared intersections and rail junctions, station/track metadata, route segment splitting, road elevation, routing, crossings, and convoy pathfinding.
