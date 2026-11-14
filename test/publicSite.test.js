@@ -21,8 +21,9 @@ test('public website includes imperial command identity, sections, and accessibl
  for(const rank of ['Imperatrix','Consul','Senatus Imperialis','Garlean Shadows','The Legions','Officium Aerarii','R&D','Peregrinus','Civis']){
   assert.ok(site.includes(rank),rank);
  }
- assert.equal(SERVITUDE_RANKS.length,8);
- assert.ok(SERVITUDE_RANKS.includes('Eclipsed Consort'));
+ assert.equal(SERVITUDE_RANKS.length,5);
+ assert.ok(SERVITUDE_RANKS.includes('Specimen V — Praecipuus'));
+ assert.match(site,/Specimen Classification/);
  assert.match(site,/SERVITUDE_RANKS/);
  assert.match(site,/aria-modal="true"/);
  assert.match(site,/aria-expanded=\{expandedFAQ===entry.id\}/);
