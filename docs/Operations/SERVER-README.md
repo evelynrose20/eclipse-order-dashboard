@@ -1,6 +1,6 @@
-# Eclipse Order — Windows MySQL backend
+# Imperium Noctis — Windows MySQL backend
 
-The Eclipse Order member portal uses a Windows-hosted Node.js API, local MySQL database, and React/Vite frontend. It supports account approvals, character dossiers, binding requests, RP preferences, FC rules, events, encounters, dice, syndicate ranks, character progression, and completed-event XP.
+Imperium Noctis member portal uses a Windows-hosted Node.js API, local MySQL database, and React/Vite frontend. It supports account approvals, character dossiers, binding requests, RP preferences, FC rules, events, encounters, dice, syndicate ranks, character progression, and completed-event XP.
 
 The older Supabase code is retained for compatibility only. **Use the Windows/MySQL instructions below for the current member portal.**
 
