@@ -1,4 +1,4 @@
--- Eclipse Order: roles + genuinely restricted character sheets.
+-- Imperium Noctis: roles + genuinely restricted character sheets.
 -- Run in Supabase SQL Editor AFTER the base supabase/schema.sql.
 -- Backup the project before running migrations.
 --
@@ -57,7 +57,7 @@ declare
   output jsonb;
 begin
   if actor is null or actor_role is null then
-    raise exception 'Not an approved Eclipse Order member' using errcode = '42501';
+    raise exception 'Not an approved Imperium Noctis member' using errcode = '42501';
   end if;
   select coalesce(jsonb_agg(
     case
@@ -101,7 +101,7 @@ declare
   field text;
 begin
   if actor is null or actor_role is null then
-    raise exception 'Not an approved Eclipse Order member' using errcode = '42501';
+    raise exception 'Not an approved Imperium Noctis member' using errcode = '42501';
   end if;
   if jsonb_typeof(payload) <> 'object' or
      record_id is null or length(record_id) not between 1 and 128 or
