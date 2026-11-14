@@ -1,4 +1,4 @@
-# Live Eclipse Order Governance — Charter and Council
+# Live Imperium Noctis Governance — Charter and Council
 The Governance page is a live, database-backed Order workspace. No fictional example motions, applicants or appointments are seeded. The optional Senate is separately activated and continues to default to **off**.
 
 ## Charter
