@@ -1,4 +1,4 @@
--- ECLIPSE ORDER: COMBINED SETUP SCRIPT
+-- IMPERIUM NOCTIS: COMBINED SETUP SCRIPT
 -- For a NEW Supabase project or a reviewed forward migration. Back up first.
 -- This does not automatically create Supabase Auth accounts or approve adult RP access.
 -- Run in Supabase SQL Editor (trusted administrative context), not in the public website.
@@ -58,7 +58,7 @@ grant select,insert,update,delete on public.characters to authenticated;
 
 
 -- ===== START supabase/roles-and-sheets.sql =====
--- Eclipse Order: roles + genuinely restricted character sheets.
+-- Imperium Noctis: roles + genuinely restricted character sheets.
 -- Run in Supabase SQL Editor AFTER the base supabase/schema.sql.
 -- Backup the project before running migrations.
 --
@@ -117,7 +117,7 @@ declare
   output jsonb;
 begin
   if actor is null or actor_role is null then
-    raise exception 'Not an approved Eclipse Order member' using errcode = '42501';
+    raise exception 'Not an approved Imperium Noctis member' using errcode = '42501';
   end if;
   select coalesce(jsonb_agg(
     case
@@ -161,7 +161,7 @@ declare
   field text;
 begin
   if actor is null or actor_role is null then
-    raise exception 'Not an approved Eclipse Order member' using errcode = '42501';
+    raise exception 'Not an approved Imperium Noctis member' using errcode = '42501';
   end if;
   if jsonb_typeof(payload) <> 'object' or
      record_id is null or length(record_id) not between 1 and 128 or
@@ -326,7 +326,7 @@ grant execute on function public.order_set_member_standing(uuid,text) to authent
 
 
 -- ===== START supabase/platform-foundations.sql =====
--- Eclipse Order platform foundations, revision 1.
+-- Imperium Noctis platform foundations, revision 1.
 -- Run AFTER supabase/schema.sql and supabase/roles-and-sheets.sql.
 -- IMPORTANT: DO NOT run this migration before the roles RPC migration.
 -- All records are subject to member permissions enforced by SECURITY DEFINER RPC.
@@ -808,7 +808,7 @@ grant execute on function public.order_list_dice(uuid) to authenticated;
 
 
 -- ===== START supabase/audit.sql =====
--- Eclipse Order audit trail.
+-- Imperium Noctis audit trail.
 -- Apply after platform-foundations.sql.
 -- Stores staff change records (not private scene preferences) for 180 days
 -- by policy. Retention pruning must be scheduled separately.
@@ -887,7 +887,7 @@ create table if not exists public.order_settings (
 alter table public.order_settings enable row level security;
 revoke all on public.order_settings from anon,authenticated,public;
 insert into public.order_settings(setting_key,content) values
- ('welcome','Welcome to the Eclipse Order.'),
+ ('welcome','Welcome to the Imperium Noctis.'),
  ('house_rules','Character mechanics and dice follow the current FC house rules.'),
  ('scene_guidelines','All adult RP scenes require explicit, revocable out-of-character opt-in. In-character refusal never overrides player-level OOC controls.')
 on conflict(setting_key) do nothing;
