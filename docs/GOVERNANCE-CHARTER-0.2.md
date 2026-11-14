@@ -1,4 +1,4 @@
-# The Eclipse Order — governance charter (design draft 0.2)
+# Imperium Noctis — governance charter (design draft 0.2)
 
 **Status: planning artifact; not enacted by deployed software.** This document consolidates the decisions from the governance planning sessions. It is not an authorization grant.
 
