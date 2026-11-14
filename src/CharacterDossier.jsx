@@ -53,7 +53,7 @@ export default function CharacterDossier({
   <header className="dossier-hero">
    <div className="dossier-emblem" aria-hidden="true"><i className="fa-solid fa-scroll"/></div>
    <div className="dossier-person">
-    <div className="dossier-eyebrow">THE ECLIPSE ORDER <span> / </span> CHARACTER DOSSIER</div>
+    <div className="dossier-eyebrow">IMPERIUM NOCTIS <span> / </span> CHARACTER DOSSIER</div>
     <h2>{summary.name}</h2>
     <p>{restricted?(summary.specialty+' · Bound record'):[summary.species,summary.className||summary.specialty].filter(Boolean).join(' · ')||'An unwritten chapter'}</p>
     <div className="dossier-tags"><span>{restricted?'Sealed view':'Character record'}</span><span>{summary.rank||'Order member'}</span>{!restricted&&<span>Level {summary.level}</span>}{!restricted&&<span>{character.player_user_id?character.player_user_id===userId?'Linked to your account':'Linked to another account':'No player account linked'}</span>}</div>
