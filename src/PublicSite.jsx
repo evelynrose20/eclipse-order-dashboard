@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import './public-site.css';
 import './imperial-theme.css';
+import './imperial-coc.css';
 import PublicChronicles from './PublicChronicles.jsx';
 import OrderEmblem from './OrderEmblem.jsx';
 import {SERVITUDE_RANKS} from './servitudeRanks.js';
