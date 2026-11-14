@@ -1,14 +1,14 @@
 ---
 aliases:
-  - Eclipse Order Docs
+  - Imperium Noctis Docs
   - Documentation Home
 tags: [eclipse-order, documentation]
 ---
 
-# Eclipse Order — Documentation Vault
+# Imperium Noctis — Documentation Vault
 
 > [!important] Source of truth
-> This `docs/` directory is the **single project documentation folder** for the Eclipse Order site, Windows API and living-world work. Open `docs/` as an [Obsidian](https://obsidian.md/) vault or synchronize it with a local Git clone. The root `README.md` (GitHub repository entrypoint) and root `AGENTS.md` (code contributor instructions) stay at repository root intentionally.
+> This `docs/` directory is the **single project documentation folder** for the Imperium Noctis site, Windows API and living-world work. Open `docs/` as an [Obsidian](https://obsidian.md/) vault or synchronize it with a local Git clone. The root `README.md` (GitHub repository entrypoint) and root `AGENTS.md` (code contributor instructions) stay at repository root intentionally.
 
 ## System handbook — how everything works
 
