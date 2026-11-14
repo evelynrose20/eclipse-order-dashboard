@@ -21,7 +21,7 @@ test('imperial command tree has linked command and four operational branches',()
  assert.match(admin,/household:'R&D'/);
 });
 
-test('rank label migration changes names without changing any stable IDs or the bound path',()=>{
+test('imperial ranks preserve stable IDs and five specimen grades are a separate classification',()=>{
  for(const code of ['grand_viper','inner_council','hatchling','high_serpent','high_fang','goldkeeper','high_claw','keepers_apprentice','high_steward','freshscales','voidscales'])
   assert.match(ranks,new RegExp("WHEN '"+code+"' THEN"));
  assert.match(ranks,/WHERE track IN \('leadership','snakes','fangs','golden_claws','household','membership'\)/);
@@ -32,5 +32,6 @@ test('rank label migration changes names without changing any stable IDs or the 
  assert.match(ranks,/Primus Frumentarius/);
  assert.match(ranks,/Legatus Legionis/);
  assert.match(ranks,/Primus Architectus Magiteci/);
- assert.match(servitude,/Eclipsed Consort/);
+ assert.match(servitude,/Specimen V — Praecipuus/);
+ assert.match(setup,/137_specimen_classification\.sql/);
 });
