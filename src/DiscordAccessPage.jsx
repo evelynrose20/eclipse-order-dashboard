@@ -5,7 +5,7 @@ const CONTENT={
  discord_not_in_server:{
   label:'DISCORD MEMBERSHIP',
   title:'The door is not open yet.',
-  text:'The Order could not find your Discord account in its configured server. If you already belong to the server, do not request another invitation. Ask Order command to check the Discord server ID and bot configuration.',
+  text:'Imperium Noctis could not find your Discord account in its configured server. If you already belong to the server, do not request another invitation. Ask Imperial command to check the Discord server ID and bot configuration.',
   detail:'If this is your first visit, you can request an invitation using Discord. Joining still requires Order approval.'
  },
  discord_membership_screening:{
@@ -16,7 +16,7 @@ const CONTENT={
  },
  discord_guild_configuration_error:{
   label:'CONNECTION PROBLEM',
-  title:'The Order cannot confirm the server.',
+  title:'Imperium Noctis cannot confirm the server.',
   text:'The Discord bot cannot verify the configured server or access its membership records. This does not mean you are outside the Discord.',
   detail:'Order command needs to check that DISCORD_GUILD_ID is the correct server ID, and that the configured bot token belongs to the application with that bot inside the server.'
  },
@@ -28,7 +28,7 @@ const CONTENT={
  },
  pending:{
   label:'APPLICATION RECEIVED',
-  title:'Your request is with the Order.',
+  title:'Your request is with Imperium Noctis.',
   text:'Your Discord membership is verified. Order command still needs to approve your website membership.',
   detail:'You do not need to apply again. Your character records and access will be available once the request is approved.'
  }
@@ -44,7 +44,7 @@ export default function DiscordAccessPage({reason,onRetry,onJoin,busy,adult,onAd
    <div className="eo-discord-access-detail"><strong>What happens next</strong><p>{detail.detail}</p></div>
    {reason!=='pending'&&<div className="eo-discord-access-choice">
     <label><input type="checkbox" checked={adult} onChange={e=>onAdultChange(e.target.checked)}/> I confirm that I am 18 or older and understand this is a Bad End RP community.</label>
-    {reason==='discord_not_in_server'&&<><button type="button" className="eo-discord-access-join" disabled={busy||!adult} onClick={onJoin}>Request to join the Order’s Discord</button><small>Discord will ask your permission before the bot attempts to add you. This does not grant website approval.</small></>}
+    {reason==='discord_not_in_server'&&<><button type="button" className="eo-discord-access-join" disabled={busy||!adult} onClick={onJoin}>Request to join Imperium Noctis’s Discord</button><small>Discord will ask your permission before the bot attempts to add you. This does not grant website approval.</small></>}
    </div>}
    <div className="eo-discord-access-actions">
     {reason!=='pending'&&<button type="button" disabled={busy||!adult} onClick={onRetry}>Verify with Discord again</button>}
