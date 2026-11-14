@@ -131,7 +131,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(testHamlet.faction_scope,'settlement');
 
   const [seedFactions]=await admin.query("SELECT id,leader,relationship,image_reference_url FROM order_factions WHERE faction_scope='order_story' ORDER BY sort_order");
-  assert.equal(seedFactions.length,6,'five initial factions plus the Eclipse Order authority');
+  assert.equal(seedFactions.length,6,'five initial factions plus the Imperium Noctis authority');
   assert.equal(seedFactions.find(f=>f.id==='house-kurogane')?.leader,'Lady Reika Kurogane');
   assert.equal(seedFactions.find(f=>f.id==='ashen-veil')?.relationship,'watchful_rival');
   assert.match(seedFactions.find(f=>f.id==='iron-remnant')?.image_reference_url||'',/^https:\/\//);
@@ -543,7 +543,7 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.equal(Number(legacyRailStation.id),Number(origin.body.id),'legacy rail station data remains stored after menu transition');
   assert.equal(legacyRailStation.status,'operational');
  const [[orderAuthority]]=await admin.execute("SELECT name FROM order_factions WHERE id='eclipse-order'");
-  assert.equal(orderAuthority.name,'The Eclipse Order','Order authority must exist as a valid foreign key target');
+  assert.equal(orderAuthority.name,'Imperium Noctis','Order authority must exist as a valid foreign key target');
   const orderHeld=await worldAdministrationRoute(admin,request('PUT',{...worldPlace,governing_faction_id:'eclipse-order',controlling_faction_id:'eclipse-order',supporting_faction_id:'eclipse-order'}),'/world-admin/settlements/'+mineId);
   assert.equal(orderHeld.status,200,JSON.stringify(orderHeld.body));
   const [[orderRefs]]=await admin.execute('SELECT governing_faction_id,controlling_faction_id,supporting_faction_id FROM world_settlements WHERE id=?',[mineId]);
