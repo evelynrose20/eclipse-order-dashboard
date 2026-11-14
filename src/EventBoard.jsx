@@ -68,12 +68,12 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
  return <div className="order-event-board">
   <header className="order-event-board-intro">
    <span className="order-event-eyebrow">IMPERIUM NOCTIS / GATHERINGS</span>
-   <div className="order-event-heading"><span className="order-event-sigil" aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><div><h2>The Event Board</h2><p>Discover upcoming stories, join an event, and follow the Order's activities.</p></div></div>
+   <div className="order-event-heading"><span className="order-event-sigil" aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><div><h2>The Event Board</h2><p>Discover upcoming stories, join an event, and follow the Imperium's activities.</p></div></div>
   </header>
   <div className="order-event-board-frame">
    <aside className="order-event-postings" aria-label="Published events">
     <div className="order-event-list-label">OPEN POSTINGS <span>{events.length}</span></div>
-    {loading?<p className="order-event-muted">Loading events…</p>:events.length===0?<div className="order-event-empty-list"><strong>No postings yet</strong><p>Check back for the Order's next event.</p></div>:
+    {loading?<p className="order-event-muted">Loading events…</p>:events.length===0?<div className="order-event-empty-list"><strong>No postings yet</strong><p>Check back for the Imperium's next event.</p></div>:
      <div className="order-event-list">{events.map(event=><button type="button" key={event.id} onClick={()=>choose(event.id)} aria-pressed={selectedId===event.id} className={'order-event-posting '+(selectedId===event.id?'selected':'')}>
       <span className="order-event-posting-top"><span>{event.status==='draft'?'RECRUITING':statusLabel(event).toUpperCase()}</span><span className={'order-event-posting-stamp '+statusClass(event)}>{timeLabel(event.starts_at)}</span></span>
       <strong>{event.name}</strong>
@@ -83,7 +83,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
      </button>)}</div>}
    </aside>
    <main className="order-event-detail" aria-live="polite">
-    {!selected?<div className="order-event-no-selection"><span aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><h3>{loading?'Gathering the postings':'No events posted'}</h3><p>{loading?'':"When the Order announces its next event, you'll find its details here."}</p></div>:
+    {!selected?<div className="order-event-no-selection"><span aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><h3>{loading?'Gathering the postings':'No events posted'}</h3><p>{loading?'':"When the Imperium announces its next event, you'll find its details here."}</p></div>:
      <>
       <div className="order-event-detail-top">
        <div><span className="order-event-eyebrow">{eventTypeLabel(readEventStory(selected.event_story).type)}{readEventStory(selected.event_story).type==='fc_msq'?' · MAIN STORY':''}</span><h3>{selected.name}</h3></div>
@@ -98,7 +98,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
       <section className="order-event-story">
        <h4>The posting</h4><p>{selected.description||'Details will be announced soon.'}</p>
       </section>
-      {linkedConstruction.length>0&&<section className="order-event-construction"><span>THE ORDER'S WORKS</span><h4>Construction objectives</h4><p>This event is linked to a longer building or restoration effort. Crafted goods carry the work forward between gatherings.</p>{linkedConstruction.map(p=><button type="button" key={p.id} onClick={()=>onOpenConstruction?.(selectedId)}><strong>{p.name}</strong><small>{p.stage_count} phase${''} · {p.state}</small><em>View supply objectives</em></button>)}</section>}
+      {linkedConstruction.length>0&&<section className="order-event-construction"><span>THE IMPERIUM'S WORKS</span><h4>Construction objectives</h4><p>This event is linked to a longer building or restoration effort. Crafted goods carry the work forward between gatherings.</p>{linkedConstruction.map(p=><button type="button" key={p.id} onClick={()=>onOpenConstruction?.(selectedId)}><strong>{p.name}</strong><small>{p.stage_count} phase${''} · {p.state}</small><em>View supply objectives</em></button>)}</section>}
       {readEventStory(selected.event_story).chapters.length>0&&<section className="order-event-chapters"><h4>Chapters</h4><div>{readEventStory(selected.event_story).chapters.map((chapter,index)=><article className="order-event-chapter" key={index}><span className="order-event-chapter-number">{index+1}</span><div><strong>{chapter.title}</strong>{readEventStory(selected.event_story).type==='fc_msq'&&<span className="order-event-chapter-msq">FC MSQ</span>}{chapter.description&&<p>{chapter.description}</p>}</div><span className="order-event-chapter-difficulty">D{chapter.difficulty}</span></article>)}</div></section>}
       {Array.isArray(selected.themes)&&selected.themes.length>0&&<section className="order-event-themes"><h4>Event themes</h4><div>{selected.themes.map(id=><span key={id}>{themeName(id)}</span>)}</div></section>}
       {check?.missing_themes?.length>0&&<div className="order-event-guidance"><p>This event includes themes outside your current RP preferences.</p><button className="btn secondary" onClick={onOpenProfile} type="button">Review my RP preferences</button></div>}
