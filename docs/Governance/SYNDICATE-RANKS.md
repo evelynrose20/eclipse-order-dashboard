@@ -19,7 +19,7 @@ The four operational branches descend from imperial command:
 
 **Membership standing:** Peregrinus → Civis (a faction-specific use of Garlean non-citizen and citizen terminology, not an OOC rights classification). Membership standing is independent of branch appointment.
 
-**Bound Path:** Deferred. All eight current servitude titles, character records, service rules, and permissions are deliberately untouched by this change. Any future proposal to reduce this track to five must be separately designed, reviewed and migrated after approval.
+**Specimen Classification:** Five research grades: Specimen I — Receptus; II — Registratus; III — Observatus; IV — Probatus; V — Praecipuus. These are faction-specific Latin-inspired research labels, not canonical Garlean military ranks. Three retired servitude codes remain in the database strictly to preserve historical character assignments until individually reviewed. Existing consent and technical access rules are unchanged.
 
 ## Compatibility and permissions
 
@@ -30,7 +30,7 @@ The four operational branches descend from imperial command:
 - The original `domina`, `grand_viper`, and other catalog codes stay intact as internal identifiers.
 - Officium Aerarii's historical `gilded_talon` / `high_claw` access rules still apply to the renamed Aedilis / Quaestor until a separate permissions review.
 - The legacy `syndicate_rank` field and older `syndicateRanks.js` code are for compatibility only.
-- No changes to consent or the Bound Path.
+- Specimen classifications do not supersede OOC consent; legacy assignments remain readable until reassigned.
 
 ## Deployment
 
