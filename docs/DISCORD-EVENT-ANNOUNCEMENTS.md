@@ -1,6 +1,6 @@
 # Self-hosted Discord event announcements
 
-This is the Eclipse Order replacement for paid event announcement bots. It watches **Discord Scheduled Events** and sends an embed into one announcement channel with Accepted / Declined / Tentative response buttons. An existing announcement is edited when its Discord event changes; cancelled/completed/deleted events are removed. Startup and a five-minute reconciliation repair missed changes.
+This is the Eclipse Order replacement for paid event announcement bots. It watches **Discord Scheduled Events** and sends an embed into one announcement channel with Accepted / Declined / Tentative response buttons. An existing announcement is edited when its Discord event changes; cancelled/completed/deleted events are removed. Repeating events retain one message per series instead of publishing all future instances. Startup and a five-minute reconciliation repair missed changes.
 
 ## Configure
 1. In Discord Developer Mode, right-click the **destination text channel** and copy its channel ID.
@@ -19,7 +19,7 @@ If the bot fails to start, check for missing `server/.env` IDs, an invalid bot t
 
 ## Far-future events and recurring weekly attendance
 
-Non-recurring Discord Scheduled Events are announced regardless of how many days away they are, including events 20+ days ahead. Weekly (and every-other-week) Discord event recurrences produce separate announcements for each upcoming occurrence within a rolling **35-day window**. As time passes, newly upcoming weeks appear automatically during the five-minute synchronization. Each dated occurrence has independent Accepted/Declined/Tentative responses and shows member names under each response. Responses do not automatically carry from one Friday to the next. Clicking the same response again removes it.
+Non-recurring Discord Scheduled Events are announced regardless of how many days away they are, including events 20+ days ahead. Weekly (and every-other-week) Discord event recurrences produce **one announcement per recurring series**, showing only the next upcoming occurrence. After the occurrence ends, the existing message is edited for the next date during the five-minute synchronization. Each dated occurrence retains independent Accepted/Declined/Tentative responses and shows member names under each response. Previously posted future occurrences from the original multi-post implementation are removed automatically when the upgraded bot runs, provided its locally stored announcement mapping is intact. Responses do not automatically carry from one Friday to the next. Clicking the same response again removes it.
 
 Names are rendered as non-pinging Discord member mentions. Discord's native Interested subscriber count is not the same as the bot RSVP count. The bot does not claim to import native Interested into Accepted. The occurrence generator supports Discord's weekly recurrence rules; events using other recurring frequencies are published for their currently scheduled instance only, until those frequencies are implemented. This is a channel announcement service, not an attendance enforcement system.
 
