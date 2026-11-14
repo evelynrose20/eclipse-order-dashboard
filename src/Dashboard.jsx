@@ -198,7 +198,7 @@ export default function Dashboard() {
   }
   const actions=<>{canCreate&&<button className="btn secondary" onClick={()=>setEditor(fresh())}>+ New character</button>}{canCommand&&<button className="btn primary" onClick={()=>{downloadFile('eclipse-order-ledger-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({version:4,exportedAt:new Date().toISOString(),characters},null,2));warn('Backup downloaded.');}}>↓ Export backup</button>}</>;
   if(configured&&!session)return <div className="login-screen"><form className="login-card" onSubmit={login}>
-    <div className="brand"><span className="brand-sigil"><i className="fa-solid fa-crown"/></span><div><strong>ECLIPSE ORDER</strong><small>MEMBER ACCESS</small></div></div>
+    <div className="brand"><span className="brand-sigil"><i className="fa-solid fa-crown"/></span><div><strong>IMPERIUM NOCTIS</strong><small>MEMBER ACCESS</small></div></div>
     <h1>Enter the Order</h1><p>Sign in with an approved member account to access the shared ledger.</p>
     {loginError&&<div className="alert" role="alert">{loginError}</div>}
     <Field label="EMAIL ADDRESS"><input required type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></Field>
