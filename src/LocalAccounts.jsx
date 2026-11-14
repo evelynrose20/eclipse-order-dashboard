@@ -157,7 +157,7 @@ export default function LocalAccounts(){
    {message&&<p className="eo-message" role="status">{message}</p>}
    <div className="eo-discord-login">
     <button className="eo-discord-button" type="button" disabled={busy||!adult} onClick={()=>start('login')}>{busy?'Connecting…':'Continue with Discord'}</button>
-    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&recruitment!=='closed'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join the Imperium’s Discord</button>}
+    {(reason==='discord_not_in_server'||reason==='discord_membership_screening')&&recruitment!=='closed'&&<button className="eo-primary eo-join-discord" type="button" disabled={busy||!adult} onClick={()=>start('join')}>Request to join Imperium Noctis’s Discord</button>}
     {recruitment==='closed'&&<p className="eo-membership-wait">Recruitment is closed. Existing Order members may still sign in.</p>}
     {reason==='pending'&&<p className="eo-membership-wait">Already have an Imperium Noctis account? It needs to be reconnected to your Discord before you can enter. Your existing character records remain safe. New membership requests require approval from Order leadership.</p>}
     <small>Members of the Imperium can enter using their connected Discord account.</small>
