@@ -1,4 +1,4 @@
--- Eclipse Order audit trail.
+-- Imperium Noctis audit trail.
 -- Apply after platform-foundations.sql.
 -- Stores staff change records (not private scene preferences) for 180 days
 -- by policy. Retention pruning must be scheduled separately.
