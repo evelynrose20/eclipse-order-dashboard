@@ -42,10 +42,11 @@ export async function civicTemplateCatalogRoute(pool,req,path,actor){
  });
 }
 export function effectSnapshot(t){return JSON.stringify({key:t.effect_key,per_level:Number(t.effect_per_level)});}
+export const civicRepairEligible=status=>['damaged','destroyed'].includes(status);
 export async function beginCivicTemplateProject(db,{settlement,template,upgrade=null,owner_kind='order',actorId=null,npcDevelopment=0,repair=false}){
  if(!template||(!template.enabled&&!repair))return fail(409,'template_disabled');
  if(owner_kind==='npc'&&template.access_scope==='order_only')return fail(409,'order_only_blueprint');
- if(repair&&(!upgrade||!['damaged','destroyed'].includes(upgrade.status)))return fail(409,'repair_requires_damaged_or_destroyed_building');
+ if(repair&&(!upgrade||!civicRepairEligible(upgrade.status)))return fail(409,'repair_requires_damaged_or_destroyed_building');
  const target=repair?Number(upgrade.level):upgrade?Number(upgrade.level)+1:1;
  if(!repair&&target>Number(template.max_level))return fail(409,'maximum_building_level');
  if(upgrade){
