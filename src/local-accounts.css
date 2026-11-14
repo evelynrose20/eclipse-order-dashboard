@@ -33,7 +33,7 @@
 .eo-empty{padding:24px;background:#202a33;border-radius:2px}
 @media(max-width:650px){.eo-auth-card{margin:18px;padding:24px}.eo-local-head{padding:18px}.eo-member{align-items:stretch;flex-direction:column}.eo-summary{flex-direction:column}.eo-members{margin:10px auto}.eo-local-head small{display:none}}
 
-/* Reuse the original Eclipse Order dashboard shell; avoid auth-button styling overriding navigation. */
+/* Reuse the original Imperium Noctis dashboard shell; avoid auth-button styling overriding navigation. */
 .eo-local.app-shell{background:radial-gradient(ellipse at 85% 2%,#202a33 0,transparent 45%),#131b23}
 .eo-local .nav-link{display:flex;width:100%;text-align:left;align-items:center;gap:10px;background:transparent;border:1px solid transparent;padding:12px 14px;border-radius:2px;color:#c6cfd0;font-weight:500}
 .eo-local .nav-link:hover{border-color:#923943;background:#202a33}
