@@ -29,10 +29,10 @@ const NAV=[
  ['questions','Questions']
 ];
 const ORDER_BRANCHES=[
- {name:'Garlean Shadows',short:'INTELLIGENCE',symbol:'fa-user-secret',summary:'Intelligence, reconnaissance, counterintelligence, and covert operations.',ranks:['Tiro Umbrae','Speculator','Explorator','Frumentarius','Magister Umbrae'],lead:'Magister Umbrae'},
- {name:'The Legions',short:'MILITARY',symbol:'fa-shield-halved',summary:'Legion command, territorial defense, security, and campaign operations.',ranks:['Tiro','Miles','Optio','Centurio','Legatus'],lead:'Legatus'},
- {name:'Officium Aerarii',short:'TREASURY & COMMERCE',symbol:'fa-coins',summary:'Treasury, trade, procurement, enterprise licensing, and supply.',ranks:['Discipulus','Scriba','Negotiator','Quaestor','Procurator'],lead:'Procurator'},
- {name:'R&D',short:'IMPERIAL RESEARCH · MAGITEK',symbol:'fa-flask',summary:'Magitek engineering, scientific research, technical innovation, and industrial design.',ranks:['Discipulus Technicus','Artifex','Machinator','Magister Technicus'],lead:'Magister Technicus'}
+ {name:'Garlean Shadows',short:'INTELLIGENCE',symbol:'fa-user-secret',summary:'Intelligence, reconnaissance, counterintelligence, and covert operations.',ranks:['Eques','Notarius','Frumentarius','Praefectus','Primus Frumentarius'],lead:'Primus Frumentarius'},
+ {name:'The Legions',short:'MILITARY',symbol:'fa-shield-halved',summary:'Legion command, territorial defense, security, and campaign operations.',ranks:['Legionarius','Optio','Centurio','Primus Pilus','Legatus Legionis'],lead:'Legatus Legionis'},
+ {name:'Officium Aerarii',short:'TREASURY & COMMERCE',symbol:'fa-coins',summary:'Treasury, trade, procurement, enterprise licensing, and supply.',ranks:['Eques','Notarius','Compulsor','Aedilis','Quaestor'],lead:'Quaestor'},
+ {name:'R&D',short:'IMPERIAL RESEARCH · MAGITEK',symbol:'fa-flask',summary:'Magitek engineering, scientific research, technical innovation, and industrial design.',ranks:['Architectus','Architectus Veteranus','Architectus Magiteci','Primus Architectus Magiteci'],lead:'Primus Architectus Magiteci'}
 ];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const MODES=[
@@ -144,8 +144,8 @@ export default function PublicSite(){
      <div className="imperial-coc" role="group" aria-label="Imperium Noctis chain of command">
       <div className="imperial-coc-chain">
        <article className="imperial-coc-node imperial-coc-sovereign"><span className="imperial-coc-eyebrow"><i className="fa-solid fa-crown" aria-hidden="true"/> SUPREME COMMAND</span><h3>Imperatrix</h3><p>Rosa · Sovereign and final authority over Imperium Noctis.</p></article>
-       <article className="imperial-coc-node imperial-coc-deputy"><span className="imperial-coc-eyebrow">EXECUTIVE COMMAND</span><h3>Praefectus Imperii</h3><p>Principal deputy; coordinates imperial administration and branch command.</p></article>
-       <article className="imperial-coc-node imperial-coc-council"><span className="imperial-coc-eyebrow">STRATEGIC COUNCIL</span><h3>Consilium Imperiale</h3><p>The Imperial Council advises on policy, operations, appointments, and resources under the Imperatrix.</p></article>
+       <article className="imperial-coc-node imperial-coc-deputy"><span className="imperial-coc-eyebrow">EXECUTIVE COMMAND</span><h3>Consul</h3><p>Principal deputy; coordinates imperial administration and branch command.</p></article>
+       <article className="imperial-coc-node imperial-coc-council"><span className="imperial-coc-eyebrow">IMPERIAL SENATE</span><h3>Senatus Imperialis</h3><p>The imperial governing chamber advises on policy, operations, appointments, and resources under the Imperatrix.</p></article>
       </div>
       <div className="imperial-coc-fork" aria-hidden="true"/>
       <div className="imperial-coc-branches">
@@ -158,7 +158,7 @@ export default function PublicSite(){
      </div>
      <div className="public-branch-intro"><h3>Imperial appointments</h3><p>Authority flows from the Imperatrix through imperial command to the four operational branches. Each branch maintains its own specialty and promotion track.</p></div>
      <div className="public-other-standing">
-      <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Tiro <em>→</em> Civis</h3><p>Imperium Noctis's membership standing is distinct from a character's branch duties.</p></article>
+      <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Peregrinus <em>→</em> Civis</h3><p>Imperium Noctis's membership standing is distinct from a character's branch duties.</p></article>
       <article><span className="public-branch-kicker">BONDS OF SERVICE</span><h3>The bound path</h3><p>Service has its own hierarchy. Standing within the Imperium does not automatically grant freedom from an in-character bond.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
      </div>
      <p className="public-footnote">In-character rank, membership standing, bonds of service, and out-of-character account permissions are separate.</p>
