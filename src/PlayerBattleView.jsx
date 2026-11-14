@@ -26,7 +26,7 @@ export default function PlayerBattleView(){
  },[]);
  return <div className="encounter-studio player-battle-view">
   <header className="encounter-studio-hero">
-   <span className="encounter-eyebrow">THE ECLIPSE ORDER · BATTLEFIELD</span>
+   <span className="encounter-eyebrow">IMPERIUM NOCTIS · BATTLEFIELD</span>
    <div className="encounter-hero-row">
     <div><h2>Battle Map</h2><p>{chosen?chosen.name:'The battlefield awaits.'}</p></div>
     {visible.length>1&&<label className="field encounter-choose"><span>ACTIVE ENCOUNTER</span><select value={chosen?.id||''} onChange={e=>setSelectedId(e.target.value)}>{visible.map(event=><option key={event.id} value={event.id}>{event.name}</option>)}</select></label>}
