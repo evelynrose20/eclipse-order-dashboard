@@ -8,9 +8,9 @@ const num=v=>Number(v||0);
 const format=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
 const newHeater=()=>({name:'',coverage_pct:25,condition_pct:100,status:'operational',notes:''});
 const defaults={item_code:'',item_label:'',resource_kind:'food',food_group:'grain',quantity_delta:0,reason:''};
-export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged}){
+export default function CivicNeedsPanel({request,settlement,regionMode,canEdit,onChanged,initialTab='city'}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const [tab,setTab]=useState('city');
+ const [tab,setTab]=useState(initialTab);
  const [addMenu,setAddMenu]=useState(false),[creationAction,setCreationAction]=useState('');
  const [transfer,setTransfer]=useState({material_id:'',resource_kind:'food',food_group:'grain',quantity:1}),[movement,setMovement]=useState(defaults);
  const [stockItemSelection,setStockItemSelection]=useState(''),[movementDirection,setMovementDirection]=useState('add'),[stockCorrectionOpen,setStockCorrectionOpen]=useState(false);
