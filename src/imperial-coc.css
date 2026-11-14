@@ -1,0 +1,46 @@
+/* Imperium Noctis: connected, readable chain-of-command diagram.
+   The lines represent authority; membership and Bound Path remain separate. */
+.order-public .imperial-coc{--coc-line:#7f8b95;--coc-accent:#c36c71;position:relative;margin:0 auto 32px;max-width:1340px}
+.order-public .imperial-coc-chain{display:grid;justify-items:center;gap:32px}
+.order-public .imperial-coc-node{position:relative;box-sizing:border-box;width:min(100%,530px);padding:22px 28px;text-align:center;border:1px solid #68737d;background:linear-gradient(145deg,#282f36,#171d24)}
+.order-public .imperial-coc-node:not(:first-child):before{content:"";position:absolute;width:1px;height:33px;background:var(--coc-line);left:50%;bottom:100%}
+.order-public .imperial-coc-sovereign{border:2px solid #c17575;background:linear-gradient(135deg,#63313c,#26272e)}
+.order-public .imperial-coc-deputy{border-color:#a28073}
+.order-public .imperial-coc-node h3{font:800 clamp(28px,3.6vw,46px)/1.1 var(--imperial-heading);letter-spacing:.045em;color:#f1e8e0;text-transform:uppercase;margin:8px 0 10px}
+.order-public .imperial-coc-node p{font-size:12px;line-height:1.6;margin:0 auto;max-width:430px;color:#cbd1d6}
+.order-public .imperial-coc-eyebrow{color:#e4a4a5;letter-spacing:.16em;font-size:10px;font-weight:800}
+.order-public .imperial-coc-eyebrow i{margin-right:8px}
+.order-public .imperial-coc-fork{position:relative;height:70px;margin:0 auto}
+.order-public .imperial-coc-fork:before{content:"";position:absolute;width:1px;background:var(--coc-line);height:35px;top:0;left:50%}
+.order-public .imperial-coc-fork:after{content:"";position:absolute;top:35px;left:12.5%;width:75%;height:1px;background:var(--coc-line)}
+.order-public .imperial-coc-branches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.order-public .imperial-coc-branch{position:relative;min-width:0;display:flex;flex-direction:column;border:1px solid #68737d;background:linear-gradient(155deg,#282f36,#171d24)}
+.order-public .imperial-coc-branch:before{content:"";position:absolute;width:1px;height:35px;background:var(--coc-line);left:50%;bottom:100%}
+.order-public .imperial-coc-branch-head{padding:25px 20px 16px;min-height:212px;display:flex;flex-direction:column;align-items:flex-start}
+.order-public .imperial-coc-branch-head>i{font-size:29px;color:#e07073;margin-bottom:15px}
+.order-public .imperial-coc-branch-head>span{font-size:9px;font-weight:800;letter-spacing:.16em;color:#dbb2ad}
+.order-public .imperial-coc-branch-head h3{font:800 clamp(22px,2.4vw,31px)/1.12 var(--imperial-heading);text-transform:uppercase;letter-spacing:.025em;color:#f1e8e0;margin:8px 0}
+.order-public .imperial-coc-branch-head p{font-size:12px;line-height:1.55;color:#bdc6cf;margin:0}
+.order-public .imperial-coc-command-label{border-top:1px solid #53606b;border-bottom:1px solid #3d464f;color:#e1b0ad;letter-spacing:.09em;font-size:9px;font-weight:800;padding:13px 20px;min-height:42px;display:flex;align-items:center}
+.order-public .imperial-coc-ranks{list-style:none;padding:8px 20px 20px;margin:0}
+.order-public .imperial-coc-ranks li{display:flex;align-items:baseline;gap:11px;padding:11px 0;border-bottom:1px solid #46515c;color:#e7eaec;font-size:12px}
+.order-public .imperial-coc-ranks li small{color:#b3bdc9;font-size:10px;font-weight:800}
+.order-public .imperial-coc-ranks li i{margin-left:auto;font-size:9px;color:#cf8583}
+.order-public .public-branch-intro{margin-top:32px}
+@media(max-width:1100px){
+ .order-public .imperial-coc-branches{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 14px}
+ .order-public .imperial-coc-fork:after{left:25%;width:50%}
+ .order-public .imperial-coc-branch-head{min-height:175px}
+ .order-public .imperial-coc-branch:nth-child(n+3):before{height:30px}
+}
+@media(max-width:620px){
+ .order-public .imperial-coc-node{padding:20px 15px}
+ .order-public .imperial-coc-branches{grid-template-columns:1fr;gap:28px}
+ .order-public .imperial-coc-fork{height:30px}
+ .order-public .imperial-coc-fork:before{height:30px}
+ .order-public .imperial-coc-fork:after{display:none}
+ .order-public .imperial-coc-branch:before{height:29px}
+ .order-public .imperial-coc-branch-head{min-height:auto}
+ .order-public .imperial-coc-branch-head h3{font-size:30px}
+}
+@media(prefers-reduced-motion:reduce){.order-public .imperial-coc *{transition:none!important;animation:none!important}}
