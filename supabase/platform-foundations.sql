@@ -1,4 +1,4 @@
--- Eclipse Order platform foundations, revision 1.
+-- Imperium Noctis platform foundations, revision 1.
 -- Run AFTER supabase/schema.sql and supabase/roles-and-sheets.sql.
 -- IMPORTANT: DO NOT run this migration before the roles RPC migration.
 -- All records are subject to member permissions enforced by SECURITY DEFINER RPC.
