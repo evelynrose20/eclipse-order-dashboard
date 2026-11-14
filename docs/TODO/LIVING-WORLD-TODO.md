@@ -40,7 +40,7 @@ updated: 2026-11-07
 - [x] Region/zone hierarchy, separate zone navigation and independent HTTPS map backgrounds (migration 046).
 - [x] Add persistent mountain-range map annotations, with editable named ridgelines.
 - [x] Expose territorial status directly on colored settlement map markers and provide a quick status selector.
-- [x] Register the Eclipse Order itself as a selectable, database-backed governing/control/support faction.
+- [x] Register the Imperium Noctis itself as a selectable, database-backed governing/control/support faction.
 - [x] Add Secure, Abandoned, and Destroyed settlement conditions without changing owner/controller.
 - [x] Add explicit route drafting, a selectable existing-route registry, draggable/insertable bends, editing route types and railway cartographic tracks.
 - [x] Shared road junctions/rail switches independent of settlements, allowing saved route branching and splitting.
