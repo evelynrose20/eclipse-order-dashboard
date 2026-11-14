@@ -19,7 +19,7 @@ The four operational branches descend from imperial command:
 
 **Membership standing:** Peregrinus → Civis (a faction-specific use of Garlean non-citizen and citizen terminology, not an OOC rights classification). Membership standing is independent of branch appointment.
 
-**Specimen Classification:** Five research grades: Specimen I — Receptus; II — Registratus; III — Observatus; IV — Probatus; V — Praecipuus. These are faction-specific Latin-inspired research labels, not canonical Garlean military ranks. Three retired servitude codes remain in the database strictly to preserve historical character assignments until individually reviewed. Existing consent and technical access rules are unchanged.
+**Aan and Specimen Classification:** *Aan* is a Garlean social-status designation associated with the Empire's lowest subject class, including but not limited to enslaved people; it is not itself one of the five research grades. Imperium Noctis may record an Aan as a research specimen without conflating social status with research assignment. Five research grades: Specimen I — Receptus; II — Registratus; III — Observatus; IV — Probatus; V — Praecipuus. These are faction-specific Latin-inspired research labels, not canonical Garlean military ranks. Three retired servitude codes remain in the database strictly to preserve historical character assignments until individually reviewed. Existing consent and technical access rules are unchanged.
 
 ## Compatibility and permissions
 
