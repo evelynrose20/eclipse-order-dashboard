@@ -1,4 +1,4 @@
-/* The Eclipse Order's member-facing event noticeboard. */
+/* Imperium Noctis's member-facing event noticeboard. */
 .order-event-board{display:grid;gap:21px;max-width:1500px;margin:0 auto;min-width:0;color:#eadde2}
 .order-event-board-intro{padding:7px 3px 1px}
 .order-event-eyebrow{font-size:10px;font-weight:750;letter-spacing:.21em;color:#c6cfd0;text-transform:uppercase}
