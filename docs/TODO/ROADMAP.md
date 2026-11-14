@@ -1,4 +1,4 @@
-# Eclipse Order — release readiness
+# Imperium Noctis — release readiness
 
 This checklist distinguishes **implemented in the repository** from **verified in the running Windows deployment**. A successful GitHub build does not demonstrate database, authorization, or public API correctness.
 
