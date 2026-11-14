@@ -67,7 +67,7 @@ export default function EventBoard({userId,characters,onOpenProfile,onOpenConstr
  function choose(id){setSelectedId(id);setShowSignups(false);setError('')}
  return <div className="order-event-board">
   <header className="order-event-board-intro">
-   <span className="order-event-eyebrow">THE ECLIPSE ORDER / GATHERINGS</span>
+   <span className="order-event-eyebrow">IMPERIUM NOCTIS / GATHERINGS</span>
    <div className="order-event-heading"><span className="order-event-sigil" aria-hidden="true"><i className="fa-solid fa-calendar-days"/></span><div><h2>The Event Board</h2><p>Discover upcoming stories, join an event, and follow the Order's activities.</p></div></div>
   </header>
   <div className="order-event-board-frame">
