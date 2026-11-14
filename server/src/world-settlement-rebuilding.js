@@ -6,7 +6,7 @@ const number=n=>Number(n||0);
 export function rebuildingAssessment(report){
  const {settlement,buildings,industry,power,warehouses,civicProjects,industryProjects,powerProjects}=report;
  const active=[...civicProjects,...industryProjects,...powerProjects].filter(p=>['active','paused','planned'].includes(p.status));
- const damagedCivic=buildings.filter(b=>['damaged','destroyed'].includes(b.status)||['operational','damaged'].includes(b.status)&&number(b.condition_pct)<100);
+ const damagedCivic=buildings.filter(b=>['planned','building','damaged','destroyed'].includes(b.status)||['operational','damaged'].includes(b.status)&&number(b.condition_pct)<100);
  const damagedIndustry=industry.filter(f=>['damaged','ruined','captured','rebuilding'].includes(f.status)||number(f.equipment_condition)<100);
  const damagedPower=power.filter(p=>number(p.condition_pct)<100||['damaged','destroyed'].includes(p.status));
  const blockedPower=power.filter(p=>number(p.fuel_units)<=0||['paused','destroyed'].includes(p.status));
@@ -49,8 +49,24 @@ export async function rebuildingDossier(pool,id){
 }
 export async function worldRebuildingRoute(pool,req,path,actor){
  if(!['domina','high_command'].includes(actor.account_role))return fail(403,'command_required');
- const m=/^\/world-admin\/settlements\/(\d+)\/rebuilding$/.exec(path);
+ const m=/^\/world-admin\/settlements\/(\d+)\/rebuilding(?:\/(start))?$/.exec(path);
  if(!m)return fail(404,'not_found');
- if(req.method!=='GET')return fail(405,'method_not_allowed');
- return rebuildingDossier(pool,Number(m[1]));
+ const id=Number(m[1]);
+ if(!Number.isSafeInteger(id)||id<1)return fail(400,'invalid_settlement');
+ if(!m[2])return req.method==='GET'?rebuildingDossier(pool,id):fail(405,'method_not_allowed');
+ if(req.method!=='POST')return fail(405,'method_not_allowed');
+ const db=await pool.getConnection();
+ try{
+  await db.beginTransaction();
+  const [[site]]=await db.execute('SELECT id,strategic_state,controlling_faction_id FROM world_settlements WHERE id=? FOR UPDATE',[id]);
+  if(!site){await db.rollback();return fail(404,'settlement_not_found')}
+  if(site.controlling_faction_id!=='eclipse-order'){await db.rollback();return fail(409,'order_control_required')}
+  if(!['destroyed','abandoned'].includes(site.strategic_state)){await db.rollback();return fail(409,'settlement_not_in_ruins')}
+  // Begin the restoration story without altering any actual building's condition.
+  await db.execute("UPDATE world_settlements SET strategic_state='rebuilding' WHERE id=?",[id]);
+  await db.execute('INSERT INTO world_administration_audit(actor_id,action,entity,entity_id,detail) VALUES(?,?,?,?,?)',[actor.id,'begin_rebuilding','settlement',id,'Restoration initiated; physical repairs still required']);
+  await db.commit();
+  return ok({saved:true,strategic_state:'rebuilding'});
+ }catch(error){await db.rollback().catch(()=>{});throw error}
+ finally{db.release()}
 }
