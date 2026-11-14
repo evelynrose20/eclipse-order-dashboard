@@ -1,4 +1,4 @@
-# Eclipse Order API Control Center — no terminal required
+# Imperium Noctis API Control Center — no terminal required
 
 The Windows Control Center starts with Windows sign-in and keeps the existing Node API running. **No PowerShell or npm window should remain open.**
 
@@ -27,7 +27,7 @@ The installer requires no machine-wide service changes. The Windows account must
 
 ## Uninstall startup
 
-Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/uninstall-api-manager.ps1`, or delete the **Eclipse Order API Control Center** shortcut from the Windows Startup folder. Uninstalling does not affect your database or secrets.
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/uninstall-api-manager.ps1`, or delete the **Imperium Noctis API Control Center** shortcut from the Windows Startup folder. Uninstalling does not affect your database or secrets.
 
 ## Troubleshooting
 
