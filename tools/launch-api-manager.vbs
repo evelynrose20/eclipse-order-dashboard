@@ -1,4 +1,4 @@
-' Eclipse Order API Control Center launcher - no command window.
+' Imperium Noctis API Control Center launcher - no command window.
 Option Explicit
 Dim sh,fs,manager,command,showWindow
 Set sh=CreateObject("WScript.Shell")
