@@ -28,10 +28,10 @@ const NAV=[
  ['questions','Questions']
 ];
 const ORDER_BRANCHES=[
- {name:'The Snakes',symbol:'fa-user-secret',summary:'Secrets, information, and the art of remaining unseen.',ranks:['Hatchling','Coil','Whisper','Shadowkeeper','High Serpent']},
- {name:'The Fangs',symbol:'fa-shield-halved',summary:'Imperium Noctis’s strength, enforcement, and protection.',ranks:['Fangling','Fang','Viper','Fangmaster','High Fang']},
- {name:'The Golden Claws',symbol:'fa-coins',summary:'Commerce, resources, and the agreements that bind them.',ranks:['Gildling','Claw','Goldkeeper','Gilded Talon','High Claw']},
- {name:'The Household',symbol:'fa-building-columns',summary:'The people entrusted with the Imperium’s estate and inner workings.',ranks:['Keeper’s Apprentice','Overseer','Master of Chains','High Steward']}
+ {name:'Garlean Shadows',short:'INTELLIGENCE',symbol:'fa-user-secret',summary:'Intelligence, reconnaissance, counterintelligence, and covert operations.',ranks:['Tiro Umbrae','Speculator','Explorator','Frumentarius','Magister Umbrae'],lead:'Magister Umbrae'},
+ {name:'The Legions',short:'MILITARY',symbol:'fa-shield-halved',summary:'Legion command, territorial defense, security, and campaign operations.',ranks:['Tiro','Miles','Optio','Centurio','Legatus'],lead:'Legatus'},
+ {name:'Officium Aerarii',short:'TREASURY & COMMERCE',symbol:'fa-coins',summary:'Treasury, trade, procurement, enterprise licensing, and supply.',ranks:['Discipulus','Scriba','Negotiator','Quaestor','Procurator'],lead:'Procurator'},
+ {name:'Research & Development',short:'R&D · MAGITEK',symbol:'fa-flask',summary:'Magitek engineering, scientific research, technical innovation, and industrial design.',ranks:['Discipulus Technicus','Artifex','Machinator','Magister Technicus'],lead:'Magister Technicus'}
 ];
 const ESTATE=[['WORLD','Dynamis'],['DATA CENTER','Seraph'],['RESIDENTIAL DISTRICT','The Goblet'],['WARD','5'],['PLOT','41']];
 const MODES=[
@@ -139,18 +139,25 @@ export default function PublicSite(){
    <section className="public-section public-hierarchy" id="ranks">
     <div className="public-section-inner">
      <SectionTag number="04">THE IMPERIAL BRANCHES</SectionTag>
-     <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>Imperium Noctis is not a single ladder. Its leadership, specialized branches, membership standing, and bonds of service are distinct.</p></div>
-     <div className="public-command-tree">
-      <div className="public-command-crest" aria-hidden="true"><i className="fa-solid fa-crown"/></div>
-      <div className="public-command-line"/>
-      <article><span>THE SOVEREIGN</span><h3>Domina</h3><p>At the center of the Imperium stands its supreme authority.</p></article>
-      <article><span>SECOND IN COMMAND</span><h3>Grand Viper</h3><p>The Domina’s foremost deputy and the link between the throne and the Imperium’s command.</p></article>
-      <article><span>THE INNER CIRCLE</span><h3>Inner Council</h3><p>The council offices guide the Imperium’s affairs beneath the Domina.</p></article>
+     <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>A unified chain of command governs four specialist branches. Membership standing and the Bound Path are separate from operational authority.</p></div>
+     <div className="imperial-coc" role="group" aria-label="Imperium Noctis chain of command">
+      <div className="imperial-coc-chain">
+       <article className="imperial-coc-node imperial-coc-sovereign"><span className="imperial-coc-eyebrow"><i className="fa-solid fa-crown" aria-hidden="true"/> SUPREME COMMAND</span><h3>Imperatrix</h3><p>Rosa · Sovereign and final authority over Imperium Noctis.</p></article>
+       <article className="imperial-coc-node imperial-coc-deputy"><span className="imperial-coc-eyebrow">EXECUTIVE COMMAND</span><h3>Praefectus Imperii</h3><p>Principal deputy; coordinates imperial administration and branch command.</p></article>
+       <article className="imperial-coc-node imperial-coc-council"><span className="imperial-coc-eyebrow">STRATEGIC COUNCIL</span><h3>Consilium Imperiale</h3><p>The Imperial Council advises on policy, operations, appointments, and resources under the Imperatrix.</p></article>
+      </div>
+      <div className="imperial-coc-fork" aria-hidden="true"/>
+      <div className="imperial-coc-branches">
+       {ORDER_BRANCHES.map(branch=><article className="imperial-coc-branch" key={branch.name}>
+        <div className="imperial-coc-branch-head"><i className={"fa-solid "+branch.symbol} aria-hidden="true"/><span>{branch.short}</span><h3>{branch.name}</h3><p>{branch.summary}</p></div>
+        <div className="imperial-coc-command-label">COMMAND: {branch.lead}</div>
+        <ol className="imperial-coc-ranks">{branch.ranks.map((name,index)=><li key={name}><small>{String(index+1).padStart(2,'0')}</small><span>{name}</span>{name===branch.lead&&<i className="fa-solid fa-star" aria-label="Branch commander"/>}</li>)}</ol>
+       </article>)}
+      </div>
      </div>
-     <div className="public-branch-intro"><h3>Paths beneath the eclipse</h3><p>Each branch has its own progression, duties, and leadership.</p></div>
-     <div className="public-branch-grid">{ORDER_BRANCHES.map(branch=><article className="public-branch-card" key={branch.name}><span className="public-branch-symbol" aria-hidden="true"><i className={"fa-solid "+branch.symbol}/></span><h3>{branch.name}</h3><p>{branch.summary}</p><div className="public-branch-tiers">{branch.ranks.map((name,index)=><div key={name}><small>{String(index+1).padStart(2,'0')}</small><span>{name}</span></div>)}</div></article>)}</div>
+     <div className="public-branch-intro"><h3>Imperial appointments</h3><p>Authority flows from the Imperatrix through imperial command to the four operational branches. Each branch maintains its own specialty and promotion track.</p></div>
      <div className="public-other-standing">
-      <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Freshscales <em>→</em> Voidscales</h3><p>Imperium Noctis's membership standing is distinct from a character's branch duties.</p></article>
+      <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Tiro <em>→</em> Civis</h3><p>Imperium Noctis's membership standing is distinct from a character's branch duties.</p></article>
       <article><span className="public-branch-kicker">BONDS OF SERVICE</span><h3>The bound path</h3><p>Service has its own hierarchy. Standing within the Imperium does not automatically grant freedom from an in-character bond.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
      </div>
      <p className="public-footnote">In-character rank, membership standing, bonds of service, and out-of-character account permissions are separate.</p>
