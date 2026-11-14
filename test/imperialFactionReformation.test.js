@@ -28,9 +28,9 @@ test('current canon names Domina Rosa and retires obsolete origins',()=>{
 });
 
 test('member portal exposes enterprises but retains existing API and record identifiers',()=>{
- assert.match(workspace,/\['fronts','Order Enterprises'/);
+ assert.match(workspace,/\['fronts','Imperial Enterprises'/);
  assert.match(navigation,/IMPERIAL COMMAND/);
- assert.match(enterprises,/<h2>Order Enterprises<\/h2>/);
+ assert.match(enterprises,/<h2>Imperial Enterprises<\/h2>/);
  assert.match(enterprises,/request\('\/fronts'/);
  assert.match(enterprises,/directory\.fronts/);
  assert.match(enterprises,/order_share_percent/);
