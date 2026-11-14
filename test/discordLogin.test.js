@@ -5,7 +5,7 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('only Discord login is rendered by portal and no alternate login application remains',()=>{
  const login=read('src/LocalAccounts.jsx'),app=read('App.jsx');
  assert.match(login,/Continue with Discord/);
- assert.match(login,/Request to join the Order’s Discord/);
+ assert.match(login,/Request to join Imperium Noctis’s Discord/);
  assert.match(login,/Bad End Roleplay Free Company/);
  assert.match(login,/adult_confirmed:true/);
  assert.doesNotMatch(login,/<input[^>]*type="password"|\/auth\/login|\/auth\/register|Password<input/);
@@ -36,8 +36,8 @@ test('Discord guild errors have a full public-facing explanation and a distinct 
  const site=read('src/DiscordAccessPage.jsx');
  const portal=read('src/LocalAccounts.jsx');
  assert.match(site,/The door is not open yet/);
- assert.match(site,/The Order cannot confirm the server/);
- assert.match(site,/Request to join the Order’s Discord/);
+ assert.match(site,/Imperium Noctis cannot confirm the server/);
+ assert.match(site,/Request to join Imperium Noctis’s Discord/);
  assert.match(site,/Verify with Discord again/);
  assert.match(site,/onAdultChange/);
  assert.match(portal,/discord_guild_configuration_error/);
