@@ -30,8 +30,9 @@ const date=v=>v?new Date(v).toLocaleString(undefined,{month:'short',day:'numeric
 const readable=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
 const equipmentFor={road:['transport','armored_vehicle'],rail:['locomotive'],air:['airship','capital_airship']};
 export default function FreightLogistics({request,onNavigate,initialTab='command'}){
- const [data,setData]=useState(null),[tab,setTab]=useState(initialTab),[dialog,setDialog]=useState(''),[manifest,setManifest]=useState(initialManifest());
+ const [data,setData]=useState(null),[tab,setTab]=useState('command'),[dialog,setDialog]=useState(''),[manifest,setManifest]=useState(initialManifest());
  const [contract,setContract]=useState(initialContract());
+ useEffect(()=>{if(initialTab!=='command')setTab(initialTab)},[initialTab]);
  const [civic,setCivic]=useState({item_id:'',resource_kind:'food',food_group:''});
  const [autoVehicle,setAutoVehicle]=useState({});
  const [selectedContract,setSelectedContract]=useState(null),[preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[freightAvailable,setFreightAvailable]=useState(true);
