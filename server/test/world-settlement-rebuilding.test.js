@@ -30,6 +30,11 @@ test('healthy industrial plant still needs housing and sufficient workforce',()=
  assert.equal(rebuildingAssessment(r).operationallyReady,false);
  assert.ok(rebuildingAssessment(r).risks.some(s=>s.includes('housing')));
 });
+test('destroyed territorial state is not confused with completed settlement restoration',()=>{
+ const r=base();r.settlement.strategic_state='destroyed';
+ assert.equal(rebuildingAssessment(r).operationallyReady,false);
+ assert.ok(rebuildingAssessment(r).risks.some(x=>x.includes('Territory')));
+});
 test('a new uncompleted civic building counts as a blocker',()=>{
  const r=base();r.buildings=[{status:'building',condition_pct:100}];
  assert.equal(rebuildingAssessment(r).damagedCivic,1);
