@@ -60,7 +60,7 @@ export default function OrderNavigation({
   <aside className={'sidebar order-nav '+(open?'order-nav-open':'')} aria-label="Workspace sidebar">
    <div className="order-nav-brand">
     <span className="order-nav-brand-icon" aria-hidden="true"><OrderEmblem className="order-nav-emblem"/></span>
-    <div><strong>THE ECLIPSE ORDER</strong><small>IMPERIAL COMMAND</small></div>
+    <div><strong>IMPERIUM NOCTIS</strong><small>IMPERIAL COMMAND</small></div>
     <button type="button" className="order-nav-close" aria-label="Close menu" onClick={onClose}><i className="fa-solid fa-xmark"/></button>
    </div>
    <div className="order-nav-workspace"><span className="order-nav-pulse"/> <span>{mode==='member'?'Member portal':'Order command'}<small>{mode==='member'?'Your personal workspace':'Operations and administration'}</small></span></div>
