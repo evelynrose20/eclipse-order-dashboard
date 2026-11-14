@@ -140,7 +140,7 @@ export default function PublicSite(){
    <section className="public-section public-hierarchy" id="ranks">
     <div className="public-section-inner">
      <SectionTag number="04">THE IMPERIAL BRANCHES</SectionTag>
-     <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>A unified chain of command governs four specialist branches. Membership standing and the Bound Path are separate from operational authority.</p></div>
+     <div className="public-section-heading"><div><h2>Many paths.<br/><em>One eclipse.</em></h2></div><p>A unified chain of command governs four specialist branches. Membership standing and Specimen Classification are separate from operational authority.</p></div>
      <div className="imperial-coc" role="group" aria-label="Imperium Noctis chain of command">
       <div className="imperial-coc-chain">
        <article className="imperial-coc-node imperial-coc-sovereign"><span className="imperial-coc-eyebrow"><i className="fa-solid fa-crown" aria-hidden="true"/> SUPREME COMMAND</span><h3>Imperatrix</h3><p>Rosa · Sovereign and final authority over Imperium Noctis.</p></article>
@@ -159,9 +159,9 @@ export default function PublicSite(){
      <div className="public-branch-intro"><h3>Imperial appointments</h3><p>Authority flows from the Imperatrix through imperial command to the four operational branches. Each branch maintains its own specialty and promotion track.</p></div>
      <div className="public-other-standing">
       <article><span className="public-branch-kicker">MEMBERSHIP</span><h3>Peregrinus <em>→</em> Civis</h3><p>Imperium Noctis's membership standing is distinct from a character's branch duties.</p></article>
-      <article><span className="public-branch-kicker">BONDS OF SERVICE</span><h3>The bound path</h3><p>Service has its own hierarchy. Standing within the Imperium does not automatically grant freedom from an in-character bond.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
+      <article><span className="public-branch-kicker">IMPERIAL RESEARCH REGISTRY</span><h3>Specimen Classification</h3><p>Five research-designation grades managed separately from military rank, citizenship, and OOC consent. A higher grade indicates research priority, not required physical alteration.</p><ol>{SERVITUDE_RANKS.map(name=><li key={name}>{name}</li>)}</ol></article>
      </div>
-     <p className="public-footnote">In-character rank, membership standing, bonds of service, and out-of-character account permissions are separate.</p>
+     <p className="public-footnote">In-character command, citizenship, specimen classification, and out-of-character account permissions are separate.</p>
     </div>
    </section>
    <section className="public-section public-play" id="roleplay">
