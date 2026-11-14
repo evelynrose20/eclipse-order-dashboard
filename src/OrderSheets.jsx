@@ -2,7 +2,7 @@ import React from 'react';
 import './order-sheets.css';
 
 export const ACCOUNT_ROLES = {
-  domina:{label:'Domina',description:'Supreme Order command; all records, member roles and assignments'},
+  domina:{label:'Imperatrix',description:'Supreme imperial command; all records, member roles and assignments'},
   high_command:{label:'High Command',description:'Full roster and administrative character control'},
   handler:{label:'Master / Mistress',description:'Full access only to assigned characters'},
   member:{label:'Member',description:'Their own unbound character sheets, or collar-limited views'}
@@ -32,7 +32,7 @@ export function LimitedSheet({character}){
       <div><small>COLLAR STATUS</small><strong>Binding active</strong></div>
       <div><small>VISIBLE CONDITION</small><strong>{character.hp ?? 'Unknown'} HP</strong></div>
     </div>
-    <div className="sealed"><span className="sealed-symbol"><i className="fa-solid fa-lock"/></span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. The Domina and authorized handlers may consult the complete record.</p></div></div>
+    <div className="sealed"><span className="sealed-symbol"><i className="fa-solid fa-lock"/></span><div><h3>Arcane seals are active</h3><p>Ability scores, saving throws, skills, spells, possessions, class features, and private notes are sealed from this character's view. The Imperatrix and authorized handlers may consult the complete record.</p></div></div>
   </section>;
 }
 function TextSection({label,value}){
@@ -85,6 +85,6 @@ export function MemberDirectory({members,currentRole,onChangeRole,onChangeStandi
       onChange={e=>onChangeRole(m,e.target.value)}>
       {Object.entries(ACCOUNT_ROLES).filter(([key])=>currentRole==='domina'||(!['domina','high_command'].includes(key))).map(([key,value])=><option value={key} key={key}>{value.label}</option>)}
       </select></td></tr>)}</tbody></table></div>
-    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to the Order. The Domina approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
+    <div className="hint-box"><strong>Membership</strong><p>Members may request entry to the Order. The Imperatrix approves applications and assigns duties. Every member controls their own roleplay boundaries and preferences.</p></div>
   </section>;
 }
