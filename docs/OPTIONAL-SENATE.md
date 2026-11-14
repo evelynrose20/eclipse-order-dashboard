@@ -1,4 +1,4 @@
-# Optional Senate — Eclipse Order
+# Optional Senate — Imperium Noctis
 
 ## Activation and authority
 The Senate is **not established at installation**. MySQL seeds `order_senate_settings.enabled=0`; only an authenticated account with the `domina` account role can activate or suspend the chamber through Governance → Senate. Suspended Senate records and votes remain stored but no new legislative actions can occur. This does not modify the five-seat Council or its Charter 0.2 rules.
