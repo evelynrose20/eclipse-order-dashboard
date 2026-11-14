@@ -38,7 +38,7 @@ export default function DiscordAccessPage({reason,onRetry,onJoin,busy,adult,onAd
  return <div className="eo-discord-access">
   <div className="eo-discord-access-art" aria-hidden="true"><span><i className="fa-solid fa-shield-halved"/></span></div>
   <div className="eo-discord-access-inner">
-   <span className="eo-discord-access-eyebrow">THE ECLIPSE ORDER / {detail.label}</span>
+   <span className="eo-discord-access-eyebrow">IMPERIUM NOCTIS / {detail.label}</span>
    <h1>{detail.title}</h1>
    <p className="eo-discord-access-lead">{detail.text}</p>
    <div className="eo-discord-access-detail"><strong>What happens next</strong><p>{detail.detail}</p></div>
