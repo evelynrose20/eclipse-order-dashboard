@@ -1,4 +1,4 @@
-# Eclipse Order — contributor and AI editing guide
+# Imperium Noctis — contributor and AI editing guide
 
 ## Architecture
 
