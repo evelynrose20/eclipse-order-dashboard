@@ -1,40 +1,39 @@
-# Imperium Noctis hierarchy — MySQL canonical ranks
+# Imperium Noctis — Imperial Chain of Command
 
-The Order's current hierarchy is stored in `order_rank_catalog`, with separate member and character assignments. This replaces the five-title model **for new in-character rank assignments**.
+The public hierarchy is a connected organizational chart rather than a single vertical ladder. Rank titles are Latin or Latin-inspired and draw on Garlean military conventions; invented faction offices are not asserted to be canonical Garlean ranks.
 
-## Leadership
-Domina → Grand Viper → Inner Council.
+## Central command
 
-## Branches
-- The Snakes: Hatchling, Coil, Whisper, Shadowkeeper, High Serpent.
-- The Fangs: Fangling, Fang, Viper, Fangmaster, High Fang.
-- The Golden Claws: Gildling, Claw, Goldkeeper, Gilded Talon, High Claw.
-- The Household: Keeper's Apprentice, Overseer, Master of Chains, High Steward.
+1. **Imperatrix — Rosa**: sovereign and final authority.
+2. **Praefectus Imperii**: principal deputy and administrative/executive coordinator.
+3. **Consilium Imperiale**: Imperial Council, responsible for strategic advice and policy under the Imperatrix. Its existing governance and ratification mechanics stay unchanged.
 
-## Membership and servitude
-Membership standing is an independent track (Freshscales / Voidscales), rather than a promotion in a branch. The named servitude ranks are stored separately in the catalog and are intended for **character** assignments, not site login accounts: Unmarked, Marked Thrall, Bound Serpent, Eclipse Attendant, Silken Thrall, Violet Keeper, Serpent's Chosen, Eclipsed Consort.
+The four operational branches descend from imperial command:
 
-## Database design
+| Branch | Mandate | Progression (lowest → highest) |
+| --- | --- | --- |
+| **Garlean Shadows** (`snakes`) | Intelligence, reconnaissance, counterintelligence, covert operations | Tiro Umbrae → Speculator → Explorator → Frumentarius → Magister Umbrae |
+| **The Legions** (`fangs`) | Military operations, defense, territorial security | Tiro → Miles → Optio → Centurio → Legatus |
+| **Officium Aerarii** (`golden_claws`) | Treasury, enterprise, trade, procurement, supply | Discipulus → Scriba → Negotiator → Quaestor → Procurator |
+| **R&D** (`household`) | Magitek, scientific research, technical development | Discipulus Technicus → Artifex → Machinator → Magister Technicus |
 
-- `order_rank_catalog`: canonical names, tracks, and ordering.
-- `account_order_ranks`: one assignment per member per track, with a foreign key to the catalog.
-- `character_order_ranks`: character servitude rank assignments, separate from account membership.
-- `account_role` remains **website permissions**, not an in-character rank. Its values `domina`, `high_command`, `handler`, and `member` must not be confused with the new Order ranks.
-- Older `standing` and `syndicate_rank` account fields remain temporarily for compatibility; do not assign new in-character ranks using them. Their old values are not mapped to branches, because no safe mapping exists.
-- `bound_rank` in the older character model is not silently rewritten, to avoid changing roleplay character records.
+**Membership standing:** Tiro → Civis. Membership standing is independent of branch appointment.
 
-Existing Domina-permission accounts get the leadership Domina rank. Existing accounts get Freshscales if they have no membership standing assigned. No other legacy permissions or standing is guessed to be a new rank. The migration is designed to be safe to rerun.
+**Bound Path:** Deferred. All eight current servitude titles, character records, service rules, and permissions are deliberately untouched by this change. Any future proposal to reduce this track to five must be separately designed, reviewed and migrated after approval.
 
-**Important:** Moving a member between in-character ranks does not grant staff privileges. The API only permits Domina administrators to assign ranks, validates rank against its track, and refuses a Domina leadership assignment unless the account has Domina-level technical permissions.
+## Compatibility and permissions
 
-## Windows installation
+- The canonical `order_rank_catalog` stores the labels and order; `account_order_ranks` points to unchanged rank codes.
+- Stable tracks remain `leadership`, `snakes`, `fangs`, `golden_claws`, `household`, `membership`, and `servitude`. These are internal IDs, not UI names.
+- Existing accounts keep their assigned rank codes. No automatic promotions, demotions or role transfers occur.
+- `account_role='domina'` and related API permission checks remain unchanged. **Imperatrix** is the new visible title; it is not a permissions migration.
+- The original `domina`, `grand_viper`, and other catalog codes stay intact as internal identifiers.
+- Officium Aerarii's historical `gilded_talon` / `high_claw` access rules still apply to the renamed Quaestor / Procurator until a separate permissions review.
+- The legacy `syndicate_rank` field and older `syndicateRanks.js` code are for compatibility only.
+- No changes to consent or the Bound Path.
 
-Back up the `eclipse_order` MySQL database and pull the latest `main`. From `server` on the Windows host:
+## Deployment
 
-```powershell
-npm run setup:local
-```
+Pull `main`, back up the MariaDB database, then run `npm run setup:local` in `server/` and restart the Windows API. Migration `134_imperial_command_hierarchy.sql` updates only the canonical catalog's non-servitude titles.
 
-This applies `016_order_hierarchy.sql`, creates the new catalog and assignment tables, and preserves existing records. Restart the Windows Node API after successful migration.
-
-The GitHub Pages deployment **cannot apply** a local MySQL migration. Applying the frontend alone before the migration will cause rank requests to fail. Do not manually delete the old columns until the remaining compatibility paths are retired and old data has been backed up.
+A public static deployment cannot update stored ranks. Do not remove or rename existing rank codes, track identifiers, account roles or character-bound values.
