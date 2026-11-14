@@ -1,6 +1,6 @@
 # Imperium Noctis — Imperial Chain of Command
 
-The public hierarchy is a connected organizational chart rather than a single vertical ladder. Rank titles are Latin or Latin-inspired and draw on Garlean military conventions; invented faction offices are not asserted to be canonical Garlean ranks.
+The public hierarchy is a connected organizational chart rather than a single vertical ladder. Branch ranks use occupational and military titles recorded in FFXIV's Garlean hierarchy; the exact progression and branch assignments are unique to Imperium Noctis. The title **Imperatrix** and the chamber name **Senatus Imperialis** are faction choices, not claims of official Garlean imperial succession. Reference: https://ffxiv.consolegameswiki.com/wiki/Garlean_Empire
 
 ## Central command
 
