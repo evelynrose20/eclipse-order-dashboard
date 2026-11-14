@@ -169,6 +169,8 @@ test('MySQL 8 schemas install together and retain existing Domina on re-run', {s
   assert.ok(rankCatalog.some(x=>x.track==='leadership'&&x.code==='grand_viper'));
   assert.ok(rankCatalog.some(x=>x.track==='snakes'&&x.code==='high_serpent'));
   assert.ok(rankCatalog.some(x=>x.track==='servitude'&&x.code==='eclipsed_consort'));
+  // Reapply final title migration after deliberately rerunning the old hierarchy seed above.
+  await admin.query(await readFile(new URL('../sql/137_specimen_classification.sql',import.meta.url),'utf8'));
   const [specimenGrades]=await admin.query("SELECT code,title FROM order_rank_catalog WHERE track='servitude' AND code IN ('unmarked','marked_thrall','bound_serpent','eclipse_attendant','silken_thrall') ORDER BY sort_order");
   assert.deepEqual(specimenGrades.map(x=>x.title),['Specimen I — Receptus','Specimen II — Registratus','Specimen III — Observatus','Specimen IV — Probatus','Specimen V — Praecipuus']);
 
