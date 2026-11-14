@@ -28,7 +28,7 @@ class WorldPanelBoundary extends React.Component{
  componentDidCatch(error,info){console.error('[World Administration] Panel error:',error,info.componentStack)}
  render(){if(this.state.failed)return <section className="wa-panel wa-panel-recovery" role="alert"><h3>Unable to display this workspace</h3><p>The panel encountered a rendering error. Your settlement and industry records have not been changed. Reload this panel to try again.</p><button type="button" onClick={()=>this.setState({failed:false})}>Retry panel</button></section>;return this.props.children}
 }
-export default function WorldAdministration({request,readOnly=false,userId='',characters=[]}){
+export default function WorldAdministration({request,readOnly=false,userId='',characters=[],onNavigate}){
  const [data,setData]=useState(null),[section,setSection]=useState('map'),[region,setRegion]=useState(''),[zone,setZone]=useState(''),[selected,setSelected]=useState('');
  const [editing,setEditing]=useState(null),[editType,setEditType]=useState(''),[preview,setPreview]=useState(true),[industryFocus,setIndustryFocus]=useState('');
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
@@ -131,7 +131,7 @@ export default function WorldAdministration({request,readOnly=false,userId='',ch
 
    {canEdit&&section==='diplomacy'&&<WorldDiplomacyPanel request={request} factions={factions} settlements={settlements} onChanged={load}/>}
    {canEdit&&section==='npc'&&<NpcSettlementsPanel request={request} factions={factions} onChanged={load}/>}
-   {canEdit&&section==='rebuilding'&&<WorldPanelBoundary><SettlementRebuildingPanel request={request} settlements={settlements.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId)} selectedId={selected} onSelect={setSelected} onChanged={load} onNavigate={(target,targetId)=>{setSelected(String(targetId));if(target==='civil'){setSection('civil')}else if(target==='industry'){setIndustryFocus('settlement:'+targetId);setSection('industry')}else if(target==='power'){setSection('power')}else if(target==='logistics'){setSection('rebuilding');window.open('/eclipse-order-dashboard/','_blank','noopener,noreferrer')}else{setSection('map');setInspectorOpen(true)}}}/></WorldPanelBoundary>}
+   {canEdit&&section==='rebuilding'&&<WorldPanelBoundary><SettlementRebuildingPanel request={request} settlements={settlements.filter(s=>String(s.region_id)===region&&String(s.zone_id)===activeZoneId)} selectedId={selected} onSelect={setSelected} onChanged={load} onNavigate={(target,targetId)=>{setSelected(String(targetId));if(target==='civil'){setSection('civil')}else if(target==='industry'){setIndustryFocus('settlement:'+targetId);setSection('industry')}else if(target==='power'){setSection('power')}else if(target==='logistics'){onNavigate?.('freight','warehouses')}else{setSection('map');setInspectorOpen(true)}}}/></WorldPanelBoundary>}
    {canEdit&&section==='power'&&<WorldPanelBoundary><PowerGridPanel request={request} regionId={region} zoneId={activeZoneId}/></WorldPanelBoundary>}
    {canEdit&&section==='industry'&&<WorldPanelBoundary><IndustrySitesPanel request={request} onChanged={load} userId={userId} characters={characters} initialLocationKey={industryFocus} onFocusCleared={()=>setIndustryFocus('')}/></WorldPanelBoundary>}
    {activeRegion&&section==='map'&&<ZoneGeography key={region} region={activeRegion} zones={zoneList} activeZone={activeZone} regionAccess={data?.region_access||[]} canEdit={canEdit} request={request} onSaved={load} onNavigate={changeZone}/>}
