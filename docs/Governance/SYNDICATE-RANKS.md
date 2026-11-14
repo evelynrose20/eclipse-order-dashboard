@@ -5,19 +5,19 @@ The public hierarchy is a connected organizational chart rather than a single ve
 ## Central command
 
 1. **Imperatrix — Rosa**: sovereign and final authority.
-2. **Praefectus Imperii**: principal deputy and administrative/executive coordinator.
-3. **Consilium Imperiale**: Imperial Council, responsible for strategic advice and policy under the Imperatrix. Its existing governance and ratification mechanics stay unchanged.
+2. **Consul**: principal deputy and administrative/executive coordinator; a documented Garlean civil office.
+3. **Senatus Imperialis**: Imperial Senate, a faction-specific name for the governing chamber. This display name does not enable the optional Senate or alter Council/Senate rules, voting, ratification or appointments.
 
 The four operational branches descend from imperial command:
 
 | Branch | Mandate | Progression (lowest → highest) |
 | --- | --- | --- |
-| **Garlean Shadows** (`snakes`) | Intelligence, reconnaissance, counterintelligence, covert operations | Tiro Umbrae → Speculator → Explorator → Frumentarius → Magister Umbrae |
-| **The Legions** (`fangs`) | Military operations, defense, territorial security | Tiro → Miles → Optio → Centurio → Legatus |
-| **Officium Aerarii** (`golden_claws`) | Treasury, enterprise, trade, procurement, supply | Discipulus → Scriba → Negotiator → Quaestor → Procurator |
-| **R&D** (`household`) | Magitek, scientific research, technical development | Discipulus Technicus → Artifex → Machinator → Magister Technicus |
+| **Garlean Shadows** (`snakes`) | Intelligence, reconnaissance, counterintelligence, covert operations | Eques → Notarius → Frumentarius → Praefectus → Primus Frumentarius |
+| **The Legions** (`fangs`) | Military operations, defense, territorial security | Legionarius → Optio → Centurio → Primus Pilus → Legatus Legionis |
+| **Officium Aerarii** (`golden_claws`) | Treasury, enterprise, trade, procurement, supply | Eques → Notarius → Compulsor → Aedilis → Quaestor |
+| **R&D** (`household`) | Magitek, scientific research, technical development | Architectus → Architectus Veteranus → Architectus Magiteci → Primus Architectus Magiteci |
 
-**Membership standing:** Tiro → Civis. Membership standing is independent of branch appointment.
+**Membership standing:** Peregrinus → Civis (a faction-specific use of Garlean non-citizen and citizen terminology, not an OOC rights classification). Membership standing is independent of branch appointment.
 
 **Bound Path:** Deferred. All eight current servitude titles, character records, service rules, and permissions are deliberately untouched by this change. Any future proposal to reduce this track to five must be separately designed, reviewed and migrated after approval.
 
