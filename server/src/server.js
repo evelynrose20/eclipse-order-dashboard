@@ -100,7 +100,7 @@ const server=http.createServer(async(req,res)=>{
  }
  if(!permittedHosts.has(hostHeader)){
   // Log only the rejected hostname and public-mode state; never print cookies or credentials.
-  console.warn('[Eclipse Order API] Rejected Host:',hostHeader||'(missing)','public mode:',isPublic?'enabled':'disabled');
+  console.warn('[Imperium Noctis API] Rejected Host:',hostHeader||'(missing)','public mode:',isPublic?'enabled':'disabled');
   res.writeHead(403,{'Content-Type':'application/json','Cache-Control':'no-store'});
   res.end(JSON.stringify({error:'local_only'}));return;
  }
@@ -160,13 +160,13 @@ const server=http.createServer(async(req,res)=>{
  }catch(error){
   if([400,403,413,503].includes(error?.status))result={status:error.status,body:{error:error.message}};
   else{
-   console.error('[Eclipse Order API] Request failed:',req.method,pathname,error?.code||error?.name||'internal_error');
+   console.error('[Imperium Noctis API] Request failed:',req.method,pathname,error?.code||error?.name||'internal_error');
    result={status:500,body:{error:'internal_error'}};
   }
  }
  // Route handlers must always return a response; never crash the process on an unmatched route.
  if(result==null){
-  console.warn('[Eclipse Order API] Request did not match a handler:',req.method,pathname);
+  console.warn('[Imperium Noctis API] Request did not match a handler:',req.method,pathname);
   result={status:404,body:{error:'not_found'}};
  }
  if(result.redirect){
@@ -190,11 +190,11 @@ const server=http.createServer(async(req,res)=>{
 server.requestTimeout=5000;
 server.headersTimeout=5000;
 server.listen(port,host,()=>{
-  console.log('[Eclipse Order API] Listening at http://127.0.0.1:'+port);
-  console.log('[Eclipse Order API] /health checks the HTTP server. /ready checks the database.');
-  console.log('[Eclipse Order API] Public website origin: '+allowedOrigin);
- console.log('[Eclipse Order API] Local website origin: '+localOrigin);
- console.log('[Eclipse Order API] Public routing '+(isPublic?'ENABLED for '+publicHost:'DISABLED')+'.');
+  console.log('[Imperium Noctis API] Listening at http://127.0.0.1:'+port);
+  console.log('[Imperium Noctis API] /health checks the HTTP server. /ready checks the database.');
+  console.log('[Imperium Noctis API] Public website origin: '+allowedOrigin);
+ console.log('[Imperium Noctis API] Local website origin: '+localOrigin);
+ console.log('[Imperium Noctis API] Public routing '+(isPublic?'ENABLED for '+publicHost:'DISABLED')+'.');
 });
 // Daily fictional payroll is processed by the Windows API, with a persisted cycle key.
  // A restart cannot create duplicate salary, and a brief downtime catches up at most one reset.
@@ -223,11 +223,11 @@ const payrollTick=async()=>{
  try{
   const now=new Date();
   const r=await runDailyPayroll(pool,now);
-  if(r?.body?.status==='paid')console.log('[Eclipse Order API] Daily payroll processed:',r.body.cycle,'distributed:',r.body.paid_total);
+  if(r?.body?.status==='paid')console.log('[Imperium Noctis API] Daily payroll processed:',r.body.cycle,'distributed:',r.body.paid_total);
   const fronts=await runFrontDailyExpenses(pool,now);
-  if(fronts?.processed)console.log('[Eclipse Order API] Front operating costs:',fronts.cycle,'paid:',fronts.paid);
+  if(fronts?.processed)console.log('[Imperium Noctis API] Front operating costs:',fronts.cycle,'paid:',fronts.paid);
  }
- catch(e){console.warn('[Eclipse Order API] Payroll check unavailable:',e?.code||'database_unavailable')}
+ catch(e){console.warn('[Imperium Noctis API] Payroll check unavailable:',e?.code||'database_unavailable')}
  finally{payrollTickRunning=false}
 };
 let exchangeTickRunning=false;
