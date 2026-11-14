@@ -113,7 +113,7 @@ export default function Fronts({request,characters=[],userId='',canManage=false,
    {chosen?<main className="eo-fronts-detail">
     <div className="eo-fronts-detail-cover">
      <div className="eo-fronts-signage" aria-hidden="true"><i className={"fa-solid fa-"+(SYMBOLS[chosen.category]||"building")}/></div>
-     <div><span>{CATEGORIES[chosen.category]||'Order Enterprise'} · {chosen.location}</span><h3>{chosen.name}</h3><p>{chosen.description||'A licensed enterprise supporting the Imperium Noctis.'}</p></div>
+     <div><span>{CATEGORIES[chosen.category]||'Order Enterprise'} · {chosen.location}</span><h3>{chosen.name}</h3><p>{chosen.description||'A licensed enterprise supporting Imperium Noctis.'}</p></div>
      <span className={'eo-fronts-status '+chosen.status}>{chosen.status}</span>
     </div>
     <div className="eo-fronts-ownership">
