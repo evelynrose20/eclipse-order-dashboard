@@ -10,7 +10,7 @@ const FOUNDING_RECORDS=[
  {id:'origins-thirteenth',title:'Imperial Foundations',era:'garlemald',kind:'history',published:true,summary:'Imperium Noctis draws its outlook from Garlean imperial traditions and the pursuit of authority.',body:'The Order embraces discipline, magitek, strategic strength, and loyalty to its leadership. Its present identity is an independent imperial villain faction; no former household or other-world origin is part of its current public canon.'},
  {id:'carteneau-crossing',title:'An Era of Upheaval',era:'arr',kind:'history',published:true,summary:'The Calamity reshaped the political and military landscape in which imperial powers operated.',body:'The fall of Dalamud and the wars that followed altered the balance of power across the realm. This chronicle does not claim an unsupported personal origin or founding event for the Order.'},
  {id:'yanxia-order',title:'The Imperial Ambition',era:'stormblood',kind:'history',published:true,summary:'The Order’s ambitions take shape against a backdrop of imperial conflict and shifting alliances.',body:'The Order’s present branches—the Fangs, Snakes, and Golden Claws—represent military strength, intelligence, and economic support. The details of their original formation remain open to the Order’s current storytellers; no former headquarters outside New Cassia is asserted here.'},
- {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order’s operations and scattered its people.',body:'The Final Days and their aftermath brought years of disarray to the Imperium Noctis. Its surviving loyalties would be tested long after the organization fell silent.'},
+ {id:'final-days-fall',title:'The Breaking of the Order',era:'endwalker',kind:'history',published:true,summary:'The Final Days shattered the Order’s operations and scattered its people.',body:'The Final Days and their aftermath brought years of disarray to Imperium Noctis. Its surviving loyalties would be tested long after the organization fell silent.'},
  {id:'dawntrail-return',title:'After Dawntrail',era:'dawntrail',kind:'history',published:true,summary:'An independent imperial villain faction emerges from the wreckage of its former power.',body:'Rosa gathers surviving loyalists after the Order’s collapse and begins an ambitious imperial restoration. Foreign governments, independent factions, and rival Garlean remnants must decide whether to bargain with, resist, or oppose its rise.'},
  {id:'new-cassia',title:'New Cassia',era:'present',kind:'place',published:true,summary:'New Cassia is the seat of a rebuilding imperial power in northern Ilsabard.',body:'New Cassia serves as the Order’s administrative and military center. Infrastructure, magitek industry, trade, diplomacy, and contested territorial control all contribute to its attempt to build an independent empire.'}
 ];
@@ -44,7 +44,7 @@ export default function PublicChronicles(){
     <p>From a Garlean-influenced imperial outlook through the collapse of old power to the Order’s ambitions in New Cassia.</p>
    </div>
    <div className="imperial-chronicles-frame">
-    <div className="imperial-chronicles-timeline" aria-label="History of the Imperium Noctis">
+    <div className="imperial-chronicles-timeline" aria-label="History of Imperium Noctis">
      <div className="imperial-timeline-title">THE ORDER'S CHRONICLE</div>
      {CHAPTERS.map((era,i)=>{
       const chapters=records.filter(e=>e.era===era);
