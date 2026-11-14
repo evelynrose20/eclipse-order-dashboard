@@ -1,4 +1,4 @@
-# Eclipse Order — Windows hosting overview
+# Imperium Noctis — Windows hosting overview
 
 **Current direction:** The Windows Node.js + MySQL API and matching React client are already implemented in the repository. This is no longer only a hypothetical migration plan. Production readiness still requires real-server migration, permissions, backup, and Cloudflare checks.
 
