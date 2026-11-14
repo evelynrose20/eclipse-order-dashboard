@@ -23,7 +23,9 @@ test('Existing faction selection can include database seeded Order authority and
  const sql=await read('server/sql/043_world_mountain_ranges_order_faction.sql');
  const ui=await read('src/WorldAdministration.jsx');
  assert.match(sql,/INSERT IGNORE INTO order_factions/);
- assert.match(sql,/'eclipse-order','The Eclipse Order'/);
+ assert.match(sql,/'eclipse-order'/);
+ const rename=await read('server/sql/133_imperium_noctis_rebrand.sql');
+ assert.match(rename,/name='Imperium Noctis'/);
  assert.match(sql,/CREATE TABLE IF NOT EXISTS world_map_mountain_ranges/);
  assert.match(ui,/<span>Residents<\/span>/);
  assert.match(ui,/\['population','Residents',10000000\]/);
