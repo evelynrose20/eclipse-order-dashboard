@@ -102,7 +102,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
   <div className="faction-layout">
    <div className="faction-list" aria-label="Faction list">
     {[
-     {id:'order_story',title:'Factions connected to the Order',description:'Allies, enemies and rivals in the Order’s story'},
+     {id:'order_story',title:'Factions connected to the Order',description:'Allies, enemies and rivals in the Imperium’s story'},
      {id:'world',title:'Other factions',description:'Guilds, organizations and independent groups'},
      {id:'settlement',title:'Settlements',description:'Towns and communities across the realm'}
     ].map(section=><section className="faction-list-section" key={section.id} aria-label={section.title}>
@@ -122,16 +122,16 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
      </div>
      <h3><span className="faction-map-swatch" style={{background:chosen.map_color||factionColor(chosen.id)}} aria-hidden="true"/>{chosen.name}</h3><p className="faction-leader"><span>Led by</span> {chosen.leader}</p>
      <div className="faction-rule"/>
-     <p className="faction-description">{chosen.description}</p><p className="faction-trade-status"><i className={'fa-solid fa-'+(chosen.trade_enabled?'handshake':'ban')} aria-hidden="true"/> {chosen.trade_enabled?'Trade agreements permitted':'Trade with the Order closed'}</p>
+     <p className="faction-description">{chosen.description}</p><p className="faction-trade-status"><i className={'fa-solid fa-'+(chosen.trade_enabled?'handshake':'ban')} aria-hidden="true"/> {chosen.trade_enabled?'Trade agreements permitted':'Trade with the Imperium closed'}</p>
      <section className="faction-reputations"><div className="faction-reputations-title"><span className="faction-eyebrow">RELATIONSHIPS</span><h4>Reputation & standing</h4></div>
-      {repBar('The Order’s view of this faction',Number(chosen.order_view)||0)}{repBar('This faction’s view of the Order',Number(chosen.faction_view)||0)}
+      {repBar('The Imperium’s view of this faction',Number(chosen.order_view)||0)}{repBar('This faction’s view of the Order',Number(chosen.faction_view)||0)}
       {repBar('Your personal reputation',Number(chosen.personal_reputation)||0)}
       {editable&&<button type="button" className="btn secondary" onClick={()=>setRepDraft({target:chosen.faction_scope==='world'?'player':'order_view',account_id:'',delta:5,event_title:'',event_details:'',source_event_id:''})}>Record reputation change</button>}
      </section>
      {chosen.image_reference_url&&<a className="faction-reference" href={chosen.image_reference_url} target="_blank" rel="noreferrer noopener">View portrait reference</a>}
      {editable&&<div className="faction-edit-actions"><button type="button" className="btn secondary" onClick={()=>{setEditing({...chosen,map_color:chosen.map_color||factionColor(chosen.id)});setNewFaction(false)}}>Edit dossier</button>{chosen.id!=='eclipse-order'&&<button type="button" className="btn secondary faction-remove-action" onClick={()=>{setError('');setRemoving({id:chosen.id,name:chosen.name})}}>Remove faction</button>}{!chosen.public_visible&&<span className="faction-private">Hidden from members</span>}</div>}
      {editable&&chosen.notes&&<section className="faction-command-notes"><h4>Order command notes</h4><p>{chosen.notes}</p></section>}
-     {tradeContracts.some(c=>c.faction_id===chosen.id)&&<section className="faction-trade-section"><span className="faction-eyebrow">THE MERCHANT NETWORK</span><h4>Trade agreements</h4><p>Completed deliveries improve this faction's standing toward the Order.</p>{tradeContracts.filter(c=>c.faction_id===chosen.id).map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{c.item_kind==='material'?c.material_name:c.equipment_name} · {c.status}</small></div><div><span>{c.delivered_quantity} / {c.required_quantity}</span><small>+{c.rep_per_unit} standing per item</small></div></article>)}</section>}
+     {tradeContracts.some(c=>c.faction_id===chosen.id)&&<section className="faction-trade-section"><span className="faction-eyebrow">THE MERCHANT NETWORK</span><h4>Trade agreements</h4><p>Completed deliveries improve this faction's standing toward the Imperium.</p>{tradeContracts.filter(c=>c.faction_id===chosen.id).map(c=><article key={c.id}><div><strong>{c.title}</strong><small>{c.item_kind==='material'?c.material_name:c.equipment_name} · {c.status}</small></div><div><span>{c.delivered_quantity} / {c.required_quantity}</span><small>+{c.rep_per_unit} standing per item</small></div></article>)}</section>}
      <div className="faction-history-head"><div><span className="faction-eyebrow">THE CHANGING WORLD</span><h4>Faction history</h4></div>{editable&&<button type="button" className="btn secondary" onClick={()=>setEventDraft({title:'',details:'',occurred_on:''})}>+ Record development</button>}</div>
      {repHistory.length>0&&<div className="faction-timeline">{repHistory.map(e=><article className="faction-history-entry" key={'rep-'+e.id}><time>{new Date(e.created_at).toLocaleDateString()} · {e.target==='order_view'?'Order diplomacy':e.target==='faction_view'?'Faction diplomacy':'Personal reputation'} · {e.applied_delta>0?'+':''}{e.applied_delta}</time><strong>{e.event_title}</strong><p>{e.event_details}</p></article>)}</div>}
      {events.length?<div className="faction-timeline">{events.map(e=><article key={e.id} className="faction-history-entry"><time>{e.occurred_on?new Date(e.occurred_on).toLocaleDateString():new Date(e.created_at).toLocaleDateString()}</time><strong>{e.title}</strong><p>{e.details}</p></article>)}</div>:<p className="faction-history-empty">No general developments recorded yet.</p>}
@@ -160,7 +160,7 @@ export default function Factions({request,canEdit=false,previewOnly=false}){
    <div className="faction-modal-head"><h3>Record reputation change</h3><button type="button" aria-label="Close reputation editor" onClick={()=>setRepDraft(null)}>×</button></div>
    <div className="faction-fields">
     <label className="wide">Whose relationship changes?<select value={repDraft.target} onChange={e=>setRepDraft({...repDraft,target:e.target.value})}>
-     <option value="order_view">The Order’s view of this faction</option><option value="faction_view">This faction’s view of the Order</option><option value="player">A member’s personal reputation</option>
+     <option value="order_view">The Imperium’s view of this faction</option><option value="faction_view">This faction’s view of the Order</option><option value="player">A member’s personal reputation</option>
     </select></label>
     {repDraft.target==='player'&&<label className="wide">Member<select value={repDraft.account_id} onChange={e=>setRepDraft({...repDraft,account_id:e.target.value})}><option value="">Choose a member</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.discord_username||a.display_name||'Member'}</option>)}</select></label>}
     <label className="wide">Connected Order event (optional)<select value={repDraft.source_event_id||''} onChange={e=>setRepDraft({...repDraft,source_event_id:e.target.value})}><option value="">Independent development</option>{encounters.map(event=><option key={event.id} value={event.id}>{event.name} · {event.status}</option>)}</select></label>
