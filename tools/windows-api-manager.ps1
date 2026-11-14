@@ -1,5 +1,5 @@
 param([switch]$Minimized)
-# Eclipse Order API manager: Windows PowerShell 5.1, Node.js 22+, current Windows user.
+# Imperium Noctis API manager: Windows PowerShell 5.1, Node.js 22+, current Windows user.
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -125,7 +125,7 @@ function RestartBot {
 
 . (Join-Path $PSScriptRoot 'windows-api-maintenance.ps1')
 $form=New-Object System.Windows.Forms.Form
-$form.Text='Eclipse Order - API Control Center'
+$form.Text='Imperium Noctis - API Control Center'
 $form.Size=New-Object System.Drawing.Size(590,480)
 $form.MinimumSize=$form.Size
 $form.StartPosition='CenterScreen'
@@ -137,7 +137,7 @@ function Label([string]$text,[int]$top,[int]$height) {
  $l.Text=$text;$l.SetBounds(22,$top,530,$height);$form.Controls.Add($l)
  return $l
 }
-$head=Label 'ECLIPSE ORDER  /  SERVER CONTROL' 18 34
+$head=Label 'IMPERIUM NOCTIS  /  SERVER CONTROL' 18 34
 $head.Font=New-Object System.Drawing.Font('Segoe UI',13,[System.Drawing.FontStyle]::Bold)
 $head.ForeColor=[System.Drawing.Color]::FromArgb(222,191,140)
 $apiLabel=Label 'API: STARTING' 67 28
@@ -181,7 +181,7 @@ $updateButton.Add_Click({if(-not $script:updating){Show-DatabaseUpdateDialog}})
 $form.Controls.Add($updateButton)
 $tray=New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon=[System.Drawing.SystemIcons]::Application
-$tray.Text='Eclipse Order API'
+$tray.Text='Imperium Noctis API'
 $tray.Visible=$true
 $menu=New-Object System.Windows.Forms.ContextMenuStrip
 $open=$menu.Items.Add('Open control center')
@@ -234,7 +234,7 @@ $timer.Add_Tick({
   $updateButton.Enabled=(-not [bool]$script:updating)
   $revLabel.Text="Git revision: $(if($script:revision){$script:revision.Substring(0,12)}else{'unknown'})"
   $info.Text="$($script:status) | Bot: $($script:botStatus)"
-  $tray.Text=if($ready){'Eclipse Order API and database ready'}elseif($online){'Eclipse Order API running, database not ready'}else{'Eclipse Order API offline'}
+  $tray.Text=if($ready){'Imperium Noctis API and database ready'}elseif($online){'Imperium Noctis API running, database not ready'}else{'Imperium Noctis API offline'}
  }catch{$script:status="Monitor error: $($_.Exception.Message)"}
 })
 $timer.Start()
