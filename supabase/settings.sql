@@ -9,7 +9,7 @@ create table if not exists public.order_settings (
 alter table public.order_settings enable row level security;
 revoke all on public.order_settings from anon,authenticated,public;
 insert into public.order_settings(setting_key,content) values
- ('welcome','Welcome to the Eclipse Order.'),
+ ('welcome','Welcome to the Imperium Noctis.'),
  ('house_rules','Character mechanics and dice follow the current FC house rules.'),
  ('scene_guidelines','All adult RP scenes require explicit, revocable out-of-character opt-in. In-character refusal never overrides player-level OOC controls.')
 on conflict(setting_key) do nothing;
