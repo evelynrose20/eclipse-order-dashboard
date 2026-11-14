@@ -21,7 +21,7 @@ export default function DiscordAccountConnection({request,readOnly=false}){
   catch(e){setMessage(e.message);setBusy(false)}
  }
  return <section className="discord-account-panel" aria-labelledby="discord-account-heading">
-  <div className="discord-account-title"><span className="discord-account-glyph" aria-hidden="true">◈</span><div><h3 id="discord-account-heading">Discord sign-in</h3><p>Your verified Discord identity is required to enter The Eclipse Order.</p></div></div>
+  <div className="discord-account-title"><span className="discord-account-glyph" aria-hidden="true">◈</span><div><h3 id="discord-account-heading">Discord sign-in</h3><p>Your verified Discord identity is required to enter Imperium Noctis.</p></div></div>
   {status?.linked?<div className="discord-account-row"><div><strong>Connected</strong><span>{status.username||'Discord account'}</span></div><span className="discord-account-required">Required for sign-in</span></div>
   :<div className="discord-account-row"><div><strong>{status?.enabled?'Not connected':'Setup required'}</strong><span>{status?.enabled?'Discord is required for portal access.':'Discord sign-in has not been configured on the server.'}</span></div>{!readOnly&&<button type="button" className="btn secondary" disabled={busy||!status?.enabled} onClick={connect}>Verify Discord</button>}</div>}
   {message&&<p className="discord-account-message" role="status">{message}</p>}
