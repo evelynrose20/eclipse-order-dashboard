@@ -22,12 +22,13 @@ test('imperial command tree has linked command and four operational branches',()
 });
 
 test('rank label migration changes names without changing any stable IDs or the bound path',()=>{
- for(const code of ['domina','grand_viper','inner_council','hatchling','high_serpent','high_fang','goldkeeper','high_claw','keepers_apprentice','high_steward','freshscales','voidscales'])
+ for(const code of ['grand_viper','inner_council','hatchling','high_serpent','high_fang','goldkeeper','high_claw','keepers_apprentice','high_steward','freshscales','voidscales'])
   assert.match(ranks,new RegExp("WHEN '"+code+"' THEN"));
  assert.match(ranks,/WHERE track IN \('leadership','snakes','fangs','golden_claws','household','membership'\)/);
  assert.doesNotMatch(ranks,/UPDATE account_order_ranks|UPDATE character_order_ranks|WHERE track='servitude'/);
  assert.match(setup,/136_garlean_ranks_and_senate_name\.sql/);
  assert.match(site,/SERVITUDE_RANKS\.map/);
+ assert.match(read('server/sql/134_imperial_command_hierarchy.sql'),/WHEN 'domina' THEN 'Imperatrix'/);
  assert.match(ranks,/Primus Frumentarius/);
  assert.match(ranks,/Legatus Legionis/);
  assert.match(ranks,/Primus Architectus Magiteci/);
