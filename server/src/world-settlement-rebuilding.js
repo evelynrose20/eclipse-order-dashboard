@@ -12,6 +12,7 @@ export function rebuildingAssessment(report){
  const blockedPower=power.filter(p=>number(p.fuel_units)<=0||['paused','destroyed'].includes(p.status));
  const unfinishedWarehouses=warehouses.filter(w=>w.state!=='operational');
  const risks=[
+  ...(['destroyed','abandoned'].includes(settlement.strategic_state)?['Territory is still marked '+settlement.strategic_state+'; begin its reconstruction before declaring it recovered']:[]),
   ...(!settlement.controlling_faction_id?['No controlling faction: recover ownership before Order construction']:settlement.controlling_faction_id!=='eclipse-order'?['Not Order-controlled: Order construction is restricted']:[]),
   ...damagedCivic.length?[damagedCivic.length+' civic buildings require attention']:[],
   ...damagedIndustry.length?[damagedIndustry.length+' industrial facilities require attention']:[],
